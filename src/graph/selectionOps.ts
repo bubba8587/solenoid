@@ -12,7 +12,8 @@ import { scheduleAutosave } from "./persistence";
 import { notifyGraphChanged } from "./process";
 import { settingsStore } from "./settingsStore";
 import { measuredBox, type NodeBox } from "./nodeSize";
-import { settleOverlaps, settleOverlapsAfterPaint } from "./groupPush";
+import { settleOverlaps } from "./groupPush";
+import { settleMemberOverlaps } from "./groupLogic";
 import type { Schemes } from "./schemes";
 import type { GraphEditor } from "./graphEditor";
 
@@ -81,6 +82,7 @@ async function applyMoves(editor: Editor, view: View, moves: Move[]): Promise<vo
 /** How Align and Distribute end: the standoffs, then the No-Overlap Pass with the cards just placed holding still. */
 async function settle(editor: Editor, view: View, placed: readonly string[]): Promise<void> {
   if (!standoffStore.isEmpty()) settleStandoffs();
+  await settleMemberOverlaps(editor, view, new Set(placed));
   settleOverlaps(editor, view, new Set(placed));
   scheduleAutosave();
 }
@@ -190,7 +192,12 @@ export function cardsExpanded(ids: readonly string[]): void {
   if (settingsStore.get("frontOnExpand")) stackSelection("front", ids);
   const editor = getOwningEditor(ids[0]);
   const view = getOwningView(ids[0]);
-  if (editor && view) settleOverlapsAfterPaint(editor, view, new Set(ids));
+  if (!editor || !view) return;
+  const opened = new Set(ids);
+  // Two frames on, so React Flow has measured each card at its full size.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    void settleMemberOverlaps(editor, view, opened).then(() => settleOverlaps(editor, view, opened));
+  }));
 }
 
 /** A card's chevron: flips the collapse, re-renders the card, and saves and records the change. */

@@ -14,6 +14,7 @@ import { settleStandoffs } from "./standoffs";
 import { measuredBox } from "./nodeSize";
 import { getOwningEditor } from "./activeGraph";
 import { settleOverlaps } from "./groupPush";
+import { separateAll, type PushBox } from "./groupPushCore";
 
 const GROUP_DEFAULT_COLOR = "gray";
 
@@ -107,8 +108,9 @@ export async function createGroupFromSelection(editor: Editor, view: View): Prom
 
 type GroupGeom = { x: number; y: number; width: number; height: number };
 
+/** Fits the group's box to its members; `growOnly` keeps every edge the members haven't passed. */
 export async function autofitGroupBox(
-  editor: Editor, view: View, group: GroupNode,
+  editor: Editor, view: View, group: GroupNode, opts: { growOnly?: boolean } = {},
 ): Promise<{ before: GroupGeom; after: GroupGeom } | null> {
   const gv = view.position(group.id);
   if (!gv) return null;
@@ -126,12 +128,15 @@ export async function autofitGroupBox(
   const before: GroupGeom = { x: gv.x, y: gv.y, width: group.width, height: group.height };
   // Each edge rounds on its own. Rounding the size instead left the interior up to half a pixel lopsided, and a
   // within-group Tidy, which centers the members in the interior, then moved them a fraction on every Cleanup.
-  const x = Math.round(minX - GROUP_PAD), y = Math.round(minY - GROUP_PAD - GROUP_HEADER);
+  const keep = opts.growOnly ? before : null;
+  const x = Math.min(Math.round(minX - GROUP_PAD), keep?.x ?? Infinity);
+  const y = Math.min(Math.round(minY - GROUP_PAD - GROUP_HEADER), keep?.y ?? Infinity);
   const after: GroupGeom = {
     x, y,
-    width:  Math.max(GROUP_MIN_W, Math.round(maxX + GROUP_PAD) - x),
-    height: Math.max(GROUP_MIN_H, Math.round(maxY + GROUP_PAD) - y),
+    width:  Math.max(GROUP_MIN_W, Math.round(maxX + GROUP_PAD) - x, keep ? keep.x + keep.width - x : 0),
+    height: Math.max(GROUP_MIN_H, Math.round(maxY + GROUP_PAD) - y, keep ? keep.y + keep.height - y : 0),
   };
+  if (keep && after.x === before.x && after.y === before.y && after.width === before.width && after.height === before.height) return null;
   if (group.lockedPosition) {
     // [[C112]] noOverlapsEver: the lock holds the corner, so the members come to it.
     moveGroupMembers(editor, view, group, gv.x - after.x, gv.y - after.y);
@@ -144,6 +149,31 @@ export async function autofitGroupBox(
   await view.moveNode(group.id, { x: after.x, y: after.y });
   await view.rerenderNode(group.id);
   return { before, after };
+}
+
+/** The No-Overlap Pass inside each open group that holds one of `placed` ([[C112]] noOverlapsEver): its members pull
+ *  apart, the placed ones holding still where they can, and the box grows over a member pushed past its edge. The
+ *  top-level pass that follows separates a grown group from its neighbors. */
+export async function settleMemberOverlaps(editor: Editor, view: View, placed: ReadonlySet<string>): Promise<void> {
+  for (const g of editor.getNodes()) {
+    if (!(g instanceof GroupNode) || g.collapsed || !g.members.some((m) => placed.has(m))) continue;
+    const boxes: PushBox[] = [];
+    for (const id of g.members) {
+      const b = dockedNodeStore.get(id) ? null : nodeBox(view, id);
+      if (b) boxes.push({ id, ...b });
+    }
+    const disp = separateAll(boxes, { prefer: placed });
+    for (const [id, d] of disp) {
+      const p = view.position(id);
+      if (!p) continue;
+      await view.moveNode(id, { x: p.x + d.dx, y: p.y + d.dy });
+      for (const fc of dockedNodeStore.getDockedTo(id)) {
+        const fp = view.position(fc.id);
+        if (fp) await view.moveNode(fc.id, { x: fp.x + d.dx, y: fp.y + d.dy });
+      }
+    }
+    if (disp.size) await autofitGroupBox(editor, view, g, { growOnly: true });
+  }
 }
 
 export async function autofitGroupWithHistory(editor: Editor, view: View, group: GroupNode): Promise<void> {

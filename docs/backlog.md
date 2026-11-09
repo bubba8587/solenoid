@@ -11,7 +11,6 @@ ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tr
 Each line is a leaf whose rule the code doesn't keep yet. The leaf carries an `*Unenforced:*` bullet pointing here ([dte.md](dte.md) § Solenoid practice). Highest stakes first; delete a line when the code keeps the rule, and delete the leaf's bullet with it.
 
 - [ ] **C25 firstClassUnits** (a temperature difference stays a difference): subtracting two °C or °F readings, and a spread over readings (STDEV, GROUPBY's), should give Δ°C or Δ°F. Today it gives K, and converting that to °C shows −263.15 °C. Needs Δ°C and Δ°F units that convert by scale and add back to a reading.
-- [ ] **C112 noOverlapsEver**: the No-Overlap Pass separates top-level boxes only, so Align can still stack two members of one group, and a member that opens can cover the one below. Needs a pass over a group's members that then grows the group box (`../tree/specs/canvas/group-expand-push.md` § LayoutFx).
 
 ## Dependency updates (walking them one at a time)
 
