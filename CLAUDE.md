@@ -21,8 +21,10 @@ routed doc disagree, the routed doc wins: fix this file.
 - **Vercel preview of `develop`**: push after the checks below; the author eyeballs it.
 
 LOOK at what you changed before pushing: the `shot-graph` skill (`scripts/shot-graph.mjs`) loads a short graph and
-screenshots it; `scripts/browser.mjs` drives the real app. With the dev server up, `.dev/current-graph.json` is the
-author's live canvas: read it before rebuilding a chain they describe. No component render tests (vitest runs in `node`).
+screenshots it; `scripts/browser.mjs` drives the real app. For a value and no picture, `npm run -s run-graph -- <the
+same short graph> --out <card>` prints a card's answer and `-- --formula '<formula>' --set x=3` one formula's, in
+seconds, no browser. With the dev server up, `.dev/current-graph.json` is the author's live canvas: read it before
+rebuilding a chain they describe. No component render tests (vitest runs in `node`).
 
 ## Testing: run what the change touches, let CI run the rest (author 2026-11-04)
 Pick by layer, not by habit. CI (`Test`, `Engine test`) and the author's machine run everything; check GitHub after a

@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { runGraph } from "./run-graph";
+import { runGraph, formulaGraph } from "./run-graph";
+// @ts-expect-error a plain .mjs script, untyped
+import { expand } from "./shot-graph-expand.mjs";
 import type { FrameValue } from "../src/graph/frame";
 import gettingStarted from "../src/graph/seedGraphs/getting-started.json";
 import tableVerbs from "../src/graph/seedGraphs/table-verbs.json";
@@ -51,5 +53,38 @@ describe("run-graph (headless CLI)", () => {
         connections: [{ source: "a", sourceOutput: "value", target: "missing", targetInput: "in" }],
       }),
     ).rejects.toThrow(/unknown node/);
+  });
+
+  // The short form shot-graph takes: cables as strings, the same file for a picture and for values.
+  const loan = () => expand({
+    nodes: [
+      { id: "r", type: "ValueInputNode", init: { label: "Rate", op: "number", value: "0.05" } },
+      { id: "n", type: "ValueInputNode", init: { label: "Name", op: "string", value: "Ada" } },
+      { id: "p", type: "ExpressionNode", init: { label: "Payment", expr: "PMT(rate / 12, 60, 10000)" } },
+      { id: "g", type: "ExpressionNode", init: { label: "Greeting", expr: '"Hi " & who' } },
+    ],
+    cables: ["r.value -> p.rate", "n.value -> g.who"],
+  });
+
+  it("--set types a value into the input card of that name, and --out prints only the named cards", async () => {
+    const before = await runGraph(loan(), { out: ["payment"] });
+    expect(Object.keys(before)).toEqual(["Payment"]);
+    expect((before["Payment"] as { result: number }).result).toBeCloseTo(-188.7123364, 6);
+    const after = await runGraph(loan(), { set: { rate: "0.08", Name: "Grace Hopper" }, out: ["Payment", "Greeting"] });
+    expect((after["Payment"] as { result: number }).result).toBeCloseTo(-202.7639429, 6);
+    expect(after["Greeting"]).toEqual({ result: "Hi Grace Hopper" });
+  });
+
+  it("--set and --out name a card that exists, once", async () => {
+    await expect(runGraph(loan(), { set: { Nope: "1" } })).rejects.toThrow(/no card has that name/);
+    await expect(runGraph(loan(), { set: { Payment: "1" } })).rejects.toThrow(/isn't an input card/);
+    await expect(runGraph(loan(), { out: ["Nope"] })).rejects.toThrow(/no card has that name/);
+  });
+
+  it("--formula runs one formula over the numbers --set gives its variables, errors as the app's own", async () => {
+    const run = async (expr: string, set?: Record<string, string>) => (await runGraph(formulaGraph(expr, set)))["formula"] as { result: unknown };
+    expect((await run("PMT(rate / 12, 60, 10000)", { rate: "0.05" })).result).toBeCloseTo(-188.7123364, 6);
+    expect((await run("1/0")).result).toMatchObject({ code: "#DIV/0!" });
+    expect(() => formulaGraph("x + 1", { x: "abc" })).toThrow(/takes a number/);
   });
 });

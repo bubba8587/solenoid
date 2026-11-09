@@ -2,7 +2,11 @@
 // every node's outputs as JSON, keyed by label (else type, with a #n suffix on repeats). The strict
 // validator gates the run (--force skips it). Never calls initFrameBackend, so every frame verb runs
 // on the JS oracle with no Tauri dependency.
-//   npm run run-graph -- <graph.json|graph.txt>
+//   npm run run-graph -- <graph.json|graph.txt> [--set name=value]… [--out name]…
+//   npm run run-graph -- --formula 'PMT(rate / 12, 60, 10000)' --set rate=0.05
+// The JSON may be the short form shot-graph takes (`scripts/shot-graph-expand.mjs`: cables as "a.out -> b.in" strings,
+// a Frame Input's `frame`). `--set` types a value into the input card of that name before the run, `--out` prints only
+// the named cards, and `--formula` runs one formula, its variables set by `--set`, and prints its answer alone.
 // `npm run build:cli` bundles it into dist-cli/ (run-graph.mjs + the engine's wasm), which needs only Node.
 
 import { readFileSync, realpathSync } from "node:fs";
@@ -21,6 +25,8 @@ import { validateGraph, validateText, formatIssues, hardIssues } from "../src/gr
 import { setFsProvider, type FsProvider } from "../src/graph/fileBridge";
 import { settingsStore } from "../src/graph/settingsStore";
 import { whenConnectionsSettled } from "../src/graph/connectionStore";
+// @ts-expect-error a plain .mjs script, untyped
+import { expand } from "./shot-graph-expand.mjs";
 
 type SavedNode = {
   id: string;
@@ -64,6 +70,33 @@ export interface RunOptions {
   vault?: string;
   tasknotes?: string;
   run?: string;
+  /** Values typed into input cards before the run, by the card's name. */
+  set?: Record<string, string>;
+  /** The only cards to print, by name; every card when empty. */
+  out?: string[];
+}
+
+const nameOf = (n: GraphNode, type: string) => ((n as unknown as { label?: string }).label ?? "").trim() || type;
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Types `text` into the card as its editor would: a card with one typed `value` (Value Input, Slider, Dial) takes it
+ *  there, a text one as text and a number one as a number. */
+function setInput(node: GraphNode, name: string, text: string): void {
+  const card = node as unknown as { value?: unknown };
+  if (typeof card.value === "string") card.value = text;
+  else if (typeof card.value === "number" && text.trim() !== "" && Number.isFinite(Number(text))) card.value = Number(text);
+  else if (typeof card.value === "number") throw new Error(`--set ${name}: "${text}" isn't a number.`);
+  else throw new Error(`--set ${name}: "${name}" isn't an input card with one value to set.`);
+}
+
+/** One formula as a graph of its own: an Expression card whose variables take the numbers `set` gives them. */
+export function formulaGraph(expr: string, set: Record<string, string> = {}): SavedGraph {
+  const literals: Record<string, number> = {};
+  for (const [name, text] of Object.entries(set)) {
+    if (text.trim() === "" || !Number.isFinite(Number(text))) throw new Error(`--set ${name}: a formula's variable takes a number, and "${text}" isn't one.`);
+    literals[name] = Number(text);
+  }
+  return { nodes: [{ id: "formula", type: "ExpressionNode", init: { label: "formula", expr, literals } }], connections: [] };
 }
 
 export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Record<string, unknown>> {
@@ -97,6 +130,12 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
     );
   }
 
+  for (const [name, text] of Object.entries(opts.set ?? {})) {
+    const hits = g.nodes.filter((sn) => sameName(nameOf(byId.get(sn.id)!, sn.type), name));
+    if (hits.length !== 1) throw new Error(`--set ${name}: ${hits.length === 0 ? "no card has that name" : `${hits.length} cards share that name`}.`);
+    setInput(byId.get(hits[0].id)!, name, text);
+  }
+
   let values = await computeAll(editor, engine);
   if (opts.vault || opts.tasknotes) {
     await whenConnectionsSettled();
@@ -117,11 +156,15 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
   for (const sn of g.nodes) {
     const node = byId.get(sn.id);
     if (!node) continue;
-    const label = ((node as unknown as { label?: string }).label ?? "").trim() || sn.type;
+    const label = nameOf(node, sn.type);
     const n = (seen.get(label) ?? 0) + 1;
     seen.set(label, n);
     const key = n === 1 ? label : `${label} #${n}`;
+    if (opts.out?.length && !opts.out.some((want) => sameName(want, label) || sameName(want, key))) continue;
     out[key] = await resolveFrameRefs(values.get(node.id) ?? {});
+  }
+  for (const want of opts.out ?? []) {
+    if (!Object.keys(out).some((key) => sameName(want, key) || sameName(want, key.replace(/ #\d+$/, "")))) throw new Error(`--out ${want}: no card has that name.`);
   }
   return out;
 }
@@ -131,19 +174,39 @@ async function main() {
   loadWasmEngineSync(readFileSync(wasmUrl));
   const args = process.argv.slice(2);
   const force = args.includes("--force");
-  const flag = (name: string): string | undefined => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
-  const opts: RunOptions = { vault: flag("--vault"), tasknotes: flag("--tasknotes"), run: flag("--run") };
-  const consumed = new Set<string>(["--force"]);
-  for (const name of ["--vault", "--tasknotes", "--run"]) { const i = args.indexOf(name); if (i >= 0) { consumed.add(args[i]); if (args[i + 1]) consumed.add(args[i + 1]); } }
-  const file = args.find((a) => !consumed.has(a));
+  // A flag takes the word after it; `--set` and `--out` may repeat.
+  const flags: Record<string, string[]> = {};
+  const rest: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--force") continue;
+    if (["--vault", "--tasknotes", "--run", "--set", "--out", "--formula"].includes(a)) {
+      if (args[i + 1] === undefined) throw new Error(`${a} needs a value after it.`);
+      (flags[a] ??= []).push(args[++i]);
+    } else rest.push(a);
+  }
+  const set: Record<string, string> = {};
+  for (const pair of flags["--set"] ?? []) {
+    const eq = pair.indexOf("=");
+    if (eq < 1) throw new Error(`--set ${pair}: write it as name=value.`);
+    set[pair.slice(0, eq).trim()] = pair.slice(eq + 1);
+  }
+  const opts: RunOptions = { vault: flags["--vault"]?.[0], tasknotes: flags["--tasknotes"]?.[0], run: flags["--run"]?.[0], set, out: flags["--out"] ?? [] };
+  const formula = flags["--formula"]?.[0];
+  if (formula !== undefined) {
+    const out = await runGraph(formulaGraph(formula, set), { ...opts, set: {}, out: [] });
+    console.log(JSON.stringify((out["formula"] as { result?: unknown }).result ?? null, null, 2));
+    return;
+  }
+  const file = rest[0];
   if (!file) {
-    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--vault <path>] [--tasknotes <url>] [--run <sink name>]");
+    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--set name=value]… [--out name]… [--vault <path>] [--tasknotes <url>] [--run <sink name>]\n       npm run run-graph -- --formula '<formula>' [--set name=number]…");
     process.exit(1);
   }
   const raw = readFileSync(file, "utf8");
   let g: SavedGraph;
   if (raw.trimStart().startsWith("{")) {
-    g = JSON.parse(raw) as SavedGraph;
+    g = expand(JSON.parse(raw)) as SavedGraph;
     const hard = hardIssues(validateGraph(g as Parameters<typeof validateGraph>[0]));
     if (hard.length > 0 && !force) {
       console.error(formatIssues(hard));

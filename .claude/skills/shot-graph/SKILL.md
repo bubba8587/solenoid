@@ -35,5 +35,8 @@ title first) and saves a PNG cropped to the nodes. One run takes about 6 seconds
 - **`--setting key=value`** opens with an app setting (its `settingsStore` key, a JSON value), e.g. `--setting wasmEngine=false`
   for the JavaScript engine. A button by its text: `--click "button::-p-text(Refresh)"`.
 - Read the printed text before the PNG: it often answers the question without an image.
+- **Only need the values?** `npm run -s run-graph -- <graph.json> --out <card name>` runs the same short graph with no
+  browser and prints that card's outputs as JSON, whole lists and tables included (`--set <input card>=<value>` types
+  into an input first; `-- --formula '<formula>' --set x=3` answers one formula).
 - Save a graph worth reusing into `scripts/shot-graphs/`; keep scratch graphs and PNGs in the
   scratchpad.
