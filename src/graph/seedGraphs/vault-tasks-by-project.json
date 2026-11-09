@@ -1,0 +1,224 @@
+{
+  "v": 2,
+  "order": 52,
+  "label": "Tasks joined to their projects",
+  "group": "Obsidian",
+  "nodes": [
+    {
+      "id": "noteIntro",
+      "type": "NoteNode",
+      "x": 0,
+      "y": -80,
+      "init": {
+        "label": "Tasks joined to their projects",
+        "color": "amber",
+        "collapsed": false,
+        "width": 640,
+        "height": 230,
+        "body": "# Tasks joined to their projects\n\nEach task note names its projects as links, `[[Projects/Website launch]]`, and each project is a note of its own with a budget, a status and a due date. **Unnest** gives a task one row per project it names, **LINKNAME** reads the note each link points at, and **Join** matches that name to the Projects folder, so the open minutes sit beside the project's own properties.\n\nWith no vault folder set in Settings, the readers use the bundled sample vault.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "tasks",
+      "type": "VaultFolderNode",
+      "x": 0,
+      "y": 260,
+      "init": {
+        "label": "Tasks",
+        "refreshMinutes": 0,
+        "width": 260,
+        "height": 240,
+        "folder": "Tasks",
+        "glob": "",
+        "nameFormat": "",
+        "includeBody": false
+      }
+    },
+    {
+      "id": "projects",
+      "type": "VaultFolderNode",
+      "x": 0,
+      "y": 730,
+      "init": {
+        "label": "Projects",
+        "refreshMinutes": 0,
+        "width": 260,
+        "height": 240,
+        "folder": "Projects",
+        "glob": "",
+        "nameFormat": "",
+        "includeBody": false
+      }
+    },
+    {
+      "id": "open",
+      "type": "FilterFrameNode",
+      "x": 470,
+      "y": 260,
+      "init": {
+        "label": "Open tasks",
+        "combine": "and",
+        "width": 210,
+        "height": 240,
+        "condConfig": {
+          "0": {
+            "op": "neq"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "status",
+        "value0": "done"
+      }
+    },
+    {
+      "id": "perProject",
+      "type": "UnnestNode",
+      "x": 940,
+      "y": 260,
+      "init": {
+        "label": "One row per project",
+        "width": 190,
+        "height": 150
+      },
+      "stringLiterals": {
+        "column": "projects"
+      }
+    },
+    {
+      "id": "named",
+      "type": "ComputedColumnNode",
+      "x": 1410,
+      "y": 260,
+      "init": {
+        "label": "Project name",
+        "expr": "LINKNAME(@projects)",
+        "addAs": "text",
+        "sideVars": [],
+        "width": 235,
+        "height": 290
+      },
+      "stringLiterals": {
+        "name": "project"
+      }
+    },
+    {
+      "id": "minutes",
+      "type": "GroupByFrameNode",
+      "x": 1880,
+      "y": 260,
+      "init": {
+        "label": "Open minutes by project",
+        "totalDepth": 0,
+        "width": 200,
+        "height": 205,
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "keys": "project",
+        "column": "timeEstimate"
+      }
+    },
+    {
+      "id": "joined",
+      "type": "JoinNode",
+      "x": 2350,
+      "y": 260,
+      "init": {
+        "label": "With each project's note",
+        "how": "left",
+        "asofDirection": "backward",
+        "width": 210,
+        "height": 290
+      },
+      "stringLiterals": {
+        "leftKey": "project",
+        "rightKey": "name"
+      }
+    },
+    {
+      "id": "board",
+      "type": "ColumnsNode",
+      "x": 2820,
+      "y": 260,
+      "init": {
+        "label": "Board",
+        "op": "keep",
+        "width": 190,
+        "height": 150
+      },
+      "stringLiterals": {
+        "columns": "project, timeEstimate, status, budget, due"
+      }
+    },
+    {
+      "id": "plot",
+      "type": "ChartNode",
+      "x": 2350,
+      "y": 730,
+      "init": {
+        "label": "Open work by project",
+        "op": "bar",
+        "width": 300,
+        "height": 240
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "tasks",
+      "sourceOutput": "cube",
+      "target": "open",
+      "targetInput": "frame"
+    },
+    {
+      "source": "open",
+      "sourceOutput": "frame",
+      "target": "perProject",
+      "targetInput": "cube"
+    },
+    {
+      "source": "perProject",
+      "sourceOutput": "frame",
+      "target": "named",
+      "targetInput": "frame"
+    },
+    {
+      "source": "named",
+      "sourceOutput": "frame",
+      "target": "minutes",
+      "targetInput": "frame"
+    },
+    {
+      "source": "minutes",
+      "sourceOutput": "frame",
+      "target": "joined",
+      "targetInput": "left"
+    },
+    {
+      "source": "projects",
+      "sourceOutput": "cube",
+      "target": "joined",
+      "targetInput": "right"
+    },
+    {
+      "source": "joined",
+      "sourceOutput": "frame",
+      "target": "board",
+      "targetInput": "frame"
+    },
+    {
+      "source": "minutes",
+      "sourceOutput": "frame",
+      "target": "plot",
+      "targetInput": "values"
+    }
+  ],
+  "standoffs": []
+}
