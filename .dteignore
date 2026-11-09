@@ -8,6 +8,8 @@ src-tauri/target
 # Git-ignored local output: Tauri's generated schemas, locally generated sample data.
 src-tauri/gen
 sample-data
+# The Obsidian plugin's engine module (`build-wasm.mjs --plugin`).
+src/graph/engineWasmPlugin
 __pycache__
 # Agent worktrees hold full repo copies; scanning them double-counts everything.
 .claude
