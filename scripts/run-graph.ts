@@ -8,6 +8,8 @@
 // a Frame Input's `frame`). `--set` types a value into the input card of that name before the run, `--out` prints only
 // the named cards, and `--formula` runs one formula, its variables set by `--set`, and prints its answer alone. A card
 // is named by its document name (the text form's `Name:`) or its id, else by its label.
+// What prints is plain JSON for another program to read (`plainValue`): a date as ISO text, a table as its rows, a
+// value with a unit as `{value, unit}`, an error as `{error, message}`. `--raw` prints the engine's own values.
 // `npm run build:cli` bundles it into dist-cli/ (run-graph.mjs + the engine's wasm), which needs only Node.
 
 import { readFileSync, realpathSync } from "node:fs";
@@ -21,6 +23,12 @@ import { loadWasmEngineSync, wasmUrl } from "../src/graph/engineWasm";
 import * as Nodes from "../src/graph/nodeClasses";
 import type { Schemes } from "../src/graph/schemes";
 import { isFrameRef, readFrame } from "../src/graph/frameBackend";
+import { isFrameValue, isCubeValue, frameRowCount, type FrameColType } from "../src/graph/frame";
+import { isSolDate } from "../src/graph/dateValue";
+import { isSolError } from "../src/graph/errorValue";
+import { isUnitCell } from "../src/graph/unitValue";
+import { displayMagnitudeOf } from "../src/graph/unitBridge";
+import { formatDateSerial } from "../src/graph/nodes/dateSerial";
 import { computeAll } from "../src/graph/graphCompute";
 import { validateGraph, validateText, formatIssues, hardIssues } from "../src/graph/graphValidate";
 import { setFsProvider, type FsProvider } from "../src/graph/fileBridge";
@@ -53,6 +61,32 @@ async function resolveFrameRefs(v: unknown): Promise<unknown> {
     return Object.fromEntries(entries);
   }
   return v;
+}
+
+const isoDate = (serial: number): unknown =>
+  Number.isFinite(serial) ? formatDateSerial(serial, Number.isInteger(serial) ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss") : null;
+
+/** A value as plain JSON another program can read, as Write File's JSON spells a frame ([[C137]] datesNeverSerials): a
+ *  date as ISO text, a Frame or Cube as its rows keyed by column name, a value with a unit as `{value, unit}` in the
+ *  unit it shows, an error as `{error, message}` (its code alone inside a table row). */
+export function plainValue(v: unknown, type?: FrameColType): unknown {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "number") return type === "date" ? isoDate(v) : Number.isFinite(v) ? v : null;
+  if (typeof v !== "object") return v;
+  if (isSolDate(v)) return isoDate(v.__date);
+  if (isSolError(v)) return type ? v.code : { error: v.code, message: v.message };
+  if (isUnitCell(v)) return { value: displayMagnitudeOf(v), unit: v.display ?? "" };
+  if (Array.isArray(v)) return v.map((x) => plainValue(x));
+  if (isFrameValue(v)) {
+    return Array.from({ length: frameRowCount(v) }, (_, i) =>
+      Object.fromEntries(v.columns.map((c) => [c.name, plainValue(c.values[i] ?? null, c.type)])));
+  }
+  if (isCubeValue(v)) {
+    const rows = v.columns.reduce((m, c) => Math.max(m, c.cells.length), 0);
+    return Array.from({ length: rows }, (_, i) =>
+      Object.fromEntries(v.columns.map((c) => [c.name, plainValue(c.cells[i] ?? null, c.type ?? "string")])));
+  }
+  return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, plainValue(x)]));
 }
 
 export const nodeFsProvider: FsProvider = {
@@ -187,7 +221,7 @@ async function main() {
   const rest: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (a === "--force") continue;
+    if (a === "--force" || a === "--raw") continue;
     if (["--vault", "--tasknotes", "--run", "--set", "--out", "--formula"].includes(a)) {
       if (args[i + 1] === undefined) throw new Error(`${a} needs a value after it.`);
       (flags[a] ??= []).push(args[++i]);
@@ -200,15 +234,16 @@ async function main() {
     set[pair.slice(0, eq).trim()] = pair.slice(eq + 1);
   }
   const opts: RunOptions = { vault: flags["--vault"]?.[0], tasknotes: flags["--tasknotes"]?.[0], run: flags["--run"]?.[0], set, out: flags["--out"] ?? [] };
+  const print = (v: unknown) => console.log(JSON.stringify(args.includes("--raw") ? v : plainValue(v), null, 2));
   const formula = flags["--formula"]?.[0];
   if (formula !== undefined) {
     const out = await runGraph(formulaGraph(formula, set), { ...opts, set: {}, out: [] });
-    console.log(JSON.stringify((out["formula"] as { result?: unknown }).result ?? null, null, 2));
+    print((out["formula"] as { result?: unknown }).result ?? null);
     return;
   }
   const file = rest[0];
   if (!file) {
-    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--set name=value]… [--out name]… [--vault <path>] [--tasknotes <url>] [--run <sink name>]\n       npm run run-graph -- --formula '<formula>' [--set name=number]…");
+    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--raw] [--set name=value]… [--out name]… [--vault <path>] [--tasknotes <url>] [--run <sink name>]\n       npm run run-graph -- --formula '<formula>' [--set name=number]… [--raw]");
     process.exit(1);
   }
   const raw = readFileSync(file, "utf8");
@@ -232,7 +267,7 @@ async function main() {
     g = graph as unknown as SavedGraph;
   }
   const out = await runGraph(g, opts);
-  console.log(JSON.stringify(out, null, 2));
+  print(out);
 }
 
 // pathToFileURL, not a `file://` template, so this matches a backslashed Windows argv[1]; realpath, so it matches

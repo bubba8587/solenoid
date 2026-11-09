@@ -3,7 +3,7 @@
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 import { readTextForm, parseNodeLine } from "./textForm";
 import { ctorRegistry } from "./nodeCtorRegistry";
-import { opVocabByCtor } from "./opVocab";
+import { opVocabByCtor, vocabFieldOf } from "./opVocab";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./nodeInit";
 import { NAME_RE } from "./nodeNaming";
 import { literalFieldOf, restoreLiterals, type LiteralFieldHost } from "./literalFields";
@@ -82,6 +82,9 @@ function refusalReason(outT: SocketDataType, inT: SocketDataType): string {
   if (or !== null && ir !== null && or > ir) {
     return `a wider value never narrows into a smaller input — reshape explicitly (Get Column / a list op) first`;
   }
+  if ((outT === "frame" || outT === "cube") && inT !== "frame" && inT !== "cube") {
+    return `a whole table never enters a value input: pull one column out with a GetColumnNode (out: a list), or aggregate it first`;
+  }
   return `the socket lattice refuses it (canConnect)`;
 }
 
@@ -141,12 +144,15 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       }
     }
 
-    const opValue = sn.init?.op;
-    if (typeof opValue === "string") {
-      const vocab = opVocabByCtor().get(sn.type);
-      if (vocab && vocab.size >= 2 && !vocab.has(opValue)) {
-        issues.push({ line: at(name), node: name, message: `unknown op "${opValue}" for ${sn.type}${nearest(opValue, vocab.keys())}. Ops: ${keyList([...vocab.keys()])}.` });
-      }
+    const vocabField = vocabFieldOf(inst) ?? "op";
+    const vocab = opVocabByCtor().get(sn.type);
+    if (sn.init && "op" in sn.init && vocabField !== "op" && vocab) {
+      issues.push({ line: at(name), node: name, message: `${sn.type} has no op: write ${vocabField}=${JSON.stringify(sn.init.op)}, or this value would be silently ignored.` });
+    }
+    const opValue = sn.init?.[vocabField];
+    if (typeof opValue === "string" && vocab && vocab.size >= 2 && !vocab.has(opValue)) {
+      const what = vocabField === "op" ? "Ops" : "Values";
+      issues.push({ line: at(name), node: name, message: `unknown ${vocabField} "${opValue}" for ${sn.type}${nearest(opValue, vocab.keys())}. ${what}: ${keyList([...vocab.keys()])}.` });
     }
 
     const internal = sn.init?.internal as { nodes?: unknown; connections?: unknown } | undefined;

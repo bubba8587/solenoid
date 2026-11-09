@@ -16,7 +16,7 @@ try {
   const out = JSON.parse(execFileSync(process.execPath, [bin, seed], { cwd: dir, encoding: "utf8" }));
   const sum = out["SUM"]?.result;
   if (sum !== 1200 + 1550 + 1340 + 1810) throw new Error(`dist-cli: getting-started's SUM came out ${JSON.stringify(out["SUM"])}`);
-  const cols = out["Quarterly sales"]?.frame?.columns?.map((c) => c.name).join(",");
+  const cols = Object.keys(out["Quarterly sales"]?.frame?.[0] ?? {}).join(",");
   if (cols !== "Quarter,Sales") throw new Error(`dist-cli: getting-started's table came out with columns ${cols}`);
   console.log(`dist-cli: ran getting-started standalone (SUM ${sum})`);
 } finally {

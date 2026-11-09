@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runGraph, formulaGraph } from "./run-graph";
+import { runGraph, formulaGraph, plainValue } from "./run-graph";
 // @ts-expect-error a plain .mjs script, untyped
 import { expand } from "./shot-graph-expand.mjs";
 import type { FrameValue } from "../src/graph/frame";
@@ -87,6 +87,24 @@ describe("run-graph (headless CLI)", () => {
     const out = await runGraph(g, { set: { r: "0.08" }, out: ["monthly"] });
     expect(Object.keys(out)).toEqual(["Payment"]);
     expect((out["Payment"] as { result: number }).result).toBeCloseTo(-202.7639429, 6);
+  });
+
+  it("prints plain JSON: dates as ISO text, a table as its rows, a unit as {value, unit}, an error by its code ([[C137]] datesNeverSerials)", async () => {
+    const out = plainValue(await runGraph(expand({
+      nodes: [
+        { id: "t", type: "FrameInputNode", init: { label: "T" }, frame: [{ name: "Day", type: "date", cells: ["2026-01-05", "2026-01-06"] }, { name: "N", cells: [1, 2] }] },
+        { id: "d", type: "ValueInputNode", init: { label: "Due", op: "date", value: "2026-03-15" } },
+        { id: "l", type: "ValueInputNode", init: { label: "Len", op: "number", value: "5", unit: "m" } },
+        { id: "e", type: "ExpressionNode", init: { label: "Bad", expr: "1/0" } },
+        { id: "h", type: "ExpressionNode", init: { label: "Noon", expr: "d + 0.5" } },
+      ],
+      cables: ["d.value -> h.d"],
+    }))) as Record<string, Record<string, unknown>>;
+    expect(out["T"].frame).toEqual([{ Day: "2026-01-05", N: 1 }, { Day: "2026-01-06", N: 2 }]);
+    expect(out["Due"].value).toBe("2026-03-15");
+    expect(out["Noon"].result).toBe("2026-03-15T12:00:00");
+    expect(out["Len"].value).toEqual({ value: 5, unit: "m" });
+    expect(out["Bad"].result).toEqual({ error: "#DIV/0!", message: "Division by zero" });
   });
 
   it("--formula runs one formula over the numbers --set gives its variables, errors as the app's own", async () => {

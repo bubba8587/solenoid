@@ -146,10 +146,17 @@ describe("validateGraph — semantics", () => {
     expect(issue?.message).toContain("`sum`");
   });
 
-  it("flags a bad aggregate op on GROUPBY (dropdown-only vocabulary)", () => {
-    const { issues } = validateText(`G: GroupByFrameNode op="average"\n---\n{}`);
-    const issue = issues.find((i) => i.message.includes('unknown op "average"'));
-    expect(issue?.message).toContain("Ops: sum, avg");
+  it("checks GROUPBY's aggregator in agg, the field it reads, and refuses an op it would ignore ([[C26]] opArgDistinct)", () => {
+    const bad = validateText(`G: GroupByFrameNode agg="average"\n---\n{}`).issues.find((i) => i.message.includes('unknown agg "average"'));
+    expect(bad?.message).toContain("Values: sum, avg");
+    const ignored = validateText(`G: GroupByFrameNode op="avg"\n---\n{}`).issues.find((i) => i.message.includes("has no op"));
+    expect(ignored?.message).toContain('write agg="avg"');
+    expect(validateText(`G: GroupByFrameNode agg="avg"\n---\n{}`).issues).toEqual([]);
+  });
+
+  it("says how to wire a table into a formula", () => {
+    const { issues } = validateText(`T: FrameInputNode\nE: ExpressionNode expr="x + 1" x<-T.frame\n---\n{}`);
+    expect(issues.find((i) => i.message.includes("can't feed"))?.message).toContain("GetColumnNode");
   });
 
   it("recurses into a composite's internal subgraph", () => {

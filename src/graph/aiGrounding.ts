@@ -146,7 +146,8 @@ export function buildGroundingSpec(): string {
   w("```");
   w();
   w(`Validate before applying or running: \`npm run validate-graph <file>\`;`);
-  w(`run headlessly: \`npm run run-graph <file>\`.`);
+  w(`run headlessly: \`npm run run-graph <file>\`, which prints every card's outputs as plain JSON`);
+  w(`(\`--out Name\` only that card's, \`--set Name=value\` types into an input card first).`);
   w();
   w(`## Socket types`);
   w();
@@ -226,9 +227,11 @@ export function buildGroundingSpec(): string {
     if (info.strKeys.length > 0) inline.push(`str: ${info.strKeys.join(", ")}`);
     else if (info.strOpen) inline.push(`str: (input-row keys)`);
     if (inline.length > 0) w(`- inline: ${inline.join(" · ")}`);
+    // The field the vocabulary is typed into: `op`, or `agg` where the aggregator is an argument ([[C26]] opArgDistinct).
+    const vocabField = info.initKeys.includes("op") || !info.initKeys.includes("agg") ? "ops" : "agg";
     const registryOps = opsByCtor.get(ctorName);
     if (registryOps && allSameSockets) {
-      w(`- ops: ${registryOps.map((o) => `\`${o.op}\` (${o.label})`).join(", ")}`);
+      w(`- ${vocabField}: ${registryOps.map((o) => `\`${o.op}\` (${o.label})`).join(", ")}`);
     } else if (info.variants.length > 1) {
       for (const v of info.variants) {
         const opPart = v.op !== null ? `op=${JSON.stringify(v.op)} — ` : "";
@@ -238,7 +241,7 @@ export function buildGroundingSpec(): string {
     } else {
       const vocab = opVocabByCtor().get(ctorName);
       if (vocab && vocab.size >= 2) {
-        w(`- ops: ${[...vocab].map(([op, label]) => `\`${op}\` (${label})`).join(", ")}`);
+        w(`- ${vocabField}: ${[...vocab].map(([op, label]) => `\`${op}\` (${label})`).join(", ")}`);
       }
     }
     const hidden = info.variants.flatMap((v) => v.leaf.hiddenOps ?? []);
