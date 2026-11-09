@@ -458,22 +458,32 @@ button.mod-cta {
 
 /* ── Instrument chrome, after the app's own bars and floating windows ───────── */
 
+/* The line's color is the pane's, so the pane's resize handle carries it too. */
+.workspace-tabs {
+  --sol-line: var(--sol-accent);
+}
+.mod-root .workspace-tabs:has(> .workspace-tab-header-container .workspace-tab-header.is-active:is([data-type="bases"], [data-type="table"])) {
+  --sol-line: var(--sol-frame);
+}
+.mod-root .workspace-tabs:has(> .workspace-tab-header-container .workspace-tab-header.is-active[data-type="canvas"]) {
+  --sol-line: var(--sol-teal);
+}
+.mod-root .workspace-tabs:has(> .workspace-tab-header-container .workspace-tab-header.is-active:is([data-type="image"], [data-type="pdf"], [data-type="audio"], [data-type="video"])) {
+  --sol-line: var(--sol-complex);
+}
 .workspace-tabs.mod-top > .workspace-tab-header-container,
 .mod-root .workspace-tabs > .workspace-tab-header-container {
-  --sol-line: var(--sol-accent);
   position: relative;
   z-index: 1;
   border-bottom: 1px solid var(--sol-border);
   box-shadow: 0 2px 0 0 var(--sol-line);
 }
-.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active:is([data-type="bases"], [data-type="table"])) {
-  --sol-line: var(--sol-frame);
-}
-.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active[data-type="canvas"]) {
-  --sol-line: var(--sol-teal);
-}
-.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active:is([data-type="image"], [data-type="pdf"], [data-type="audio"], [data-type="video"])) {
-  --sol-line: var(--sol-complex);
+/* Panes side by side: the divider between them carries the left pane's line across. */
+.mod-root .workspace-tabs > .workspace-leaf-resize-handle {
+  border-image: linear-gradient(to bottom,
+    var(--divider-color) var(--header-height),
+    var(--sol-line) var(--header-height) calc(var(--header-height) + 2px),
+    var(--divider-color) calc(var(--header-height) + 2px)) 1;
 }
 
 /* A sidebar's resize handle draws the divider over the top line; its border carries the line across. */
@@ -555,6 +565,7 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
 
 .vertical-tab-header-group-title,
 .backlink-pane > .tree-item-self,
+.outgoing-link-pane > .tree-item-self,
 .search-results-info,
 .graph-control-section-header {
   font-size: 11px;
@@ -634,8 +645,13 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
 }
 
 .callout {
-  --callout-head: color-mix(in srgb, var(--callout-color) 86%, #000);
-  --callout-ink: #ffffff;
+  --callout-base: color-mix(in srgb, var(--callout-color) 86%, #000);
+  /* Black and white tie for contrast at OKLCH L 0.586 (Y 0.20), where neither reaches 4.5:1. A header near the tie
+     moves out of it along its own hue: one above it lightens to at least 0.66 and takes near-black ink, one below
+     darkens to at most 0.52 and takes white, so a title reads on every palette's color. */
+  --callout-head: oklch(from var(--callout-base)
+    calc(clamp(0, (l - 0.586) * 1000, 1) * max(l, 0.66) + (1 - clamp(0, (l - 0.586) * 1000, 1)) * min(l, 0.52)) c h);
+  --callout-ink: oklch(from var(--callout-head) clamp(0.2, (0.586 - l) * 1000, 1) 0 0);
   padding: 0;
   border: none;
   border-radius: 8px;
@@ -649,8 +665,7 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
   [data-callout="attention"], [data-callout="failure"], [data-callout="fail"], [data-callout="missing"],
   [data-callout="danger"], [data-callout="error"], [data-callout="bug"], [data-callout="quote"],
   [data-callout="cite"]) {
-  --callout-head: var(--callout-color);
-  --callout-ink: #1a1a1a;
+  --callout-base: var(--callout-color);
 }
 .callout-title {
   align-items: center;
@@ -699,6 +714,14 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
   mask: var(--sol-cable);
 }
 
+/* In Live Preview the line takes the room as padding: a margin in the editor throws off its cursor math. */
+.markdown-source-view.mod-cm6 .hr {
+  padding-block: 1.5em;
+}
+.markdown-source-view.mod-cm6 .hr hr {
+  margin: 0;
+}
+
 .markdown-rendered ul ul > li > .list-bullet::after,
 .cm-s-obsidian .HyperMD-list-line:not(.HyperMD-list-line-1) .list-bullet::after {
   border-radius: 1px;
@@ -707,6 +730,13 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
 .markdown-rendered pre {
   border: 1px solid var(--sol-border);
   border-radius: 8px;
+}
+/* A key is the app's: sunken, with a strong hairline, so it reads in light too. */
+kbd {
+  padding: 1px 5px;
+  background-color: var(--sol-sunken);
+  border: 1px solid var(--sol-border-strong);
+  border-radius: 4px;
 }
 .cm-s-obsidian .HyperMD-codeblock-bg {
   border-inline: 1px solid var(--sol-border);

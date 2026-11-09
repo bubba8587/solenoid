@@ -39,6 +39,15 @@ specific item.
   handles, a focused explorer row takes the hairline over Obsidian's 2 px ring, a base's grid is the Frame hue and its
   number cells don't box (1.14 reads the note table's border variables there), and a folded Properties card is its header.
   Still open: the phone code block's copy button sits over the first line's end (Obsidian's own placement).
+- Look passes 3 to 5, with Obsidian's developer docs as the checklist (the CSS variable reference, the theme guidelines,
+  the October self-critique; `obsidianmd/obsidian-developer-docs`) and 1.15's own `app.css` to see which variables it
+  reads: the look sets every color variable Obsidian derives from its gray ramp but a handful (modal cover, notice,
+  tooltip, drawer, prompt, dropdown, slider, toggle thumb, scrollbar), none of which showed off-tint under Orchard or
+  Blueprint. Fixed: the divider between side-by-side panes now carries its pane's line; Outgoing links' sections are
+  section headings; `kbd` is the app's key; the Live Preview rule takes padding, not margin; callout titles take an ink
+  worked out from their header color (measured WCAG contrast over 9 palettes x 2 modes: 2.3:1 at worst before, 5.2:1
+  after). The look has no `!important`; its 24 `:has()` are all direct-child anchored. Checked and left: Solarized's
+  dim chrome text (3.3 to 4.5:1) is the palette's own design; a base's Cards view stays neutral.
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its
