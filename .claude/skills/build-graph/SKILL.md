@@ -8,9 +8,10 @@ description: Build a Solenoid graph from a request ("make me a loan model", "cha
 A graph is a text file, one card per line. Four commands take it from an idea to checked answers and a picture; none
 needs the app open, and a whole round is a few seconds.
 
-1. **Read the vocabulary you need.** `npm run -s ai-grounding > <scratch>/grounding.md` writes every card (class name,
-   sockets, settings and their choices, ops), the socket types and the text form's grammar. It is 130 KB: write it to a
-   file and grep it for the cards you want (`grep -n '^#### .JoinNode' -A9`), don't read it whole.
+1. **Find the cards you need.** `npm run -s ai-grounding -- --list` prints all of them, one line each (class, name, what
+   it does): grep it. `npm run -s ai-grounding -- --card join sortframe` prints those cards' entries in full: sockets,
+   settings and each setting's choices, ops. The whole document (`npm run -s ai-grounding`, 130 KB) adds the socket
+   types and the text form's grammar; read its first 110 lines once, not the rest.
 2. **Write the file** (`<scratch>/model.txt`):
 
    ```
@@ -30,6 +31,8 @@ needs the app open, and a whole round is a few seconds.
 4. **Run:** `npm run -s run-graph -- model.txt --out Total` prints that card's outputs as plain JSON (a table as its
    rows, dates as ISO text). `--set Qty=10` types into an input card first, so one file answers what-ifs;
    `-- --formula 'PMT(rate / 12, 60, 10000)' --set rate=0.05` answers one formula with no file.
+   `--vault <path>` gives the Obsidian cards a vault (`demo-vault/` is one), so `VaultFolderNode folder="Tasks"` reads
+   a folder of notes as a table, a row per note with its properties.
 5. **Look:** `node scripts/shot-graph.mjs model.txt --out model.png` lays it out in the real app and prints every
    card's text (the `shot-graph` skill has the steps for clicking, typing and popups).
 
