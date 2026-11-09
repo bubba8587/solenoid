@@ -5,6 +5,7 @@ import { join, dirname, documentDir, homeDir } from "@tauri-apps/api/path";
 import { requestConfirm } from "./confirmStore";
 import { writtenElsewhere } from "./foreignCardStore";
 import { demoVaultFs, isDemoVaultPath } from "./demoVault";
+import { matchFiles } from "./fileGlob";
 import { isTreePath, treeFs, treeLabel, pickTreeFolder } from "./androidFolders";
 
 const JSON_FILTER = [{ name: "Solenoid graph", extensions: ["json"] }];
@@ -187,6 +188,13 @@ async function listFilesByExt(folder: string, extensions: string | string[]): Pr
 
 export function listLocalFiles(folder: string): Promise<string[]> {
   return listFilesByExt(folder, ["csv", "parquet"]);
+}
+
+/** The CSV and Parquet files under the data folder a pattern names (`fileGlob.ts`), relative to it. */
+export async function listLocalFilesMatching(folder: string, pattern: string): Promise<string[]> {
+  if (!folder || !canReadRoot(folder)) return [];
+  const readDir = async (rel: string) => fs().readDir(rel === "" ? folder : await fs().join(folder, ...rel.split("/")));
+  return (await matchFiles(pattern, readDir)).filter((p) => /\.(csv|parquet)$/i.test(p));
 }
 
 export async function readFileText(folder: string, name: string): Promise<string> {

@@ -17,6 +17,8 @@ export interface ConnectionState {
   message?: string;
   rows?: number;
   cols?: number;
+  /** How many files one read took, where it took several. */
+  files?: number;
   fetchedAt?: number;
 }
 

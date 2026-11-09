@@ -154,7 +154,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 ## Sources
 
-- [ ] **A whole folder as one table** (author 2026-11-09, as Excel's Power Query "From Folder"): Local File reads one named file, and nothing takes every file in a local folder. A source that reads all the files matching a pattern in a folder (and its subfolders, as an option), appends them into one Frame with a column naming each row's file, and picks up a file added later on Refresh. To settle: columns that differ between files (union with blanks, as Append), a file that fails to read (its error beside its name, the rest still loading), and whether it is Local File with a pattern in place of a name or a card of its own ([[B11]] maximalMerge leans to the first).
+- [ ] **A whole folder as one table, what's left** ([[D126]] folderAsOneTable, built 2026-11-09 as a pattern in Local File's name): untested in a desktop build (the folder walk runs on Tauri's `readDir` there); the desktop file dialog can't pick a pattern, only the `All matching` field types one; Power Query's per-file transform before stacking is not built; a folder of Excel or JSON files isn't read.
 - [ ] **CSV import, the full pass** (author 2026-11-06: production use leans on CSV, so value handling inside is finished first and import is then patched to match it). Since 2026-11-06 a number or date column keeps its stray cells as NaN with their text (`infer_text_column`, [[frame-verbs#Type inference]]), a stopgap: NaN is `#DOMAIN!` in SUM, so one `N/A` still breaks a column's total until the NaN walk (§ Value handling) decides how a NaN reads.
 - [ ] **Widget nodes Tier 2 (`archive/16-widget-nodes.md`):** Air Quality/Pollen preset of Weather, Ticking Now timer.
 

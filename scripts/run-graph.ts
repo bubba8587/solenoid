@@ -8,6 +8,7 @@
 // a Frame Input's `frame`). `--set` types a value into the input card of that name before the run, `--out` prints only
 // the named cards, and `--formula` runs one formula, its variables set by `--set`, and prints its answer alone. A card
 // is named by its document name (the text form's `Name:`) or its id, else by its label.
+// `--data <folder>` is the data folder Local File reads from, a file or every file a pattern names (`monthly/*.csv`).
 // What prints is plain JSON for another program to read (`plainValue`): a date as ISO text, a table as its rows, a
 // value with a unit as `{value, unit}`, an error as `{error, message}`. `--raw` prints the engine's own values.
 // `npm run build:cli` bundles it into dist-cli/ (run-graph.mjs + the engine's wasm), which needs only Node.
@@ -105,6 +106,8 @@ export const nodeFsProvider: FsProvider = {
 
 export interface RunOptions {
   vault?: string;
+  /** The data folder Local File reads from. */
+  data?: string;
   tasknotes?: string;
   run?: string;
   /** Values typed into input cards before the run, by the card's name. */
@@ -138,6 +141,7 @@ export function formulaGraph(expr: string, set: Record<string, string> = {}): Sa
 
 export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Record<string, unknown>> {
   if (opts.vault) { setFsProvider(nodeFsProvider); settingsStore.set("obsidianVault", opts.vault); }
+  if (opts.data) { setFsProvider(nodeFsProvider); settingsStore.set("csvFolder", nodePath.resolve(opts.data)); }
   if (opts.tasknotes) settingsStore.set("taskNotesUrl", opts.tasknotes);
   const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
@@ -222,7 +226,7 @@ async function main() {
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--force" || a === "--raw") continue;
-    if (["--vault", "--tasknotes", "--run", "--set", "--out", "--formula"].includes(a)) {
+    if (["--vault", "--data", "--tasknotes", "--run", "--set", "--out", "--formula"].includes(a)) {
       if (args[i + 1] === undefined) throw new Error(`${a} needs a value after it.`);
       (flags[a] ??= []).push(args[++i]);
     } else rest.push(a);
@@ -233,7 +237,7 @@ async function main() {
     if (eq < 1) throw new Error(`--set ${pair}: write it as name=value.`);
     set[pair.slice(0, eq).trim()] = pair.slice(eq + 1);
   }
-  const opts: RunOptions = { vault: flags["--vault"]?.[0], tasknotes: flags["--tasknotes"]?.[0], run: flags["--run"]?.[0], set, out: flags["--out"] ?? [] };
+  const opts: RunOptions = { vault: flags["--vault"]?.[0], data: flags["--data"]?.[0], tasknotes: flags["--tasknotes"]?.[0], run: flags["--run"]?.[0], set, out: flags["--out"] ?? [] };
   const print = (v: unknown) => console.log(JSON.stringify(args.includes("--raw") ? v : plainValue(v), null, 2));
   const formula = flags["--formula"]?.[0];
   if (formula !== undefined) {
@@ -243,7 +247,7 @@ async function main() {
   }
   const file = rest[0];
   if (!file) {
-    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--raw] [--set name=value]… [--out name]… [--vault <path>] [--tasknotes <url>] [--run <sink name>]\n       npm run run-graph -- --formula '<formula>' [--set name=number]… [--raw]");
+    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--raw] [--set name=value]… [--out name]… [--vault <path>] [--data <folder>] [--tasknotes <url>] [--run <sink name>]\n       npm run run-graph -- --formula '<formula>' [--set name=number]… [--raw]");
     process.exit(1);
   }
   const raw = readFileSync(file, "utf8");

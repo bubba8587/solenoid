@@ -122,6 +122,21 @@ Tests:
 - `chooseFile.test.ts`: a path is read relative to its root (the root itself as empty, nothing outside it), Windows paths with either slash and in any case; off the desktop the app's picker opens and answers, null when closed, and a second ask cancels the first.
 - `filePickerModel.test.ts`: a folder lists its folders first, then its files, numbers in order; a search ranks a name match first and marks it; 100,000 paths answer fast, at most the cap, counting the rest; a cut head drops its partial last line; a listing is kept for the session.
 
+## A folder as one table
+
+Serves [[D126]] folderAsOneTable. Local File's `fileName` is a file's name or a pattern over many: a name holding `*` or `?` is a pattern (`isFilePattern`, `fileGlob.ts`).
+
+- **Matching** (`matchFiles`): the pattern is split at `/`; `*` is any run of characters inside one folder, `?` one character, and a `**` part stands for the folder itself and every folder under it, `GLOB_MAX_DEPTH` deep, hidden folders left out. Case is ignored. Only CSV and Parquet files count (`listLocalFilesMatching`), at most `GLOB_MAX_FILES` of them, read in name order with digits by value (`2026-2` before `2026-10`).
+- **Stacking** (`readFilesAsOne`, `nodes/connection.ts`): each file is read as Local File reads one, gains a first column `File` holding its path under the data folder (`Source file` where the file has a `File` column of its own), and the files are stacked by the Append card's own body, so columns meet by name and a file lacking one leaves blanks.
+- **A file that doesn't read** is left out and named in the status note under the count ("1 didn't read: name (reason)", the first three named); the others load. No file matching, or none reading, is the card's error.
+- **Status**: a read that took several files says how many (`files` on the connection state: "3 files · 8×5 · time"). A file added to the folder is picked up by Refresh or the refresh interval, as any other change is.
+- **The card** shows the pattern in an `All matching` field under the file pick. Typing one replaces the picked file, picking a file replaces the pattern, and clearing the field clears only a pattern.
+- **Where it runs**: wherever a CSV reads, which is the desktop app, the demo vault and the headless runner (`run-graph --data <folder>`); a Parquet file needs the desktop's reader.
+
+A pattern never yields a Plan: a folder of plan files has no one schedule.
+
+Tests: `localFolder.test.ts`: the matcher over a fake tree, the stacked table, a file that fails, nothing matching.
+
 ## HTTP
 
 `fetchText` and `fetchJson` in `httpBridge.ts` do the requests.

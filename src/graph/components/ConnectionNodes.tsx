@@ -39,6 +39,7 @@ import { RefreshIcon } from "./RefreshIcon";
 import { SkyIcon } from "./CardArt";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
+import { isFilePattern } from "../fileGlob";
 import { nodeDisplayName } from "../catalogUtils";
 import { pickGeocodeMatch } from "../geocodeProvider";
 import { NAGER_COUNTRIES } from "../holidaysProvider";
@@ -55,7 +56,7 @@ function statusText(s: ConnectionState): string {
   switch (s.status) {
     case "loading": return "Loading…";
     case "error":   return s.message || "Failed";
-    case "ok":      return `${s.rows ?? 0}×${s.cols ?? 0}${s.fetchedAt ? ` · ${new Date(s.fetchedAt).toLocaleTimeString()}` : ""}`;
+    case "ok":      return `${s.files ? `${s.files} file${s.files === 1 ? "" : "s"} · ` : ""}${s.rows ?? 0}×${s.cols ?? 0}${s.fetchedAt ? ` · ${new Date(s.fetchedAt).toLocaleTimeString()}` : ""}`;
     case "gated":   return "Waiting for permission";
     default:        return "Not connected";
   }
@@ -95,6 +96,7 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
   const s = connectionStore.getState(nodeId);
   return (
+    <>
     <div className="sol-conn__status">
       <span
         className={`sol-conn__dot sol-conn__dot--${s.status}`}
@@ -115,6 +117,9 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
         <RefreshIcon />
       </button>
     </div>
+    {/* What a read that landed left out: files that didn't read, what a plan file couldn't carry over. */}
+    {s.status === "ok" && s.message && <div className="sol-conn__note">{s.message}</div>}
+    </>
   );
 }
 
@@ -270,6 +275,8 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
   const folder = useSyncExternalStore(settingsStore.subscribe, getCsvFolder);
   const [files, setFiles] = useState<string[]>([]);
   const [name, setName] = useState(data.fileName);
+  // A name with a wildcard reads every file it matches as one table ([[D126]] folderAsOneTable).
+  const [pattern, setPattern] = useState(isFilePattern(data.fileName) ? data.fileName : "");
   const desktop = isDesktop();
 
   useEffect(() => {
@@ -278,7 +285,15 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
     return () => { alive = false; };
   }, [folder]);
 
-  useEffect(() => { setName(data.fileName); }, [data.fileName]);
+  useEffect(() => { setName(data.fileName); setPattern(isFilePattern(data.fileName) ? data.fileName : ""); }, [data.fileName]);
+
+  function commitPattern(typed: string) {
+    const next = typed.trim();
+    setPattern(next);
+    // Clearing the pattern clears only a pattern: a picked file stays picked.
+    if (next === data.fileName || (next === "" && !isFilePattern(data.fileName))) return;
+    pick(next);
+  }
 
   function pick(next: string) {
     setName(next);
@@ -305,7 +320,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
             value={name}
             placeholder="Pick a file…"
             example
-            missing={name !== "" && !files.includes(name)}
+            missing={name !== "" && !isFilePattern(name) && !files.includes(name)}
             title={name ? `${name}: choose another file` : "Choose a CSV or Parquet file in the data folder"}
             onPick={(from) => void chooseFile({
                 from,
@@ -320,6 +335,19 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
               empty: "No CSV or Parquet files in the data folder",
             }).then((rel) => { if (rel) pick(rel); })}
           />
+        )}
+        {folder && (desktop || isDemoVaultPath(folder)) && (
+          <label className="sol-conn__field" title="Reads every file whose name matches, stacked as one table with a File column. * stands for anything, **/ for any subfolder.">
+            All matching
+            <input
+              className="sol-conn__url sol-placeholder-example" style={FIELD_INPUT} type="text" value={pattern}
+              placeholder="monthly/*.csv" spellCheck={false}
+              onChange={(e) => setPattern(e.target.value)}
+              onBlur={(e) => commitPattern(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+            />
+          </label>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {desktop && folder && (

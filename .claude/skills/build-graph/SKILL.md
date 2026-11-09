@@ -33,6 +33,8 @@ needs the app open, and a whole round is a few seconds.
    `-- --formula 'PMT(rate / 12, 60, 10000)' --set rate=0.05` answers one formula with no file.
    `--vault <path>` gives the Obsidian cards a vault (`demo-vault/` is one), so `VaultFolderNode folder="Tasks"` reads
    a folder of notes as a table, a row per note with its properties.
+   `--data <folder>` gives Local File its data folder: `LocalFileNode fileName="monthly/*.csv"` reads every matching
+   file as one table with a `File` column.
 5. **Look:** `node scripts/shot-graph.mjs model.txt --out model.png` lays it out in the real app and prints every
    card's text (the `shot-graph` skill has the steps for clicking, typing and popups).
 

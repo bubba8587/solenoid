@@ -19,11 +19,13 @@ import { isUnitCell, magnitudeOf, unitError } from "../unitValue";
 import { dimEqual, isDimensionless } from "../dimension";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
-import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
+import { isDesktop, hasFs, readFileText, listLocalFilesMatching, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
 import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type CubeValue } from "../frame";
-import { readParquetFrame, csvToFrame } from "../frameBackend";
+import { readParquetFrame, csvToFrame, isFrameRef, readFrame } from "../frameBackend";
+import { isFilePattern } from "../fileGlob";
+import { AppendNode } from "./frame";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { planFileToPlan, csvPlanToCube } from "../planImport";
 
@@ -256,6 +258,33 @@ export class ImportXmlNode extends GraphNode {
   }
 }
 
+/** Every file read and stacked into one table, a first column naming each row's file ([[D126]] folderAsOneTable):
+ *  columns meet by name as Append's do, and a file that doesn't read is named in `failed` while the rest load.
+ *  Null once `stale` says a newer read took over. */
+async function readFilesAsOne(folder: string, files: string[], stale: () => boolean): Promise<{ frame: FrameValue | SolError; failed: string[] } | null> {
+  const frames: FrameValue[] = [];
+  const failed: string[] = [];
+  for (const rel of files) {
+    try {
+      const f = /\.parquet$/i.test(rel) ? await readParquetFrame(folder, rel) : csvToFrame(await readFileText(folder, rel));
+      if (isSolError(f)) failed.push(`${rel} (${f.message})`);
+      else {
+        const name = f.columns.some((c) => c.name === "File") ? "Source file" : "File";
+        frames.push({ ...f, columns: [{ name, type: "string", values: Array<string>(frameRowCount(f)).fill(rel) }, ...f.columns] });
+      }
+    } catch (e) {
+      failed.push(`${rel} (${e instanceof Error ? e.message : String(e)})`);
+    }
+    if (stale()) return null;
+  }
+  if (frames.length === 0) return { frame: solError("#REF!", `None of the ${files.length} files read: ${failed[0]}`), failed };
+  if (frames.length === 1) return { frame: frames[0], failed };
+  const stack = new AppendNode({ valueKeys: frames.map((_, i) => `f${i}`) });
+  const out = (await (stack as unknown as { data(inputs: Record<string, unknown[]>): unknown }).data(Object.fromEntries(frames.map((f, i) => [`f${i}`, [f]])))) as { frame: unknown };
+  const frame = isFrameRef(out.frame) ? await readFrame(out.frame) : out.frame;
+  return stale() ? null : { frame: frame as FrameValue | SolError, failed };
+}
+
 // ─── LOCAL FILE (a file in the Settings target folder) ──────────────────────────
 export class LocalFileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
@@ -318,7 +347,9 @@ export class LocalFileNode extends GraphNode {
       connectionStore.setState(this.id, { status, message });
       return { frame: out, plan: null };
     };
-    if (parquet ? !isDesktop() : (!isDesktop() && !isDemoVaultPath(folder))) {
+    // A CSV reads wherever files do (the desktop app, the demo vault, the headless runner's folder); Parquet needs
+    // the desktop's reader.
+    if (parquet ? !isDesktop() : (!hasFs() && !isDemoVaultPath(folder))) {
       return fail("Desktop app only");
     }
     if (folder === "") return fail("Set a target folder in Settings", "idle");
@@ -326,6 +357,22 @@ export class LocalFileNode extends GraphNode {
     if (!isInsideVault(name)) return fail("The file must be inside the data folder");
     connectionStore.setState(this.id, { status: "loading" });
     try {
+      if (isFilePattern(name)) {
+        const files = await listLocalFilesMatching(folder, name);
+        if (stale()) return superseded;
+        if (files.length === 0) return fail(`No CSV or Parquet file matches ${name}`);
+        const read = await readFilesAsOne(folder, files, stale);
+        if (!read) return superseded;
+        if (isSolError(read.frame)) return fail(read.frame.message, "error", read.frame);
+        this.lastKey = key;
+        this.cachedResult = read.frame;
+        connectionStore.setState(this.id, {
+          status: "ok", rows: frameRowCount(read.frame), cols: read.frame.columns.length, fetchedAt: Date.now(),
+          files: files.length - read.failed.length,
+          ...(read.failed.length ? { message: `${read.failed.length} didn't read: ${read.failed.slice(0, 3).join("; ")}${read.failed.length > 3 ? "; …" : ""}` } : {}),
+        });
+        return { frame: read.frame, plan: null };
+      }
       if (parquet) {
         const frame = await readParquetFrame(folder, name);
         if (isSolError(frame)) return fail(frame.message, "error", frame);
