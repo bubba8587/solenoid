@@ -27,6 +27,7 @@ for c in "${crates[@]}"; do
   if cargo fmt --manifest-path "$m" --check \
     && cargo clippy --manifest-path "$m" --all-targets -q -- -D warnings \
     && { [ "$c" = solenoid-parquet ] || cargo clippy --manifest-path "$m" --target wasm32-unknown-unknown -q -- -D warnings; } \
+    && { [ "$c" != solenoid-core ] && [ "$c" != solenoid-graph ] || cargo clippy --manifest-path "$m" --target wasm32-unknown-unknown --features plugin -q -- -D warnings; } \
     && { [ "$test" = 0 ] || cargo test --manifest-path "$m" -q; }; then
     echo "ok $c"
   else

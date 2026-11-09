@@ -94,6 +94,9 @@ prerender
 why: wasm-bindgen output for the one module, the graph engine linking the Rust core; `npm run build:wasm` writes it from crates/solenoid-graph and crates/solenoid-core, which cite
 src/graph/engineWasm
 
+why: wasm-bindgen output for the Obsidian plugin's module (ignored); `build-wasm.mjs --plugin` writes it from the same crates, which cite
+src/graph/engineWasmPlugin
+
 why: JSON can't carry a citation; the core's call table is frozen from the TypeScript by tests/graph/coreCallTable.test.ts, which cites [[D99]] rustIsSpec
 crates/solenoid-core/data
 scripts/check-rust.sh

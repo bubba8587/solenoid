@@ -25,6 +25,8 @@ const run = (cmd, args, opts = {}) => {
 };
 const installed = (name) => JSON.parse(fs.readFileSync(path.join(ROOT, "node_modules", name, "package.json"), "utf8")).version;
 
+// The plugin's own engine module (`build-wasm.mjs --plugin`), which the bundle below inlines.
+run(process.execPath, [path.join(ROOT, "scripts/build-wasm.mjs"), "--plugin"]);
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "solenoid-plugin-export-"));
 const modulesFile = path.join(scratch, "modules.json");
 run(process.execPath, [path.join(ROOT, "node_modules/vite/bin/vite.js"), "build", "--config", "obsidian-plugin/vite.config.ts"], {
@@ -37,9 +39,11 @@ const copy = (rel) => {
   fs.mkdirSync(path.dirname(path.join(target, rel)), { recursive: true });
   fs.copyFileSync(path.join(ROOT, rel), path.join(target, rel));
 };
-// The module's glue is built in the snapshot (`npm run build:wasm`), beside the module.
-const built = `${MODULE.out}/`;
-const appFiles = new Set(modules.filter((rel) => rel.startsWith("src/") && !rel.startsWith(built)));
+// The module's glue is built in the snapshot (`npm run build:wasm`, the plugin's module), beside the module. The app
+// module's declarations go as they are: app code the plugin bundles names `GraphCore` and the rest by type.
+const built = "src/graph/engineWasmPlugin/";
+const appFiles = new Set(modules.filter((rel) => rel.startsWith("src/") && !rel.startsWith(built) && !rel.startsWith(`${MODULE.out}/`)));
+appFiles.add(`${MODULE.out}/solenoid_graph.d.ts`);
 const pluginFiles = run("git", ["ls-files", "obsidian-plugin"]).split("\n").filter(Boolean);
 // Also take type-only imports: the directory's review lints with types, and an unresolved module types as `any`.
 // readdirSync answers with the platform's separator; the paths compared against it are posix.
@@ -102,7 +106,7 @@ fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
   description: manifest.description,
   license: "MIT",
   scripts: {
-    "build:wasm": "node scripts/build-wasm.mjs",
+    "build:wasm": "node scripts/build-wasm.mjs --plugin",
     build: "npm run build:wasm && tsrs --noEmit && PLUGIN_OUT=dist VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts",
   },
   dependencies,

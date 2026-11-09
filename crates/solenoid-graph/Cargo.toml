@@ -9,6 +9,10 @@ rust-version = "1.99"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# The Obsidian plugin's module: no graph engine, and the core answers only the table popups' commands.
+plugin = ["solenoid-core/plugin"]
+
 [dependencies]
 solenoid-core = { path = "../solenoid-core" }
 serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
