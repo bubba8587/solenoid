@@ -147,6 +147,8 @@ body {
   --prompt-border-color: var(--sol-edge);
   --menu-background: var(--sol-surface);
   --menu-border-color: var(--sol-border-strong);
+  /* A list reads in the text color, as the Reference's navigator and card lists do; only captions are dim. */
+  --nav-item-color: var(--sol-text);
   --nav-item-color-active: var(--sol-ink-accent);
   --nav-item-background-active: color-mix(in srgb, var(--sol-accent) 16%, transparent);
   --nav-item-background-hover: var(--background-modifier-hover);
@@ -208,7 +210,7 @@ body {
   --blockquote-border-thickness: 0px;
   --blockquote-background-color: color-mix(in srgb, var(--sol-accent) 7%, var(--sol-raised));
   --blockquote-color: var(--sol-text);
-  --embed-background: var(--sol-sunken);
+  --embed-background: var(--sol-surface);
   --embed-border-start: 1px solid var(--sol-hairline);
   --embed-border-end: 1px solid var(--sol-hairline);
   --embed-border-top: 1px solid var(--sol-hairline);
@@ -293,6 +295,7 @@ body {
   --metadata-divider-width: 1px;
   --metadata-gap: 0px;
   --metadata-label-text-color: var(--sol-text-dim);
+  --metadata-label-font-weight: 500;
   --metadata-input-text-color: var(--sol-text);
   --metadata-property-background-active: color-mix(in srgb, var(--sol-accent) 8%, transparent);
   --metadata-property-box-shadow-focus: 0 0 0 1px var(--sol-accent);
@@ -888,6 +891,20 @@ kbd {
 .cm-s-obsidian span.cm-highlight {
   border-radius: 3px;
   color: var(--sol-text-bright);
+}
+
+/* A note is a page of boxes, as the Reference's landing is (FunctionReference.css: .fr-land on the canvas, its boxes on
+   the surface): the page takes the canvas, and the cards in it (Properties, tables, embeds) the surface, so they lift
+   off it as a node card lifts off the graph. */
+.workspace-leaf-content[data-type="markdown"] .view-content {
+  background-color: var(--sol-canvas);
+}
+.markdown-rendered table {
+  background-color: var(--sol-surface);
+}
+.metadata-container .metadata-property-key-input,
+.metadata-container .metadata-property-key {
+  font-weight: 500;
 }
 
 /* Obsidian nudges the panel 4px left for bare icons; a bordered card lines up by its edge. */

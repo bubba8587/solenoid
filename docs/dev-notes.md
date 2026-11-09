@@ -68,6 +68,10 @@ specific item.
   (a wash gets a full edge, as a selected group row does; a header-tint fill reads alone). Picked rows, tags, quotes,
   note tables and the active tab got full-strength edges (dark: the color; light: its 12%-darker shade,
   `--sol-edge-shade`); idle tabs went neutral with their type's glyph; a base header got the Frame's 2px cap.
+- Still weak (author), measured against the app (not the Navigator): the look's colors matched the app's to the value;
+  the difference was the ground. The Reference's landing puts its boxes (surface) on the canvas; a note put its cards on
+  the surface they are made of. The note page now takes the canvas; the explorer's names read in the text color (the
+  Reference's lists), and property labels are 500 weight (a node card's labels).
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its
