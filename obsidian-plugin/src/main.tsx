@@ -1,5 +1,5 @@
 // [[C107]] obsidianPlugin, [[D89]] pluginApi, [[D90]] cubeTypesAtDepth
-import { Plugin, PluginSettingTab, Setting, addIcon, type App, type SettingDefinitionItem } from "obsidian";
+import { ItemView, Plugin, PluginSettingTab, Setting, addIcon, type App, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
 import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
 import "@fontsource-variable/atkinson-hyperlegible-next/wght-italic.css";
@@ -23,6 +23,10 @@ import { LOOK_CLASS, DEFAULT_ACCENT, paletteClass, accentClass, isAccentSlot } f
 import { KnapNotes } from "./knapBody";
 import { setObsidianApp } from "./obsidianApp";
 import { loadWasmEngine } from "../../src/graph/engineWasm";
+import { WHATS_NEW_VERSION } from "../../src/graph/helpDialogStore";
+import { WhatsNewPage } from "./WhatsNewPage";
+import { PLUGIN_NOTES } from "./pluginNotes";
+import { readSeenWhatsNew, whatsNewDue, type SeenWhatsNew } from "./whatsNew";
 
 interface WidgetContext {
   app: App;
@@ -56,7 +60,12 @@ interface PluginData {
   look?: boolean;
   /** Off only when the user turns it off ([[C107]] obsidianPlugin). */
   suggestColumns?: boolean;
+  /** Off only when the user turns it off ([[obsidian-plugin#What's new]]). */
+  showWhatsNew?: boolean;
+  seenWhatsNew?: SeenWhatsNew;
 }
+
+const WHATS_NEW_VIEW = "solenoid-whats-new";
 
 const SOLENOID_LINKS = ["https://solenoid-ngc.com", "https://github.com/bubba8587/solenoid"];
 
@@ -92,6 +101,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       nestedTables: readPluginNestedTables(stored.nestedTables),
       look: stored.look === true,
       suggestColumns: stored.suggestColumns !== false,
+      showWhatsNew: stored.showWhatsNew !== false,
+      seenWhatsNew: readSeenWhatsNew(stored.seenWhatsNew),
     };
     paletteStore.setActiveBase((this.data.palette ?? "Default") as PaletteName);
     setAccentSlot(this.accent);
@@ -111,6 +122,10 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on("window-open", (win) => this.wearLook(win.doc)));
     this.app.workspace.onLayoutReady(() => this.wearLook());
     this.addSettingTab(new SolenoidSettingTab(this.app, this));
+
+    this.registerView(WHATS_NEW_VIEW, (leaf) => new WhatsNewView(leaf, this));
+    this.addCommand({ id: "show-whats-new", name: "Show what's new", callback: () => void this.openWhatsNew() });
+    this.app.workspace.onLayoutReady(() => void this.whatsNewOnChange());
   }
 
   onunload(): void {
@@ -149,6 +164,33 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   get look(): boolean { return this.data.look === true; }
   get accent(): string { return this.data.accent ?? DEFAULT_ACCENT; }
   get suggestColumns(): boolean { return this.data.suggestColumns !== false; }
+  get showWhatsNew(): boolean { return this.data.showWhatsNew !== false; }
+
+  async setShowWhatsNew(on: boolean): Promise<void> {
+    this.data.showWhatsNew = on;
+    await this.saveData(this.data);
+  }
+
+  /** Once on install, once per plugin version, once per app deck; recorded even with the tab turned off. */
+  private async whatsNewOnChange(): Promise<void> {
+    const now = { plugin: this.manifest.version, app: WHATS_NEW_VERSION };
+    if (!whatsNewDue(this.data.seenWhatsNew, now)) return;
+    this.data.seenWhatsNew = now;
+    await this.saveData(this.data);
+    if (this.showWhatsNew) await this.openWhatsNew();
+  }
+
+  async openWhatsNew(): Promise<void> {
+    const open = this.app.workspace.getLeavesOfType(WHATS_NEW_VIEW)[0];
+    const leaf = open ?? this.app.workspace.getLeaf("tab");
+    if (!open) await leaf.setViewState({ type: WHATS_NEW_VIEW, active: true });
+    await this.app.workspace.revealLeaf(leaf);
+  }
+
+  whatsNewPage(): ReactNode {
+    const version = this.manifest.version;
+    return <WhatsNewPage version={version} notes={PLUGIN_NOTES.find((n) => n.version === version)} />;
+  }
 
   async setSuggestColumns(on: boolean): Promise<void> {
     this.data.suggestColumns = on;
@@ -365,6 +407,12 @@ class SolenoidSettingTab extends PluginSettingTab {
         },
       },
       {
+        name: "Show what's new after an update",
+        render: (setting) => {
+          setting.addToggle((toggle) => toggle.setValue(this.plugin.showWhatsNew).onChange((on) => void this.plugin.setShowWhatsNew(on)));
+        },
+      },
+      {
         name: "Solenoid",
         render: (setting) => {
           setting.controlEl.addClass("solenoid-settings-links");
@@ -384,5 +432,26 @@ class SolenoidSettingTab extends PluginSettingTab {
   display(): void {
     this.containerEl.empty();
     for (const row of this.rows()) row.render(new Setting(this.containerEl).setName(row.name));
+  }
+}
+
+/** The read-only What's New tab ([[obsidian-plugin#What's new]]). */
+class WhatsNewView extends ItemView {
+  constructor(leaf: WorkspaceLeaf, private readonly plugin: SolenoidPropertiesPlugin) {
+    super(leaf);
+  }
+
+  getViewType(): string { return WHATS_NEW_VIEW; }
+  getDisplayText(): string { return "What's new in Solenoid"; }
+  getIcon(): string { return "sparkles"; }
+
+  onOpen(): Promise<void> {
+    this.plugin.mount(this.contentEl, "solenoid-whats-new", this.plugin.whatsNewPage());
+    return Promise.resolve();
+  }
+
+  onClose(): Promise<void> {
+    this.plugin.release(this.contentEl);
+    return Promise.resolve();
   }
 }

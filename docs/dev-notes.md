@@ -25,6 +25,10 @@ specific item.
   (`PopupSkeleton`, `connectionStore`, `noticeStore`), `no-unsafe-*` (`graphEditor`, `dataflowEngine`, `engineWasm`,
   `nodeInit`, `nodeBoundary`), `no-static-styles-assignment` (`themeColor`, `columnHeadControls`). The bundle's Rust
   crates' licenses are not in the snapshot's third-party file yet (`scripts/rust-licenses.mjs` covers the app's).
+- The plugin's What's New tab, the funnel to the app ([[obsidian-plugin#What's new]]): opens on install, each plugin
+  update and each new app deck (`WHATS_NEW_VERSION`), with a settings toggle and a command. Plugin notes for 0.1.7 are
+  drafted in `pluginNotes.ts` (one entry; the author's to extend), shown once the manifest says 0.1.7; the app section
+  imports the 1.6 slides. Seen in the Chromium stub only; real Obsidian, a light theme and a phone are unchecked.
 
 ### SESSION DIGEST (2026-11-08: per-frame camera work trimmed; cloud session)
 - A source read (no measuring) of what runs on every pan and zoom frame; four pieces of dead work went, each with its

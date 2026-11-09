@@ -56,7 +56,7 @@ mindmap
 
 **Type icons.** A list or matrix wears its element family's icon, Obsidian's own: Number's `lucide-binary`, Text's `lucide-text`, Date's `lucide-calendar`, Checkbox's `lucide-check-square`. The chip already says list or table, so the icon says what is in it. Complex has no Obsidian counterpart and takes `lucide-radical`, the root of minus one. A frame and a cube keep their socket glyph's outline (from `SocketLegend.tsx` and `cubeGlyph.tsx`), drawn in `currentColor` on the icon slot's 100-unit box and registered with `addIcon` (`icons.ts`).
 
-**A settings page** laid out as the app's own palette row: the Color palette choice (the built-in palettes, persisted in the plugin's `data.json`, which also holds the accent and the frame column types below) with the app's accent picker stacked under it: the toolbar's `SwatchGrid`, the twelve slots and the gray swatch's neutral cycle, following the palette. The accent is a slot id, gold by default; the chips' sheet (`shadow.ts`) and the look wear it. A toggle, Suggest column names, on until the user turns it off, governs [[#Column name suggestions]]. One more item, "Solenoid", carries two links and no prose: the app's deploy and its GitHub repository, each shown as its URL, which never breaks inside itself; on a phone the links stack. The manifest description is one sentence naming the four shapes. Both follow DESIGN.md § 7: nothing explains how to use a control. The page shows no sample chips: a chip over made-up data is bogus.
+**A settings page** laid out as the app's own palette row: the Color palette choice (the built-in palettes, persisted in the plugin's `data.json`, which also holds the accent and the frame column types below) with the app's accent picker stacked under it: the toolbar's `SwatchGrid`, the twelve slots and the gray swatch's neutral cycle, following the palette. The accent is a slot id, gold by default; the chips' sheet (`shadow.ts`) and the look wear it. A toggle, Suggest column names, on until the user turns it off, governs [[#Column name suggestions]]. Another, Show what's new after an update, on until turned off, governs [[#What's new]]. One more item, "Solenoid", carries two links and no prose: the app's deploy and its GitHub repository, each shown as its URL, which never breaks inside itself; on a phone the links stack. The manifest description is one sentence naming the four shapes. Both follow DESIGN.md § 7: nothing explains how to use a control. The page shows no sample chips: a chip over made-up data is bogus.
 
 **Everything the popups do without a graph:** cell and header editing, add and remove rows and columns, the column type cycle, visual sort, the CSV view, Copy, Copy as Markdown, Export CSV, freeze header, the resize grip, the cube breadcrumb and drill levels, Escape semantics. The summary footer is left out (`footer={false}`): its profile runs on the core, which the plugin doesn't load.
 
@@ -150,6 +150,18 @@ Tests: `obsidian-plugin/knapNote.test.ts`: the one render's shares (a tag filled
 
 Tests: `obsidian-plugin/yamlValue.test.ts`: a date column is guessed only for text the app reads as a date, a frame column is typed as the app types it (one family throughout, else text), a cell keeps its date's time when written, and a Complex property typed 5 is written as the number 5 with a list keeping its family.
 
+## What's new
+
+Serves [[C107]] obsidianPlugin and [[B1]] obsidianBet: the plugin is the app's funnel. A user who has the chips has met Solenoid's editors and never its graph, so the plugin opens a read-only tab that says what changed and points at the app, at the moments a user expects news: once when the plugin is installed, once after each update, and once when the app ships a new What's New deck (author 2026-11-09). Obsidian plugins with a large following do the same after an update (TaskNotes, Excalidraw). **Reopen if:** users complain of it, or the directory's review refuses it.
+
+**When it opens.** `data.json`'s `seenWhatsNew` holds the plugin version and the app deck's `WHATS_NEW_VERSION` last seen. When the layout is ready and either differs (or nothing is held, a fresh install), the plugin records both and, unless Show what's new after an update is off, opens the tab in a new leaf. It opens once per change, never on an ordinary start. With the toggle off it still records, so turning it back on does not replay an old change. The command Show what's new opens it at any time.
+
+**What it shows** (`WhatsNewPage.tsx`, rendered in a shadow host like a chip, so the app's tokens and fonts apply): the plugin's own notes for its version first (`pluginNotes.ts`, newest first; no section when the manifest's version has none), then the app: its name, the About tagline, the app's What's New deck in full (the app's `SLIDES` and `WHATS_NEW_VERSION`, imported, never copied), and three links: Open Solenoid (the web app), Download, and the site's Obsidian page. Links open in the browser on a click; the page loads nothing from the network, so the plugin's "no network access" stays true. The copy is marketing (DESIGN.md § 7: looser, but no em dashes and every claim true).
+
+**The off switch** is the settings toggle Show what's new after an update, on until the user turns it off.
+
+Tests: `tests/obsidian-plugin/whatsNew.test.ts`: the tab opens on a fresh install, on a new plugin version and on a new app deck, never on an unchanged start, records with the toggle off; the newest plugin notes are for the manifest's version or a later draft, so a version bump without notes fails.
+
 ## Column name suggestions
 
 Serves [[C107]] obsidianPlugin. While you name a Frame column, the plugin suggests the column names already typed elsewhere in the vault, and picking one also gives the column that type; a setting (Suggest column names) turns it off. A Frame column is often the same field spread across many notes, and a typo quietly makes a second column that counts for nothing; suggesting the names already in use prevents that, as Obsidian does for property names. **Reopen if:** people want suggestions from columns nobody has typed.
@@ -197,7 +209,7 @@ Obsidian's community list points at one GitHub repository, reads `manifest.json`
 
 To try a branch in a vault without a release, run Actions → Plugin build here (`plugin-build.yml`, by hand only): the run keeps `main.js`, `manifest.json` and `styles.css` as a download, which goes into the vault's `.obsidian/plugins/solenoid-properties/`.
 
-1. Here, set the version in `obsidian-plugin/manifest.json`, commit and push `develop`.
+1. Here, set the version in `obsidian-plugin/manifest.json` and write its notes at the top of `obsidian-plugin/src/pluginNotes.ts` ([[#What's new]]), commit and push `develop`.
 2. `npm run plugin:export -- "<clone>"`, then commit and push there.
 3. There, run Actions → Release → Run workflow with the version and "publish" OFF: it only builds. Then create the release: push a tag equal to the version (`0.1.1`, no `v`), or run the workflow again with "publish" on. A fix to a review finding needs a NEW version: the directory reviews releases, not commits.
 
