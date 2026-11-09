@@ -2045,7 +2045,16 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
                         }
                     };
                     match x {
-                        V::List(l) => lists.push(l),
+                        V::List(l) if rm => lists.push(l),
+                        // A picked column arrives as a one-column table.
+                        V::List(l) => lists.push(Rc::new(
+                            l.iter()
+                                .map(|cell| match cell {
+                                    V::List(one) => one.first().cloned().unwrap_or(V::Null),
+                                    other => other.clone(),
+                                })
+                                .collect(),
+                        )),
                         bad => return bad,
                     }
                 }
@@ -2213,17 +2222,21 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
                 return index_ref_error(c + 1.0, w, "Column");
             }
             let c = c as usize;
+            // A whole column stays a column, a one-column table ([[D85]] columnsStayColumns).
             return V::List(Rc::new(
                 grid.iter()
-                    .map(|row| match row {
-                        V::List(cells) => or_null(cells.get(c)),
-                        other => {
-                            if c == 0 {
-                                other.clone()
-                            } else {
-                                V::Null
+                    .map(|row| {
+                        let cell = match row {
+                            V::List(cells) => or_null(cells.get(c)),
+                            other => {
+                                if c == 0 {
+                                    other.clone()
+                                } else {
+                                    V::Null
+                                }
                             }
-                        }
+                        };
+                        V::List(Rc::new(vec![cell]))
                     })
                     .collect(),
             ));

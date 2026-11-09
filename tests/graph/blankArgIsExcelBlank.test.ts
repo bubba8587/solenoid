@@ -41,9 +41,9 @@ describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, 
   it("INDEX: a blank position is 0, the whole axis, typed or a blank value ([[D86]])", () => {
     const m = [[1, 2], [3, 4]];
     expect(ev("INDEX(x, , 2)", { x: [10, 20, 30] })).toBe(20);
-    expect(ev("INDEX(m, , 2)", { m })).toEqual([2, 4]);
+    expect(ev("INDEX(m, , 2)", { m })).toEqual([[2], [4]]);
     expect(ev("INDEX(m, 2, )", { m })).toEqual([3, 4]);
-    expect(ev("INDEX(m, b, 2)", { m, b: null })).toEqual([2, 4]);
+    expect(ev("INDEX(m, b, 2)", { m, b: null })).toEqual([[2], [4]]);
   });
 
   it("EXPAND, TAKE, DROP: a blank size keeps that axis, typed or a blank value ([[D86]])", () => {

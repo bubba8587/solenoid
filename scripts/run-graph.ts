@@ -130,14 +130,43 @@ function setInput(node: GraphNode, name: string, text: string): void {
   else throw new Error(`--set ${name}: "${name}" isn't an input card with one value to set.`);
 }
 
-/** One formula as a graph of its own: an Expression card whose variables take the numbers `set` gives them. */
+/** One formula as a graph of its own: an Expression card whose variables take what `set` gives them. A number sits
+ *  on the card; a JSON list (`[1,2,3]`) or grid (`[[1,2],[3,4]]`) is a List Input or a Table Input cabled in. */
 export function formulaGraph(expr: string, set: Record<string, string> = {}): SavedGraph {
   const literals: Record<string, number> = {};
+  const nodes: Record<string, unknown>[] = [];
+  const connections: Record<string, unknown>[] = [];
+  const typeOf = (cells: unknown[]) => (cells.every((c) => typeof c === "number") ? "number" : "string");
+  const cell = (c: unknown) => {
+    if (typeof c !== "number" && typeof c !== "string") throw new Error("a list holds numbers or text");
+    return String(c);
+  };
   for (const [name, text] of Object.entries(set)) {
-    if (text.trim() === "" || !Number.isFinite(Number(text))) throw new Error(`--set ${name}: a formula's variable takes a number, and "${text}" isn't one.`);
-    literals[name] = Number(text);
+    if (!new RegExp(`(^|[^\\w.])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\w(])`).test(expr)) {
+      throw new Error(`--set ${name}: the formula has no variable "${name}".`);
+    }
+    if (text.trim() !== "" && Number.isFinite(Number(text))) { literals[name] = Number(text); continue; }
+    let parsed: unknown;
+    try { parsed = JSON.parse(text); } catch { parsed = undefined; }
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      throw new Error(`--set ${name}: a formula's variable takes a number, a list like [1,2,3] or a grid like [[1,2],[3,4]], and "${text}" is none of them.`);
+    }
+    const id = `set-${name}`;
+    try {
+      if (parsed.every(Array.isArray)) {
+        const rows = parsed as unknown[][];
+        nodes.push({ id, type: "TableInputNode", init: { label: name, dataType: typeOf(rows.flat()), tableText: rows.map((r) => r.map(cell).join(",")).join("\n") } });
+        connections.push({ source: id, sourceOutput: "table", target: "formula", targetInput: name });
+      } else {
+        nodes.push({ id, type: "ListInputNode", init: { label: name, dataType: typeOf(parsed), valueKeys: ["v0"] }, stringLiterals: { v0: parsed.map(cell).join(", ") } });
+        connections.push({ source: id, sourceOutput: "list", target: "formula", targetInput: name });
+      }
+    } catch (e) {
+      throw new Error(`--set ${name}: ${(e as Error).message}, and "${text}" holds something else.`);
+    }
   }
-  return { nodes: [{ id: "formula", type: "ExpressionNode", init: { label: "formula", expr, literals } }], connections: [] };
+  nodes.push({ id: "formula", type: "ExpressionNode", init: { label: "formula", expr, literals } });
+  return { nodes, connections } as unknown as SavedGraph;
 }
 
 export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Record<string, unknown>> {

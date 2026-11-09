@@ -30,7 +30,8 @@ needs the app open, and a whole round is a few seconds.
    nearest right name. Fix until it prints `OK`.
 4. **Run:** `npm run -s run-graph -- model.txt --out Total` prints that card's outputs as plain JSON (a table as its
    rows, dates as ISO text). `--set Qty=10` types into an input card first, so one file answers what-ifs;
-   `-- --formula 'PMT(rate / 12, 60, 10000)' --set rate=0.05` answers one formula with no file.
+   `-- --formula 'PMT(rate / 12, 60, 10000)' --set rate=0.05` answers one formula with no file (a variable also
+   takes a list, `--set v=[1,2,3]`, or a grid, `--set 'm=[[1,2],[3,4]]'`).
    `--vault <path>` gives the Obsidian cards a vault (`demo-vault/` is one), so `VaultFolderNode folder="Tasks"` reads
    a folder of notes as a table, a row per note with its properties.
    `--data <folder>` gives Local File its data folder: `LocalFileNode fileName="monthly/*.csv"` reads every matching

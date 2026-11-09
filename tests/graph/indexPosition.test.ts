@@ -17,6 +17,16 @@ describe("INDEX on a single row or column, as Excel's", () => {
     expect(ev("INDEX(TOCOL(m), 3)", { m: [[1, 2], [3, 4]] })).toBe(3);
     expect(ev("INDEX(g, 2)", { g: [[1, 2], [3, 4]] })).toEqual([3, 4]);
   });
+  it("a whole column stays a column, so it lines up with the table's rows", () => {
+    const m = [[3, 1, 2], [9, 8, 6]];
+    expect(ev("INDEX(m, 0, 1)", { m })).toEqual([[3], [9]]);
+    expect(ev("m / INDEX(m, 0, 1)", { m })).toEqual([[1, 1 / 3, 2 / 3], [1, 8 / 9, 6 / 9]]);
+    expect(ev("INDEX(m, 1, 0)", { m })).toEqual([3, 1, 2]);
+    expect(ev("SUM(INDEX(m, 0, 2))", { m })).toBe(9);
+    expect(ev("INDEX(INDEX(m, 0, 2), 2)", { m })).toBe(8);
+    expect(new ListIndexNode().data({ list: [m], index: [0], column: [3] }).result).toEqual([[2], [6]]);
+    expect(ev("INDEX(m, 0, p)", { m, p: [1, 3] })).toEqual([[3, 2], [9, 6]]);
+  });
 });
 
 describe("INDEX with several positions, as Excel's array arguments", () => {
