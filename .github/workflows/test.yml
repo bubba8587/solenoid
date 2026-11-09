@@ -39,6 +39,19 @@ jobs:
 
       # The Obsidian plugin's release workflow (bubba8587/Solenoid-Properties) builds a pinned
       # commit of this repo with this command; keep it building here first.
+      # The plugin builds its own engine module (`build-wasm.mjs --plugin`): the Rust rust-toolchain.toml pins and the
+      # wasm-bindgen crates/solenoid-graph/Cargo.toml pins.
+      - name: Install Rust
+        run: rustup toolchain install
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@0.2.130
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "crates/solenoid-graph -> target"
+
       - name: Build the Obsidian plugin
         run: npm run plugin:build
 
