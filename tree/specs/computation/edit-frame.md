@@ -36,7 +36,7 @@ Each edit, in the order saved:
 
 1. **Its column** is found by name as a key column is. None: the edit is `stale`.
 2. **Its row** is the one row whose key is the edit's `row`. None: `stale`. Two or more: `ambiguous`, and it changes none of them.
-3. **Its value** is read into a cell of its column's type as Frame Input reads typed text (`frame_cell_of`): a Number column's text as a number, `#VALUE!`'s NaN when it reads as none; a Date column's text as a date; a Logical column's `TRUE` or `FALSE`; text as it is, empty text a blank. A column that carries typed text (`raw`) takes the typed value there too.
+3. **Its value** is read into a cell of its column's type as Frame Input reads typed text (`frame_cell_of`, [[C58]] tableInputRawText): a Number column's text as a number; a Date column's text as a date; a Logical column's `TRUE` or `FALSE`; text as it is, empty text a blank; text a Number, Date or Logical column can't read is NaN, never refused (an upstream type pick can make the column text). A column that carries typed text (`raw`) takes the typed value there too.
 4. **Equal to the cell already there:** the edit is `settled`, and it drops (below). Otherwise it is `applied`, and the cell takes the new value.
 
 A stale or ambiguous edit is kept on the card, listed struck through with its status in the error ink, and stays in the `edits` table. It is never dropped silently: the table above may come back (a vault folder not yet read, a filter loosened), and a person decides when to take it back.

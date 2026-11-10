@@ -878,17 +878,17 @@ Tests:
   - a logical's `TRUE`/`FALSE` equals `find` in upper case, so `1` and `0` never match a logical;
   - a string equals `find` (exactly under `matchCase`, else ignoring case).
   Blank and error cells never match.
-- **The replacement** is coerced to the column type:
+- **The replacement** is read into the column's type ([[C58]] tableInputRawText):
   - blank text becomes `null`;
-  - a number or date column needs a finite number, and otherwise that column is left unchanged;
-  - a logical takes `true`/`1` or `false`/`0` (any case), anything else `null`;
+  - a number column takes a finite number, a date column a date (`date_text_serial`), a logical `true`/`1` or `false`/`0` (any case);
+  - text the column's type can't read is written as `NaN` in each matched cell, as a Frame Input cell reads it, never skipped and never a blank: replacing 5 with `apple` in a number column leaves a NaN where the 5 was, so a total over the column answers `#DOMAIN!` instead of quietly keeping the 5. An upstream type pick that makes the column text lets the same card write `apple` itself;
   - a string column takes the text verbatim.
-  So Replace Values never writes a `NaN` into a number column, since a `NaN` cell is neither a value, a blank nor an error that anything downstream could read.
+  The card never errors over a replacement: the answer is the frame, each matched cell holding what was written. The text itself isn't kept beside the NaN, since a rewritten column carries no `raw` (above).
 - **The card:** Find and Replace take a wired value of any type, read as text by `filter_value` (`nodes/verbs.rs`), as Filter reads its values; typed, they are text kept exactly as typed.
 
 Tests:
 
-- `frameVerbs.test.ts`: the cell match rule, a text replacement leaving a number column alone, and `raw` dropped from a rewritten column.
+- `frameVerbs.test.ts`: the cell match rule, text a number, date or logical column can't read written as NaN, and `raw` dropped from a rewritten column.
 - `frameNodeBackend.test.ts`: a wired number or Boolean matches, and the typed Find and Replace stay as typed.
 
 ### formats

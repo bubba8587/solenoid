@@ -90,6 +90,9 @@ specific item.
   an edit follows its row through a reorder. Stale and ambiguous edits stay listed and change nothing; an edit the
   table now gives on its own drops (`settled`, `coreWatched`). The edits list as Pipeline's steps, 20 shown and the rest
   counted; the Edits output is the edits as a table (column, row, previous, new, status).
+- **Replace Values writes NaN for a replacement its column can't read** ([[C58]] tableInputRawText; `coerce_replacement`,
+  `frame_verbs.rs`): it skipped the whole column with no notice. The card never errors over one replacement; the
+  frame holds the truth, and a total over the column says so.
 - **A new feature is never a new leaf** (the author, 2026-11-10; `docs/dte.md` § What is a leaf and what is a spec,
   `CLAUDE.md`, the leaf-check hook): a feature and its design go in its spec; a leaf is added unasked only for a
   product decision (the author overriding conventional wisdom, or answering a contested, high-stakes question).

@@ -2199,26 +2199,25 @@ fn date_text_serial(s: &str) -> Option<f64> {
     }
 }
 
-fn coerce_replacement(t: FrameColType, text: &str) -> Option<FrameCell> {
+/// The replacement as a cell of the column's type; text the type can't read is written as NaN, as Frame Input reads it
+/// ([[C58]] tableInputRawText), never skipped.
+fn coerce_replacement(t: FrameColType, text: &str) -> FrameCell {
     let s = trim_space(text);
     if s.is_empty() {
-        return Some(FrameCell::Null);
+        return FrameCell::Null;
     }
     match t {
         FrameColType::Number => {
             let n = decimal_from_text(s);
-            n.is_finite().then_some(FrameCell::Num(n))
+            FrameCell::Num(if n.is_finite() { n } else { f64::NAN })
         }
-        FrameColType::Date => date_text_serial(s).map(FrameCell::Num),
-        FrameColType::Logical => {
-            let l = s.to_lowercase();
-            Some(match l.as_str() {
-                "true" | "1" => FrameCell::Bool(true),
-                "false" | "0" => FrameCell::Bool(false),
-                _ => FrameCell::Null,
-            })
-        }
-        FrameColType::String => Some(FrameCell::str(text)),
+        FrameColType::Date => FrameCell::Num(date_text_serial(s).unwrap_or(f64::NAN)),
+        FrameColType::Logical => match s.to_lowercase().as_str() {
+            "true" | "1" => FrameCell::Bool(true),
+            "false" | "0" => FrameCell::Bool(false),
+            _ => FrameCell::Num(f64::NAN),
+        },
+        FrameColType::String => FrameCell::str(text),
     }
 }
 
@@ -2271,9 +2270,7 @@ pub fn replace_values(
                     .collect();
                 return col.with_values(values);
             }
-            let Some(replacement) = coerce_replacement(col.ty, replace_with) else {
-                return col.clone();
-            };
+            let replacement = coerce_replacement(col.ty, replace_with);
             let values = col
                 .values
                 .iter()
