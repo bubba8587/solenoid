@@ -72,6 +72,9 @@ specific item.
   a LET formula that had frozen that error.
 - **The strict validator refuses a setting of the wrong kind** (`ValueInputNode value=3` read as 0 with no word; it
   now says `write value="3"`), and `validate-graph` reports a missing `---` line where it used to crash.
+- **The card reference lists every input that takes a typed value** (`aiGrounding.ts` asks `literalFieldOf`, as the
+  canvas does): GROUPBY's `keys` and 77 other cards' fields were born empty and went unlisted.
+  `aiGroundingInline.test.ts` holds each listed key to what the validator accepts.
 - **Vault Read and TaskNotes have specs** (`tree/specs/integrations/vault-read.md`, `tree/specs/integrations/tasknotes.md`). Writing them
   found that a note's own `date` or `created` property never reaches Vault Folder's Cube (backlog § VaultBridge).
 

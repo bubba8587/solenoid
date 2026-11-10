@@ -20,7 +20,10 @@ export function main(args: string[]): void {
   // A card's entry runs from its `#### ` heading to the next heading of any level.
   const cards = text.split(/\n(?=#### )/).slice(1).map((entry) => entry.split(/\n(?=###? )/)[0].trimEnd());
   const out = after("--out")?.[0];
-  const wanted = after("--card");
+  // `--card A B` and `--card A --card B` both name two cards.
+  const wanted = args.includes("--card")
+    ? args.flatMap((a, i) => (a === "--card" ? args.slice(i + 1, ((end) => (end === -1 ? undefined : end))(args.findIndex((b, j) => j > i && b.startsWith("--")))) : []))
+    : null;
 
   if (args.includes("--guide")) {
     // The format alone: the text form's grammar, the socket types and the structured settings, without the cards.

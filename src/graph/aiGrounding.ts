@@ -1,5 +1,6 @@
 // [[B13]] aiInScope
 
+import { literalFieldOf, type LiteralFieldHost } from "./literalFields";
 import { GraphNode } from "./graphModel";
 import { buildCatalog } from "./catalogUtils";
 import type { CatalogEntry, NodeCatalogEntry, CatalogCategory } from "./AddNodeMenu";
@@ -75,14 +76,24 @@ export function buildGroundingSpec(): string {
           const hasStrs = typeof anyInst.stringLiterals === "object" && anyInst.stringLiterals !== null;
           const lits = hasLits ? Object.keys(anyInst.literals as object) : [];
           const strs = hasStrs ? Object.keys(anyInst.stringLiterals as object) : [];
+          // A map born empty on a card that grows rows takes each row's key as well as the ones found below.
+          const grows = typeof anyInst.addValueInput === "function" || typeof anyInst.addValuePair === "function";
+          const [litsBorn, strsBorn] = [lits.length, strs.length];
+          // An input whose field starts empty is in neither map yet (GROUPBY's `keys`), so each input is asked which
+          // field it shows, as the canvas and the loader ask.
+          for (const k of Object.keys((anyInst.inputs as object) ?? {})) {
+            const field = literalFieldOf(inst as unknown as LiteralFieldHost, k);
+            if (hasLits && (field === "number" || field === "logical") && !lits.includes(k)) lits.push(k);
+            if (hasStrs && (field === "text" || field === "csv" || field === "keyed") && !strs.includes(k)) strs.push(k);
+          }
           info = {
             ctorName,
             path,
             variants: [],
             litKeys: lits,
             strKeys: strs,
-            litOpen: hasLits && lits.length === 0,
-            strOpen: hasStrs && strs.length === 0,
+            litOpen: hasLits && (lits.length === 0 || (grows && litsBorn === 0)),
+            strOpen: hasStrs && (strs.length === 0 || (grows && strsBorn === 0)),
             initKeys: roundTrip.filter((k) => !lits.includes(k) && !strs.includes(k)),
             hidden: leaf.hidden === true,
           };
@@ -231,10 +242,9 @@ export function buildGroundingSpec(): string {
       if (choices[k] && k !== "op" && !(k === "agg" && opVocabByCtor().has(ctorName))) w(`- ${k}: ${choices[k].map((v) => `\`${v}\``).join(" | ")}`);
     }
     const inline: string[] = [];
-    if (info.litKeys.length > 0) inline.push(`lit: ${info.litKeys.join(", ")}`);
-    else if (info.litOpen) inline.push(`lit: (input-row keys)`);
-    if (info.strKeys.length > 0) inline.push(`str: ${info.strKeys.join(", ")}`);
-    else if (info.strOpen) inline.push(`str: (input-row keys)`);
+    const keysOf = (keys: string[], open: boolean) => [...keys, ...(open ? ["(input-row keys)"] : [])].join(", ");
+    if (info.litKeys.length > 0 || info.litOpen) inline.push(`lit: ${keysOf(info.litKeys, info.litOpen)}`);
+    if (info.strKeys.length > 0 || info.strOpen) inline.push(`str: ${keysOf(info.strKeys, info.strOpen)}`);
     if (inline.length > 0) w(`- inline: ${inline.join(" · ")}`);
     // The field the vocabulary is typed into: `op`, or `agg` where the aggregator is an argument ([[C26]] opArgDistinct).
     const vocabField = info.initKeys.includes("op") || !info.initKeys.includes("agg") ? "ops" : "agg";
