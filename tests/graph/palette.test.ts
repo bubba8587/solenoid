@@ -2,7 +2,7 @@
 // [[palette-and-theme#Accent-adaptive ramps]], [[palette-and-theme#Derived chrome tokens]], [[palette-and-theme#The gray swatch's neutral cycle]],
 // [[palette-and-theme#The Custom palette]], [[palette-and-theme#Which palette is in effect]], [[palette-and-theme#Accent helpers]]
 import { describe, it, expect, afterEach } from "vitest";
-import { SOCKET_VARS, BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, earthChroma, CHROME_EARTH, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, resolveAccent, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
+import { SOCKET_VARS, BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, bandChroma, CHROME_TINT_BAND, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, resolveAccent, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
 
 // WCAG luminance and contrast, shared by the structure checks and the accent-adaptive suite.
 const chan = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16) / 255;
@@ -316,25 +316,25 @@ describe("accent-adaptive chrome", () => {
     MODES.flatMap((mode) => COLOR_PALETTE.map((accent) => [name, mode, accent] as [PaletteName, "dark" | "light", PaletteSlot])),
   );
   const worn = (name: PaletteName, mode: "dark" | "light", slot: PaletteSlot) =>
-    adaptChrome(BUILTIN_CHROME[name][mode], homeHex(name), BUILTIN_PALETTES[name][slot], CHROME_EARTH[name]?.[mode]) as Record<ChromeKey, string>;
+    adaptChrome(BUILTIN_CHROME[name][mode], homeHex(name), BUILTIN_PALETTES[name][slot], CHROME_TINT_BAND[name]?.[mode]) as Record<ChromeKey, string>;
 
-  it("an earth band eases chroma only away from its center, and never past its floor", () => {
-    for (const [name, modes] of Object.entries(CHROME_EARTH) as [PaletteName, NonNullable<(typeof CHROME_EARTH)[PaletteName]>][]) {
+  it("a tint band eases chroma only away from its center, and never past its floor", () => {
+    for (const [name, modes] of Object.entries(CHROME_TINT_BAND) as [PaletteName, NonNullable<(typeof CHROME_TINT_BAND)[PaletteName]>][]) {
       expect(CHROME_HOME[name], name).toBeDefined();
       for (const band of Object.values(modes)) {
-        expect(earthChroma(band!, band!.center)).toBe(1);
-        expect(earthChroma(band!, band!.center + band!.flat)).toBe(1);
-        expect(earthChroma(band!, band!.center + 180)).toBeCloseTo(band!.floor, 9);
+        expect(bandChroma(band!, band!.center)).toBe(1);
+        expect(bandChroma(band!, band!.center + band!.flat)).toBe(1);
+        expect(bandChroma(band!, band!.center + 180)).toBeCloseTo(band!.floor, 9);
         for (let h = 0; h < 360; h += 5) {
-          expect(earthChroma(band!, h)).toBeGreaterThanOrEqual(band!.floor - 1e-9);
-          expect(earthChroma(band!, h)).toBeLessThanOrEqual(1);
+          expect(bandChroma(band!, h)).toBeGreaterThanOrEqual(band!.floor - 1e-9);
+          expect(bandChroma(band!, h)).toBeLessThanOrEqual(1);
         }
       }
     }
   });
 
-  it("under an earth band the ramp still turns with the accent and holds its luminance; lime and the home pass as authored", () => {
-    for (const [name, modes] of Object.entries(CHROME_EARTH) as [PaletteName, NonNullable<(typeof CHROME_EARTH)[PaletteName]>][]) {
+  it("under a tint band the ramp still turns with the accent and holds its luminance; lime and the home pass as authored", () => {
+    for (const [name, modes] of Object.entries(CHROME_TINT_BAND) as [PaletteName, NonNullable<(typeof CHROME_TINT_BAND)[PaletteName]>][]) {
       for (const mode of MODES) {
         const band = modes[mode];
         if (!band) continue;

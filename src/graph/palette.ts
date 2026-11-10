@@ -682,16 +682,18 @@ export const CHROME_HOME: Partial<Record<PaletteName, PaletteSlot>> = {
   Blueprint: "blue",
 };
 
-/** Where an adaptive ramp keeps its full tint as it follows the accent. A ramp whose hue lands within `flat`
+/** Where an adaptive ramp keeps its full tint as it follows the accent (its tint band). A ramp whose hue lands within `flat`
  * degrees of `center` keeps its authored chroma; past that the chroma eases (raised cosine) over `fall` more
- * degrees down to `floor` of the authored, so a pale ground stays strong only where pale reads as paper. */
-export interface EarthBand { center: number; flat: number; fall: number; floor: number }
-export const CHROME_EARTH: Partial<Record<PaletteName, Partial<Record<"dark" | "light", EarthBand>>>> = {
+ * degrees down to `floor` of the authored, so a pale ground stays strong only where pale reads as paper,
+ * and a deep one only where deep reads as ink rather than mud. */
+export interface TintBand { center: number; flat: number; fall: number; floor: number }
+export const CHROME_TINT_BAND: Partial<Record<PaletteName, Partial<Record<"dark" | "light", TintBand>>>> = {
   Orchard: { light: { center: 85, flat: 10, fall: 50, floor: 0.45 } },
+  Blueprint: { dark: { center: 250, flat: 100, fall: 60, floor: 0.4 } },
 };
 
 /** The share of its authored chroma a ramp keeps at OK hue `hue` under `band`. */
-export function earthChroma(band: EarthBand, hue: number): number {
+export function bandChroma(band: TintBand, hue: number): number {
   const off = Math.abs(((((hue - band.center) % 360) + 540) % 360) - 180);
   const t = Math.min(1, Math.max(0, (off - band.flat) / band.fall));
   return band.floor + (1 - band.floor) * (1 + Math.cos(Math.PI * t)) / 2;
@@ -779,13 +781,13 @@ function rotateHueKeepLum(hex: string, delta: number, chromaScale = 1): string {
   return oklchToHex((lo + hi) / 2, C, h + delta);
 }
 
-export function adaptChrome(ramp: ChromeRamp, homeHex: string, accentHex: string, band?: EarthBand): ChromeRamp {
+export function adaptChrome(ramp: ChromeRamp, homeHex: string, accentHex: string, band?: TintBand): ChromeRamp {
   if (!parseHex(homeHex) || !parseHex(accentHex)) return ramp;
   const [, accChroma, accHue] = hexToOklch(accentHex);
   if (accChroma < ADAPT_MIN_CHROMA) return ramp;
   const delta = (((accHue - hexToOklch(homeHex)[2]) % 360) + 360) % 360;
   const home = isHex(ramp.surfaceRaised) ? hexToOklch(ramp.surfaceRaised)[2] : 0;
-  const scale = band ? earthChroma(band, home + delta) / earthChroma(band, home) : 1;
+  const scale = band ? bandChroma(band, home + delta) / bandChroma(band, home) : 1;
   if ((delta < 0.5 || delta > 359.5) && Math.abs(scale - 1) < 1e-6) return ramp;
   return turnRamp(ramp, delta, scale);
 }
@@ -932,9 +934,9 @@ export const paletteStore = {
     const slot = CHROME_HOME[base];
     return slot ? BUILTIN_PALETTES[base][slot] : null;
   },
-  chromeEarth(mode: "dark" | "light"): EarthBand | undefined {
+  chromeBand(mode: "dark" | "light"): TintBand | undefined {
     const base = _docBase ?? _appBase;
-    return base === "Custom" ? undefined : CHROME_EARTH[base]?.[mode];
+    return base === "Custom" ? undefined : CHROME_TINT_BAND[base]?.[mode];
   },
   customMap: (): Record<PaletteSlot, string> => ({ ..._customMap }),
   customChrome: (): PaletteChrome => ({ dark: { ..._customChrome.dark }, light: { ..._customChrome.light } }),

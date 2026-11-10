@@ -6,12 +6,15 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-11-10: light-mode theming, Orchard's earth band, dark links; cloud session)
+### SESSION DIGEST (2026-11-10: light and dark theming, the tint band, dark links; cloud session)
 - **Orchard light under a non-home accent was a pastel wash**: the rotation carried its cream's chroma (0.022, borders
   0.040) to blue, pink and violet, two to three times Blueprint's. Fixed by a rule, not a table: an earth band
-  (`CHROME_EARTH`, `earthChroma`) scales the turned ramp's chroma by where its hue lands. Lime and green pass as
+  (`CHROME_TINT_BAND`, `bandChroma`) scales the turned ramp's chroma by where its hue lands. Lime and green pass as
   authored. A per-accent table of hand-picked grounds was tried first and dropped for the rule (author: derivable over
   tweaks, looks first; grounds may resemble each other, accents must stay distinct).
+- **Blueprint dark under gold, amber or lime was mustard sludge** (its 0.055 dark tint carried to yellow). The same
+  band, renamed the tint band, now covers it (Blueprint dark: center 250, flat 100, fall 60, floor 0.4). A dark sweep
+  of all nine palettes in the app and the plugin found nothing else.
 - **Dawn and Dusk light read lime**: its ground took plasma's yellow end at chroma 0.03. Now plasma's sunrise orange
   (0.8) at 0.016, a pale apricot. Solarized's cream is its canonical base3 and stays.
 - **Dark-mode links in the plugin were dull**: the accent as text is lifted toward OK L 0.8 keeping 40% of its distance
