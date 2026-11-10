@@ -80,6 +80,10 @@ specific item.
   property columns. Backlinks gives `backlinks`, the notes anywhere in the vault that link to each note
   (`resolveLink` finds a link's note as Obsidian does). All four are off until ticked. The example
   `vault-note-bodies` runs them on the sample vault.
+- **Write to Obsidian has a Tasks target**: each row ticks or unticks one checklist item by `path`, `line` and `done`,
+  changing the one character between the brackets (`planTaskMark`, `setTaskMarks`); a line that is no longer the item
+  read is refused. A property write leaves out `note-tasks`, `note-tables` and `backlinks` and never copies an inline
+  field into the frontmatter (`resolveKeyOrField`).
 - **Import Obsidian Note mints `note-tasks` and `note-tables` outputs** when the note has a checklist or a table
   (`bodyFields`), beside the outputs its frontmatter gives.
 - **Unnest's output takes its value's type** ([[C136]] typesKnownAfterCalc): it was the fixed untyped socket, so a

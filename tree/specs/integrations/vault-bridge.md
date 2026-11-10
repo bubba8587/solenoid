@@ -45,7 +45,7 @@ flowchart LR
 | Vault Folder | reads a folder as one Cube, a row per note | the Vault Read, the Type Read-Back | [[vault-read]] (the Cube), [[live-connections]] (fetch and cache) |
 | Import Obsidian Note | reads one note as a read-only Note | the Note Read, the Type Read-Back | [[reports-and-notes#Notes]], [[obsidian-plugin#What Solenoid reads back]] |
 | TaskNotes | reads tracked time, recurring instances, events and stats | the TaskNotes API | [[tasknotes#The TaskNotes node]], [[live-connections]] (fetch and cache) |
-| Write to Obsidian | writes a Note, a Report or a Cube of rows | the Note Write, the Property Patch | [[reports-and-notes#Write to Obsidian]] |
+| Write to Obsidian | writes a Note, a Report or a Cube of rows, or ticks checklist items | the Note Write, the Property Patch, the Task Mark | [[reports-and-notes#Write to Obsidian]] |
 | Write Tasks | creates or updates TaskNotes tasks from rows | the TaskNotes API | [[tasknotes#The Write Tasks node]] |
 
 A Note and a Report are documents, not VaultBridge Nodes: they reach a vault through Write to Obsidian. The Solenoid Properties plugin is the bridge's other end, inside Obsidian ([[obsidian-plugin]]).
@@ -59,6 +59,7 @@ A Note and a Report are documents, not VaultBridge Nodes: they reach a vault thr
 | **Type Read-Back** | the column types a vault declares: `.obsidian/types.json`, an mdbase schema, and the plugin's own picks | `obsidianTypes.ts`, `mdbaseTypes.ts`, `vaultTypes.ts`, `pluginColumnTypes.ts`, `pluginDataPath.ts` | [[obsidian-plugin#What Solenoid reads back]], [[obsidian-plugin#The app reads the picks]] |
 | **Note Write** | a document as markdown Obsidian renders, its pictures as assets, one note per page | `obsidianWrite.ts` (`writeDocumentToVault`) | [[reports-and-notes#Write to Obsidian]] |
 | **Property Patch** | changes only the frontmatter keys it targets in an existing note ([[C101]] onePatchPath) | `frontmatterPatch.ts` | [[reports-and-notes#Write to Obsidian]] |
+| **Task Mark** | sets the mark of a checklist item in a note's body, one character and nothing else ([[C101]] onePatchPath) | `noteBody.ts` (`planTaskMark`, `setTaskMarks`) | [[reports-and-notes#Write to Obsidian]] |
 | **TaskNotes API** | the TaskNotes plugin's local HTTP API, read and write | `taskNotesApi.ts`, `nodes/taskNotes.ts` | [[tasknotes]] |
 
 `obsidianLinks.ts` builds the `obsidian://` links a card opens a note with. On the web, and whenever "Use demo vault" is on, the reads go to the read-only demo vault instead ([[live-connections#The demo vault]], [[D62]] demoVaultResolution).

@@ -186,8 +186,9 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const vaultFs = hasFs();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
 
-  const activeMode = d.resolveMode(); // "note" | "properties"
-  const inputKeys = activeMode === "properties" ? ["in", "rows", "keys"] : ["in", "path", "rows"];
+  const activeMode = d.resolveMode(); // "note" | "properties" | "tasks"
+  // Tasks reads its rows alone: no document, no note to name, no keys to pick.
+  const inputKeys = activeMode === "properties" ? ["in", "rows", "keys"] : activeMode === "tasks" ? ["rows"] : ["in", "path", "rows"];
 
   function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); d.edited(); void processGraph(); }
   function pickSubfolder(v: string) { d.subfolder = v; setSubfolder(v); notifyGraphChanged(); }
@@ -230,7 +231,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     : null;
   const hasPlanRows = isFrameValue(d.cachedPlan) && d.cachedPlan.columns[0].values.length > 0;
   const busy = status === "writing" || status === "previewing";
-  const canRun = activeMode === "properties" ? hasPlanRows : renderedName.trim() !== "";
+  const canRun = activeMode === "note" ? renderedName.trim() !== "" : hasPlanRows;
 
   return (
     <NodeShell node={data} emit={emit}>
@@ -289,7 +290,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
               }).then((rel) => { if (rel !== null) pickSubfolder(rel); })}
             />
           </>
-        ) : (
+        ) : activeMode === "tasks" ? null : (
           <>
             <label className="sol-write__armed" title="Add + register a property the note doesn't have yet" {...stopPtr}>
               <input type="checkbox" checked={addMissing} onChange={toggleAddMissing} />
@@ -341,7 +342,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
           </button>
         )}
         {activeMode === "note" && docPreview && <div className="sol-conn__note">{docPreview}</div>}
-        {activeMode === "properties" && <FrameDisplay frame={d.cachedPlan as never} label={d.label || "Write to Obsidian"} />}
+        {activeMode !== "note" && <FrameDisplay frame={d.cachedPlan as never} label={d.label || "Write to Obsidian"} />}
         {activeMode === "note" && (
           <div className={`solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip${isDocumentValue(doc) ? "" : " solenoid-node__display-value--empty"}`}>
             {isDocumentValue(doc) ? <DocumentChip value={doc} size="sm" /> : "—"}

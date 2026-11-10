@@ -6,6 +6,7 @@ import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameCol
 import { noteDateText, noteDateSerial } from "./nodes/dateSerial";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { extractInlineTags } from "./vaultCube";
+import { readInlineFields } from "./noteBody";
 import { isSolError, type SolError } from "./errorValue";
 import { isSolDate } from "./dateValue";
 import { isUnitCell } from "./unitValue";
@@ -211,8 +212,11 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
 }
 
 
+/** Vault Folder's own columns, which describe a note and are never written back as its properties: the file columns,
+ *  and what the "From each note" boxes read out of the body and the vault's links. */
 const BUILTIN_READONLY = new Set([
   "path", "name", "folder", "ext", "size", "created", "modified", "links", "embeds", "date",
+  "note-tasks", "note-tables", "backlinks",
 ]);
 
 export const NOTE_BODY = "note-body";
@@ -346,6 +350,25 @@ export function resolveKey(text: string, key: string, value: YamlValue): { actio
   const same = (existing.length === rendered.length && existing.every((l, i) => l.trimEnd() === rendered[i]))
     || (span.scalar && readsAs(span.rest, value));
   return { action: same ? "unchanged" : "update", before };
+}
+
+/** `resolveKey`, for a key the note may hold as an inline field in its body (`key:: value`, which Vault Folder's
+ *  Fields box reads as a column): a write never copies such a field into the frontmatter. Where the frontmatter has no
+ *  such key and the body does, the same value is no change and a different one is refused, to be edited in the note. */
+export function resolveKeyOrField(text: string, key: string, value: YamlValue): { action: "add" | "unchanged" | "update" | "refused"; before: string; reason?: string } {
+  const resolved = resolveKey(text, key, value);
+  if (resolved.action !== "add") return resolved;
+  const field = readInlineFields(splitFrontmatter(text).body).find((f) => f.key === key);
+  if (!field) return resolved;
+  const shown = (v: unknown, dates: boolean): string =>
+    Array.isArray(v) ? v.map((x) => shown(x, dates)).join(", ")
+      : typeof v === "number" && dates ? noteDateText(v)
+      : v === null || v === undefined ? "" : typeof v === "boolean" ? String(v) : String(v);
+  const before = shown(field.value, field.guessed.startsWith("date"));
+  const want = Array.isArray(value) ? shown(value, false) : shown(value as unknown, false);
+  return before === want
+    ? { action: "unchanged", before }
+    : { action: "refused", before, reason: "an inline field in the note's body, edit it there" };
 }
 
 /** Whether a note's own scalar text reads back as `value`: Obsidian writes `url: https://x` and `title: Hi, there`

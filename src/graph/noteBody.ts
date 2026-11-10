@@ -127,6 +127,59 @@ export function tasksCube(tasks: readonly BodyTask[]): CubeValue | null {
   ]);
 }
 
+// ─── Ticking a task ───────────────────────────────────────────────────────────
+
+/** A checklist line in three parts: up to the opening bracket, the mark, and the rest. */
+const TASK_PARTS = /^((?:\s*>)*\s*(?:[-*+]|\d+[.)])\s+\[)(.)(\]\s+)(.*)$/;
+
+export interface TaskMark {
+  /** The item's line in the note's file, counting from 1, as `note-tasks` gives it. */
+  line: number;
+  done: boolean;
+  /** The item's text as `note-tasks` read it; when given, the line must still hold that item. */
+  task?: string;
+}
+
+interface TaskMarkPlan {
+  action: "update" | "unchanged" | "refused";
+  /** The mark as the note has it and as the write would leave it, brackets included. */
+  before: string;
+  after: string;
+  reason?: string;
+}
+
+/** What setting one item's mark would do to a note. Only the character between the brackets ever changes: done makes
+ *  it `x`, and not done clears an `x` to a space while leaving any other mark (`/` in progress, `-` cancelled) as it
+ *  is. A line that is no checklist item, or whose item is no longer the one named, is refused. */
+export function planTaskMark(text: string, mark: TaskMark): TaskMarkPlan {
+  const lines = text.split("\n");
+  const raw = lines[mark.line - 1];
+  const fenced = raw === undefined ? false : fencedLines(lines)[mark.line - 1];
+  const m = raw === undefined || fenced ? null : TASK_PARTS.exec(raw.replace(/\r$/, ""));
+  if (!m) return { action: "refused", before: "", after: "", reason: `line ${mark.line} is not a checklist item` };
+  const before = `[${m[2]}]`;
+  if (mark.task !== undefined && readTask(m[4]).task !== mark.task.trim()) {
+    return { action: "refused", before, after: before, reason: `the item at line ${mark.line} has changed` };
+  }
+  const ticked = m[2] === "x" || m[2] === "X";
+  const next = mark.done ? (ticked ? m[2] : "x") : ticked ? " " : m[2];
+  return { action: next === m[2] ? "unchanged" : "update", before, after: `[${next}]` };
+}
+
+/** The note with each mark set that `planTaskMark` would update, every other character as it was. */
+export function setTaskMarks(text: string, marks: readonly TaskMark[]): string {
+  const lines = text.split("\n");
+  for (const mark of marks) {
+    const plan = planTaskMark(text, mark);
+    if (plan.action !== "update") continue;
+    const raw = lines[mark.line - 1];
+    const cr = raw.endsWith("\r") ? "\r" : "";
+    const m = TASK_PARTS.exec(raw.replace(/\r$/, ""))!;
+    lines[mark.line - 1] = `${m[1]}${plan.after.slice(1, 2)}${m[3]}${m[4]}${cr}`;
+  }
+  return lines.join("\n");
+}
+
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
 interface BodyTable {

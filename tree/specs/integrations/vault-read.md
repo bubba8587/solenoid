@@ -103,7 +103,7 @@ Tasks adds the column `note-tasks`. A note's cell holds a nested table with one 
 | `heading` | text | the nearest heading above the item |
 | `line` | number | the item's line in the note's file, counting from 1 |
 
-The emoji fields are the Tasks plugin's and the bracketed ones Dataview's; a bracketed field may use round brackets. The Tasks plugin's other fields (start `🛫`, created `➕`, cancelled `❌`, recurrence `🔁`, id `🆔`, depends on `⛔`, on completion `🏁`) are taken out of `task` with their values and not kept. The four columns a project note often has of its own (status, due, priority, tags) carry `task` in their names so that, after an Unnest node, a task's due date and its note's `due` property sit side by side under different names.
+The `line` and `done` columns are what Write to Obsidian's Tasks target reads to tick an item back in its note ([[reports-and-notes#Write to Obsidian]]). The emoji fields are the Tasks plugin's and the bracketed ones Dataview's; a bracketed field may use round brackets. The Tasks plugin's other fields (start `🛫`, created `➕`, cancelled `❌`, recurrence `🔁`, id `🆔`, depends on `⛔`, on completion `🏁`) are taken out of `task` with their values and not kept. The four columns a project note often has of its own (status, due, priority, tags) carry `task` in their names so that, after an Unnest node, a task's due date and its note's `due` property sit side by side under different names.
 
 ### Tables
 

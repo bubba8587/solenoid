@@ -6,7 +6,7 @@ import { runGraph, nodeFsProvider } from "./run-graph";
 import { setFsProvider } from "../src/graph/fileBridge";
 import { settingsStore } from "../src/graph/settingsStore";
 import { WriteObsidianNode } from "../src/graph/nodes/obsidian";
-import type { CubeValue } from "../src/graph/frame";
+import { frameToCube, isCubeValue, type CubeValue, type FrameValue } from "../src/graph/frame";
 
 // Bundle 24 J — the headless seam: `run-graph --vault <path>` installs a Node file
 // provider behind fileBridge so the Obsidian nodes read a vault with no window, and
@@ -114,6 +114,59 @@ describe("run-graph --vault", () => {
     expect(after).toContain("# Rewritten\n\nnew body text"); // the body was replaced
     expect(after.startsWith(fmBefore)).toBe(true);          // the frontmatter block untouched
   }, 30_000);
+
+  it("Write to Obsidian set to Tasks ticks the items its rows name and touches nothing else in the notes", async () => {
+    tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
+    cpSync(DEMO, tmp, { recursive: true });
+    const rel = path.join("Notes", "Q3 planning.md");
+    const before = readFileSync(path.join(tmp, rel), "utf8");
+    expect(before).toContain("- [ ] Ada to draft launch copy");
+
+    // Read the folder's tasks, mark every one done, and write the marks back.
+    const graph = {
+      nodes: [
+        { id: "v", type: "VaultFolderNode", init: { label: "Notes", folder: "Notes", includeTasks: true } },
+        { id: "u", type: "UnnestNode", init: { label: "Tasks" }, stringLiterals: { column: "note-tasks" } },
+        { id: "c", type: "ComputedColumnNode", init: { label: "All done", expr: "TRUE", addAs: "logical" }, stringLiterals: { name: "done" } },
+        { id: "k", type: "ColumnsNode", init: { label: "Marks", op: "keep" }, stringLiterals: { columns: "path, line, task, done" } },
+      ],
+      connections: [
+        { source: "v", sourceOutput: "cube", target: "u", targetInput: "cube" },
+        { source: "u", sourceOutput: "frame", target: "c", targetInput: "frame" },
+        { source: "c", sourceOutput: "frame", target: "k", targetInput: "frame" },
+      ],
+    };
+    const out = await runGraph(graph, { vault: tmp });
+    // The rows as the pipeline answers them, widened to a Cube as the Rows socket widens a Frame.
+    const answered = (out["Marks"] as { frame: CubeValue | FrameValue }).frame;
+    const cube = isCubeValue(answered) ? answered : frameToCube(answered);
+    expect(cube.columns.map((c) => c.name)).toEqual(["path", "line", "task", "done"]);
+    expect(cube.columns[3].cells.length).toBeGreaterThanOrEqual(5);
+    expect(cube.columns[3].cells.every((d) => d === true)).toBe(true);
+
+    setFsProvider(nodeFsProvider);
+    settingsStore.set("obsidianVault", tmp);
+    const n = new WriteObsidianNode({ target: "tasks" });
+    n.data({ rows: [cube] });
+
+    // Disarmed, Run writes nothing.
+    await n.run();
+    expect(n.statusMessage).toBe("Disabled. Arm it first.");
+    expect(readFileSync(path.join(tmp, rel), "utf8")).toBe(before);
+
+    await n.preview();
+    expect(n.statusMessage).toMatch(/^Preview: \d+ to change, \d+ unchanged$/);
+
+    n.enabled = true;
+    await n.run();
+    expect(n.status).toBe("ok");
+    const after = readFileSync(path.join(tmp, rel), "utf8");
+    expect(after).toBe(before.replace("- [ ] Ada to draft launch copy", "- [x] Ada to draft launch copy"));
+
+    // A second Run finds every mark already set.
+    await n.run();
+    expect(n.statusMessage).toBe("0 items changed across 0 notes");
+  }, 60_000);
 
   it("Write Properties writes a stamp key the cube sets as the cube's value, not now", async () => {
     tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));

@@ -1,6 +1,7 @@
 // [[B1]] obsidianBet, [[vault-read#The body as data]]
 import { describe, it, expect } from "vitest";
-import { readTasks, tasksCube, readTables, tablesFrame, readInlineFields } from "../../src/graph/noteBody";
+import { readTasks, tasksCube, readTables, tablesFrame, readInlineFields, planTaskMark, setTaskMarks } from "../../src/graph/noteBody";
+import { resolveKeyOrField, writableKeys } from "../../src/graph/frontmatterPatch";
 import { notesToCube, resolveLink, backlinksOf } from "../../src/graph/vaultCube";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { ImportObsidianNode } from "../../src/graph/nodes/obsidian";
@@ -224,5 +225,68 @@ describe("Import Obsidian Note gives one note's tasks and tables as outputs", ()
     const n = new ImportObsidianNode({ body: "---\nnote-tasks: mine\n---\n- [ ] one\n" });
     n.syncFields();
     expect(n.fieldValues()["note-tasks"]).toBe("mine");
+  });
+});
+
+describe("ticking a checklist item changes one character of the note", () => {
+  const note = [
+    "---", "status: open", "---",
+    "- [ ] Order tiles 📅 2026-09-12",
+    "- [x] Measure the room",
+    "> - [/] Sand the floor",
+    "Just prose",
+    "```", "- [ ] in a fence", "```",
+    "    * [X] Indented, capital x\r",
+  ].join("\n");
+
+  it("done makes the mark an x, not done clears an x, and any other mark is left as it is", () => {
+    expect(planTaskMark(note, { line: 4, done: true })).toEqual({ action: "update", before: "[ ]", after: "[x]" });
+    expect(planTaskMark(note, { line: 4, done: false })).toMatchObject({ action: "unchanged" });
+    expect(planTaskMark(note, { line: 5, done: false })).toEqual({ action: "update", before: "[x]", after: "[ ]" });
+    expect(planTaskMark(note, { line: 5, done: true })).toMatchObject({ action: "unchanged" });
+    expect(planTaskMark(note, { line: 6, done: false })).toMatchObject({ action: "unchanged", before: "[/]", after: "[/]" });
+    expect(planTaskMark(note, { line: 6, done: true })).toMatchObject({ action: "update", after: "[x]" });
+    expect(planTaskMark(note, { line: 11, done: true })).toMatchObject({ action: "unchanged", before: "[X]" });
+  });
+
+  it("refuses a line that is no checklist item, one in a code fence, one past the end, and an item that is no longer the one read", () => {
+    for (const line of [7, 9, 99]) {
+      expect(planTaskMark(note, { line, done: true })).toMatchObject({ action: "refused", reason: `line ${line} is not a checklist item` });
+    }
+    expect(planTaskMark(note, { line: 4, done: true, task: "Order tiles" })).toMatchObject({ action: "update" });
+    expect(planTaskMark(note, { line: 4, done: true, task: "Order paint" })).toMatchObject({ action: "refused", reason: "the item at line 4 has changed" });
+  });
+
+  it("writes back the same note with only the marks changed, line endings and all", () => {
+    const out = setTaskMarks(note, [{ line: 4, done: true }, { line: 5, done: false }, { line: 7, done: true }, { line: 11, done: false }, { line: 6, done: false }]);
+    const want = note.replace("- [ ] Order tiles", "- [x] Order tiles").replace("- [x] Measure", "- [ ] Measure").replace("* [X] Indented", "* [ ] Indented");
+    expect(out).toBe(want);
+    expect(setTaskMarks(note, [{ line: 4, done: false }])).toBe(note);
+  });
+
+  it("what it wrote reads back as the tasks it set", () => {
+    const body = "- [ ] one\n- [ ] two\n";
+    const tasks = readTasks(setTaskMarks(body, [{ line: 2, done: true, task: "two" }]));
+    expect(tasks.map((t) => t.done)).toEqual([false, true]);
+  });
+});
+
+describe("a property write never copies the body's data into the frontmatter", () => {
+  it("leaves out the columns Vault Folder read from the body and the vault's links", () => {
+    const cube = notesToCube(
+      [{ path: "a.md", text: "---\nstatus: open\n---\n- [ ] one\n\n| x |\n|---|\n| 1 |\n" }],
+      { mdbaseFor: () => ({}), obsidian: {} },
+      { includeTasks: true, includeTables: true, backlinksFrom: [] },
+    );
+    expect(writableKeys(cube, "")).toEqual(["tags", "status"]);
+  });
+
+  it("a key the note holds as an inline field is no change when it is the same and refused when it differs", () => {
+    const text = "---\nstatus: open\n---\nOwner:: Ada\nBudget:: 1200\n";
+    expect(resolveKeyOrField(text, "Owner", "Ada")).toMatchObject({ action: "unchanged", before: "Ada" });
+    expect(resolveKeyOrField(text, "Budget", 1200)).toMatchObject({ action: "unchanged" });
+    expect(resolveKeyOrField(text, "Owner", "Sam")).toMatchObject({ action: "refused", before: "Ada" });
+    expect(resolveKeyOrField(text, "status", "closed")).toMatchObject({ action: "update" });
+    expect(resolveKeyOrField(text, "fresh", "new")).toMatchObject({ action: "add" });
   });
 });
