@@ -94,13 +94,14 @@ specific item.
   `frame_verbs.rs`): it skipped the whole column with no notice. The card never errors over one replacement; the
   frame holds the truth, and a total over the column says so.
 - **A tiny transformer, a new example** (`seedGraphs/tiny-transformer.json`, Worked examples): one layer and one head
-  in five stages, each a group ending in its picture. The prompt is typed and tokenized on the canvas (`XMATCH` against
-  the vocabulary, one-hot by `IF(TRANSPOSE(ids) = SEQUENCE(1, n), 1, 0)`), so editing it moves every answer; the mask
-  and positions follow its length. Each card does one step; both softmaxes are one Composite, its three steps (`e ^`, a BYROW of totals, a divide) inside; the
-  embeddings, attention and predictions are labeled heatmaps and the last word's prediction a bar chart. It sits in two
-  rows, H riding a chain of three rotated Conduits from the end of Attend back to the start of Think. Building it
-  found `EXP` refusing a matrix and a table through TAKE's untyped output failing Frame from Lists with an internal error (backlog § Formula
-  library).
+  in five stages, each a group ending in its picture, built from table cards and no Expressions but one: XMATCH finds
+  each typed word in the vocabulary and CHOOSEROWS picks its embedding row, so editing the prompt moves every answer;
+  MMULT, TRANSPOSE, MAP (`value + value2`, `MAX(0, value)`) and a MAKEARRAY mask do the rest, sized by a COUNT of the
+  prompt. Both softmaxes are one Composite (MAP `EXP(value)`, a BYROW of totals, and `weights / totals`, the one
+  Expression, since only a formula broadcasts a column of totals across a table; MAP wants equal shapes). Labeled
+  heatmaps show the embeddings, attention and predictions, and a bar chart the last word's prediction. Two rows, H on
+  three rotated Conduits. Building it found `EXP` refusing a matrix, Frame from Lists failing on a table through
+  TAKE's untyped output, `run-graph` answering null for Composites, and the grounding listing TOROW under TableSelect.
 - **A new feature is never a new leaf** (the author, 2026-11-10; `docs/dte.md` § What is a leaf and what is a spec,
   `CLAUDE.md`, the leaf-check hook): a feature and its design go in its spec; a leaf is added unasked only for a
   product decision (the author overriding conventional wisdom, or answering a contested, high-stakes question).

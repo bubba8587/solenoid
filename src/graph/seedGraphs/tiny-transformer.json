@@ -15,7 +15,7 @@
     "collapsed": false,
     "width": 820,
     "height": 560,
-    "body": "# A tiny transformer\n\nThe forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four numbers per word and a vocabulary of five. Read it left to right; each step is a card, and each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is found in the vocabulary and becomes a one-hot row: all zeros but a 1 under its word.\n2. **Embed.** The one-hot rows pick each word's four numbers out of the embedding table, and each position adds its own.\n3. **Attend.** Each word asks with its query and answers with its key. A query times a key, over √4, scores how much one word should look at another; the mask hides the words that come after, and a softmax turns each row into weights that sum to 1 (both Softmax cards are one small graph: Edit Contents shows its three steps). The weights mix the values, and the mix is added back. Here *sat* and *on* put nearly all their attention on *cat*.\n4. **Think.** A two-layer network with a ReLU works on each word by itself, and its answer is added back too.\n5. **Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights were set by hand to tell that story; a real model learns billions of them from text. Two things to try: shorten the prompt to *the cat sat* and watch *on* become the next word, or set the 3 in W_K's second row to 0 and watch the attention on *cat* spread out.",
+    "body": "# A tiny transformer\n\nThe forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four numbers per word and a vocabulary of five. Read it left to right; each step is a card, and each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is found in the vocabulary: *the* is word 1, *cat* word 2.\n2. **Embed.** Each word's place picks its row of four numbers out of the embedding table, and each position adds its own.\n3. **Attend.** Each word asks with its query and answers with its key. A query times a key, over √4, scores how much one word should look at another; the mask hides the words that come after, and a softmax turns each row into weights that sum to 1 (both Softmax cards are one small graph: Edit Contents shows its three steps). The weights mix the values, and the mix is added back. Here *sat* and *on* put nearly all their attention on *cat*.\n4. **Think.** A two-layer network with a ReLU works on each word by itself, and its answer is added back too.\n5. **Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights were set by hand to tell that story; a real model learns billions of them from text. Two things to try: shorten the prompt to *the cat sat* and watch *on* become the next word, or set the 3 in W_K's second row to 0 and watch the attention on *cat* spread out.",
     "fieldTypes": {}
    }
   },
@@ -25,29 +25,30 @@
    "x": -40,
    "y": 440,
    "init": {
-    "label": "1 · Read the prompt: each word becomes a one-hot row",
+    "label": "1 · Read the prompt: find each word in the vocabulary",
     "members": [
      "vocab",
      "prompt",
-     "oneHot",
+     "ids",
      "n",
      "names"
     ],
     "color": "sky",
     "collapsed": false,
-    "width": 587,
-    "height": 977
+    "width": 850,
+    "height": 611
    }
   },
   {
    "id": "grp_embed",
    "type": "GroupNode",
-   "x": 607,
+   "x": 870,
    "y": 440,
    "init": {
     "label": "2 · Embed: a row of four numbers per word, plus its position",
     "members": [
      "embed",
+     "tokEmb",
      "posAll",
      "pos",
      "x",
@@ -58,13 +59,13 @@
     "color": "teal",
     "collapsed": false,
     "width": 2047,
-    "height": 749
+    "height": 877
    }
   },
   {
    "id": "grp_attend",
    "type": "GroupNode",
-   "x": 2714,
+   "x": 2977,
    "y": 440,
    "init": {
     "label": "3 · Attend: each word looks back at the words before it",
@@ -75,6 +76,8 @@
      "q",
      "k",
      "v",
+     "kT",
+     "raw",
      "mask",
      "scores",
      "attn",
@@ -86,36 +89,36 @@
     ],
     "color": "violet",
     "collapsed": false,
-    "width": 2415,
-    "height": 1045
+    "width": 3068,
+    "height": 1372
    }
   },
   {
    "id": "grp_think",
    "type": "GroupNode",
    "x": 300,
-   "y": 1745,
+   "y": 2072,
    "init": {
     "label": "4 · Think: a small network works on each word",
     "members": [
      "w1",
-     "w2",
      "hid",
      "relu",
+     "w2",
      "out",
      "h2"
     ],
     "color": "green",
     "collapsed": false,
     "width": 1618,
-    "height": 766
+    "height": 799
    }
   },
   {
    "id": "grp_predict",
    "type": "GroupNode",
    "x": 2038,
-   "y": 1745,
+   "y": 2072,
    "init": {
     "label": "5 · Predict: a probability for every word that could come next",
     "members": [
@@ -125,21 +128,22 @@
      "pFrame",
      "predTable",
      "predMap",
+     "last",
      "lastRow",
      "nextTable",
      "nextChart"
     ],
     "color": "amber",
     "collapsed": false,
-    "width": 2052,
-    "height": 836
+    "width": 2482,
+    "height": 913
    }
   },
   {
    "id": "vocab",
    "type": "ListInputNode",
    "x": -16,
-   "y": 1161,
+   "y": 798,
    "init": {
     "label": "Vocabulary",
     "dataType": "string"
@@ -152,7 +156,7 @@
    "id": "prompt",
    "type": "ListInputNode",
    "x": -16,
-   "y": 871,
+   "y": 498,
    "init": {
     "label": "Prompt",
     "dataType": "string"
@@ -162,254 +166,29 @@
    }
   },
   {
-   "id": "oneHot",
-   "type": "ExpressionNode",
-   "x": 279,
-   "y": 1135,
+   "id": "ids",
+   "type": "XMatchNode",
+   "x": 293,
+   "y": 797,
    "init": {
-    "label": "Tokens: one-hot rows",
-    "expr": "IF(TRANSPOSE(XMATCH(prompt, vocab)) = SEQUENCE(1, COUNTA(vocab)), 1, 0)"
+    "label": "Each word's place in the vocabulary"
    }
   },
   {
    "id": "n",
-   "type": "ExpressionNode",
-   "x": 279,
-   "y": 884,
+   "type": "AggregateNode",
+   "x": 602,
+   "y": 874,
    "init": {
-    "label": "Length",
-    "expr": "COUNTA(prompt)"
-   }
-  },
-  {
-   "id": "embed",
-   "type": "TableInputNode",
-   "x": 960,
-   "y": 498,
-   "init": {
-    "label": "Embedding table: a row per vocabulary word",
-    "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1\n0, 1, 0, 0.1"
-   }
-  },
-  {
-   "id": "posAll",
-   "type": "TableInputNode",
-   "x": 631,
-   "y": 745,
-   "init": {
-    "label": "Position table",
-    "tableText": "0, 0.1, 0, 0.1\n0.1, 0, 0.1, 0\n0.2, 0.1, 0, 0.1\n0.1, 0.2, 0.1, 0\n0, 0.1, 0.1, 0\n0.1, 0, 0, 0.1"
-   }
-  },
-  {
-   "id": "pos",
-   "type": "TakeDropNode",
-   "x": 960,
-   "y": 779,
-   "init": {
-    "op": "take",
-    "label": "Positions in use"
-   }
-  },
-  {
-   "id": "x",
-   "type": "ExpressionNode",
-   "x": 1299,
-   "y": 655,
-   "init": {
-    "label": "X: embedding + position",
-    "expr": "MMULT(tokens, embedding) + positions"
-   }
-  },
-  {
-   "id": "wq",
-   "type": "TableInputNode",
-   "x": 2738,
-   "y": 498,
-   "init": {
-    "label": "W_Q",
-    "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 3, 1, 0\n0, 3, 0, 1"
-   }
-  },
-  {
-   "id": "wk",
-   "type": "TableInputNode",
-   "x": 2738,
-   "y": 774,
-   "init": {
-    "label": "W_K",
-    "tableText": "1, 0, 0, 0\n0, 3, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1"
-   }
-  },
-  {
-   "id": "wv",
-   "type": "TableInputNode",
-   "x": 3424,
-   "y": 1141,
-   "init": {
-    "label": "W_V",
-    "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1"
-   }
-  },
-  {
-   "id": "q",
-   "type": "ExpressionNode",
-   "x": 3067,
-   "y": 502,
-   "init": {
-    "label": "Queries",
-    "expr": "MMULT(X, W_Q)"
-   }
-  },
-  {
-   "id": "k",
-   "type": "ExpressionNode",
-   "x": 3067,
-   "y": 778,
-   "init": {
-    "label": "Keys",
-    "expr": "MMULT(X, W_K)"
-   }
-  },
-  {
-   "id": "v",
-   "type": "ExpressionNode",
-   "x": 3753,
-   "y": 1145,
-   "init": {
-    "label": "Values",
-    "expr": "MMULT(X, W_V)"
-   }
-  },
-  {
-   "id": "mask",
-   "type": "MakeArrayNode",
-   "x": 3067,
-   "y": 1054,
-   "init": {
-    "label": "Causal mask: no looking ahead"
-   },
-   "stringLiterals": {
-    "formula": "IF(col <= row, 0, -1E9)"
-   }
-  },
-  {
-   "id": "scores",
-   "type": "ExpressionNode",
-   "x": 3424,
-   "y": 750,
-   "init": {
-    "label": "Scores",
-    "expr": "MMULT(Q, TRANSPOSE(K)) / SQRT(4) + mask"
-   }
-  },
-  {
-   "id": "mix",
-   "type": "ExpressionNode",
-   "x": 4103,
-   "y": 1184,
-   "init": {
-    "label": "Mix the values",
-    "expr": "MMULT(A, V)"
-   }
-  },
-  {
-   "id": "h",
-   "type": "ExpressionNode",
-   "x": 4432,
-   "y": 1223,
-   "init": {
-    "label": "Add back X",
-    "expr": "X + mixed"
-   }
-  },
-  {
-   "id": "w1",
-   "type": "TableInputNode",
-   "x": 324,
-   "y": 1808,
-   "init": {
-    "label": "W_1",
-    "tableText": "-1, 0, 0, 0\n0.5, 0, 0, 0\n-1, 0, 0, 0\n1, 0, 0, 0"
-   }
-  },
-  {
-   "id": "hid",
-   "type": "ExpressionNode",
-   "x": 653,
-   "y": 1803,
-   "init": {
-    "label": "MLP 1: into the hidden layer",
-    "expr": "MMULT(H, W_1)"
-   }
-  },
-  {
-   "id": "relu",
-   "type": "MapTableNode",
-   "x": 982,
-   "y": 1872,
-   "init": {
-    "label": "MLP 2: ReLU"
-   },
-   "stringLiterals": {
-    "formula": "MAX(0, value)"
-   }
-  },
-  {
-   "id": "w2",
-   "type": "TableInputNode",
-   "x": 982,
-   "y": 2272,
-   "init": {
-    "label": "W_2",
-    "tableText": "0, -1, 0, 1\n0, 0, 0, 0\n0, 0, 0, 0\n0, 0, 0, 0"
-   }
-  },
-  {
-   "id": "out",
-   "type": "ExpressionNode",
-   "x": 1321,
-   "y": 2143,
-   "init": {
-    "label": "MLP 3: back out",
-    "expr": "MMULT(hidden, W_2)"
-   }
-  },
-  {
-   "id": "h2",
-   "type": "ExpressionNode",
-   "x": 1650,
-   "y": 2182,
-   "init": {
-    "label": "Add back H",
-    "expr": "H + mlp"
-   }
-  },
-  {
-   "id": "wout",
-   "type": "TableInputNode",
-   "x": 2062,
-   "y": 1869,
-   "init": {
-    "label": "Unembedding: a column per vocabulary word",
-    "tableText": "0, 1, 0, 0, 1\n0, 0, 1, 0, 0\n0, 0, 0, 2, 0\n1, 0, 0, 0, 0"
-   }
-  },
-  {
-   "id": "logits",
-   "type": "ExpressionNode",
-   "x": 2391,
-   "y": 1883,
-   "init": {
-    "label": "Logits",
-    "expr": "MMULT(H, W_U)"
+    "op": "count",
+    "label": "Length"
    }
   },
   {
    "id": "names",
    "type": "FrameFromListsNode",
-   "x": 279,
-   "y": 498,
+   "x": 273,
+   "y": 505,
    "init": {
     "label": "A row per word",
     "valueKeys": [
@@ -421,10 +200,262 @@
    }
   },
   {
+   "id": "embed",
+   "type": "TableInputNode",
+   "x": 894,
+   "y": 498,
+   "init": {
+    "label": "Embedding table: a row per vocabulary word",
+    "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1\n0, 1, 0, 0.1"
+   }
+  },
+  {
+   "id": "tokEmb",
+   "type": "TableSelectNode",
+   "x": 1223,
+   "y": 545,
+   "init": {
+    "label": "Look up each word's row"
+   }
+  },
+  {
+   "id": "posAll",
+   "type": "TableInputNode",
+   "x": 894,
+   "y": 793,
+   "init": {
+    "label": "Position table",
+    "tableText": "0, 0.1, 0, 0.1\n0.1, 0, 0.1, 0\n0.2, 0.1, 0, 0.1\n0.1, 0.2, 0.1, 0\n0, 0.1, 0.1, 0\n0.1, 0, 0, 0.1"
+   }
+  },
+  {
+   "id": "pos",
+   "type": "TakeDropNode",
+   "x": 1223,
+   "y": 827,
+   "init": {
+    "op": "take",
+    "label": "Positions in use"
+   }
+  },
+  {
+   "id": "x",
+   "type": "MapTableNode",
+   "x": 1562,
+   "y": 732,
+   "init": {
+    "label": "X: word + position"
+   },
+   "stringLiterals": {
+    "formula": "value + value2"
+   }
+  },
+  {
+   "id": "wq",
+   "type": "TableInputNode",
+   "x": 3330,
+   "y": 498,
+   "init": {
+    "label": "W_Q",
+    "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 3, 1, 0\n0, 3, 0, 1"
+   }
+  },
+  {
+   "id": "wk",
+   "type": "TableInputNode",
+   "x": 3001,
+   "y": 743,
+   "init": {
+    "label": "W_K",
+    "tableText": "1, 0, 0, 0\n0, 3, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1"
+   }
+  },
+  {
+   "id": "wv",
+   "type": "TableInputNode",
+   "x": 4339,
+   "y": 1365,
+   "init": {
+    "label": "W_V",
+    "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1"
+   }
+  },
+  {
+   "id": "q",
+   "type": "TableMultNode",
+   "x": 3659,
+   "y": 506,
+   "init": {
+    "label": "Queries: X·W_Q"
+   }
+  },
+  {
+   "id": "k",
+   "type": "TableMultNode",
+   "x": 3330,
+   "y": 751,
+   "init": {
+    "label": "Keys: X·W_K"
+   }
+  },
+  {
+   "id": "v",
+   "type": "TableMultNode",
+   "x": 4668,
+   "y": 1372,
+   "init": {
+    "label": "Values: X·W_V"
+   }
+  },
+  {
+   "id": "kT",
+   "type": "TableTransposeNode",
+   "x": 3659,
+   "y": 806,
+   "init": {
+    "label": "Keys turned on their side"
+   }
+  },
+  {
+   "id": "raw",
+   "type": "TableMultNode",
+   "x": 3997,
+   "y": 676,
+   "init": {
+    "label": "Every query times every key"
+   }
+  },
+  {
+   "id": "mask",
+   "type": "MakeArrayNode",
+   "x": 3997,
+   "y": 971,
+   "init": {
+    "label": "Causal mask: no looking ahead"
+   },
+   "stringLiterals": {
+    "formula": "IF(col <= row, 0, -1E9)"
+   }
+  },
+  {
+   "id": "scores",
+   "type": "MapTableNode",
+   "x": 4339,
+   "y": 902,
+   "init": {
+    "label": "Scores: ÷ √4, then mask"
+   },
+   "stringLiterals": {
+    "formula": "value / SQRT(4) + value2"
+   }
+  },
+  {
+   "id": "mix",
+   "type": "TableMultNode",
+   "x": 5019,
+   "y": 1402,
+   "init": {
+    "label": "Mix the values"
+   }
+  },
+  {
+   "id": "h",
+   "type": "MapTableNode",
+   "x": 5348,
+   "y": 1426,
+   "init": {
+    "label": "Add back X"
+   },
+   "stringLiterals": {
+    "formula": "value + value2"
+   }
+  },
+  {
+   "id": "w1",
+   "type": "TableInputNode",
+   "x": 324,
+   "y": 2132,
+   "init": {
+    "label": "W_1",
+    "tableText": "-1, 0, 0, 0\n0.5, 0, 0, 0\n-1, 0, 0, 0\n1, 0, 0, 0"
+   }
+  },
+  {
+   "id": "hid",
+   "type": "TableMultNode",
+   "x": 653,
+   "y": 2130,
+   "init": {
+    "label": "MLP 1: into the hidden layer"
+   }
+  },
+  {
+   "id": "relu",
+   "type": "MapTableNode",
+   "x": 982,
+   "y": 2186,
+   "init": {
+    "label": "MLP 2: ReLU"
+   },
+   "stringLiterals": {
+    "formula": "MAX(0, value)"
+   }
+  },
+  {
+   "id": "w2",
+   "type": "TableInputNode",
+   "x": 982,
+   "y": 2586,
+   "init": {
+    "label": "W_2",
+    "tableText": "0, -1, 0, 1\n0, 0, 0, 0\n0, 0, 0, 0\n0, 0, 0, 0"
+   }
+  },
+  {
+   "id": "out",
+   "type": "TableMultNode",
+   "x": 1321,
+   "y": 2460,
+   "init": {
+    "label": "MLP 3: back out"
+   }
+  },
+  {
+   "id": "h2",
+   "type": "MapTableNode",
+   "x": 1650,
+   "y": 2485,
+   "init": {
+    "label": "Add back H"
+   },
+   "stringLiterals": {
+    "formula": "value + value2"
+   }
+  },
+  {
+   "id": "wout",
+   "type": "TableInputNode",
+   "x": 2062,
+   "y": 2214,
+   "init": {
+    "label": "Unembedding: a column per vocabulary word",
+    "tableText": "0, 1, 0, 0, 1\n0, 0, 1, 0, 0\n0, 0, 0, 2, 0\n1, 0, 0, 0, 0"
+   }
+  },
+  {
+   "id": "logits",
+   "type": "TableMultNode",
+   "x": 2391,
+   "y": 2222,
+   "init": {
+    "label": "Logits: a score per vocabulary word"
+   }
+  },
+  {
    "id": "xFrame",
    "type": "BuildFrameNode",
-   "x": 1628,
-   "y": 766,
+   "x": 1891,
+   "y": 894,
    "init": {
     "label": "X, named"
    },
@@ -435,8 +466,8 @@
   {
    "id": "xTable",
    "type": "BindColumnsNode",
-   "x": 1957,
-   "y": 782,
+   "x": 2220,
+   "y": 910,
    "init": {
     "label": "Each word as four numbers"
    }
@@ -444,8 +475,8 @@
   {
    "id": "xMap",
    "type": "HeatmapNode",
-   "x": 2286,
-   "y": 843,
+   "x": 2549,
+   "y": 971,
    "init": {
     "label": "Embeddings"
    },
@@ -456,8 +487,8 @@
   {
    "id": "aFrame",
    "type": "BuildFrameNode",
-   "x": 4103,
-   "y": 907,
+   "x": 5019,
+   "y": 1110,
    "init": {
     "label": "Attention, named"
    }
@@ -465,8 +496,8 @@
   {
    "id": "attnTable",
    "type": "BindColumnsNode",
-   "x": 4432,
-   "y": 933,
+   "x": 5348,
+   "y": 1136,
    "init": {
     "label": "Who looks at whom"
    }
@@ -474,8 +505,8 @@
   {
    "id": "attnMap",
    "type": "HeatmapNode",
-   "x": 4761,
-   "y": 985,
+   "x": 5677,
+   "y": 1188,
    "init": {
     "label": "Attention"
    },
@@ -486,8 +517,8 @@
   {
    "id": "pFrame",
    "type": "BuildFrameNode",
-   "x": 3064,
-   "y": 1803,
+   "x": 3065,
+   "y": 2130,
    "init": {
     "label": "Predictions, named"
    }
@@ -495,8 +526,8 @@
   {
    "id": "predTable",
    "type": "BindColumnsNode",
-   "x": 3393,
-   "y": 1819,
+   "x": 3394,
+   "y": 2146,
    "init": {
     "label": "The next word, after each word"
    }
@@ -504,8 +535,8 @@
   {
    "id": "predMap",
    "type": "HeatmapNode",
-   "x": 3722,
-   "y": 1880,
+   "x": 3723,
+   "y": 2208,
    "init": {
     "label": "Next-word predictions"
    },
@@ -514,20 +545,33 @@
    }
   },
   {
-   "id": "lastRow",
-   "type": "ExpressionNode",
-   "x": 3064,
-   "y": 2207,
+   "id": "last",
+   "type": "TakeDropNode",
+   "x": 3065,
+   "y": 2561,
    "init": {
-    "label": "After the last word",
-    "expr": "TOROW(TAKE(probs, -1))"
+    "op": "take",
+    "label": "The last word's row"
+   },
+   "literals": {
+    "rows": -1
+   }
+  },
+  {
+   "id": "lastRow",
+   "type": "TableReshapeNode",
+   "x": 3394,
+   "y": 2611,
+   "init": {
+    "op": "torow",
+    "label": "As a list"
    }
   },
   {
    "id": "nextTable",
    "type": "FrameFromListsNode",
-   "x": 3393,
-   "y": 2164,
+   "x": 3773,
+   "y": 2568,
    "init": {
     "label": "What comes next"
    },
@@ -539,48 +583,18 @@
   {
    "id": "nextChart",
    "type": "ChartNode",
-   "x": 3722,
-   "y": 2240,
+   "x": 4152,
+   "y": 2644,
    "init": {
     "op": "bar",
     "label": "What comes next"
    }
   },
   {
-   "id": "conduit_down",
-   "type": "ConduitNode",
-   "x": 5189,
-   "y": 1263,
-   "init": {
-    "label": "Conduit",
-    "angle": 90
-   }
-  },
-  {
-   "id": "conduit_back",
-   "type": "ConduitNode",
-   "x": 5189,
-   "y": 1615,
-   "init": {
-    "label": "Conduit",
-    "angle": 180
-   }
-  },
-  {
-   "id": "conduit_in",
-   "type": "ConduitNode",
-   "x": 210,
-   "y": 1615,
-   "init": {
-    "label": "Conduit",
-    "angle": 90
-   }
-  },
-  {
    "id": "attn",
    "type": "CompositeNode",
-   "x": 3753,
-   "y": 835,
+   "x": 4668,
+   "y": 1038,
    "init": {
     "label": "Softmax: attention weights",
     "runMode": "single",
@@ -614,10 +628,12 @@
       },
       {
        "id": "exp",
-       "type": "ExpressionNode",
+       "type": "MapTableNode",
        "init": {
-        "label": "1. e ^ score: every score positive",
-        "expr": "e ^ scores"
+        "label": "1. e ^ score: every score positive"
+       },
+       "stringLiterals": {
+        "formula": "EXP(value)"
        },
        "x": 280,
        "y": 0
@@ -660,7 +676,7 @@
        "source": "m_scores",
        "sourceOutput": "value",
        "target": "exp",
-       "targetInput": "scores"
+       "targetInput": "table"
       },
       {
        "source": "exp",
@@ -694,7 +710,7 @@
    "id": "probs",
    "type": "CompositeNode",
    "x": 2720,
-   "y": 1953,
+   "y": 2289,
    "init": {
     "label": "Softmax: probabilities",
     "runMode": "single",
@@ -728,10 +744,12 @@
       },
       {
        "id": "exp",
-       "type": "ExpressionNode",
+       "type": "MapTableNode",
        "init": {
-        "label": "1. e ^ score: every score positive",
-        "expr": "e ^ scores"
+        "label": "1. e ^ score: every score positive"
+       },
+       "stringLiterals": {
+        "formula": "EXP(value)"
        },
        "x": 280,
        "y": 0
@@ -774,7 +792,7 @@
        "source": "m_scores",
        "sourceOutput": "value",
        "target": "exp",
-       "targetInput": "scores"
+       "targetInput": "table"
       },
       {
        "source": "exp",
@@ -803,26 +821,74 @@
      ]
     }
    }
+  },
+  {
+   "id": "conduit_down",
+   "type": "ConduitNode",
+   "x": 6105,
+   "y": 1466,
+   "init": {
+    "label": "Conduit",
+    "angle": 90
+   }
+  },
+  {
+   "id": "conduit_back",
+   "type": "ConduitNode",
+   "x": 6105,
+   "y": 1942,
+   "init": {
+    "label": "Conduit",
+    "angle": 180
+   }
+  },
+  {
+   "id": "conduit_in",
+   "type": "ConduitNode",
+   "x": 210,
+   "y": 1942,
+   "init": {
+    "label": "Conduit",
+    "angle": 90
+   }
   }
  ],
  "connections": [
   {
    "source": "prompt",
    "sourceOutput": "list",
-   "target": "oneHot",
-   "targetInput": "prompt"
+   "target": "ids",
+   "targetInput": "value"
   },
   {
    "source": "vocab",
    "sourceOutput": "list",
-   "target": "oneHot",
-   "targetInput": "vocab"
+   "target": "ids",
+   "targetInput": "array"
+  },
+  {
+   "source": "ids",
+   "sourceOutput": "result",
+   "target": "n",
+   "targetInput": "list"
   },
   {
    "source": "prompt",
    "sourceOutput": "list",
-   "target": "n",
-   "targetInput": "prompt"
+   "target": "names",
+   "targetInput": "vals0"
+  },
+  {
+   "source": "embed",
+   "sourceOutput": "table",
+   "target": "tokEmb",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "ids",
+   "sourceOutput": "result",
+   "target": "tokEmb",
+   "targetInput": "indices"
   },
   {
    "source": "n",
@@ -837,58 +903,70 @@
    "targetInput": "data"
   },
   {
-   "source": "oneHot",
+   "source": "tokEmb",
    "sourceOutput": "result",
    "target": "x",
-   "targetInput": "tokens"
-  },
-  {
-   "source": "embed",
-   "sourceOutput": "table",
-   "target": "x",
-   "targetInput": "embedding"
+   "targetInput": "table"
   },
   {
    "source": "pos",
    "sourceOutput": "result",
    "target": "x",
-   "targetInput": "positions"
+   "targetInput": "table2"
   },
   {
    "source": "x",
    "sourceOutput": "result",
    "target": "q",
-   "targetInput": "X"
+   "targetInput": "a"
   },
   {
    "source": "wq",
    "sourceOutput": "table",
    "target": "q",
-   "targetInput": "W_Q"
+   "targetInput": "b"
   },
   {
    "source": "x",
    "sourceOutput": "result",
    "target": "k",
-   "targetInput": "X"
+   "targetInput": "a"
   },
   {
    "source": "wk",
    "sourceOutput": "table",
    "target": "k",
-   "targetInput": "W_K"
+   "targetInput": "b"
   },
   {
    "source": "x",
    "sourceOutput": "result",
    "target": "v",
-   "targetInput": "X"
+   "targetInput": "a"
   },
   {
    "source": "wv",
    "sourceOutput": "table",
    "target": "v",
-   "targetInput": "W_V"
+   "targetInput": "b"
+  },
+  {
+   "source": "k",
+   "sourceOutput": "result",
+   "target": "kT",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "q",
+   "sourceOutput": "result",
+   "target": "raw",
+   "targetInput": "a"
+  },
+  {
+   "source": "kT",
+   "sourceOutput": "result",
+   "target": "raw",
+   "targetInput": "b"
   },
   {
    "source": "n",
@@ -903,52 +981,46 @@
    "targetInput": "cols"
   },
   {
-   "source": "q",
+   "source": "raw",
    "sourceOutput": "result",
    "target": "scores",
-   "targetInput": "Q"
-  },
-  {
-   "source": "k",
-   "sourceOutput": "result",
-   "target": "scores",
-   "targetInput": "K"
+   "targetInput": "table"
   },
   {
    "source": "mask",
    "sourceOutput": "result",
    "target": "scores",
-   "targetInput": "mask"
+   "targetInput": "table2"
   },
   {
    "source": "attn",
    "sourceOutput": "p_weights",
    "target": "mix",
-   "targetInput": "A"
+   "targetInput": "a"
   },
   {
    "source": "v",
    "sourceOutput": "result",
    "target": "mix",
-   "targetInput": "V"
+   "targetInput": "b"
   },
   {
    "source": "x",
    "sourceOutput": "result",
    "target": "h",
-   "targetInput": "X"
+   "targetInput": "table"
   },
   {
    "source": "mix",
    "sourceOutput": "result",
    "target": "h",
-   "targetInput": "mixed"
+   "targetInput": "table2"
   },
   {
    "source": "w1",
    "sourceOutput": "table",
    "target": "hid",
-   "targetInput": "W_1"
+   "targetInput": "b"
   },
   {
    "source": "hid",
@@ -960,37 +1032,31 @@
    "source": "relu",
    "sourceOutput": "result",
    "target": "out",
-   "targetInput": "hidden"
+   "targetInput": "a"
   },
   {
    "source": "w2",
    "sourceOutput": "table",
    "target": "out",
-   "targetInput": "W_2"
+   "targetInput": "b"
   },
   {
    "source": "out",
    "sourceOutput": "result",
    "target": "h2",
-   "targetInput": "mlp"
+   "targetInput": "table2"
   },
   {
    "source": "h2",
    "sourceOutput": "result",
    "target": "logits",
-   "targetInput": "H"
+   "targetInput": "a"
   },
   {
    "source": "wout",
    "sourceOutput": "table",
    "target": "logits",
-   "targetInput": "W_U"
-  },
-  {
-   "source": "prompt",
-   "sourceOutput": "list",
-   "target": "names",
-   "targetInput": "vals0"
+   "targetInput": "b"
   },
   {
    "source": "x",
@@ -1079,8 +1145,14 @@
   {
    "source": "probs",
    "sourceOutput": "p_weights",
+   "target": "last",
+   "targetInput": "data"
+  },
+  {
+   "source": "last",
+   "sourceOutput": "result",
    "target": "lastRow",
-   "targetInput": "probs"
+   "targetInput": "matrix"
   },
   {
    "source": "vocab",
@@ -1099,6 +1171,18 @@
    "sourceOutput": "frame",
    "target": "nextChart",
    "targetInput": "values"
+  },
+  {
+   "source": "scores",
+   "sourceOutput": "result",
+   "target": "attn",
+   "targetInput": "p_scores"
+  },
+  {
+   "source": "logits",
+   "sourceOutput": "result",
+   "target": "probs",
+   "targetInput": "p_scores"
   },
   {
    "source": "h",
@@ -1122,25 +1206,13 @@
    "source": "conduit_in",
    "sourceOutput": "out_0",
    "target": "hid",
-   "targetInput": "H"
+   "targetInput": "a"
   },
   {
    "source": "conduit_in",
    "sourceOutput": "out_0",
    "target": "h2",
-   "targetInput": "H"
-  },
-  {
-   "source": "scores",
-   "sourceOutput": "result",
-   "target": "attn",
-   "targetInput": "p_scores"
-  },
-  {
-   "source": "logits",
-   "sourceOutput": "result",
-   "target": "probs",
-   "targetInput": "p_scores"
+   "targetInput": "table"
   }
  ]
 }
