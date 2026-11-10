@@ -92,6 +92,17 @@ function refusalReason(outT: SocketDataType, inT: SocketDataType): string {
 
 const INIT_KEY_SET = new Set<string>([...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER]);
 
+/** A card of each type as it is born, to read what kind of value each setting holds. */
+const FRESH = new Map<string, Record<string, unknown> | null>();
+function freshOf(type: string, Ctor: new () => unknown): Record<string, unknown> | null {
+  if (!FRESH.has(type)) {
+    let inst: Record<string, unknown> | null = null;
+    try { inst = new Ctor() as Record<string, unknown>; } catch { inst = null; }
+    FRESH.set(type, inst);
+  }
+  return FRESH.get(type) ?? null;
+}
+
 export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number | null): GraphIssue[] {
   const issues: GraphIssue[] = [];
   const registry = ctorRegistry();
@@ -164,6 +175,19 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       issues.push({ line: at(name), node: name, message: `unknown ${k} "${v}" for ${sn.type}${nearest(v, allowed)}. Values: ${keyList(allowed)}.` });
     }
 
+    // A setting written as the wrong kind of value (`value=3` where the card keeps text) is kept as written and then
+    // read as nothing, so it is refused here with the form that works.
+    const fresh = freshOf(sn.type, Ctor);
+    for (const [k, v] of Object.entries(sn.init ?? {})) {
+      const d = fresh?.[k];
+      const fix =
+        typeof d === "string" && (typeof v === "number" || typeof v === "boolean") ? `text, so write ${k}=${JSON.stringify(String(v))}`
+        : typeof d === "number" && typeof v === "string" ? `a number, so write ${k}=${Number.isFinite(Number(v)) && v.trim() !== "" ? Number(v) : "<number>"}`
+        : typeof d === "boolean" && (typeof v === "number" || typeof v === "string") ? `true or false, so write ${k}=true or ${k}=false`
+        : null;
+      if (fix) issues.push({ line: at(name), node: name, message: `${k}=${JSON.stringify(v)}: ${k} on ${sn.type} is ${fix}. As written it would be read as blank or 0.` });
+    }
+
     const internal = sn.init?.internal as { nodes?: unknown; connections?: unknown } | undefined;
     if (internal && Array.isArray(internal.nodes) && Array.isArray(internal.connections)) {
       const sub: SavedGraph = {
@@ -189,9 +213,17 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     const unread = (k: string, map: "lit" | "str"): void =>
       void issues.push({ line: at(name), node: name, message: `${map}:${k}: no field on ${sn.type} reads this value (its input's field is ${literalFieldOf(anyInst as unknown as LiteralFieldHost, k)}), so the loader would drop it.` });
 
+    // A value typed as `lit:` or `str:` that is one of the card's own settings: say how a setting is written, in the
+    // kind of value the card keeps it as.
+    const asSetting = (k: string, v: unknown): string => {
+      if (!([...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER] as readonly string[]).includes(k) || !(k in (anyInst as object))) return "";
+      const d = fresh?.[k];
+      const kept = typeof d === "string" ? String(v) : typeof d === "number" && Number.isFinite(Number(v)) ? Number(v) : v;
+      return ` \`${k}\` is a setting on this card: write \`${k}=${JSON.stringify(kept)}\`.`;
+    };
     for (const k of Object.keys(sn.literals ?? {})) {
       if (!info.hasLiterals) {
-        issues.push({ line: at(name), node: name, message: `lit:${k}: ${sn.type} takes no inline numeric literals (it declares no \`literals\` map), so the loader would silently drop this value.` });
+        issues.push({ line: at(name), node: name, message: `lit:${k}: ${sn.type} takes no inline numeric literals (it declares no \`literals\` map), so the loader would silently drop this value.${asSetting(k, sn.literals![k])}` });
       } else if (typeof sn.literals![k] !== "number") {
         issues.push({ line: at(name), node: name, message: `lit:${k} must be a number (got ${JSON.stringify(sn.literals![k])}). Non-numeric inline values use str:.` });
       } else if (!(k in kept.lit)) {
@@ -200,7 +232,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     }
     for (const k of Object.keys(sn.stringLiterals ?? {})) {
       if (!info.hasStringLiterals) {
-        issues.push({ line: at(name), node: name, message: `str:${k}: ${sn.type} takes no inline text literals (it declares no \`stringLiterals\` map), so the loader would silently drop this value.` });
+        issues.push({ line: at(name), node: name, message: `str:${k}: ${sn.type} takes no inline text literals (it declares no \`stringLiterals\` map), so the loader would silently drop this value.${asSetting(k, sn.stringLiterals![k])}` });
       } else if (typeof sn.stringLiterals![k] !== "string") {
         issues.push({ line: at(name), node: name, message: `str:${k} must be a string (got ${JSON.stringify(sn.stringLiterals![k])}).` });
       } else if (!(k in kept.str)) {

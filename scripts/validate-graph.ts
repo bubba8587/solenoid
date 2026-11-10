@@ -40,7 +40,10 @@ export function main(args: string[]): void {
     const read = validateText(raw);
     issues = read.issues;
     if (read.graph) {
-      const sidecar = JSON.parse(raw.slice(raw.indexOf("\n---") + 4).trim() || "{}") as { positions?: Record<string, unknown> };
+      // A file with no `---` line has no sidecar; `validateText` has already said so.
+      const sep = raw.indexOf("\n---");
+      let sidecar: { positions?: Record<string, unknown> } = {};
+      try { if (sep >= 0) sidecar = JSON.parse(raw.slice(sep + 4).trim() || "{}"); } catch { /* reported as an issue */ }
       const placed = new Set(Object.keys(sidecar.positions ?? {}));
       saved = expand({ ...read.graph, nodes: read.graph.nodes.map((n) => (placed.has(n.name ?? n.id) ? n : { ...n, x: undefined, y: undefined })) });
     }

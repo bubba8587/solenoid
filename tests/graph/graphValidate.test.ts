@@ -91,6 +91,19 @@ describe("validateGraph — semantics", () => {
     expect(issue?.message).toContain("Cast");
   });
 
+  it("refuses a setting written as the wrong kind of value, with the form that works", () => {
+    const { issues } = validateText(`A: ValueInputNode value=3\nS: SliderInputNode value="2"\n---\n{}`);
+    expect(issues.find((i) => i.node === "A")?.message).toContain('value on ValueInputNode is text, so write value="3"');
+    expect(issues.find((i) => i.node === "S")?.message).toContain("value on SliderInputNode is a number, so write value=2");
+    expect(hardIssues(issues)).toHaveLength(2);
+    expect(validateText(`A: ValueInputNode value="3"\nS: SliderInputNode value=2\n---\n{}`).issues).toEqual([]);
+  });
+
+  it("says how a setting is written when it was typed as an inline literal", () => {
+    const { issues } = validateText(`A: ValueInputNode lit:value=3\n---\n{}`);
+    expect(issues[0]?.message).toContain('`value` is a setting on this card: write `value="3"`');
+  });
+
   it("flags an inline literal on a class that declares no map", () => {
     const { issues } = validateText(`A: ValueInputNode value="1" lit:x=5\n---\n{}`);
     const issue = issues.find((i) => i.message.includes("lit:x"));

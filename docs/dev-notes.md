@@ -70,6 +70,8 @@ specific item.
   answered "Unknown function LET". The parser reads it as LAMBDAs called on the spot, so nothing else learned a new
   scope (`tree/specs/computation/formula-language.md` § LET, `formulaLet.test.ts`). 624 frozen cases moved, every one
   a LET formula that had frozen that error.
+- **The strict validator refuses a setting of the wrong kind** (`ValueInputNode value=3` read as 0 with no word; it
+  now says `write value="3"`), and `validate-graph` reports a missing `---` line where it used to crash.
 - **Vault Read and TaskNotes have specs** (`tree/specs/integrations/vault-read.md`, `tree/specs/integrations/tasknotes.md`). Writing them
   found that a note's own `date` or `created` property never reaches Vault Folder's Cube (backlog § VaultBridge).
 

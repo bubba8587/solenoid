@@ -428,7 +428,8 @@ A `PlaceholderNode` ([[C35]] unknownViaPlaceholder) keeps the original type (`mi
 | the constructor throws on this `init` | error |
 | an `init` key the constructed instance does not carry (the whitelists, instance fields, literal and input keys, `valueKeys` for row-growing nodes and `internal` for Composites are accepted) | error |
 | an `op` outside the class's op vocabulary, when that vocabulary has two or more entries (an unknown op constructs without complaint and then miscomputes; a single entry asserts too little) | error |
-| a `lit:` or `str:` key on a class that does not declare that map, or a value of the wrong JSON type | error |
+| an `init` value of the wrong kind for its field, judged against the same class built with no `init`: a number or TRUE/FALSE where the field holds text (`value=3` on a Value Input, which keeps its entry as text and would read the number as 0), text where it holds a number, text or a number where it holds true or false; the message gives the form that works (`value="3"`) | error |
+| a `lit:` or `str:` key on a class that does not declare that map, or a value of the wrong JSON type ; when the key is one of the node's own settings the message says to write it as one, in the kind the field holds | error |
 | a connection to or from an unknown node, to a missing input, or from a missing output (skipped when the instance has no sockets of that side) | error |
 | a connection `canConnect` refuses, with the reason phrased as the fix (the loader would drop it without a word) | error |
 | a single-cable input wired twice | error |

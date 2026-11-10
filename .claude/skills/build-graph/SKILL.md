@@ -45,6 +45,8 @@ needs the app open, and a whole round is a few seconds.
   aggregate first; for a per-row calculation use `ComputedColumnNode` with `expr="@Qty * @Price"`.
 - **A setting is not always `op`.** GROUPBY, Rollup and Group Lists take their aggregator as `agg`; the grounding's
   line for the card names the field (`- agg: …`, `- how: …`).
+- **A setting takes the kind of value the card keeps it as.** Value Input keeps its entry as text, so it is
+  `value="3"` and never `value=3`; `validate-graph` refuses the wrong kind and prints the right form.
 - **Extensible rows are keyed** `v0`, `v1` (lists), `column0`/`value0` (filters, SUMIFS), with the per-row test in
   `condConfig={"0":{"op":"gt"}}`.
 - **Cards are named three ways.** The text form's `Name:` is what cables, `--set` and `--out` use; `label` is the
