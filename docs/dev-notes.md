@@ -94,9 +94,11 @@ specific item.
   `frame_verbs.rs`): it skipped the whole column with no notice. The card never errors over one replacement; the
   frame holds the truth, and a total over the column says so.
 - **A tiny transformer, a new example** (`seedGraphs/tiny-transformer.json`, Worked examples): one layer and one head
-  over *the cat sat on*, every step an Expression card whose formula reads like the paper's (`MMULT(Q, TRANSPOSE(K)) /
-  SQRT(4) + mask`, a softmax as `e ^ s / MMULT(e ^ s, SEQUENCE(4, 4, 1, 0))`); attention and the next-token
-  probabilities draw as labeled heatmaps. Building it found `EXP` refusing a matrix (backlog § Formula library).
+  in five stages, each a group ending in its picture. The prompt is typed and tokenized on the canvas (`XMATCH` against
+  the vocabulary, one-hot by `IF(TRANSPOSE(ids) = SEQUENCE(1, n), 1, 0)`), so editing it moves every answer; the mask
+  and positions follow its length. Each card does one step (a softmax is `e ^`, a BYROW of totals, a divide); the
+  embeddings, attention and predictions are labeled heatmaps and the last word's prediction a bar chart. Building it
+  found `EXP` refusing a matrix and Frame from Lists failing on a one-row table (backlog § Formula library).
 - **A new feature is never a new leaf** (the author, 2026-11-10; `docs/dte.md` § What is a leaf and what is a spec,
   `CLAUDE.md`, the leaf-check hook): a feature and its design go in its spec; a leaf is added unasked only for a
   product decision (the author overriding conventional wisdom, or answering a contested, high-stakes question).
