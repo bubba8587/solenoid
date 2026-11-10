@@ -1,0 +1,190 @@
+// [[B14]] oneDesignSystem, [[palette-and-theme#Each palette, drawn]]
+// Draws one SVG per built-in palette into tree/specs/canvas/palettes/, from palette.ts itself: the slot sets each
+// palette passes through (PALETTE_STAGES), its workbench ramp in both modes, and for an accent-adaptive palette the
+// ramp under every accent with its tint band. Rerun after a palette rule changes:
+//   node scripts/vite-run.mjs scripts/palette-diagrams.ts
+import { mkdirSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+import {
+  PALETTE_NAMES, PALETTE_STAGES, COLOR_PALETTE, BUILTIN_PALETTES, BUILTIN_CHROME, DEFAULT_CHROME, CHROME_HOME,
+  CHROME_TINT_BAND, CHROME_KEYS, adaptChrome, bandChroma, hexToOklch, themeAccent,
+  type PaletteName, type ChromeKey, type TintBand,
+} from "../src/graph/palette";
+import { colormapRgb } from "../src/graph/colormaps";
+
+const OUT = "tree/specs/canvas/palettes";
+const W = 960, PAD = 24, SW = (W - 2 * PAD) / 12;
+const INK = "#1d1f23", DIM = "#5d636b", RULE = "#d9dbe0";
+type Mode = "dark" | "light";
+const MODES: Mode[] = ["dark", "light"];
+
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const text = (x: number, y: number, s: string, o: { size?: number; fill?: string; weight?: number; anchor?: string } = {}) =>
+  `<text x="${x}" y="${y}" font-size="${o.size ?? 11}" fill="${o.fill ?? INK}" font-weight="${o.weight ?? 400}" text-anchor="${o.anchor ?? "start"}">${esc(s)}</text>`;
+const rect = (x: number, y: number, w: number, h: number, fill: string, extra = "") =>
+  `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${extra}/>`;
+
+const CHROME_NOTE: Record<PaletteName, string> = {
+  "Default": "Default's own neutral ramp, which every palette without one of its own wears.",
+  "Muted": "Authored: a soft, barely warm charcoal, its light ramp a step lower in contrast.",
+  "Colorblind-safe": "Authored: fully achromatic and a step crisper, so the Okabe-Ito hues carry the type signal.",
+  "Solarized": "Solarized's base03 to base3 ladder in its canonical roles; the canvas deepened to a fixed step.",
+  "Equinox": "Default's ramp with its blue cast removed, polarized 30% toward black and white.",
+  "Orchard": "Pear's neutrals mapped by role: a warm olive-brown dark, a cream light. Follows the accent's hue.",
+  "Blueprint": "Prussian blue dark, whiteprint light. Follows the accent's hue.",
+  "Neon": "Default's ramp polarized 50%: grounds toward the mode's pole, inks toward the other.",
+  "Dawn and Dusk": "Default's lightness at each key; grounds take plasma's dusk (dark) or sunrise (light) hue, inks the other end.",
+};
+
+function chromeOf(name: PaletteName, mode: Mode): Record<ChromeKey, string> {
+  const own = BUILTIN_CHROME[name][mode] as Record<ChromeKey, string>;
+  return Object.keys(own).length ? own : DEFAULT_CHROME[mode];
+}
+
+/** A small card on its canvas, wearing the ramp and the accent: what the ramp looks like in use. */
+function mock(x: number, y: number, w: number, h: number, r: Record<ChromeKey, string>, accent: string): string {
+  const cw = w * 0.62, ch = h * 0.64, cx = x + (w - cw) / 2, cy = y + (h - ch) / 2, hb = ch * 0.24;
+  return [
+    rect(x, y, w, h, r.canvasBg, `rx="4"`),
+    rect(cx, cy, cw, ch, r.surface, `rx="3" stroke="${r.border}"`),
+    rect(cx, cy, cw, hb, accent, `rx="3" fill-opacity="0.45"`),
+    rect(cx, cy, cw, 2, accent),
+    rect(cx + 6, cy + hb + ch * 0.16, cw * 0.55, 3, r.text, `rx="1.5"`),
+    rect(cx + 6, cy + hb + ch * 0.34, cw * 0.4, 3, r.textDim, `rx="1.5"`),
+    rect(cx + 6, cy + hb + ch * 0.52, cw * 0.7, ch * 0.16, r.surfaceSunken, `rx="2" stroke="${r.borderStrong}" stroke-width="0.6"`),
+  ].join("");
+}
+
+function stages(name: PaletteName, y0: number): [string, number] {
+  let y = y0, out = text(PAD, y, "ACCENT SLOTS", { size: 10, weight: 700, fill: DIM });
+  y += 10;
+  const list = PALETTE_STAGES[name];
+  list.forEach((st, i) => {
+    y += 16;
+    out += text(PAD, y, `${i === 0 ? "" : "→ "}${st.step}`, { size: 11, fill: i === list.length - 1 ? INK : DIM, weight: i === list.length - 1 ? 600 : 400 });
+    y += 6;
+    COLOR_PALETTE.forEach((slot, j) => {
+      const x = PAD + j * SW;
+      out += rect(x + 1, y, SW - 2, 34, st.slots[slot], `rx="3"`);
+      out += text(x + SW / 2, y + 46, slot, { size: 9, fill: DIM, anchor: "middle" });
+      out += text(x + SW / 2, y + 57, st.slots[slot], { size: 8, fill: DIM, anchor: "middle" });
+    });
+    y += 60;
+  });
+  return [out, y];
+}
+
+function ramps(name: PaletteName, y0: number): [string, number] {
+  let y = y0 + 22, out = text(PAD, y0 + 12, "WORKBENCH RAMP", { size: 10, weight: 700, fill: DIM });
+  out += text(PAD, y + 4, CHROME_NOTE[name], { size: 11, fill: DIM });
+  y += 14;
+  const home = CHROME_HOME[name];
+  const accentSlot = home ?? "gold";
+  const kw = (W - 2 * PAD - 150) / CHROME_KEYS.length;
+  for (const mode of MODES) {
+    const r = chromeOf(name, mode);
+    out += text(PAD, y + 12, mode, { size: 10, weight: 600, fill: DIM });
+    CHROME_KEYS.forEach((k, j) => {
+      const x = PAD + 40 + j * kw;
+      out += rect(x, y, kw - 2, 30, r[k], `rx="2" stroke="${RULE}" stroke-width="0.6"`);
+      out += text(x + (kw - 2) / 2, y + 41, k.replace(/^(surface|border|text)/, (m) => m[0]).replace(/Bg$/, ""), { size: 7.5, fill: DIM, anchor: "middle" });
+    });
+    out += mock(W - PAD - 100, y - 6, 100, 56, r, themeAccent(BUILTIN_PALETTES[name][accentSlot], mode));
+    y += 60;
+  }
+  return [out, y];
+}
+
+function bandPlot(band: TintBand | undefined, name: PaletteName, mode: Mode, x: number, y: number, w: number, h: number): string {
+  let out = text(x, y - 4, band ? `tint band: center ${band.center}°, flat ${band.flat}°, fall ${band.fall}°, floor ${band.floor}` : "no tint band: full tint at every hue", { size: 9, fill: DIM });
+  out += text(x + w, y - 4, "chroma kept (of authored), by the OK hue the ground lands on; dots are the accents", { size: 9, fill: DIM, anchor: "end" });
+  out += rect(x, y, w, h, "#ffffff", `stroke="${RULE}"`);
+  const home = CHROME_HOME[name]!;
+  const ramp = BUILTIN_CHROME[name][mode] as Record<ChromeKey, string>;
+  const rampHue = hexToOklch(ramp.surfaceRaised)[2];
+  const homeHue = hexToOklch(BUILTIN_PALETTES[name][home])[2];
+  const share = (hue: number) => (band ? bandChroma(band, hue) / bandChroma(band, rampHue) : 1);
+  const px = (hue: number) => x + ((((hue % 360) + 360) % 360) / 360) * w;
+  const py = (v: number) => y + h - 8 - (v * (h - 18));
+  out += rect(x, y + h - 4, w, 4, "url(#hues)");
+  for (const v of [1, 0.5]) {
+    out += `<line x1="${x}" x2="${x + w}" y1="${py(v)}" y2="${py(v)}" stroke="${RULE}" stroke-dasharray="3 3"/>`;
+    out += text(x + 3, py(v) - 2, `${v * 100}%`, { size: 8, fill: DIM });
+  }
+  let d = "";
+  for (let i = 0; i <= 180; i++) {
+    const hue = i * 2;
+    d += `${i ? "L" : "M"}${px(hue).toFixed(1)},${py(share(hue)).toFixed(1)}`;
+  }
+  out += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="1.2"/>`;
+  for (const slot of COLOR_PALETTE) {
+    const [, c, h] = hexToOklch(BUILTIN_PALETTES[name][slot]);
+    if (c < 0.05) continue;
+    const lands = rampHue + (h - homeHue);
+    out += `<circle cx="${px(lands)}" cy="${py(share(lands))}" r="4" fill="${BUILTIN_PALETTES[name][slot]}" stroke="${INK}" stroke-width="0.6"/>`;
+  }
+  return out;
+}
+
+function adaptive(name: PaletteName, y0: number): [string, number] {
+  if (!CHROME_HOME[name]) return ["", y0];
+  let y = y0 + 22, out = text(PAD, y0 + 12, "FOLLOWING THE ACCENT", { size: 10, weight: 700, fill: DIM });
+  out += text(PAD, y + 4, `The ramp turns by the accent's OK hue minus ${CHROME_HOME[name]}'s, holding each key's luminance; a tint band scales its chroma by where it lands.`, { size: 11, fill: DIM });
+  y += 14;
+  const home = BUILTIN_PALETTES[name][CHROME_HOME[name]!];
+  for (const mode of MODES) {
+    const band = CHROME_TINT_BAND[name]?.[mode];
+    out += text(PAD, y + 12, mode, { size: 10, weight: 600, fill: DIM });
+    COLOR_PALETTE.forEach((slot, j) => {
+      const accent = BUILTIN_PALETTES[name][slot];
+      const r = adaptChrome(BUILTIN_CHROME[name][mode], home, accent, band) as Record<ChromeKey, string>;
+      out += mock(PAD + j * SW + 1, y + 16, SW - 2, 48, r, themeAccent(accent, mode));
+      out += text(PAD + j * SW + SW / 2, y + 76, slot, { size: 9, fill: DIM, anchor: "middle" });
+    });
+    y += 96;
+    out += bandPlot(band, name, mode, PAD, y, W - 2 * PAD, 80);
+    y += 92;
+  }
+  return [out, y];
+}
+
+function plasma(name: PaletteName, y0: number): [string, number] {
+  if (name !== "Dawn and Dusk") return ["", y0];
+  let out = text(PAD, y0 + 12, "PLASMA, WHERE THE PALETTE SAMPLES IT", { size: 10, weight: 700, fill: DIM });
+  const x = PAD, y = y0 + 22, w = W - 2 * PAD;
+  out += rect(x, y, w, 22, "url(#plasma)");
+  for (const [t, label] of [[0.4, "0.4 dusk: the dark ground and the slots' tint"], [0.8, "0.8 sunrise: the light ground"], [0.92, "0.92 dawn: the dark ink"]] as const) {
+    out += rect(x + t * w - 1, y - 4, 2, 30, INK);
+    out += text(x + t * w, y + 40 + (t === 0.92 ? 12 : 0), label, { size: 9, fill: DIM, anchor: t > 0.7 ? "end" : "middle" });
+  }
+  return [out, y + 60];
+}
+
+/** Every palette's diagram, by its path in the repository. */
+export function paletteDiagrams(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const name of PALETTE_NAMES) {
+    let body = text(PAD, 34, name, { size: 20, weight: 700 });
+    let y = 50;
+    for (const part of [stages, ramps, adaptive, plasma]) {
+      const [svg, ny] = part(name, y + 8);
+      body += svg;
+      y = ny;
+    }
+    const stops = (n: number, color: (t: number) => string) =>
+      Array.from({ length: n + 1 }, (_, i) => `<stop offset="${i / n}" stop-color="${color(i / n)}"/>`).join("");
+    const defs = `<defs><linearGradient id="hues">${stops(24, (t) => `oklch(0.75 0.12 ${t * 360})`)}</linearGradient>` +
+      `<linearGradient id="plasma">${stops(32, (t) => { const [r, g, b] = colormapRgb("plasma", t)!; return `rgb(${r},${g},${b})`; })}</linearGradient></defs>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${y + PAD}" viewBox="0 0 ${W} ${y + PAD}" font-family="system-ui, -apple-system, Segoe UI, sans-serif">${defs}${rect(0, 0, W, y + PAD, "#f7f7f5")}${body}</svg>\n`;
+    out[`${OUT}/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.svg`] = svg;
+  }
+  return out;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  mkdirSync(OUT, { recursive: true });
+  for (const [file, svg] of Object.entries(paletteDiagrams())) {
+    writeFileSync(file, svg);
+    console.log(file);
+  }
+}

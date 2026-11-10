@@ -19,6 +19,8 @@ specific item.
   (0.8) at 0.016, a pale apricot. Solarized's cream is its canonical base3 and stays.
 - **Dark-mode links in the plugin were dull**: the accent as text is lifted toward OK L 0.8 keeping 40% of its distance
   (`liftedToward`), not floored, since a floor merged Equinox's grays and Solarized's blue and sky.
+- **Each palette is drawn in its spec** (`tree/specs/canvas/palettes/*.svg`, from `scripts/palette-diagrams.ts` and
+  `PALETTE_STAGES`); `paletteDiagrams.test.ts` fails while a checked-in diagram is stale.
 - The rig needs Obsidian at `/opt/Obsidian` (the 1.14.4 Linux tarball from obsidian-releases) and `wasm-bindgen-cli`
   0.2.130 for `plugin:build`; neither is in the cloud image.
 

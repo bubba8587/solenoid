@@ -24,7 +24,7 @@ export const RULES = [
 
   // ── figures: charts, the Gantt and the scheduler, records ──
   ["figures", /^packages\/gantt-layout\//],
-  ["figures", /(^|\/)(chart\w*|heatmap|sparklineFormula|gantt\w*|scheduleCpm|recordViews|recordNav|recordCardsFromPopup|displayPeekCoverage|displayPopupCoverage|fcLambdaChart|reportExport|svgLayer|rasterAtlas|vectorOrient|valueDisplayAnnotation|chipStyle|categoryColor|palette|cssColor)\.test\./],
+  ["figures", /(^|\/)(chart\w*|heatmap|sparklineFormula|gantt\w*|scheduleCpm|recordViews|recordNav|recordCardsFromPopup|displayPeekCoverage|displayPopupCoverage|fcLambdaChart|reportExport|svgLayer|rasterAtlas|vectorOrient|valueDisplayAnnotation|chipStyle|categoryColor|palette|paletteDiagrams|cssColor)\.test\./],
 
   // ── integrations: Obsidian, files, the network, scripts, AI ──
   ["integrations", /^tests\/obsidian-plugin\//],

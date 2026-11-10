@@ -137,7 +137,7 @@ results get retried and settled rulings relapse.
 | `excel_functions.rs`, `fns_*.rs` (an answer that differs from Excel) | `../tree/specs/computation/excel-divergences.md` (why each one differs) |
 | `excel_formula.rs` `apply_op` scalar operators | `../tree/specs/computation/formula-language.md` § Scalar operators |
 | `nodes/matrix.ts` Table Input parse, `TablePopup.tsx`, `TableCards.tsx`, `cardLayout.ts` | [[C58]] tableInputRawText (raw text is the stored truth); `../tree/specs/documents/table-popup.md` |
-| `palette.ts`, `appTheme.ts`, `themeVars.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
+| `palette.ts`, `appTheme.ts`, `themeVars.ts`, `scripts/palette-diagrams.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
 | `CommandPalette.tsx` | `../tree/specs/canvas/command-palette.md` |
 | `OutlinePanel.tsx` | `../tree/specs/canvas/outline-panel.md` |
 | `WorkspaceTree.tsx`, `workspacePreview.ts` | [[C132]] workspaceTree; `../tree/specs/documents/workspace-tree.md` |

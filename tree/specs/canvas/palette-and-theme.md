@@ -126,6 +126,20 @@ Tests: `palette.test.ts`: every slot in both modes gets one of the two inks, the
 
 Tests: `palette.test.ts`: every palette sets twelve hex slots, distinct outside Colorblind-safe and Equinox; Neon keeps Default's gray, makes every other slot readable on black, keeps the hue order with each pair a third of its Default gap, and puts no two slots closer than Default's closest socket pair; Dawn and Dusk keeps its socket spacing floor and Default's lightness steps on every chrome key.
 
+### Each palette, drawn
+
+Drawn from `palette.ts` by `scripts/palette-diagrams.ts` (`PALETTE_STAGES` for the slot steps), so they show what the code does, not what this page says: each palette's slot sets in the order it builds them with the step between, its workbench ramp in both modes beside a card wearing it, and for Orchard and Blueprint the ramp under every accent above its tint band, each accent's dot where its ground lands. After a palette rule changes, rerun `node scripts/vite-run.mjs scripts/palette-diagrams.ts`; `paletteDiagrams.test.ts` fails while a checked-in diagram differs from what the code draws.
+
+![Default](palettes/default.svg)
+![Muted](palettes/muted.svg)
+![Colorblind-safe](palettes/colorblind-safe.svg)
+![Solarized](palettes/solarized.svg)
+![Equinox](palettes/equinox.svg)
+![Orchard](palettes/orchard.svg)
+![Blueprint](palettes/blueprint.svg)
+![Neon](palettes/neon.svg)
+![Dawn and Dusk](palettes/dawn-and-dusk.svg)
+
 ## The neutral chrome ramp
 
 Besides its slots, a palette may author the **chrome ramp**: the neutral workbench around the graph, per theme mode. It is a separate map from the slots (`BUILTIN_CHROME`, keyed by palette name) and never a slot a card can point at. The thirteen keys (`ChromeKey`) and the App.css tokens they write (`CHROME_VARS`):
