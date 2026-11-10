@@ -8,14 +8,14 @@
    "id": "noteIntro",
    "type": "NoteNode",
    "x": -40,
-   "y": -183,
+   "y": -200,
    "init": {
     "label": "A tiny transformer",
     "color": "violet",
     "collapsed": false,
     "width": 820,
     "height": 560,
-    "body": "# A tiny transformer\n\nThe forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four numbers per word and a vocabulary of five. Read it left to right; each step is a card, and each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is found in the vocabulary and becomes a one-hot row: all zeros but a 1 under its word.\n2. **Embed.** The one-hot rows pick each word's four numbers out of the embedding table, and each position adds its own.\n3. **Attend.** Each word asks with its query and answers with its key. A query times a key, over √4, scores how much one word should look at another; the mask hides the words that come after, and a softmax turns each row into weights that sum to 1. The weights mix the values, and the mix is added back. Here *sat* and *on* put nearly all their attention on *cat*.\n4. **Think.** A two-layer network with a ReLU works on each word by itself, and its answer is added back too.\n5. **Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights were set by hand to tell that story; a real model learns billions of them from text. Two things to try: shorten the prompt to *the cat sat* and watch *on* become the next word, or set the 3 in W_K's second row to 0 and watch the attention on *cat* spread out.",
+    "body": "# A tiny transformer\n\nThe forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four numbers per word and a vocabulary of five. Read it left to right; each step is a card, and each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is found in the vocabulary and becomes a one-hot row: all zeros but a 1 under its word.\n2. **Embed.** The one-hot rows pick each word's four numbers out of the embedding table, and each position adds its own.\n3. **Attend.** Each word asks with its query and answers with its key. A query times a key, over √4, scores how much one word should look at another; the mask hides the words that come after, and a softmax turns each row into weights that sum to 1 (both Softmax cards are one small graph: Edit Contents shows its three steps). The weights mix the values, and the mix is added back. Here *sat* and *on* put nearly all their attention on *cat*.\n4. **Think.** A two-layer network with a ReLU works on each word by itself, and its answer is added back too.\n5. **Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights were set by hand to tell that story; a real model learns billions of them from text. Two things to try: shorten the prompt to *the cat sat* and watch *on* become the next word, or set the 3 in W_K's second row to 0 and watch the attention on *cat* spread out.",
     "fieldTypes": {}
    }
   },
@@ -42,7 +42,7 @@
   {
    "id": "grp_embed",
    "type": "GroupNode",
-   "x": 656,
+   "x": 607,
    "y": 440,
    "init": {
     "label": "2 · Embed: a row of four numbers per word, plus its position",
@@ -64,7 +64,7 @@
   {
    "id": "grp_attend",
    "type": "GroupNode",
-   "x": 2759,
+   "x": 2714,
    "y": 440,
    "init": {
     "label": "3 · Attend: each word looks back at the words before it",
@@ -77,8 +77,6 @@
      "v",
      "mask",
      "scores",
-     "aExp",
-     "aSum",
      "attn",
      "mix",
      "h",
@@ -88,15 +86,15 @@
     ],
     "color": "violet",
     "collapsed": false,
-    "width": 3098,
-    "height": 1163
+    "width": 2415,
+    "height": 1045
    }
   },
   {
    "id": "grp_think",
    "type": "GroupNode",
    "x": 300,
-   "y": 1863,
+   "y": 1745,
    "init": {
     "label": "4 · Think: a small network works on each word",
     "members": [
@@ -117,14 +115,12 @@
    "id": "grp_predict",
    "type": "GroupNode",
    "x": 2038,
-   "y": 1863,
+   "y": 1745,
    "init": {
     "label": "5 · Predict: a probability for every word that could come next",
     "members": [
      "wout",
      "logits",
-     "pExp",
-     "pSum",
      "probs",
      "pFrame",
      "predTable",
@@ -135,8 +131,8 @@
     ],
     "color": "amber",
     "collapsed": false,
-    "width": 2723,
-    "height": 866
+    "width": 2052,
+    "height": 836
    }
   },
   {
@@ -188,7 +184,7 @@
   {
    "id": "embed",
    "type": "TableInputNode",
-   "x": 1009,
+   "x": 960,
    "y": 498,
    "init": {
     "label": "Embedding table: a row per vocabulary word",
@@ -198,7 +194,7 @@
   {
    "id": "posAll",
    "type": "TableInputNode",
-   "x": 680,
+   "x": 631,
    "y": 745,
    "init": {
     "label": "Position table",
@@ -208,7 +204,7 @@
   {
    "id": "pos",
    "type": "TakeDropNode",
-   "x": 1009,
+   "x": 960,
    "y": 779,
    "init": {
     "op": "take",
@@ -218,7 +214,7 @@
   {
    "id": "x",
    "type": "ExpressionNode",
-   "x": 1348,
+   "x": 1299,
    "y": 655,
    "init": {
     "label": "X: embedding + position",
@@ -228,7 +224,7 @@
   {
    "id": "wq",
    "type": "TableInputNode",
-   "x": 2783,
+   "x": 2738,
    "y": 498,
    "init": {
     "label": "W_Q",
@@ -238,7 +234,7 @@
   {
    "id": "wk",
    "type": "TableInputNode",
-   "x": 2783,
+   "x": 2738,
    "y": 774,
    "init": {
     "label": "W_K",
@@ -248,8 +244,8 @@
   {
    "id": "wv",
    "type": "TableInputNode",
-   "x": 4136,
-   "y": 1258,
+   "x": 3424,
+   "y": 1141,
    "init": {
     "label": "W_V",
     "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1"
@@ -258,8 +254,8 @@
   {
    "id": "q",
    "type": "ExpressionNode",
-   "x": 3112,
-   "y": 503,
+   "x": 3067,
+   "y": 502,
    "init": {
     "label": "Queries",
     "expr": "MMULT(X, W_Q)"
@@ -268,8 +264,8 @@
   {
    "id": "k",
    "type": "ExpressionNode",
-   "x": 3112,
-   "y": 779,
+   "x": 3067,
+   "y": 778,
    "init": {
     "label": "Keys",
     "expr": "MMULT(X, W_K)"
@@ -278,8 +274,8 @@
   {
    "id": "v",
    "type": "ExpressionNode",
-   "x": 4480,
-   "y": 1263,
+   "x": 3753,
+   "y": 1145,
    "init": {
     "label": "Values",
     "expr": "MMULT(X, W_V)"
@@ -288,8 +284,8 @@
   {
    "id": "mask",
    "type": "MakeArrayNode",
-   "x": 3112,
-   "y": 1055,
+   "x": 3067,
+   "y": 1054,
    "init": {
     "label": "Causal mask: no looking ahead"
    },
@@ -300,51 +296,18 @@
   {
    "id": "scores",
    "type": "ExpressionNode",
-   "x": 3470,
-   "y": 733,
+   "x": 3424,
+   "y": 750,
    "init": {
     "label": "Scores",
     "expr": "MMULT(Q, TRANSPOSE(K)) / SQRT(4) + mask"
    }
   },
   {
-   "id": "aExp",
-   "type": "ExpressionNode",
-   "x": 3799,
-   "y": 823,
-   "init": {
-    "label": "Softmax 1: e ^ score",
-    "expr": "e ^ scores"
-   }
-  },
-  {
-   "id": "aSum",
-   "type": "ByAxisNode",
-   "x": 4136,
-   "y": 862,
-   "init": {
-    "op": "row",
-    "label": "Softmax 2: row totals"
-   },
-   "stringLiterals": {
-    "formula": "SUM(values)"
-   }
-  },
-  {
-   "id": "attn",
-   "type": "ExpressionNode",
-   "x": 4480,
-   "y": 930,
-   "init": {
-    "label": "Softmax 3: attention weights",
-    "expr": "weights / totals"
-   }
-  },
-  {
    "id": "mix",
    "type": "ExpressionNode",
-   "x": 4831,
-   "y": 1302,
+   "x": 4103,
+   "y": 1184,
    "init": {
     "label": "Mix the values",
     "expr": "MMULT(A, V)"
@@ -353,8 +316,8 @@
   {
    "id": "h",
    "type": "ExpressionNode",
-   "x": 5160,
-   "y": 1341,
+   "x": 4432,
+   "y": 1223,
    "init": {
     "label": "Add back X",
     "expr": "X + mixed"
@@ -364,7 +327,7 @@
    "id": "w1",
    "type": "TableInputNode",
    "x": 324,
-   "y": 1926,
+   "y": 1808,
    "init": {
     "label": "W_1",
     "tableText": "-1, 0, 0, 0\n0.5, 0, 0, 0\n-1, 0, 0, 0\n1, 0, 0, 0"
@@ -374,7 +337,7 @@
    "id": "hid",
    "type": "ExpressionNode",
    "x": 653,
-   "y": 1921,
+   "y": 1803,
    "init": {
     "label": "MLP 1: into the hidden layer",
     "expr": "MMULT(H, W_1)"
@@ -384,7 +347,7 @@
    "id": "relu",
    "type": "MapTableNode",
    "x": 982,
-   "y": 1990,
+   "y": 1872,
    "init": {
     "label": "MLP 2: ReLU"
    },
@@ -396,7 +359,7 @@
    "id": "w2",
    "type": "TableInputNode",
    "x": 982,
-   "y": 2390,
+   "y": 2272,
    "init": {
     "label": "W_2",
     "tableText": "0, -1, 0, 1\n0, 0, 0, 0\n0, 0, 0, 0\n0, 0, 0, 0"
@@ -406,7 +369,7 @@
    "id": "out",
    "type": "ExpressionNode",
    "x": 1321,
-   "y": 2261,
+   "y": 2143,
    "init": {
     "label": "MLP 3: back out",
     "expr": "MMULT(hidden, W_2)"
@@ -416,7 +379,7 @@
    "id": "h2",
    "type": "ExpressionNode",
    "x": 1650,
-   "y": 2300,
+   "y": 2182,
    "init": {
     "label": "Add back H",
     "expr": "H + mlp"
@@ -426,7 +389,7 @@
    "id": "wout",
    "type": "TableInputNode",
    "x": 2062,
-   "y": 1921,
+   "y": 1869,
    "init": {
     "label": "Unembedding: a column per vocabulary word",
     "tableText": "0, 1, 0, 0, 1\n0, 0, 1, 0, 0\n0, 0, 0, 2, 0\n1, 0, 0, 0, 0"
@@ -436,43 +399,10 @@
    "id": "logits",
    "type": "ExpressionNode",
    "x": 2391,
-   "y": 1936,
+   "y": 1883,
    "init": {
     "label": "Logits",
     "expr": "MMULT(H, W_U)"
-   }
-  },
-  {
-   "id": "pExp",
-   "type": "ExpressionNode",
-   "x": 2720,
-   "y": 2000,
-   "init": {
-    "label": "Softmax 1: e ^ logit",
-    "expr": "e ^ logits"
-   }
-  },
-  {
-   "id": "pSum",
-   "type": "ByAxisNode",
-   "x": 3054,
-   "y": 2088,
-   "init": {
-    "op": "row",
-    "label": "Softmax 2: row totals"
-   },
-   "stringLiterals": {
-    "formula": "SUM(values)"
-   }
-  },
-  {
-   "id": "probs",
-   "type": "ExpressionNode",
-   "x": 3391,
-   "y": 2078,
-   "init": {
-    "label": "Softmax 3: probabilities",
-    "expr": "weights / totals"
    }
   },
   {
@@ -481,7 +411,10 @@
    "x": 279,
    "y": 498,
    "init": {
-    "label": "A row per word"
+    "label": "A row per word",
+    "valueKeys": [
+     "name0"
+    ]
    },
    "stringLiterals": {
     "name0": "word"
@@ -490,7 +423,7 @@
   {
    "id": "xFrame",
    "type": "BuildFrameNode",
-   "x": 1677,
+   "x": 1628,
    "y": 766,
    "init": {
     "label": "X, named"
@@ -502,7 +435,7 @@
   {
    "id": "xTable",
    "type": "BindColumnsNode",
-   "x": 2006,
+   "x": 1957,
    "y": 782,
    "init": {
     "label": "Each word as four numbers"
@@ -511,7 +444,7 @@
   {
    "id": "xMap",
    "type": "HeatmapNode",
-   "x": 2335,
+   "x": 2286,
    "y": 843,
    "init": {
     "label": "Embeddings"
@@ -523,8 +456,8 @@
   {
    "id": "aFrame",
    "type": "BuildFrameNode",
-   "x": 4831,
-   "y": 1025,
+   "x": 4103,
+   "y": 907,
    "init": {
     "label": "Attention, named"
    }
@@ -532,8 +465,8 @@
   {
    "id": "attnTable",
    "type": "BindColumnsNode",
-   "x": 5160,
-   "y": 1051,
+   "x": 4432,
+   "y": 933,
    "init": {
     "label": "Who looks at whom"
    }
@@ -541,8 +474,8 @@
   {
    "id": "attnMap",
    "type": "HeatmapNode",
-   "x": 5489,
-   "y": 1103,
+   "x": 4761,
+   "y": 985,
    "init": {
     "label": "Attention"
    },
@@ -553,8 +486,8 @@
   {
    "id": "pFrame",
    "type": "BuildFrameNode",
-   "x": 3735,
-   "y": 1951,
+   "x": 3064,
+   "y": 1803,
    "init": {
     "label": "Predictions, named"
    }
@@ -562,8 +495,8 @@
   {
    "id": "predTable",
    "type": "BindColumnsNode",
-   "x": 4064,
-   "y": 1967,
+   "x": 3393,
+   "y": 1819,
    "init": {
     "label": "The next word, after each word"
    }
@@ -571,8 +504,8 @@
   {
    "id": "predMap",
    "type": "HeatmapNode",
-   "x": 4393,
-   "y": 2028,
+   "x": 3722,
+   "y": 1880,
    "init": {
     "label": "Next-word predictions"
    },
@@ -583,8 +516,8 @@
   {
    "id": "lastRow",
    "type": "ExpressionNode",
-   "x": 3735,
-   "y": 2350,
+   "x": 3064,
+   "y": 2207,
    "init": {
     "label": "After the last word",
     "expr": "TOROW(TAKE(probs, -1))"
@@ -593,8 +526,8 @@
   {
    "id": "nextTable",
    "type": "FrameFromListsNode",
-   "x": 4064,
-   "y": 2312,
+   "x": 3393,
+   "y": 2164,
    "init": {
     "label": "What comes next"
    },
@@ -606,8 +539,8 @@
   {
    "id": "nextChart",
    "type": "ChartNode",
-   "x": 4393,
-   "y": 2388,
+   "x": 3722,
+   "y": 2240,
    "init": {
     "op": "bar",
     "label": "What comes next"
@@ -616,8 +549,8 @@
   {
    "id": "conduit_down",
    "type": "ConduitNode",
-   "x": 5917,
-   "y": 1381,
+   "x": 5189,
+   "y": 1263,
    "init": {
     "label": "Conduit",
     "angle": 90
@@ -626,8 +559,8 @@
   {
    "id": "conduit_back",
    "type": "ConduitNode",
-   "x": 5917,
-   "y": 1733,
+   "x": 5189,
+   "y": 1615,
    "init": {
     "label": "Conduit",
     "angle": 180
@@ -637,10 +570,238 @@
    "id": "conduit_in",
    "type": "ConduitNode",
    "x": 210,
-   "y": 1733,
+   "y": 1615,
    "init": {
     "label": "Conduit",
     "angle": 90
+   }
+  },
+  {
+   "id": "attn",
+   "type": "CompositeNode",
+   "x": 3753,
+   "y": 835,
+   "init": {
+    "label": "Softmax: attention weights",
+    "runMode": "single",
+    "inputPorts": [
+     {
+      "id": "p_scores",
+      "label": "Scores",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_scores"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "p_weights",
+      "label": "Weights",
+      "tier": "basic",
+      "internalNodeId": "m_weights"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_scores",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Scores"
+       },
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "exp",
+       "type": "ExpressionNode",
+       "init": {
+        "label": "1. e ^ score: every score positive",
+        "expr": "e ^ scores"
+       },
+       "x": 280,
+       "y": 0
+      },
+      {
+       "id": "totals",
+       "type": "ByAxisNode",
+       "init": {
+        "label": "2. Each row's total",
+        "op": "row"
+       },
+       "stringLiterals": {
+        "formula": "SUM(values)"
+       },
+       "x": 600,
+       "y": 160
+      },
+      {
+       "id": "divide",
+       "type": "ExpressionNode",
+       "init": {
+        "label": "3. Divide: each row sums to 1",
+        "expr": "weights / totals"
+       },
+       "x": 920,
+       "y": 0
+      },
+      {
+       "id": "m_weights",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Weights"
+       },
+       "x": 1240,
+       "y": 0
+      }
+     ],
+     "connections": [
+      {
+       "source": "m_scores",
+       "sourceOutput": "value",
+       "target": "exp",
+       "targetInput": "scores"
+      },
+      {
+       "source": "exp",
+       "sourceOutput": "result",
+       "target": "totals",
+       "targetInput": "table"
+      },
+      {
+       "source": "exp",
+       "sourceOutput": "result",
+       "target": "divide",
+       "targetInput": "weights"
+      },
+      {
+       "source": "totals",
+       "sourceOutput": "result",
+       "target": "divide",
+       "targetInput": "totals"
+      },
+      {
+       "source": "divide",
+       "sourceOutput": "result",
+       "target": "m_weights",
+       "targetInput": "value"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "probs",
+   "type": "CompositeNode",
+   "x": 2720,
+   "y": 1953,
+   "init": {
+    "label": "Softmax: probabilities",
+    "runMode": "single",
+    "inputPorts": [
+     {
+      "id": "p_scores",
+      "label": "Scores",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_scores"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "p_weights",
+      "label": "Weights",
+      "tier": "basic",
+      "internalNodeId": "m_weights"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_scores",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Scores"
+       },
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "exp",
+       "type": "ExpressionNode",
+       "init": {
+        "label": "1. e ^ score: every score positive",
+        "expr": "e ^ scores"
+       },
+       "x": 280,
+       "y": 0
+      },
+      {
+       "id": "totals",
+       "type": "ByAxisNode",
+       "init": {
+        "label": "2. Each row's total",
+        "op": "row"
+       },
+       "stringLiterals": {
+        "formula": "SUM(values)"
+       },
+       "x": 600,
+       "y": 160
+      },
+      {
+       "id": "divide",
+       "type": "ExpressionNode",
+       "init": {
+        "label": "3. Divide: each row sums to 1",
+        "expr": "weights / totals"
+       },
+       "x": 920,
+       "y": 0
+      },
+      {
+       "id": "m_weights",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Weights"
+       },
+       "x": 1240,
+       "y": 0
+      }
+     ],
+     "connections": [
+      {
+       "source": "m_scores",
+       "sourceOutput": "value",
+       "target": "exp",
+       "targetInput": "scores"
+      },
+      {
+       "source": "exp",
+       "sourceOutput": "result",
+       "target": "totals",
+       "targetInput": "table"
+      },
+      {
+       "source": "exp",
+       "sourceOutput": "result",
+       "target": "divide",
+       "targetInput": "weights"
+      },
+      {
+       "source": "totals",
+       "sourceOutput": "result",
+       "target": "divide",
+       "targetInput": "totals"
+      },
+      {
+       "source": "divide",
+       "sourceOutput": "result",
+       "target": "m_weights",
+       "targetInput": "value"
+      }
+     ]
+    }
    }
   }
  ],
@@ -760,32 +921,8 @@
    "targetInput": "mask"
   },
   {
-   "source": "scores",
-   "sourceOutput": "result",
-   "target": "aExp",
-   "targetInput": "scores"
-  },
-  {
-   "source": "aExp",
-   "sourceOutput": "result",
-   "target": "aSum",
-   "targetInput": "table"
-  },
-  {
-   "source": "aExp",
-   "sourceOutput": "result",
-   "target": "attn",
-   "targetInput": "weights"
-  },
-  {
-   "source": "aSum",
-   "sourceOutput": "result",
-   "target": "attn",
-   "targetInput": "totals"
-  },
-  {
    "source": "attn",
-   "sourceOutput": "result",
+   "sourceOutput": "p_weights",
    "target": "mix",
    "targetInput": "A"
   },
@@ -850,30 +987,6 @@
    "targetInput": "W_U"
   },
   {
-   "source": "logits",
-   "sourceOutput": "result",
-   "target": "pExp",
-   "targetInput": "logits"
-  },
-  {
-   "source": "pExp",
-   "sourceOutput": "result",
-   "target": "pSum",
-   "targetInput": "table"
-  },
-  {
-   "source": "pExp",
-   "sourceOutput": "result",
-   "target": "probs",
-   "targetInput": "weights"
-  },
-  {
-   "source": "pSum",
-   "sourceOutput": "result",
-   "target": "probs",
-   "targetInput": "totals"
-  },
-  {
    "source": "prompt",
    "sourceOutput": "list",
    "target": "names",
@@ -905,7 +1018,7 @@
   },
   {
    "source": "attn",
-   "sourceOutput": "result",
+   "sourceOutput": "p_weights",
    "target": "aFrame",
    "targetInput": "matrix"
   },
@@ -935,7 +1048,7 @@
   },
   {
    "source": "probs",
-   "sourceOutput": "result",
+   "sourceOutput": "p_weights",
    "target": "pFrame",
    "targetInput": "matrix"
   },
@@ -965,7 +1078,7 @@
   },
   {
    "source": "probs",
-   "sourceOutput": "result",
+   "sourceOutput": "p_weights",
    "target": "lastRow",
    "targetInput": "probs"
   },
@@ -1016,6 +1129,18 @@
    "sourceOutput": "out_0",
    "target": "h2",
    "targetInput": "H"
+  },
+  {
+   "source": "scores",
+   "sourceOutput": "result",
+   "target": "attn",
+   "targetInput": "p_scores"
+  },
+  {
+   "source": "logits",
+   "sourceOutput": "result",
+   "target": "probs",
+   "targetInput": "p_scores"
   }
  ]
 }

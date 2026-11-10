@@ -96,7 +96,7 @@ specific item.
 - **A tiny transformer, a new example** (`seedGraphs/tiny-transformer.json`, Worked examples): one layer and one head
   in five stages, each a group ending in its picture. The prompt is typed and tokenized on the canvas (`XMATCH` against
   the vocabulary, one-hot by `IF(TRANSPOSE(ids) = SEQUENCE(1, n), 1, 0)`), so editing it moves every answer; the mask
-  and positions follow its length. Each card does one step (a softmax is `e ^`, a BYROW of totals, a divide); the
+  and positions follow its length. Each card does one step; both softmaxes are one Composite, its three steps (`e ^`, a BYROW of totals, a divide) inside; the
   embeddings, attention and predictions are labeled heatmaps and the last word's prediction a bar chart. It sits in two
   rows, H riding a chain of three rotated Conduits from the end of Attend back to the start of Think. Building it
   found `EXP` refusing a matrix and a table through TAKE's untyped output failing Frame from Lists with an internal error (backlog § Formula
