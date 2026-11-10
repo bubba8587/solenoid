@@ -175,6 +175,11 @@ Tests:
 - `noteFrontmatterCube.test.ts`: a row list whose values include a list is a Cube, so a list is never a string inside a cell.
 - `noteNodeRanks.test.ts`: the socket for every rank, a matrix and complex text included.
 
+
+**An imported note's body gives two more outputs.** The Import Obsidian Note node also mints `note-tasks` (a Cube, a row per checklist item) when the note has a checklist item and `note-tables` (a Frame, the note's tables stacked) when it has a table, holding what the Vault Folder node's columns of those names hold for one note ([[vault-read#The body as data]]). They come and go with the note's content as a frontmatter output does: a note that loses its last table loses the output, and the cables on it are dropped. A frontmatter key named `note-tasks` or `note-tables` keeps the name for itself. A Note node written in Solenoid mints neither (`bodyFields`, `nodes/annotation.ts` and `nodes/obsidian.ts`).
+
+Tests: `noteBody.test.ts`: the two outputs minted beside the frontmatter's when the note has tasks and a table, neither for a note of prose, both removed when they leave the note, and a frontmatter key of the same name kept.
+
 ### Type pins
 
 `fieldTypes[key]` is the user's pick, made from the glyph on the field row. A pin holds only the element family (number, text, date, logical, complex). On every sync the pin is reshaped onto the guessed rank (`typeAtRank`), so a scalar pin on a list value becomes the matching list type. A pin is dropped when either side is a frame or cube, and a pin for a key that no longer exists is pruned. Frame and cube rows show no picker. When a pin disagrees with the guess, `coerceScalar` converts each element: to number with `Number()` (logical gives 1 or 0, non-finite gives null); to text with `String()`; to logical as `true` for `1`, `"1"` or case-insensitive `"true"`; to date by parsing the text to a rounded serial.

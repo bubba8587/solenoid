@@ -1,9 +1,10 @@
 // [[C101]] onePatchPath, [[B18]] safeToShare
+import { readTasks, tasksCube, readTables, tablesFrame } from "../noteBody";
 import { GraphNode } from "../graphModel";
 import { documentIn, strIn, strOut, cubeIn, frameOut, readTextInput, strListIn, keysCsv } from "./shared";
 import { formatDateSerial } from "./dateSerial";
 import type { ObsidianWriteMode } from "../obsidianWrite";
-import { NoteNode } from "./annotation";
+import { NoteNode, type EmittedValue } from "./annotation";
 import { type FrontmatterFieldType } from "../noteFrontmatter";
 import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
@@ -468,6 +469,17 @@ export class ImportObsidianNode extends NoteNode {
   }
 
   protected reservedOutputs(): ReadonlySet<string> { return IMPORT_RESERVED; }
+
+  /** A note's checklist items and its tables, each an output when the note has any, as Vault Folder's `note-tasks`
+   *  and `note-tables` columns hold them (`tree/specs/integrations/vault-read.md` § The body as data). */
+  protected bodyFields(body: string): { key: string; value: EmittedValue; type: FrontmatterFieldType }[] {
+    const out: { key: string; value: EmittedValue; type: FrontmatterFieldType }[] = [];
+    const tasks = tasksCube(readTasks(body, this.body.split("\n").length - body.split("\n").length));
+    if (tasks) out.push({ key: "note-tasks", value: tasks, type: "cube" });
+    const tables = tablesFrame(readTables(body));
+    if (tables) out.push({ key: "note-tables", value: tables, type: "frame" });
+    return out;
+  }
 
   async loadColumnPicks(vault: string): Promise<void> {
     const { readVaultFile } = await import("../fileBridge");

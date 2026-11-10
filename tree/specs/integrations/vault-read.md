@@ -75,7 +75,7 @@ The Solenoid Properties plugin's picks then type the columns inside a nested Cub
 
 ## The body as data
 
-A note's properties are not the only data in it. The Vault Folder node's "From each note" section has three more boxes, each off until ticked, that read what people write in the body itself: checklists, tables, and `key:: value` fields. Nothing inside a code fence is read by any of them, and a line inside a quote or a callout is read as if its `>` marks were not there. The code is `noteBody.ts`.
+A note's properties are not the only data in it. The Vault Folder node's "From each note" section has three more boxes, each off until ticked, that read what people write in the body itself: checklists, tables, and `key:: value` fields. Nothing inside a code fence is read by any of them, and a line inside a quote or a callout is read as if its `>` marks were not there. The code is `noteBody.ts`. The Import Obsidian Note node gives the same tasks and tables for one note, as its `note-tasks` and `note-tables` outputs ([[reports-and-notes#Frontmatter becomes output sockets]]).
 
 ```mermaid
 flowchart LR

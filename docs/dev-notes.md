@@ -80,6 +80,8 @@ specific item.
   property columns. Backlinks gives `backlinks`, the notes anywhere in the vault that link to each note
   (`resolveLink` finds a link's note as Obsidian does). All four are off until ticked. The example
   `vault-note-bodies` runs them on the sample vault.
+- **Import Obsidian Note mints `note-tasks` and `note-tables` outputs** when the note has a checklist or a table
+  (`bodyFields`), beside the outputs its frontmatter gives.
 - **Vault Read and TaskNotes have specs** (`tree/specs/integrations/vault-read.md`, `tree/specs/integrations/tasknotes.md`). Writing them
   found that a note's own `date` or `created` property never reaches Vault Folder's Cube (backlog § VaultBridge).
 

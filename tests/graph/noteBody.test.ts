@@ -3,6 +3,8 @@ import { describe, it, expect } from "vitest";
 import { readTasks, tasksCube, readTables, tablesFrame, readInlineFields } from "../../src/graph/noteBody";
 import { notesToCube, resolveLink, backlinksOf } from "../../src/graph/vaultCube";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
+import { ImportObsidianNode } from "../../src/graph/nodes/obsidian";
+import { isCubeValue, isFrameValue } from "../../src/graph/frame";
 
 const day = (iso: string) => parseDateToSerial(iso);
 const col = (v: { columns: { name: string }[] } | null, name: string) =>
@@ -192,5 +194,35 @@ describe("the notes that link to a note", () => {
     expect(notesToCube(folder, sources).columns.map((c) => c.name)).not.toContain("backlinks");
     const cube = notesToCube(folder, sources, { backlinksFrom: vault });
     expect(cells(cube, "backlinks")).toEqual([["Projects/Kitchen.md"], ["Projects/Kitchen.md"]]);
+  });
+});
+
+describe("Import Obsidian Note gives one note's tasks and tables as outputs", () => {
+  const body = "---\nstatus: open\n---\n# Week\n\n| Day | Hours |\n|---|---|\n| Mon | 2 |\n\n- [ ] Order tiles\n- [x] Measure\n";
+
+  it("mints note-tasks and note-tables beside the frontmatter's outputs when the note has them", () => {
+    const n = new ImportObsidianNode({ body });
+    n.syncFields();
+    expect(Object.keys(n.outputs).sort()).toEqual(["document", "note-tables", "note-tasks", "path", "status"]);
+    const out = n.fieldValues();
+    expect(isCubeValue(out["note-tasks"])).toBe(true);
+    expect(isFrameValue(out["note-tables"])).toBe(true);
+    expect(cells(out["note-tasks"] as never, "task")).toEqual(["Order tiles", "Measure"]);
+    expect(cells(out["note-tasks"] as never, "line")).toEqual([10, 11]);
+    expect(cells(out["note-tables"] as never, "Hours")).toEqual([2]);
+  });
+
+  it("mints neither for a note with no checklist and no table, and drops them when they leave the note", () => {
+    const n = new ImportObsidianNode({ body });
+    n.syncFields();
+    n.body = "---\nstatus: open\n---\nJust prose.\n";
+    expect(n.syncFields().removed).toEqual(["note-tasks", "note-tables"]);
+    expect(Object.keys(n.outputs).sort()).toEqual(["document", "path", "status"]);
+  });
+
+  it("leaves a frontmatter key of the same name as the output", () => {
+    const n = new ImportObsidianNode({ body: "---\nnote-tasks: mine\n---\n- [ ] one\n" });
+    n.syncFields();
+    expect(n.fieldValues()["note-tasks"]).toBe("mine");
   });
 });
