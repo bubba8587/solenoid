@@ -298,11 +298,11 @@ function pulledToward(base: Record<PaletteSlot, string>, anchor: PaletteSlot, t:
 const ANCHOR_PULL = 0.1;
 const ANCHOR_GRAY_PULL = 0.03;
 
-/** Orchard's hand-picked earth tones: honey, olive, rust and blossom on the warm side, the cool slots at the same
+/** Orchard's hand-picked earth tones: honey, burnt orange, olive, rust and blossom on the warm side, the cool slots at the same
  *  muted saturation and value. Not derived from Default; the lean toward lime below is. */
 const EARTH_TONES: Record<PaletteSlot, string> = {
   gold:      "#d99a17",
-  amber:     "#9c6f0e",
+  amber:     "#c4701e",
   lime:      "#b8d532",
   green:     "#649117",
   pink:      "#d5537f",
