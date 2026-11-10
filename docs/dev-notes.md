@@ -35,7 +35,9 @@ specific item.
   (`dragDropEnabled: false`) and in Firefox (drag data on each chip).
 - **PIVOTBY calculated fields**: a Name and a λ per field on the card; the LAMBDA runs per cell over that cell's rows,
   totals included, so MPG by plate by month is miles over gallons at every level (`pivot_frame_calc`). Explicit
-  aggregates, no `@` (author 2026-11-10).
+  aggregates, no `@` (author 2026-11-10). Held by `tests/pivot_calc.rs` (a calc field aggregating one column equals
+  that value field in every cell of random layouts; `PIVOT_SEED`/`PIVOT_CASES` widen it) and `pivotCalcFields.test.ts`
+  (a row-by-row oracle, the targeted cases, the save path, and the `pivot-calculated-fields` seed's hand-worked cells).
 - The rig needs Obsidian at `/opt/Obsidian` (the 1.14.4 Linux tarball from obsidian-releases) and `wasm-bindgen-cli`
   0.2.130 for `plugin:build`; neither is in the cloud image.
 
