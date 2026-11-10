@@ -907,6 +907,8 @@ export class VaultFolderNode extends GraphNode {
   includeTasks: boolean;
   includeTables: boolean;
   includeFields: boolean;
+  /** A `backlinks` column: the notes anywhere in the vault that link to each note. Reads every note in the vault. */
+  includeBacklinks: boolean;
   nameFormat: string;
   refreshMinutes: number;
   width = 260; height = 240;
@@ -917,7 +919,7 @@ export class VaultFolderNode extends GraphNode {
 
   constructor(init?: {
     label?: string; folder?: string; glob?: string; includeBody?: boolean; includeTasks?: boolean; includeTables?: boolean;
-    includeFields?: boolean; nameFormat?: string; refreshMinutes?: number;
+    includeFields?: boolean; includeBacklinks?: boolean; nameFormat?: string; refreshMinutes?: number;
   }) {
     super("VaultFolder");
     this.label = init?.label ?? "Vault Folder";
@@ -927,6 +929,7 @@ export class VaultFolderNode extends GraphNode {
     this.includeTasks = init?.includeTasks ?? false;
     this.includeTables = init?.includeTables ?? false;
     this.includeFields = init?.includeFields ?? false;
+    this.includeBacklinks = init?.includeBacklinks ?? false;
     this.nameFormat = init?.nameFormat ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.addInput("folder", strIn("Folder"));
@@ -939,7 +942,7 @@ export class VaultFolderNode extends GraphNode {
     const folder = readTextInput(inputs?.folder, this.folder, "Folder").replace(/^\/+|\/+$/g, "");
     const glob = readTextInput(inputs?.glob, this.glob, "Filter");
     const vault = getVaultRoot();
-    const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${[this.includeBody, this.includeTasks, this.includeTables, this.includeFields].map((on) => (on ? 1 : 0)).join("")}`);
+    const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${[this.includeBody, this.includeTasks, this.includeTables, this.includeFields, this.includeBacklinks].map((on) => (on ? 1 : 0)).join("")}`);
     if (key !== this._lastKey) {
       this._lastKey = key;
       this._folder = folder;
@@ -989,6 +992,7 @@ export class VaultFolderNode extends GraphNode {
       const nameFormat = this.nameFormat.trim() || (await this.defaultNameFormat(vault, folder));
       const cube = notesToCube(notes, sources, {
         nameFormat, includeBody: this.includeBody, includeTasks: this.includeTasks, includeTables: this.includeTables, includeFields: this.includeFields,
+        backlinksFrom: this.includeBacklinks ? await this.wholeVault(vault, folder, notes) : undefined,
       });
 
       if (!current()) return;
@@ -999,6 +1003,20 @@ export class VaultFolderNode extends GraphNode {
       this.cached = null;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
+  }
+
+  /** Every note in the vault, for the links they hold: the folder's own notes as already read, the rest read now. */
+  private async wholeVault(vault: string, folder: string, read: readonly VaultNote[]): Promise<{ path: string; text: string }[]> {
+    if (folder === "") return [...read];
+    const have = new Map(read.map((n) => [n.path, n.text]));
+    const out: { path: string; text: string }[] = [];
+    for (const path of (await listVaultMarkdownFiles(vault)).filter((p) => !p.split("/").includes("_types"))) {
+      let text = have.get(path);
+      // A note that left between the listing and its read links to nothing.
+      if (text === undefined) { try { text = await readVaultFile(vault, path); } catch { continue; } }
+      out.push({ path, text });
+    }
+    return out;
   }
 
   private async discoverMdbase(readRoot: string, files: string[]): Promise<Map<string, MdbaseCollection>> {

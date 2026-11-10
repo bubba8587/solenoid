@@ -780,12 +780,13 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
 const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
 const FIELD_INPUT = { flex: 1, width: "auto", minWidth: 0 } as const;
 
-/** What a Vault Folder reads out of each note's body, beside its properties. */
-const VAULT_BODY_READS: { key: "includeBody" | "includeTasks" | "includeTables" | "includeFields"; label: string; title: string }[] = [
+/** What a Vault Folder reads for each note beside its properties: out of its body, and the notes that link to it. */
+const VAULT_BODY_READS: { key: "includeBody" | "includeTasks" | "includeTables" | "includeFields" | "includeBacklinks"; label: string; title: string }[] = [
   { key: "includeBody", label: "Body", title: "A note-body column with each note's markdown" },
   { key: "includeTasks", label: "Tasks", title: "A note-tasks column with each note's checklist items as a table" },
   { key: "includeTables", label: "Tables", title: "A note-tables column with each note's tables as one table" },
   { key: "includeFields", label: "Fields", title: "A column for each inline field, written key:: value" },
+  { key: "includeBacklinks", label: "Backlinks", title: "A backlinks column with the notes that link to each note, from the whole vault" },
 ];
 
 export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeType>) {

@@ -1,7 +1,7 @@
 // [[B1]] obsidianBet, [[vault-read#The body as data]]
 import { describe, it, expect } from "vitest";
 import { readTasks, tasksCube, readTables, tablesFrame, readInlineFields } from "../../src/graph/noteBody";
-import { notesToCube } from "../../src/graph/vaultCube";
+import { notesToCube, resolveLink, backlinksOf } from "../../src/graph/vaultCube";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 
 const day = (iso: string) => parseDateToSerial(iso);
@@ -158,5 +158,39 @@ describe("Vault Folder reads the body as data when asked", () => {
   it("keeps the frontmatter's value for a key written both ways", () => {
     const cube = notesToCube(notes, sources, { includeFields: true });
     expect(cells(cube, "Owner")).toEqual(["Front", null]);
+  });
+});
+
+describe("the notes that link to a note", () => {
+  const vault = [
+    { path: "Projects/Kitchen.md", text: "See [[Sam]] and [[People/Ada|Ada]]. Itself: [[Kitchen]]." },
+    { path: "People/Sam.md", text: "Leads [[Projects/Kitchen]] and [[Kitchen#Budget]]. ![[Chart.png]]" },
+    { path: "People/Ada.md", text: "---\nproject: \"[[kitchen]]\"\n---\nNo one named [[Nobody]]." },
+    { path: "Archive/People/Sam.md", text: "An older Sam, linking [[Archive/People/Sam]] and [[Projects/Kitchen.md]]." },
+  ];
+  const paths = vault.map((n) => n.path);
+
+  it("resolves a link by its path, else by its name, the note nearest the vault root first, whatever the case", () => {
+    expect(resolveLink("Projects/Kitchen", paths)).toBe("Projects/Kitchen.md");
+    expect(resolveLink("kitchen", paths)).toBe("Projects/Kitchen.md");
+    expect(resolveLink("Kitchen.md", paths)).toBe("Projects/Kitchen.md");
+    expect(resolveLink("Sam", paths)).toBe("People/Sam.md");
+    expect(resolveLink("Archive/People/Sam", paths)).toBe("Archive/People/Sam.md");
+    expect(resolveLink("Nobody", paths)).toBeNull();
+  });
+
+  it("lists each note's linkers once, in path order, from frontmatter and body alike, never the note itself", () => {
+    const back = backlinksOf(["Projects/Kitchen.md", "People/Sam.md", "People/Ada.md"], vault);
+    expect(back.get("Projects/Kitchen.md")).toEqual(["Archive/People/Sam.md", "People/Ada.md", "People/Sam.md"]);
+    expect(back.get("People/Sam.md")).toEqual(["Projects/Kitchen.md"]);
+    expect(back.get("People/Ada.md")).toEqual(["Projects/Kitchen.md"]);
+  });
+
+  it("is a backlinks column on the Cube when the vault's notes are given, and absent otherwise", () => {
+    const sources = { mdbaseFor: () => ({}), obsidian: {} };
+    const folder = vault.filter((n) => n.path.startsWith("People/"));
+    expect(notesToCube(folder, sources).columns.map((c) => c.name)).not.toContain("backlinks");
+    const cube = notesToCube(folder, sources, { backlinksFrom: vault });
+    expect(cells(cube, "backlinks")).toEqual([["Projects/Kitchen.md"], ["Projects/Kitchen.md"]]);
   });
 });

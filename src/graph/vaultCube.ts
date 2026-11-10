@@ -36,6 +36,8 @@ interface VaultCubeOptions {
   includeTables?: boolean;
   /** Each note's inline `key:: value` fields as property columns, beside its frontmatter's. */
   includeFields?: boolean;
+  /** A `backlinks` column: the notes that link to each note, out of these (the whole vault's). */
+  backlinksFrom?: readonly Pick<VaultNote, "path" | "text">[];
 }
 
 const MS_PER_DAY = 86400000;
@@ -88,6 +90,40 @@ export function extractInlineTags(body: string): string[] {
   const prose = lines.filter((_, i) => !fenced[i]).join("\n").replace(/(`+)[^`]*?\1/g, " ");
   const out: string[] = [];
   for (const m of prose.matchAll(INLINE_TAG)) if (isTagBody(m[1])) out.push(m[1]);
+  return out;
+}
+
+const withoutExt = (path: string): string => path.replace(/\.md$/i, "").toLowerCase();
+
+/** The note a link's target names, as Obsidian resolves it: the note at that path, else the notes of that name or
+ *  ending in that path, the one nearest the vault root first. Null for a link to no note. */
+export function resolveLink(target: string, paths: readonly string[]): string | null {
+  const want = withoutExt(target.trim().replace(/^\/+/, ""));
+  if (want === "") return null;
+  let best: string | null = null;
+  for (const p of paths) {
+    const have = withoutExt(p);
+    if (have === want) return p;
+    if (!have.endsWith(`/${want}`)) continue;
+    const depth = (x: string) => x.split("/").length;
+    if (best === null || depth(p) < depth(best) || (depth(p) === depth(best) && p.localeCompare(best) < 0)) best = p;
+  }
+  return best;
+}
+
+/** For each of `paths`, the notes among `sources` that link to it, in path order, a note never listing itself. */
+export function backlinksOf(paths: readonly string[], sources: readonly Pick<VaultNote, "path" | "text">[]): Map<string, string[]> {
+  const all = sources.map((n) => n.path);
+  const wanted = new Set(paths);
+  const out = new Map<string, string[]>(paths.map((p) => [p, []]));
+  for (const src of [...sources].sort((a, b) => a.path.localeCompare(b.path))) {
+    const hit = new Set<string>();
+    for (const target of extractLinks(src.text)) {
+      const to = resolveLink(target, all);
+      if (to !== null && to !== src.path && wanted.has(to)) hit.add(to);
+    }
+    for (const to of hit) out.get(to)!.push(src.path);
+  }
   return out;
 }
 
@@ -187,6 +223,7 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
   const noteByPath = new Map(notes.map((n) => [n.path, n]));
   const builtinCells: Record<string, CubeCell[]> = Object.fromEntries(BUILTINS.map((b) => [b, []]));
   if (opts.includeBody) builtinCells.body = [];
+  const backlinks = opts.backlinksFrom ? backlinksOf(notes.map((n) => n.path), opts.backlinksFrom) : null;
   const taskCells: CubeCell[] = [];
   const tableCells: CubeCell[] = [];
   for (const p of parsed) {
@@ -212,7 +249,7 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
     if (opts.includeTables) tableCells.push(tablesFrame(readTables(p.body)));
   }
 
-  const builtinNames = new Set<string>([...BUILTINS, "note-body", "note-tasks", "note-tables"]);
+  const builtinNames = new Set<string>([...BUILTINS, "note-body", "note-tasks", "note-tables", "backlinks"]);
   const fmKeys: string[] = [];
   const seen = new Set<string>();
   for (const p of parsed) {
@@ -228,6 +265,7 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
   if (opts.includeBody) columns.push({ name: "note-body", cells: builtinCells.body, type: "string" });
   if (opts.includeTasks) columns.push({ name: "note-tasks", cells: taskCells });
   if (opts.includeTables) columns.push({ name: "note-tables", cells: tableCells });
+  if (backlinks) columns.push({ name: "backlinks", cells: notes.map((n) => backlinks.get(n.path) ?? []), type: "string" });
 
   for (const key of fmKeys) {
     const hint = resolveHint(key, parsed, sources);

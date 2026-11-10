@@ -77,7 +77,9 @@ specific item.
 - **A note's body is data** (`noteBody.ts`, Vault Folder's "From each note" boxes): Tasks gives `note-tasks`, a nested
   table of every checklist item with its done mark, dates, priority, tags, heading and line; Tables gives
   `note-tables`, the note's pipe tables stacked and typed as an import is; Fields reads Dataview's `key:: value` as
-  property columns. All three are off until ticked. The example `vault-note-bodies` runs both on the sample vault.
+  property columns. Backlinks gives `backlinks`, the notes anywhere in the vault that link to each note
+  (`resolveLink` finds a link's note as Obsidian does). All four are off until ticked. The example
+  `vault-note-bodies` runs them on the sample vault.
 - **Vault Read and TaskNotes have specs** (`tree/specs/integrations/vault-read.md`, `tree/specs/integrations/tasknotes.md`). Writing them
   found that a note's own `date` or `created` property never reaches Vault Folder's Cube (backlog § VaultBridge).
 

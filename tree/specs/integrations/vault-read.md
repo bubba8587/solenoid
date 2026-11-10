@@ -59,7 +59,7 @@ An inline tag is read as Obsidian reads one: letters, digits, `_`, `-` and `/` a
 
 After the file columns comes one column per frontmatter key, in the order the keys are first met going down the rows. A note without a key has a blank cell in that column.
 
-A key named like a file column never becomes a second column. `tags` is merged into the `tags` file column. A frontmatter `path`, `name`, `folder`, `ext`, `size`, `created`, `modified`, `links`, `embeds`, `date`, `note-body`, `note-tasks` or `note-tables` is not read at all: the file column of that name keeps its own value, so a note's own `date: 2026-03-04` property does not reach the Cube. This is a gap (`docs/backlog.md` § VaultBridge), and no test pins it.
+A key named like a file column never becomes a second column. `tags` is merged into the `tags` file column. A frontmatter `path`, `name`, `folder`, `ext`, `size`, `created`, `modified`, `links`, `embeds`, `date`, `note-body`, `note-tasks`, `note-tables` or `backlinks` is not read at all: the file column of that name keeps its own value, so a note's own `date: 2026-03-04` property does not reach the Cube. This is a gap (`docs/backlog.md` § VaultBridge), and no test pins it.
 
 **A column's shape and type** come from the first source that names the key:
 
@@ -116,6 +116,16 @@ A note with several tables has their rows stacked into the one nested table, wit
 Fields reads Dataview's inline fields as property columns, beside the frontmatter's and typed by the same sources (*The property columns*). Two forms are read: a line that is `Key:: value`, after an optional list marker and with the key optionally in bold or italic marks, and `[key:: value]` or `(key:: value)` anywhere in a line. The `::` of a line field must be followed by a space or the end of the line, so `std::vector` in prose is no field. A value reads as a number, as TRUE or FALSE, as a date when it is an ISO date, as its text without the quotes when it is in double quotes, and as text otherwise. A key written more than once in a note holds a list. A key with no value is skipped, a field inside a checklist item belongs to the task and is not read here, and a key the note's frontmatter also has keeps the frontmatter's value.
 
 Tests: `noteBody.test.ts`: a checklist item's text, mark, heading and line, in a callout and at an indent, and none from a code fence or a plain list item; the emoji and bracketed dates and priorities read and taken out of the text; the nested table's column names; a table's header, dashes and rows with a pipe kept inside a link, a code span and an escape; a note's tables stacked and typed with their headings, and a table's own `heading` column left alone; each form of inline field and each kind of value, a repeated key as a list; the Vault Folder Cube unchanged until a box is ticked, `note-tasks` and `note-tables` after the file columns and blank for a note with none, a column per inline field, and the frontmatter's value kept for a key written both ways.
+
+## Backlinks
+
+Backlinks, the last box under "From each note", adds the column `backlinks` after `note-tables`: for each note, a list of the paths of the notes that link to it, in alphabetical order, each once. The linking notes come from the whole vault, not only the folder being read, so ticking the box reads every note in the vault on each refresh; a note never lists itself. A link is any `[[wikilink]]` or `![[embed]]` in the linking note, frontmatter included, the same targets the `links` column lists.
+
+A link's target finds its note as Obsidian finds it (`resolveLink`): a note at exactly that path wins; otherwise the notes whose name is the target, or whose path ends in it, are candidates, and the one in the fewest folders wins, the alphabetically first among equals. Case does not matter and a trailing `.md` is ignored. A target that names no note links to nothing.
+
+The paths are written as the `path` column writes them, so a Join on `path` brings in the linking notes' own properties, and `LINKNAME` over the list gives their names.
+
+Tests: `noteBody.test.ts`: a link resolved by its path, by its name, by the nearest of two same-named notes, in any case, and to nothing; each note's linkers listed once in path order from frontmatter and body, never itself; the `backlinks` column present only when asked.
 
 ## What the Vault Folder node keeps
 
