@@ -493,7 +493,10 @@ impl<'s> FigureTable<'s> {
             Some([_, ..]) => Frame::default(),
             _ => {
                 let source = super::docs::parse_frame_source(c.field_str("frameText", default));
-                Frame { columns: source.iter().map(super::docs::derive_column).collect(), ..Frame::default() }
+                Frame {
+                    columns: source.iter().map(|s| super::docs::derive_column(s, Default::default())).collect(),
+                    ..Frame::default()
+                }
             }
         };
         let col = |name: &str| input.columns.iter().find(|col| col.name == name);

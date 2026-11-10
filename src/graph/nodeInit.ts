@@ -36,6 +36,7 @@ export const INIT_FIELD_ORDER = [
   "margin", "direction",
   "diagonal",
   "byRowLive", "includeTasks", "includeTables", "includeFields", "includeBacklinks",
+  "dateOrder",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

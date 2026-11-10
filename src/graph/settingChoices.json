@@ -155,6 +155,12 @@
   ]
  },
  "CastNode": {
+  "dateOrder": [
+   "",
+   "DMY",
+   "MDY",
+   "YMD"
+  ],
   "op": [
    "complex",
    "date",
@@ -515,6 +521,12 @@
   ]
  },
  "DateTimeValueNode": {
+  "dateOrder": [
+   "",
+   "DMY",
+   "MDY",
+   "YMD"
+  ],
   "op": [
    "date",
    "time"
@@ -816,6 +828,14 @@
    "upper"
   ]
  },
+ "FrameInputNode": {
+  "dateOrder": [
+   "",
+   "DMY",
+   "MDY",
+   "YMD"
+  ]
+ },
  "FuzzyMatchNode": {
   "method": [
    "damerau",
@@ -843,6 +863,12 @@
   ]
  },
  "GetColumnNode": {
+  "dateOrder": [
+   "",
+   "DMY",
+   "MDY",
+   "YMD"
+  ],
   "readAs": [
    "auto",
    "date",

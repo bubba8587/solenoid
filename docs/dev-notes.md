@@ -25,6 +25,9 @@ specific item.
   its `legacy-scan` found 34 Enter handlers that committed mid-IME-composition. Every Enter check now goes through
   `isEnter` (`enterKey.ts`), sweep-enforced. Its other two findings (`field-sizing: content`, `sibling-index()`) are
   not Baseline in the desktop and Android webviews yet, so they stand.
+- **A date order** (`DATEVALUE(text, "MDY")`, and an Auto / MDY / DMY / YMD toggle on Cast to Date, Get Column read as
+  Date, the DATEVALUE card and a Frame Input with Date columns): one reader in the core (`read_date_text`). Auto keeps
+  C44's four-digit-year rule; a named order reads two-digit years as DATEVALUE does (author 2026-11-10).
 - The rig needs Obsidian at `/opt/Obsidian` (the 1.14.4 Linux tarball from obsidian-releases) and `wasm-bindgen-cli`
   0.2.130 for `plugin:build`; neither is in the cloud image.
 

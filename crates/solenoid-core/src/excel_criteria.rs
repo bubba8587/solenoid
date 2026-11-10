@@ -275,17 +275,16 @@ fn numbers_alone(t: &str) -> bool {
 
 /// Text read as a date wherever text becomes one outside a formula (Cast to Date, a Date column, Get Column read as
 /// Date, a typed date): the shared reader, which needs a four-digit year ([[C44]] dateSerials). Under an order, a date
-/// of numbers alone with a four-digit year takes that order (`1/2/2026` as MDY is 2 January), keeping a time of day,
-/// and one that doesn't fit it (`13/2/2026` as MDY, or a two-digit year) is no date, never another order's reading.
+/// of numbers alone takes that order (`1/2/26` as MDY is 2 January 2026), a two-digit year read as DATEVALUE reads it
+/// (author 2026-11-10: naming the order is naming the file's convention), keeping a time of day; one that doesn't fit
+/// it (`13/2/26` as MDY) is no date, never another order's reading.
 pub(crate) fn read_date_text(t: &str, order: DateOrder) -> DateReading {
     let t = trim_space(t);
     if order == DateOrder::Auto || !numbers_alone(t) {
         return parse_date(t);
     }
-    let date = t.split_whitespace().next().unwrap_or("");
-    let four_digit_year = date.split(['/', '-', '.']).any(|p| p.len() == 4);
     match crate::excel_functions::excel_datevalue(t, order) {
-        Some(Ok(d)) if four_digit_year => match crate::excel_functions::time_after_date(t) {
+        Some(Ok(d)) => match crate::excel_functions::time_after_date(t) {
             Some(time) => DateReading::Serial(d + time),
             None => DateReading::NotADate,
         },

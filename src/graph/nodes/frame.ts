@@ -37,6 +37,7 @@ import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 import { setDescribeTiles, type DescribeTile } from "../describeProfile";
+import { isDateOrder, type DateOrder } from "../dateOrder";
 
 /** A frame computation's shape: the core answers it over no rows. */
 /** Sample inputs for a card whose columns don't depend on its input's: options to score, and people who paid. */
@@ -68,13 +69,16 @@ export class FrameInputNode extends GraphNode {
   /** The same for `cardLayout`: read `activeCardLayout`. */
   cardLayoutHidden: boolean;
   lambdaKeys: string[] = [];
+  /** The order its Date columns read dates written in numbers alone by. */
+  dateOrder: DateOrder;
   // Reserves the full default card (header, both add rows, the capped preview) so Tidy never stacks a neighbor into it.
   width = 240; height = 280;
 
-  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean; cardLayoutHidden?: boolean }) {
+  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean; cardLayoutHidden?: boolean; dateOrder?: DateOrder }) {
     super("FrameInput");
     this.label = init?.label ?? "Frame Input";
     this.frameText = init?.frameText ?? "A, B\n1, 2\n3, 4";
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     this.layoutHidden = init?.layoutHidden ?? false;
     this.cardLayoutHidden = init?.cardLayoutHidden ?? false;
     if (Array.isArray(init?.lambdaKeys)) this.lambdaKeys = init.lambdaKeys.filter((k) => typeof k === "string");
@@ -1591,14 +1595,17 @@ export class GetColumnNode extends GraphNode {
 
   label: string;
   readAs: GetColumnReadAs;
+  /** Read as Date's order for dates written in numbers alone. */
+  dateOrder: DateOrder;
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
   width = 200; height = 205;
 
-  constructor(init?: { label?: string; readAs?: GetColumnReadAs }) {
+  constructor(init?: { label?: string; readAs?: GetColumnReadAs; dateOrder?: DateOrder }) {
     super("GetColumn");
     this.label = init?.label ?? "Get Column";
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     // Auto reads a column as its own type, so a date column comes out as dates ([[C137]] datesNeverSerials).
     this.readAs = init?.readAs ?? "auto";
     this.addInput("frame", cubeAdoptIn("Table / Cube"));

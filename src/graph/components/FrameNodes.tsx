@@ -114,6 +114,7 @@ import type { PayoffOrder } from "../nodes/frame";
 import { PAYOFF_ORDER_META } from "../nodes/frame";
 import { previewed } from "../listPreview";
 import { PairHead } from "./PairedExtensibleInputs";
+import { DateOrderToggle } from "./DateOrderToggle";
 
 const ALLOCATE_MODE_OPTIONS: OpOption<AllocateMode>[] =
   (Object.entries(ALLOCATE_MODE_META) as [AllocateMode, { label: string }][]).map(([value, m]) => ({ value, label: m.label }));
@@ -189,9 +190,10 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
       <CardSection
         label="Advanced"
         collapsible
-        defaultOpen={data.lambdaKeys.length > 0 || (hasLayout && !layoutHidden) || (hasCardLayout && !cardLayoutHidden)}
+        defaultOpen={data.lambdaKeys.length > 0 || (hasLayout && !layoutHidden) || (hasCardLayout && !cardLayoutHidden) || data.dateOrder !== ""}
         sockets={{ node: data, emit, keys: data.lambdaKeys }}
       >
+        {source.some((c) => c.type === "date") && <DateOrderToggle node={data} />}
         {/* A column formula in the grid editor reaches each λ input by its socket name. */}
         <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
         {!layoutHidden && (hasLayout || showLayout) ? (
@@ -1044,6 +1046,7 @@ export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>)
         options={GET_COLUMN_READ_OPTIONS}
         onChange={(next) => { setReadAs(next); void applyGetColumnReadAs(data, next); }}
       />
+      {readAs === "date" && <DateOrderToggle node={data} />}
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );
