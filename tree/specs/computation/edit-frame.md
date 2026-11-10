@@ -24,7 +24,7 @@ flowchart LR
 - **Inputs:** `frame` (the table) and `key`, text naming the columns that find a row, split at commas and trimmed. A name matches a column exactly, else ignoring case and spaces at its ends. Empty, its Behavior is `[row number]`: a row's key is its 1-based number. A key column the table lacks answers `#REF!` ("No column "x" for the key"); a key that isn't text is `#TYPE!`.
 - **Outputs:** `frame`, the table with its edits applied, and `edits`, a table of the edits.
 - **Saved:** `cellEdits`, a list of `{ row, column, value }`: the key of the edit's row, its column's name and the text typed, kept as typed ([[C58]] tableInputRawText). The key text rides in `stringLiterals.key`.
-- **The card shows** an Edit cells button (off with no table wired), the edit list with the Edits socket beside it, centered on the list, and the Frame output row. It is a 340 px card (`nodeXWide`), so each edit's key and value fit on its line.
+- **The card shows** an Edit Cells button (`CardOpenButton`, the one Frame Input's Edit Frame and Table Input's Edit Table use; with no table wired it opens nothing), the edit list with the Edits socket beside it, centered on the list, and the Frame output row. It is a 340 px card (`nodeXWide`), so each edit's key and value fit on its line.
 
 ## A row's key
 
@@ -63,7 +63,7 @@ The edits list as a Pipeline lists its steps ([[composite-nodes#Manual refresh a
 
 ## The popup
 
-Edit cells opens the card's output, its edits applied, in the Table popup as an editor (`openEditFramePopup`): every cell takes typing, a Logical cell is a checkbox and a Date cell has its calendar ([[table-popup]]). The columns and the rows are fixed (`fixedCols`, `fixedRows`): nothing adds, removes or renames one, and the CSV view only reads. The grid opens with each cell's text as the edit list shows it (a date as `DD-MMM-YYYY`); Save compares each cell with what it opened with and sets an edit on every one that differs, keyed by the row's key as the body last read it (`rowKeys`) and the column's name (`changedCells`, `setCellEdits`). A second change to the same cell replaces its edit, and a cell typed back to the table's own value settles and drops.
+Edit Cells opens the card's output, its edits applied, in the Table popup as an editor (`openEditFramePopup`): every cell takes typing, a Logical cell is a checkbox and a Date cell has its calendar ([[table-popup]]). The columns and the rows are fixed (`fixedCols`, `fixedRows`): nothing adds, removes or renames one, and the CSV view only reads. The grid opens with each cell's text as the edit list shows it (a date as `DD-MMM-YYYY`); Save compares each cell with what it opened with and sets an edit on every one that differs, keyed by the row's key as the body last read it (`rowKeys`) and the column's name (`changedCells`, `setCellEdits`). A second change to the same cell replaces its edit, and a cell typed back to the table's own value settles and drops.
 
 ## Tests
 

@@ -1326,17 +1326,7 @@ export function EditFrameComponent({ data, emit }: NodeProps<EditFrameNodeType>)
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
-      <button
-        type="button"
-        className="solenoid-node__recalc-btn"
-        disabled={!frame}
-        title="Opens the table to type into its cells or tick its boxes"
-        onPointerDown={stopDragStart}
-        onMouseDown={stopDragStart}
-        onClick={(e) => { e.stopPropagation(); openEditFramePopup(data, e.currentTarget); }}
-      >
-        Edit cells
-      </button>
+      <CardOpenButton label="Edit Cells" onOpen={(el) => openEditFramePopup(data, el)} />
       <MeasuredSocketRow side="output" socketKey="edits" nodeId={data.id} emit={emit} payload={data.outputs.edits!.socket} hero>
         <div className="solenoid-pipeline solenoid-edit-frame__edits">
           {edits.length === 0
