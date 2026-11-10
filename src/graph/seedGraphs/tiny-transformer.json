@@ -15,7 +15,7 @@
     "collapsed": false,
     "width": 820,
     "height": 560,
-    "body": "# A tiny transformer\n\nThe forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four numbers per word and a vocabulary of five. Read it left to right; each step is a card, and each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is found in the vocabulary: *the* is word 1, *cat* word 2.\n2. **Embed.** Each word's place picks its row of four numbers out of the embedding table, and each position adds its own.\n3. **Attend.** Each word asks with its query and answers with its key. A query times a key, over √4, scores how much one word should look at another; the mask hides the words that come after, and a softmax turns each row into weights that sum to 1 (both Softmax cards are one small graph: Edit Contents shows its three steps). The weights mix the values, and the mix is added back. Here *sat* and *on* put nearly all their attention on *cat*.\n4. **Think.** A two-layer network with a ReLU works on each word by itself, and its answer is added back too.\n5. **Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights were set by hand to tell that story; a real model learns billions of them from text. Two things to try: shorten the prompt to *the cat sat* and watch *on* become the next word, or set the 3 in W_K's second row to 0 and watch the attention on *cat* spread out.",
+    "body": "# A tiny transformer\n\nThe forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four numbers per word and a vocabulary of five. Read it left to right; each step is a card, and each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is found in the vocabulary: *the* is word 1, *cat* word 2.\n2. **Embed.** Each word's place picks its row of four numbers out of the embedding table, and each position adds its own.\n3. **Attend.** Each word asks with its query and answers with its key. A query times a key, divided by 2 (the square root of the 4 dimensions, which keeps the scores from growing with the size), scores how much one word should look at another; the mask hides the words that come after, and a softmax turns each row into weights that sum to 1 (both Softmax cards are one small graph: Edit Contents shows its three steps). The weights mix the values, and the mix is added back. Here *sat* and *on* put nearly all their attention on *cat*.\n4. **Think.** A two-layer network with a ReLU works on each word by itself, and its answer is added back too.\n5. **Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights were set by hand to tell that story; a real model learns billions of them from text. Two things to try: shorten the prompt to *the cat sat* and watch *on* become the next word, or set the 3 in W_K's second row to 0 and watch the attention on *cat* spread out.",
     "fieldTypes": {}
    }
   },
@@ -343,10 +343,10 @@
    "x": 4339,
    "y": 902,
    "init": {
-    "label": "Scores: ÷ √4, then mask"
+    "label": "Scores: ÷ 2, then mask"
    },
    "stringLiterals": {
-    "formula": "value / SQRT(4) + value2"
+    "formula": "value / 2 + value2"
    }
   },
   {
