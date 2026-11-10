@@ -153,6 +153,13 @@ export function PivotEditorPopup() {
     if (typeOf(field) === "date" && key.trim() !== "") { const n = Number(key); return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : key; }
     return key;
   }
+  /** Firefox starts no HTML5 drag without data on it, so the field's name rides along; the drop reads `drag`. */
+  function startChipDrag(e: React.DragEvent, payload: { from: Zone | "fields"; field: string }) {
+    drag.current = payload;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", payload.field);
+  }
+
   function applyDrop(toZone: Zone, insertIdx?: number) {
     const payload = drag.current;
     drag.current = null;
@@ -185,7 +192,7 @@ export function PivotEditorPopup() {
       key={field}
       className={`pivot-chip pivot-chip--${typeOf(field)}${isMissing(field) ? " pivot-chip--missing" : ""}`}
       draggable
-      onDragStart={() => { drag.current = { from: zone, field }; }}
+      onDragStart={(e) => { startChipDrag(e, { from: zone, field }); }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop(zone, zoneArr(cfg, zone).indexOf(field)); }}
       title={chipTitle(field)}
@@ -214,7 +221,7 @@ export function PivotEditorPopup() {
 
   const valueChip = (field: string) => (
     <span key={field} className={`pivot-chip pivot-chip--${typeOf(field)} pivot-chip--value${isMissing(field) ? " pivot-chip--missing" : ""}`} draggable
-      onDragStart={() => { drag.current = { from: "vals", field }; }}
+      onDragStart={(e) => { startChipDrag(e, { from: "vals", field }); }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop("vals", cfg.vals.indexOf(field)); }}
       title={chipTitle(field)}>
@@ -272,7 +279,7 @@ export function PivotEditorPopup() {
           const distinct = fields.find((f) => f.name === field)?.distinct ?? [];
           return (
             <div key={field} className="pivot-filter">
-              <span className="pivot-chip pivot-filter__chip" draggable onDragStart={() => { drag.current = { from: "fields", field }; }}>
+              <span className="pivot-chip pivot-filter__chip" draggable onDragStart={(e) => { startChipDrag(e, { from: "fields", field }); }}>
                 <span className="pivot-chip__glyph">{TYPE_GLYPH(typeOf(field))}</span>
                 <button className="pivot-filter__name" onClick={() => setOpenFilter(open ? null : field)} title="Choose which values to keep">
                   {field}{hidden ? ` · ${hidden} hidden` : ""} <span className="pivot-filter__caret">{open ? <ChevronDownIcon size={10} strokeWidth={2} /> : <ChevronRightIcon size={10} strokeWidth={2} />}</span>
@@ -313,7 +320,7 @@ export function PivotEditorPopup() {
           <div className="pivot-fields__list">
             {fields.map((f) => (
               <span key={f.name} className={`pivot-chip pivot-chip--${f.type}${usedSet.has(f.name) ? " pivot-chip--used" : ""}`} draggable
-                onDragStart={() => { drag.current = { from: "fields", field: f.name }; }} title={`${f.name} · ${f.type}`}>
+                onDragStart={(e) => { startChipDrag(e, { from: "fields", field: f.name }); }} title={`${f.name} · ${f.type}`}>
                 <span className="pivot-chip__glyph">{TYPE_GLYPH(f.type)}</span>
                 <span className="pivot-chip__name">{f.name}</span>
               </span>

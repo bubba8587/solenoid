@@ -16,6 +16,7 @@
         "title": "Solenoid",
         "width": 1280,
         "height": 800,
+        "dragDropEnabled": false,
         "additionalBrowserArgs": "--enable-blink-features=CanvasDrawElement --enable-features=CanvasDrawElement"
       }
     ],
