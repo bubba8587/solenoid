@@ -5,7 +5,14 @@ import { planned } from "../frameRefKit";
 import { isSolDate } from "../../../src/graph/dateValue";
 import { FrameInputNode, PivotNode } from "../../../src/graph/nodes/frame";
 import { LambdaNode } from "../../../src/graph/nodes/lambda";
-import { savedNodeBody } from "../../../src/graph/savedNodeBody";
+import { savedNodeBody, type SavedNodeBody } from "../../../src/graph/savedNodeBody";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../../src/graph/graphModel";
+import { DataflowEngine } from "../../../src/graph/dataflowEngine";
+import * as Nodes from "../../../src/graph/nodeClasses";
+import type { Schemes } from "../../../src/graph/schemes";
+import { readFrame, type FrameInput } from "../../../src/graph/frameBackend";
+import seed from "../../../src/graph/seedGraphs/pivot-calculated-fields.json";
 import { restoreLiterals } from "../../../src/graph/literalFields";
 import { isSolError } from "../../../src/graph/errorValue";
 import { pivotLayoutOf } from "../../../src/graph/pivotLayout";
@@ -244,3 +251,47 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
   });
 });
 
+
+describe("the Pivot calculated fields seed", () => {
+  it("answers the MPG its note claims, and the averaged ratio it warns about", async () => {
+    const editor = new GraphEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    const byId = new Map<string, GraphNode>();
+    const ctors = Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => GraphNode>;
+    for (const sn of seed.nodes as SavedNodeBody[] & { id: string }[]) {
+      const node = new ctors[sn.type]({ ...sn.init });
+      restoreLiterals(node, sn);
+      byId.set(sn.id, node);
+      await editor.addNode(node as unknown as Schemes["Node"]);
+    }
+    for (const c of seed.connections) {
+      await editor.addConnection(
+        new GraphConnection(byId.get(c.source)!, c.sourceOutput, byId.get(c.target)!, c.targetInput) as Schemes["Connection"],
+      );
+    }
+    const table = async (id: string) => {
+      const out = (await engine.fetch(byId.get(id)!.id)) as Record<string, unknown>;
+      const f = (await readFrame(out.frame as FrameInput)) as FrameValue;
+      return Object.fromEntries(f.columns.map((c) => [c.name, c.values]));
+    };
+    const r = (xs: unknown[]) => xs.map((x) => (typeof x === "number" ? Math.round(x * 1e6) / 1e6 : x));
+
+    // Hand-worked from the twelve fill-ups: each cell is its miles over its gallons.
+    const m = await table("ByMonth");
+    expect(m.Plate).toEqual(["ABC-123", "XYZ-789", "VAN-01", "Grand Total"]);
+    expect(r(m["2026-01"])).toEqual([28, 20, 15, 22]); // 420/15, 200/10, 150/10, 770/35
+    expect(r(m["2026-02"])).toEqual(r([25, 22, 16.25, 1125 / 55])); // 250/10, 550/25, 325/20
+    expect(r(m["2026-03"])).toEqual(r([30, 22, null, 640 / 24])); // VAN-01 drove nothing in March
+    expect(r(m["Grand Total"])).toEqual(r([1090 / 39, 970 / 45, 475 / 30, 2535 / 114]));
+
+    const b = await table("Beside");
+    expect(b.Miles).toEqual([1090, 970, 475, 2535]);
+    expect(b.Gallons).toEqual([39, 45, 30, 114]);
+    expect(r(b.MPG)).toEqual(r([1090 / 39, 970 / 45, 475 / 30, 2535 / 114]));
+
+    // The wrong way: each fill's ratio averaged, so the 60-mile top-up weighs as much as a tank.
+    const w = await table("Wrong");
+    expect(r(w["2026-01"]).slice(0, 3)).toEqual([25, 20, 15]);
+  });
+});
