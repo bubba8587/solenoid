@@ -128,7 +128,7 @@ Tests: `palette.test.ts`: every palette sets twelve hex slots, distinct outside 
 
 ### Each palette, drawn
 
-Drawn from `palette.ts` by `scripts/palette-diagrams.ts` (`PALETTE_STAGES` for the slot steps), so they show what the code does, not what this page says: each palette's slot sets in the order it builds them with the step between, its workbench ramp in both modes beside a card wearing it, and for Orchard and Blueprint the ramp under every accent above its tint band, each accent's dot where its ground lands. After a palette rule changes, rerun `node scripts/vite-run.mjs scripts/palette-diagrams.ts`; `paletteDiagrams.test.ts` fails while a checked-in diagram differs from what the code draws.
+Drawn from `palette.ts` by `scripts/palette-diagrams.ts`, so they show what the code does, not what this page says: Default's slots above the palette's, captioned with how it gets from one to the other (`PALETTE_RECIPES`); each slot's move drawn as an arrow from its Default color (a ring) to its own (a dot), on the OKLab a/b plane for hue and chroma and on a lightness scale; its workbench ramp in both modes beside a card wearing it, and for Orchard and Blueprint the ramp under every accent above its tint band, each accent's dot where its ground lands. After a palette rule changes, rerun `node scripts/vite-run.mjs scripts/palette-diagrams.ts`; `paletteDiagrams.test.ts` fails while a checked-in diagram differs from what the code draws.
 
 ![Default](palettes/default.svg)
 ![Muted](palettes/muted.svg)

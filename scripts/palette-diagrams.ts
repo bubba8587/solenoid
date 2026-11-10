@@ -1,12 +1,12 @@
 // [[B14]] oneDesignSystem, [[palette-and-theme#Each palette, drawn]]
-// Draws one SVG per built-in palette into tree/specs/canvas/palettes/, from palette.ts itself: the slot sets each
-// palette passes through (PALETTE_STAGES), its workbench ramp in both modes, and for an accent-adaptive palette the
+// Draws one SVG per built-in palette into tree/specs/canvas/palettes/, from palette.ts itself: Default's slots and the
+// palette's side by side, with each slot's move drawn in OKLab (hue and chroma, then lightness), its workbench ramp in both modes, and for an accent-adaptive palette the
 // ramp under every accent with its tint band. Rerun after a palette rule changes:
 //   node scripts/vite-run.mjs scripts/palette-diagrams.ts
 import { mkdirSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import {
-  PALETTE_NAMES, PALETTE_STAGES, COLOR_PALETTE, BUILTIN_PALETTES, BUILTIN_CHROME, DEFAULT_CHROME, CHROME_HOME,
+  PALETTE_NAMES, PALETTE_RECIPES, COLOR_PALETTE, BUILTIN_PALETTES, BUILTIN_CHROME, DEFAULT_CHROME, CHROME_HOME,
   CHROME_TINT_BAND, CHROME_KEYS, adaptChrome, bandChroma, hexToOklch, themeAccent,
   type PaletteName, type ChromeKey, type TintBand,
 } from "../src/graph/palette";
@@ -55,23 +55,81 @@ function mock(x: number, y: number, w: number, h: number, r: Record<ChromeKey, s
   ].join("");
 }
 
-function stages(name: PaletteName, y0: number): [string, number] {
-  let y = y0, out = text(PAD, y, "ACCENT SLOTS", { size: 10, weight: 700, fill: DIM });
-  y += 10;
-  const list = PALETTE_STAGES[name];
-  list.forEach((st, i) => {
-    y += 16;
-    out += text(PAD, y, `${i === 0 ? "" : "→ "}${st.step}`, { size: 11, fill: i === list.length - 1 ? INK : DIM, weight: i === list.length - 1 ? 600 : 400 });
-    y += 6;
-    COLOR_PALETTE.forEach((slot, j) => {
-      const x = PAD + j * SW;
-      out += rect(x + 1, y, SW - 2, 34, st.slots[slot], `rx="3"`);
-      out += text(x + SW / 2, y + 46, slot, { size: 9, fill: DIM, anchor: "middle" });
-      out += text(x + SW / 2, y + 57, st.slots[slot], { size: 8, fill: DIM, anchor: "middle" });
-    });
-    y += 60;
+const ab = (hex: string): [number, number] => {
+  const [, c, h] = hexToOklch(hex);
+  return [c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
+};
+const arrow = (x1: number, y1: number, x2: number, y2: number) => {
+  const d = Math.hypot(x2 - x1, y2 - y1);
+  if (d < 3) return "";
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${DIM}" stroke-width="1" marker-end="url(#head)"/>`;
+};
+
+/** Default's slots and the palette's, a column per slot, with the palette's own drawn larger. */
+function swatches(name: PaletteName, y0: number): [string, number] {
+  let y = y0, out = text(PAD, y, "FROM DEFAULT", { size: 10, weight: 700, fill: DIM });
+  out += text(PAD, y + 18, PALETTE_RECIPES[name], { size: 12, weight: 600 });
+  y += 30;
+  const from = BUILTIN_PALETTES.Default, to = BUILTIN_PALETTES[name];
+  const same = name === "Default";
+  COLOR_PALETTE.forEach((slot, j) => {
+    const x = PAD + j * SW;
+    if (!same) {
+      out += rect(x + 8, y, SW - 16, 18, from[slot], `rx="3"`);
+      out += text(x + SW / 2, y + 30, "↓", { size: 11, fill: DIM, anchor: "middle" });
+    }
+    const ty = same ? y : y + 36;
+    out += rect(x + 1, ty, SW - 2, 34, to[slot], `rx="3"`);
+    out += text(x + SW / 2, ty + 46, slot, { size: 9, fill: DIM, anchor: "middle" });
+    out += text(x + SW / 2, ty + 57, to[slot], { size: 8, fill: DIM, anchor: "middle" });
   });
-  return [out, y];
+  return [out, y + (same ? 64 : 100)];
+}
+
+/** Where each slot moves: hue and chroma on the OKLab a/b plane, and lightness, from its Default ring to its dot. */
+function moves(name: PaletteName, y0: number): [string, number] {
+  const from = BUILTIN_PALETTES.Default, to = BUILTIN_PALETTES[name];
+  const same = name === "Default";
+  const S = 300, cx = PAD + S / 2, cy = y0 + 18 + S / 2, R = S / 2 - 14, MAXC = 0.3;
+  let out = text(PAD, y0 + 10, "HUE AND CHROMA (OKLab a/b; ring: Default, dot: this palette)", { size: 9, fill: DIM });
+  out += rect(PAD, y0 + 18, S, S, "#ffffff", `stroke="${RULE}"`);
+  for (let i = 0; i < 72; i++) {
+    const a0 = (i * 5 * Math.PI) / 180, a1 = ((i + 1) * 5 * Math.PI) / 180;
+    out += `<path d="M${cx + R * Math.cos(a0)},${cy - R * Math.sin(a0)} A${R},${R} 0 0 0 ${cx + R * Math.cos(a1)},${cy - R * Math.sin(a1)}" stroke="oklch(0.75 0.13 ${i * 5 + 2.5})" stroke-width="5" fill="none"/>`;
+  }
+  for (const c of [0.1, 0.2]) out += `<circle cx="${cx}" cy="${cy}" r="${(c / MAXC) * R}" fill="none" stroke="${RULE}" stroke-dasharray="3 3"/>`;
+  out += `<circle cx="${cx}" cy="${cy}" r="1.5" fill="${DIM}"/>`;
+  const pt = (hex: string): [number, number] => { const [a, b] = ab(hex); return [cx + (a / MAXC) * R, cy - (b / MAXC) * R]; };
+  if (name === "Dawn and Dusk") {
+    const [r, g, b] = colormapRgb("plasma", 0.4)!;
+    const dusk = `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+    const [x, y] = pt(dusk);
+    out += `<path d="M${x - 6},${y} L${x + 6},${y} M${x},${y - 6} L${x},${y + 6}" stroke="${INK}" stroke-width="1.5"/>`;
+    out += text(x + 8, y + 4, "dusk", { size: 9 });
+  }
+  for (const slot of COLOR_PALETTE) {
+    const [x1, y1] = pt(from[slot]), [x2, y2] = pt(to[slot]);
+    if (!same) out += `<circle cx="${x1}" cy="${y1}" r="4.5" fill="none" stroke="${from[slot]}" stroke-width="2"/>` + arrow(x1, y1, x2, y2);
+    out += `<circle cx="${x2}" cy="${y2}" r="5" fill="${to[slot]}" stroke="${INK}" stroke-width="0.6"/>`;
+  }
+  // Lightness, a column per slot.
+  const lx = PAD + S + 24, lw = W - PAD - lx, top = y0 + 18, h = S;
+  const ly = (L: number) => top + h - 10 - ((L - 0.3) / 0.7) * (h - 20);
+  out += text(lx, y0 + 10, "LIGHTNESS (OK L)", { size: 9, fill: DIM });
+  out += rect(lx, top, lw, h, "#ffffff", `stroke="${RULE}"`);
+  for (const L of [0.4, 0.6, 0.8, 1]) {
+    out += `<line x1="${lx}" x2="${lx + lw}" y1="${ly(L)}" y2="${ly(L)}" stroke="${RULE}" stroke-dasharray="3 3"/>`;
+    out += text(lx + 3, ly(L) - 2, L.toFixed(1), { size: 8, fill: DIM });
+  }
+  const cw = (lw - 24) / 12;
+  COLOR_PALETTE.forEach((slot, j) => {
+    const x = lx + 24 + cw * j + cw / 2;
+    const y1 = ly(hexToOklch(from[slot])[0]), y2 = ly(hexToOklch(to[slot])[0]);
+    if (!same) out += `<circle cx="${x}" cy="${y1}" r="4.5" fill="none" stroke="${from[slot]}" stroke-width="2"/>` + arrow(x, y1, x, y2);
+    out += `<circle cx="${x}" cy="${y2}" r="5" fill="${to[slot]}" stroke="${INK}" stroke-width="0.6"/>`;
+    out += text(x, top + h + 12, slot, { size: 8, fill: DIM, anchor: "middle" });
+  });
+  return [out, top + h + 20];
 }
 
 function ramps(name: PaletteName, y0: number): [string, number] {
@@ -166,14 +224,14 @@ export function paletteDiagrams(): Record<string, string> {
   for (const name of PALETTE_NAMES) {
     let body = text(PAD, 34, name, { size: 20, weight: 700 });
     let y = 50;
-    for (const part of [stages, ramps, adaptive, plasma]) {
+    for (const part of [swatches, moves, ramps, adaptive, plasma]) {
       const [svg, ny] = part(name, y + 8);
       body += svg;
       y = ny;
     }
     const stops = (n: number, color: (t: number) => string) =>
       Array.from({ length: n + 1 }, (_, i) => `<stop offset="${i / n}" stop-color="${color(i / n)}"/>`).join("");
-    const defs = `<defs><linearGradient id="hues">${stops(24, (t) => `oklch(0.75 0.12 ${t * 360})`)}</linearGradient>` +
+    const defs = `<defs><marker id="head" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="${DIM}"/></marker><linearGradient id="hues">${stops(24, (t) => `oklch(0.75 0.12 ${t * 360})`)}</linearGradient>` +
       `<linearGradient id="plasma">${stops(32, (t) => { const [r, g, b] = colormapRgb("plasma", t)!; return `rgb(${r},${g},${b})`; })}</linearGradient></defs>`;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${y + PAD}" viewBox="0 0 ${W} ${y + PAD}" font-family="system-ui, -apple-system, Segoe UI, sans-serif">${defs}${rect(0, 0, W, y + PAD, "#f7f7f5")}${body}</svg>\n`;
     out[`${OUT}/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.svg`] = svg;

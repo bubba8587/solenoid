@@ -431,28 +431,18 @@ export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> 
 
 export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
 
-/** Each built-in palette's construction as the slot sets it passes through, each with the step that made it: what the
- *  spec's palette diagrams draw (`scripts/palette-diagrams.ts`). The last set is the palette. */
-export interface PaletteStage { step: string; slots: Record<PaletteSlot, string> }
-const neonPushed = (): Record<PaletteSlot, string> => Object.fromEntries(COLOR_PALETTE.map((slot) => {
-  if (slot === "gray") return [slot, PALETTE.gray];
-  const [h, sat, v] = rgbToHsv(...parseHex(PALETTE[slot])!);
-  return [slot, neonAt(h, 1 - (1 - sat) * NEON_STEP, 1 - (1 - v) * NEON_STEP)];
-})) as Record<PaletteSlot, string>;
-const softened = (): Record<PaletteSlot, string> => Object.fromEntries(COLOR_PALETTE.map((slot) => {
-  const [L, c, h] = hexToOklch(PALETTE[slot]);
-  return [slot, oklchToHex(L, c * DD_SATURATION, h)];
-})) as Record<PaletteSlot, string>;
-export const PALETTE_STAGES: Record<PaletteName, PaletteStage[]> = {
-  "Default": [{ step: "authored", slots: PALETTE }],
-  "Muted": [{ step: "Default", slots: PALETTE }, { step: "authored: Default with its glare taken off", slots: MUTED }],
-  "Colorblind-safe": [{ step: "Default", slots: PALETTE }, { step: "each socket slot takes its own Okabe-Ito color; node-kind slots reuse the nearest", slots: COLORBLIND }],
-  "Solarized": [{ step: "Default", slots: PALETTE }, { step: "Solarized's eight accents in the matching slots, four blended into its gaps", slots: SOLARIZED }],
-  "Equinox": [{ step: "Default", slots: PALETTE }, { step: `hue and chroma removed; OK lightness stretched onto ${EQUINOX_BAND[0]} to ${EQUINOX_BAND[1]}`, slots: EQUINOX }],
-  "Orchard": [{ step: "Pear's hues, cool slots blended in at Pear's saturation and value", slots: ORCHARD_BASE }, { step: `every slot ${ANCHOR_PULL * 100}% toward its lime in OKLab a/b (gray ${ANCHOR_GRAY_PULL * 100}%)`, slots: ORCHARD }],
-  "Blueprint": [{ step: "chalky mid-value pencil colors", slots: BLUEPRINT_BASE }, { step: `every slot ${ANCHOR_PULL * 100}% toward its blue in OKLab a/b (gray ${ANCHOR_GRAY_PULL * 100}%)`, slots: BLUEPRINT }],
-  "Neon": [{ step: "Default", slots: PALETTE }, { step: `saturation and value ${NEON_STEP * 100}% toward full, luminance held over ${NEON_MIN_LUM}`, slots: neonPushed() }, { step: "each hue nudged toward brightness within its reach, spacing guarded", slots: NEON }],
-  "Dawn and Dusk": [{ step: "Default", slots: PALETTE }, { step: `chroma scaled to ${DD_SATURATION * 100}%, lightness kept`, slots: softened() }, { step: `${DD_TINT * 100}% toward plasma at ${PLASMA_DUSK} (the dusk) in OKLab a/b, gray ${DD_GRAY_TINT * 100}%`, slots: DAWN_DUSK }],
+/** How each built-in palette turns Default's slots into its own, in one sentence: what the spec's palette diagrams
+ *  caption (`scripts/palette-diagrams.ts`), beside Default and the palette drawn side by side. */
+export const PALETTE_RECIPES: Record<PaletteName, string> = {
+  "Default": "The original set: every other palette is drawn as what it does to these.",
+  "Muted": "Authored by hand: Default's hues at about 0.62 of their saturation, lightness nudged toward the middle.",
+  "Colorblind-safe": "Each socket slot takes its own Okabe-Ito color; the node-kind slots reuse the nearest.",
+  "Solarized": "Each slot takes Solarized's accent nearest its hue; four are blended into Solarized's gaps.",
+  "Equinox": `Hue and chroma removed; OK lightness kept in order and stretched onto ${EQUINOX_BAND[0]} to ${EQUINOX_BAND[1]}.`,
+  "Orchard": `Each slot takes Pear's matching hue (cool ones blended in at Pear's saturation and value), then leans ${ANCHOR_PULL * 100}% toward its lime.`,
+  "Blueprint": `Each slot takes a chalky mid-value pencil color, then leans ${ANCHOR_PULL * 100}% toward its blue.`,
+  "Neon": `Saturation and value pushed ${NEON_STEP * 100}% toward full, then each hue nudged toward brightness, spacing guarded.`,
+  "Dawn and Dusk": `Chroma scaled to ${DD_SATURATION * 100}%, then ${DD_TINT * 100}% toward plasma's dusk (gray ${DD_GRAY_TINT * 100}%); lightness kept.`,
 };
 
 // ── The chrome ramp a palette may author ──────────────────────────────────────
