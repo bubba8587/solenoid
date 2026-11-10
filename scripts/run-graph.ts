@@ -22,6 +22,8 @@ import { DataflowEngine } from "../src/graph/dataflowEngine";
 import { GraphEditor } from "../src/graph/graphEditor";
 import { loadWasmEngineSync, wasmUrl } from "../src/graph/engineWasm";
 import * as Nodes from "../src/graph/nodeClasses";
+import { CompositeNode } from "../src/graph/nodes/composite";
+import { ctorRegistry } from "../src/graph/nodeCtorRegistry";
 import type { Schemes } from "../src/graph/schemes";
 import { isFrameRef, readFrame } from "../src/graph/frameBackend";
 import { isFrameValue, isCubeValue, frameRowCount, type FrameColType } from "../src/graph/frame";
@@ -189,6 +191,7 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
     const anyNode = node as unknown as Record<string, unknown>;
     if (sn.literals) anyNode.literals = { ...sn.literals };
     if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
+    if (node instanceof CompositeNode) await node.hydrate(ctorRegistry());
     byId.set(sn.id, node);
     await editor.addNode(node as unknown as Schemes["Node"]);
   }

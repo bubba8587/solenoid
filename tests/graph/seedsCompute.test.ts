@@ -6,6 +6,8 @@ import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
 import { isSolError } from "../../src/graph/errorValue";
 import { SEEDS } from "../../src/graph/seeds";
+import { CompositeNode } from "../../src/graph/nodes/composite";
+import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 
 // Every seed, run through a real editor + DataflowEngine: no node may compute an
 // error the seed did not set out to show. `seeds.test.ts` checks a seed's SHAPE —
@@ -30,7 +32,7 @@ const SKIPPED: Record<string, string> = {
   "null-and-logical":
     "the error-codes tour, incl. a #CIRC! loop — errorSeed.test.ts runs it with the cycle cache-seeding a plain fetch loop lacks",
   "composite-workbench":
-    "7 composites on goal-seek / 500-sample Monte Carlo / data-table run modes; minutes here, and a bare constructor never hydrates their internal graphs",
+    "7 composites on goal-seek / 500-sample Monte Carlo / data-table run modes, minutes here; compositeSeed.test.ts runs them",
   "garden-dashboard":
     "the C1 widget showcase: Geocode + Weather fetch, so offline the daily frame is empty and Get Column on the pre-fetch shape is #REF! — it computes once the document is allowed to connect",
 };
@@ -56,6 +58,8 @@ async function buildSeed(graph: { nodes: SavedNode[]; connections: SavedConn[] }
     const anyNode = node as unknown as Record<string, unknown>;
     if (sn.literals) anyNode.literals = { ...sn.literals };
     if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
+    // A Composite builds its inside graph on hydrate, as a load does (persistence.ts).
+    if (node instanceof CompositeNode) await node.hydrate(ctorRegistry());
     byId.set(sn.id, node);
     await editor.addNode(node as unknown as Schemes["Node"]);
   }

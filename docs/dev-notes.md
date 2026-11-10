@@ -101,7 +101,7 @@ specific item.
   Expression, since only a formula broadcasts a column of totals across a table; MAP wants equal shapes). Labeled
   heatmaps show the embeddings, attention and predictions, and a bar chart the last word's prediction. Two rows, H on
   three rotated Conduits. Building it found Frame from Lists failing on a table through
-  TAKE's untyped output, `run-graph` answering null for Composites, and the grounding listing TOROW under TableSelect.
+  TAKE's untyped output, `run-graph` and `seedsCompute.test.ts` never hydrating a Composite (both do now), and the grounding listing TOROW under TableSelect.
 - **A new feature is never a new leaf** (the author, 2026-11-10; `docs/dte.md` § What is a leaf and what is a spec,
   `CLAUDE.md`, the leaf-check hook): a feature and its design go in its spec; a leaf is added unasked only for a
   product decision (the author overriding conventional wisdom, or answering a contested, high-stakes question).
