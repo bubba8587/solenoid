@@ -25,7 +25,10 @@ export const adoptiveListIn   = (label: string) => new GraphInput(new AdoptiveSo
 export const adoptiveTableOut = (label: string) => new GraphOutput(new AdoptiveSocket("anytable"), label);
 export const adoptiveListOut  = (label: string) => new GraphOutput(new AdoptiveSocket("anylist"), label);
 export const adoptiveDataOut  = (label: string) => new GraphOutput(new AdoptiveSocket("anydata"), label);
-/** Never adopts: only for a generative result no input types; an extraction uses `trueAnyOut` plus `passthrough()`. */
+/** Untyped until it has run, then typed by the value it carried ([[C136]] typesKnownAfterCalc): for a result whose
+ *  kind the wiring can't tell and no input passes through (Unnest's Frame or Cube). */
+export const valueTypedOut    = (label: string) => new GraphOutput(new ValueTypedSocket(), label);
+/** Never typed, before a run or after: only for an output that carries no value to type (NA's error). */
 export const staticTrueAnyOut = (label: string) => new GraphOutput(trueAnySocket, label);
 export const cubeAdoptIn  = (label: string) => new GraphInput(new AdoptiveSocket("cube"), label);
 export const tableAdoptOut = (label: string) => new GraphOutput(new AdoptiveSocket("frame"), label);

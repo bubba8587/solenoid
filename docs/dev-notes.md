@@ -82,6 +82,10 @@ specific item.
   `vault-note-bodies` runs them on the sample vault.
 - **Import Obsidian Note mints `note-tasks` and `note-tables` outputs** when the note has a checklist or a table
   (`bodyFields`), beside the outputs its frontmatter gives.
+- **Unnest's output takes its value's type** ([[C136]] typesKnownAfterCalc): it was the fixed untyped socket, so a
+  cable leaving an Unnest never showed Frame or Cube. It is a `valueTypedOut` now, and
+  `cablesTypedAfterCalc.test.ts` holds every example to the rule that a cable carrying a value is typed at both ends
+  once it has run. `staticTrueAnyOut` is left to NA alone.
 - **Vault Read and TaskNotes have specs** (`tree/specs/integrations/vault-read.md`, `tree/specs/integrations/tasknotes.md`). Writing them
   found that a note's own `date` or `created` property never reaches Vault Folder's Cube (backlog § VaultBridge).
 

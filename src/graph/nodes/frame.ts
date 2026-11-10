@@ -3,7 +3,7 @@ import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { chartOut, adoptiveListOut } from "./shared";
 import type { ChartValue } from "../chartValue";
-import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, trueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, valueTypedOut, trueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { dropInputCables } from "../components/cablePrune";
@@ -585,7 +585,8 @@ export class UnnestNode extends GraphNode {
     this.label = init?.label ?? "Unnest";
     this.addInput("cube", cubeIn("Cube"));
     this.addInput("column", strIn("Nested column"));
-    this.addOutput("frame", staticTrueAnyOut("Flat"));
+    // A Frame where the nested cells are Frames, a Cube where they nest further: known once it has run.
+    this.addOutput("frame", valueTypedOut("Flat"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | CubeValue | SolError | null } {
