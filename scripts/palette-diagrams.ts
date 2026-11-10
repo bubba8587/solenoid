@@ -14,7 +14,12 @@ import { colormapRgb } from "../src/graph/colormaps";
 
 const OUT = "tree/specs/canvas/palettes";
 const W = 960, PAD = 24, SW = (W - 2 * PAD) / 12;
-const INK = "#1d1f23", DIM = "#5d636b", RULE = "#d9dbe0";
+/** The diagram's own colors (never a palette's), one set per theme the diagram is drawn for. */
+const THEMES = {
+  light: { bg: "#f7f7f5", panel: "#ffffff", ink: "#1d1f23", dim: "#5d636b", rule: "#d9dbe0" },
+  dark: { bg: "#17181b", panel: "#202226", ink: "#e8e9ec", dim: "#a0a6ae", rule: "#3a3d44" },
+};
+let BG = THEMES.light.bg, PANEL = THEMES.light.panel, INK = THEMES.light.ink, DIM = THEMES.light.dim, RULE = THEMES.light.rule;
 type Mode = "dark" | "light";
 const MODES: Mode[] = ["dark", "light"];
 
@@ -60,8 +65,7 @@ const ab = (hex: string): [number, number] => {
   return [c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
 };
 /** One arrow style per move, in order: the last move is ink, an earlier one a dashed gray. */
-const MOVE_STYLE = [`stroke="${DIM}" stroke-dasharray="3 2"`, `stroke="${INK}"`];
-const moveStyle = (i: number, n: number) => MOVE_STYLE[i === n - 1 ? 1 : 0];
+const moveStyle = (i: number, n: number) => (i === n - 1 ? `stroke="${INK}"` : `stroke="${DIM}" stroke-dasharray="3 2"`);
 const arrow = (x1: number, y1: number, x2: number, y2: number, style: string) => {
   if (Math.hypot(x2 - x1, y2 - y1) < 3) return "";
   const head = style.includes("dasharray") ? "headDim" : "head";
@@ -108,6 +112,11 @@ function swatches(name: PaletteName, y0: number): [string, number] {
   return [out, y + (same ? 64 : 100)];
 }
 
+/** The wheel's edge: a little past the most colorful slot any palette reaches on its way, so every diagram shares
+ *  one scale and no dot leaves the wheel. */
+const maxChroma = (): number => 1.08 * Math.max(...PALETTE_NAMES.flatMap((n) =>
+  [BUILTIN_PALETTES.Default, ...PALETTE_RECIPES[n].moves.map((m) => m.slots)].flatMap((set) => COLOR_PALETTE.map((s) => hexToOklch(set[s])[1]))));
+
 /** Where each slot moves, one arrow per move: on the OKLab a/b plane (hue and how colorful), and in lightness. */
 function moves(name: PaletteName, y0: number): [string, number] {
   const from = BUILTIN_PALETTES.Default;
@@ -125,9 +134,9 @@ function moves(name: PaletteName, y0: number): [string, number] {
     });
     y += 30;
   }
-  const S = 420, cx = PAD + S / 2, cy = y + 18 + S / 2, R = S / 2 - 14, MAXC = 0.24;
+  const S = 420, cx = PAD + S / 2, cy = y + 18 + S / 2, R = S / 2 - 14, MAXC = maxChroma();
   out += text(PAD, y + 10, "HUE AND COLORFULNESS: angle is hue, distance out is chroma", { size: 9, fill: DIM });
-  out += rect(PAD, y + 18, S, S, "#ffffff", `stroke="${RULE}"`);
+  out += rect(PAD, y + 18, S, S, PANEL, `stroke="${RULE}"`);
   for (let i = 0; i < 72; i++) {
     const a0 = (i * 5 * Math.PI) / 180, a1 = ((i + 1) * 5 * Math.PI) / 180;
     out += `<path d="M${cx + R * Math.cos(a0)},${cy - R * Math.sin(a0)} A${R},${R} 0 0 0 ${cx + R * Math.cos(a1)},${cy - R * Math.sin(a1)}" stroke="oklch(0.75 0.13 ${i * 5 + 2.5})" stroke-width="5" fill="none"/>`;
@@ -145,7 +154,7 @@ function moves(name: PaletteName, y0: number): [string, number] {
   const lx = PAD + S + 24, lw = W - PAD - lx, top = y + 18, h = S;
   const ly = (L: number) => top + h - 10 - ((L - 0.3) / 0.7) * (h - 20);
   out += text(lx, y + 10, "LIGHTNESS: up is lighter", { size: 9, fill: DIM });
-  out += rect(lx, top, lw, h, "#ffffff", `stroke="${RULE}"`);
+  out += rect(lx, top, lw, h, PANEL, `stroke="${RULE}"`);
   for (const L of [0.4, 0.6, 0.8, 1]) {
     out += `<line x1="${lx}" x2="${lx + lw}" y1="${ly(L)}" y2="${ly(L)}" stroke="${RULE}" stroke-dasharray="3 3"/>`;
     out += text(lx + 3, ly(L) - 2, L.toFixed(1), { size: 8, fill: DIM });
@@ -202,7 +211,7 @@ function ramps(name: PaletteName, y0: number): [string, number] {
 function bandPlot(band: TintBand | undefined, name: PaletteName, mode: Mode, x: number, y: number, w: number, h: number): string {
   let out = text(x, y - 4, band ? `tint band: center ${band.center}°, flat ${band.flat}°, fall ${band.fall}°, floor ${band.floor}` : "no tint band: full tint at every hue", { size: 9, fill: DIM });
   out += text(x + w, y - 4, "chroma kept (of authored), by the OK hue the ground lands on; dots are the accents", { size: 9, fill: DIM, anchor: "end" });
-  out += rect(x, y, w, h, "#ffffff", `stroke="${RULE}"`);
+  out += rect(x, y, w, h, PANEL, `stroke="${RULE}"`);
   const home = CHROME_HOME[name]!;
   const ramp = BUILTIN_CHROME[name][mode] as Record<ChromeKey, string>;
   const rampHue = hexToOklch(ramp.surfaceRaised)[2];
@@ -264,24 +273,28 @@ function plasma(name: PaletteName, y0: number): [string, number] {
   return [out, y + 60];
 }
 
-/** Every palette's diagram, by its path in the repository. */
+/** Every palette's diagram in both themes (`<name>.svg`, `<name>-dark.svg`), by its path in the repository. */
 export function paletteDiagrams(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const name of PALETTE_NAMES) {
-    let body = text(PAD, 34, name, { size: 20, weight: 700 });
-    let y = 50;
-    for (const part of [swatches, moves, ramps, adaptive, plasma]) {
-      const [svg, ny] = part(name, y + 8);
-      body += svg;
-      y = ny;
+  for (const [theme, c] of Object.entries(THEMES)) {
+    ({ bg: BG, panel: PANEL, ink: INK, dim: DIM, rule: RULE } = c);
+    for (const name of PALETTE_NAMES) {
+      let body = text(PAD, 34, name, { size: 20, weight: 700 });
+      let y = 50;
+      for (const part of [swatches, moves, ramps, adaptive, plasma]) {
+        const [svg, ny] = part(name, y + 8);
+        body += svg;
+        y = ny;
+      }
+      const stops = (n: number, color: (t: number) => string) =>
+        Array.from({ length: n + 1 }, (_, i) => `<stop offset="${i / n}" stop-color="${color(i / n)}"/>`).join("");
+      const defs = `<defs><marker id="head" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="${INK}"/></marker><marker id="headDim" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="${DIM}"/></marker><linearGradient id="hues">${stops(24, (t) => `oklch(0.75 0.12 ${t * 360})`)}</linearGradient>` +
+        `<linearGradient id="plasma">${stops(32, (t) => { const [r, g, b] = colormapRgb("plasma", t)!; return `rgb(${r},${g},${b})`; })}</linearGradient></defs>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${y + PAD}" viewBox="0 0 ${W} ${y + PAD}" font-family="system-ui, -apple-system, Segoe UI, sans-serif">${defs}${rect(0, 0, W, y + PAD, BG)}${body}</svg>\n`;
+      out[`${OUT}/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}${theme === "dark" ? "-dark" : ""}.svg`] = svg;
     }
-    const stops = (n: number, color: (t: number) => string) =>
-      Array.from({ length: n + 1 }, (_, i) => `<stop offset="${i / n}" stop-color="${color(i / n)}"/>`).join("");
-    const defs = `<defs><marker id="head" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="${INK}"/></marker><marker id="headDim" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="${DIM}"/></marker><linearGradient id="hues">${stops(24, (t) => `oklch(0.75 0.12 ${t * 360})`)}</linearGradient>` +
-      `<linearGradient id="plasma">${stops(32, (t) => { const [r, g, b] = colormapRgb("plasma", t)!; return `rgb(${r},${g},${b})`; })}</linearGradient></defs>`;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${y + PAD}" viewBox="0 0 ${W} ${y + PAD}" font-family="system-ui, -apple-system, Segoe UI, sans-serif">${defs}${rect(0, 0, W, y + PAD, "#f7f7f5")}${body}</svg>\n`;
-    out[`${OUT}/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.svg`] = svg;
   }
+  ({ bg: BG, panel: PANEL, ink: INK, dim: DIM, rule: RULE } = THEMES.light);
   return out;
 }
 

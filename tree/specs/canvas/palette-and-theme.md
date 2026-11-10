@@ -128,17 +128,17 @@ Tests: `palette.test.ts`: every palette sets twelve hex slots, distinct outside 
 
 ### Each palette, drawn
 
-Drawn from `palette.ts` by `scripts/palette-diagrams.ts`, so they show what the code does, not what this page says: Default's slots above the palette's, captioned in plain words with how one becomes the other (`PALETTE_RECIPES`); each slot's path from its Default color (a ring) to its own (a dot), one arrow per move in order (a hand-picked set, then a lean toward the anchor; a softening, then a tint; a push, then a slide), on the OKLab a/b plane for hue and chroma and on a lightness scale, with what a palette leans toward marked; its workbench ramp in both modes beside a card wearing it, and for Orchard and Blueprint the ramp under every accent above its tint band, each accent's dot where its ground lands. After a palette rule changes, rerun `node scripts/vite-run.mjs scripts/palette-diagrams.ts`; `paletteDiagrams.test.ts` fails while a checked-in diagram differs from what the code draws.
+Drawn from `palette.ts` by `scripts/palette-diagrams.ts`, so they show what the code does, not what this page says: Default's slots above the palette's, captioned in plain words with how one becomes the other (`PALETTE_RECIPES`); each slot's path from its Default color (a ring) to its own (a dot), one arrow per move in order (a hand-picked set, then a lean toward the anchor; a softening, then a tint; a push, then a slide), on the OKLab a/b plane for hue and chroma and on a lightness scale, with what a palette leans toward marked; its workbench ramp in both modes beside a card wearing it, and for Orchard and Blueprint the ramp under every accent above its tint band, each accent's dot where its ground lands. After a palette rule changes, rerun `node scripts/vite-run.mjs scripts/palette-diagrams.ts` (it writes a light and a dark version of each, and a viewer shows the one matching its theme); `paletteDiagrams.test.ts` fails while a checked-in diagram differs from what the code draws.
 
-![Default](palettes/default.svg)
-![Muted](palettes/muted.svg)
-![Colorblind-safe](palettes/colorblind-safe.svg)
-![Solarized](palettes/solarized.svg)
-![Equinox](palettes/equinox.svg)
-![Orchard](palettes/orchard.svg)
-![Blueprint](palettes/blueprint.svg)
-![Neon](palettes/neon.svg)
-![Dawn and Dusk](palettes/dawn-and-dusk.svg)
+<picture><source media="(prefers-color-scheme: dark)" srcset="palettes/default-dark.svg"><img alt="Default" src="palettes/default.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="palettes/muted-dark.svg"><img alt="Muted" src="palettes/muted.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="palettes/colorblind-safe-dark.svg"><img alt="Colorblind-safe" src="palettes/colorblind-safe.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="palettes/solarized-dark.svg"><img alt="Solarized" src="palettes/solarized.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="palettes/equinox-dark.svg"><img alt="Equinox" src="palettes/equinox.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="palettes/orchard-dark.svg"><img alt="Orchard" src="palettes/orchard.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="palettes/blueprint-dark.svg"><img alt="Blueprint" src="palettes/blueprint.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="palettes/neon-dark.svg"><img alt="Neon" src="palettes/neon.svg"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="palettes/dawn-and-dusk-dark.svg"><img alt="Dawn and Dusk" src="palettes/dawn-and-dusk.svg"></picture>
 
 ## The neutral chrome ramp
 
