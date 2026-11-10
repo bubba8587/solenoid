@@ -687,7 +687,7 @@ export const CHROME_HOME: Partial<Record<PaletteName, PaletteSlot>> = {
  * degrees down to `floor` of the authored, so a pale ground stays strong only where pale reads as paper. */
 export interface EarthBand { center: number; flat: number; fall: number; floor: number }
 export const CHROME_EARTH: Partial<Record<PaletteName, Partial<Record<"dark" | "light", EarthBand>>>> = {
-  Orchard: { light: { center: 85, flat: 15, fall: 70, floor: 0.45 } },
+  Orchard: { light: { center: 85, flat: 10, fall: 50, floor: 0.45 } },
 };
 
 /** The share of its authored chroma a ramp keeps at OK hue `hue` under `band`. */
