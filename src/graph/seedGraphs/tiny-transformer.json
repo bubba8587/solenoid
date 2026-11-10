@@ -1,0 +1,597 @@
+{
+ "v": 2,
+ "order": 525,
+ "label": "A tiny transformer",
+ "group": "Worked examples",
+ "nodes": [
+  {
+   "id": "noteIntro",
+   "type": "NoteNode",
+   "x": 0,
+   "y": 66,
+   "init": {
+    "label": "A tiny transformer",
+    "color": "violet",
+    "collapsed": false,
+    "width": 760,
+    "height": 520,
+    "body": "# A tiny transformer\n\nThis is the forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four dimensions and five words. Every number sits on a card, so you can change any weight and watch the prediction move.\n\n**Embed.** Each word of the prompt *the cat sat on* is a row: its token embedding plus its position's.\n\n**Attend.** Each word asks with its query and answers with its key. A query times a key, over √4, scores how much one word should look at another; the mask hides every word that comes after, and a softmax turns each row into weights that sum to 1. The weights mix the values, and the mix is added back to X. Here *sat* and *on* put nearly all their attention on *cat*.\n\n**Think.** A two-layer network with a ReLU works on each word by itself, and its answer is added back too.\n\n**Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights here were set by hand to tell that story; a real model learns billions of them from text. Try W_K: change its 3 to 0, and the attention on *cat* spreads out.",
+    "fieldTypes": {}
+   }
+  },
+  {
+   "id": "grp_embed",
+   "type": "GroupNode",
+   "x": 0,
+   "y": 1072,
+   "init": {
+    "label": "Embed: a row per word",
+    "members": [
+     "prompt",
+     "tokens",
+     "positions",
+     "x"
+    ],
+    "color": "sky",
+    "collapsed": false,
+    "width": 848,
+    "height": 550
+   }
+  },
+  {
+   "id": "grp_attend",
+   "type": "GroupNode",
+   "x": 961,
+   "y": 886,
+   "init": {
+    "label": "Attend: each word looks back at the words before it",
+    "members": [
+     "wq",
+     "wk",
+     "wv",
+     "mask",
+     "q",
+     "k",
+     "v",
+     "scores",
+     "attn",
+     "h"
+    ],
+    "color": "violet",
+    "collapsed": false,
+    "width": 1643,
+    "height": 973
+   }
+  },
+  {
+   "id": "grp_mlp",
+   "type": "GroupNode",
+   "x": 2679,
+   "y": 606,
+   "init": {
+    "label": "Think: a small network on each word",
+    "members": [
+     "w1",
+     "w2",
+     "h2"
+    ],
+    "color": "green",
+    "collapsed": false,
+    "width": 629,
+    "height": 550
+   }
+  },
+  {
+   "id": "grp_predict",
+   "type": "GroupNode",
+   "x": 3363,
+   "y": 606,
+   "init": {
+    "label": "Predict: a score, then a probability, for every word",
+    "members": [
+     "wout",
+     "logits",
+     "probs"
+    ],
+    "color": "amber",
+    "collapsed": false,
+    "width": 950,
+    "height": 366
+   }
+  },
+  {
+   "id": "grp_look",
+   "type": "GroupNode",
+   "x": 4426,
+   "y": 1072,
+   "init": {
+    "label": "Look: the attention and the predictions, named",
+    "members": [
+     "names",
+     "aframe",
+     "attnTable",
+     "attnMap",
+     "pframe",
+     "predTable",
+     "predMap"
+    ],
+    "color": "pink",
+    "collapsed": false,
+    "width": 1092,
+    "height": 1161
+   }
+  },
+  {
+   "id": "prompt",
+   "type": "ListInputNode",
+   "x": 24,
+   "y": 1130,
+   "init": {
+    "label": "Prompt",
+    "dataType": "string"
+   },
+   "stringLiterals": {
+    "v0": "the, cat, sat, on"
+   }
+  },
+  {
+   "id": "tokens",
+   "type": "TableInputNode",
+   "x": 243,
+   "y": 1130,
+   "init": {
+    "label": "Token embeddings",
+    "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1"
+   }
+  },
+  {
+   "id": "positions",
+   "type": "TableInputNode",
+   "x": 243,
+   "y": 1383,
+   "init": {
+    "label": "Position embeddings",
+    "tableText": "0, 0.1, 0, 0.1\n0.1, 0, 0.1, 0\n0.2, 0.1, 0, 0.1\n0.1, 0.2, 0.1, 0"
+   }
+  },
+  {
+   "id": "x",
+   "type": "ExpressionNode",
+   "x": 580,
+   "y": 1272,
+   "init": {
+    "label": "X: tokens + positions",
+    "expr": "tokens + positions"
+   }
+  },
+  {
+   "id": "wq",
+   "type": "TableInputNode",
+   "x": 985,
+   "y": 944,
+   "init": {
+    "label": "W_Q",
+    "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 3, 1, 0\n0, 3, 0, 1"
+   }
+  },
+  {
+   "id": "wk",
+   "type": "TableInputNode",
+   "x": 985,
+   "y": 1220,
+   "init": {
+    "label": "W_K",
+    "tableText": "1, 0, 0, 0\n0, 3, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1"
+   }
+  },
+  {
+   "id": "wv",
+   "type": "TableInputNode",
+   "x": 1667,
+   "y": 1574,
+   "init": {
+    "label": "W_V",
+    "tableText": "1, 0, 0, 0\n0, 1, 0, 0\n0, 0, 1, 0\n0, 0, 0, 1"
+   }
+  },
+  {
+   "id": "q",
+   "type": "ExpressionNode",
+   "x": 1314,
+   "y": 949,
+   "init": {
+    "label": "Queries",
+    "expr": "MMULT(X, W_Q)"
+   }
+  },
+  {
+   "id": "k",
+   "type": "ExpressionNode",
+   "x": 1314,
+   "y": 1225,
+   "init": {
+    "label": "Keys",
+    "expr": "MMULT(X, W_K)"
+   }
+  },
+  {
+   "id": "v",
+   "type": "ExpressionNode",
+   "x": 1996,
+   "y": 1578,
+   "init": {
+    "label": "Values",
+    "expr": "MMULT(X, W_V)"
+   }
+  },
+  {
+   "id": "mask",
+   "type": "MakeArrayNode",
+   "x": 1314,
+   "y": 1501,
+   "init": {
+    "label": "Causal mask"
+   },
+   "literals": {
+    "rows": 4,
+    "cols": 4
+   },
+   "stringLiterals": {
+    "formula": "IF(col <= row, 0, -1E9)"
+   }
+  },
+  {
+   "id": "scores",
+   "type": "ExpressionNode",
+   "x": 1667,
+   "y": 1233,
+   "init": {
+    "label": "Scores",
+    "expr": "MMULT(Q, TRANSPOSE(K)) / SQRT(4) + mask"
+   }
+  },
+  {
+   "id": "attn",
+   "type": "ExpressionNode",
+   "x": 1996,
+   "y": 1297,
+   "init": {
+    "label": "Attention weights: softmax by row",
+    "expr": "e ^ scores / MMULT(e ^ scores, SEQUENCE(4, 4, 1, 0))"
+   }
+  },
+  {
+   "id": "h",
+   "type": "ExpressionNode",
+   "x": 2336,
+   "y": 1488,
+   "init": {
+    "label": "Attend, then add back X",
+    "expr": "X + MMULT(A, V)"
+   }
+  },
+  {
+   "id": "w1",
+   "type": "TableInputNode",
+   "x": 2703,
+   "y": 664,
+   "init": {
+    "label": "W_1",
+    "tableText": "-1, 0, 0, 0\n0.5, 0, 0, 0\n-1, 0, 0, 0\n1, 0, 0, 0"
+   }
+  },
+  {
+   "id": "w2",
+   "type": "TableInputNode",
+   "x": 2703,
+   "y": 917,
+   "init": {
+    "label": "W_2",
+    "tableText": "0, -1, 0, 1\n0, 0, 0, 0\n0, 0, 0, 0\n0, 0, 0, 0"
+   }
+  },
+  {
+   "id": "h2",
+   "type": "ExpressionNode",
+   "x": 3040,
+   "y": 766,
+   "init": {
+    "label": "MLP with ReLU, added back",
+    "expr": "H + MMULT(IF(MMULT(H, W_1) > 0, MMULT(H, W_1), 0), W_2)"
+   }
+  },
+  {
+   "id": "wout",
+   "type": "TableInputNode",
+   "x": 3387,
+   "y": 664,
+   "init": {
+    "label": "Unembedding",
+    "tableText": "0, 1, 0, 0, 1\n0, 0, 1, 0, 0\n0, 0, 0, 2, 0\n1, 0, 0, 0, 0"
+   }
+  },
+  {
+   "id": "logits",
+   "type": "ExpressionNode",
+   "x": 3716,
+   "y": 669,
+   "init": {
+    "label": "Logits",
+    "expr": "MMULT(H, W_U)"
+   }
+  },
+  {
+   "id": "probs",
+   "type": "ExpressionNode",
+   "x": 4045,
+   "y": 718,
+   "init": {
+    "label": "Next-token probabilities",
+    "expr": "e ^ logits / MMULT(e ^ logits, SEQUENCE(5, 5, 1, 0))"
+   }
+  },
+  {
+   "id": "names",
+   "type": "FrameFromListsNode",
+   "x": 4450,
+   "y": 1130,
+   "init": {
+    "label": "Each position",
+    "valueKeys": [
+     "name0"
+    ]
+   },
+   "stringLiterals": {
+    "name0": "after"
+   }
+  },
+  {
+   "id": "aframe",
+   "type": "BuildFrameNode",
+   "x": 4450,
+   "y": 1820,
+   "init": {
+    "label": "Attention, named"
+   },
+   "stringLiterals": {
+    "headers": "the, cat, sat, on"
+   }
+  },
+  {
+   "id": "attnTable",
+   "type": "BindColumnsNode",
+   "x": 4821,
+   "y": 1846,
+   "init": {
+    "label": "Who attends to whom"
+   }
+  },
+  {
+   "id": "attnMap",
+   "type": "HeatmapNode",
+   "x": 5150,
+   "y": 1901,
+   "init": {
+    "label": "Attention"
+   },
+   "stringLiterals": {
+    "options": "cmap=viridis;annot=true;fmt=.0%;xlabel=looks at;ylabel=word"
+   }
+  },
+  {
+   "id": "pframe",
+   "type": "BuildFrameNode",
+   "x": 4450,
+   "y": 1516,
+   "init": {
+    "label": "Predictions, named"
+   },
+   "stringLiterals": {
+    "headers": "the, cat, sat, on, mat"
+   }
+  },
+  {
+   "id": "predTable",
+   "type": "BindColumnsNode",
+   "x": 4821,
+   "y": 1397,
+   "init": {
+    "label": "Next token after each word"
+   }
+  },
+  {
+   "id": "predMap",
+   "type": "HeatmapNode",
+   "x": 5150,
+   "y": 1462,
+   "init": {
+    "label": "Next-token prediction"
+   },
+   "stringLiterals": {
+    "options": "cmap=viridis;annot=true;fmt=.0%;xlabel=next word;ylabel=after"
+   }
+  }
+ ],
+ "connections": [
+  {
+   "source": "tokens",
+   "sourceOutput": "table",
+   "target": "x",
+   "targetInput": "tokens"
+  },
+  {
+   "source": "positions",
+   "sourceOutput": "table",
+   "target": "x",
+   "targetInput": "positions"
+  },
+  {
+   "source": "x",
+   "sourceOutput": "result",
+   "target": "q",
+   "targetInput": "X"
+  },
+  {
+   "source": "wq",
+   "sourceOutput": "table",
+   "target": "q",
+   "targetInput": "W_Q"
+  },
+  {
+   "source": "x",
+   "sourceOutput": "result",
+   "target": "k",
+   "targetInput": "X"
+  },
+  {
+   "source": "wk",
+   "sourceOutput": "table",
+   "target": "k",
+   "targetInput": "W_K"
+  },
+  {
+   "source": "x",
+   "sourceOutput": "result",
+   "target": "v",
+   "targetInput": "X"
+  },
+  {
+   "source": "wv",
+   "sourceOutput": "table",
+   "target": "v",
+   "targetInput": "W_V"
+  },
+  {
+   "source": "q",
+   "sourceOutput": "result",
+   "target": "scores",
+   "targetInput": "Q"
+  },
+  {
+   "source": "k",
+   "sourceOutput": "result",
+   "target": "scores",
+   "targetInput": "K"
+  },
+  {
+   "source": "mask",
+   "sourceOutput": "result",
+   "target": "scores",
+   "targetInput": "mask"
+  },
+  {
+   "source": "scores",
+   "sourceOutput": "result",
+   "target": "attn",
+   "targetInput": "scores"
+  },
+  {
+   "source": "x",
+   "sourceOutput": "result",
+   "target": "h",
+   "targetInput": "X"
+  },
+  {
+   "source": "attn",
+   "sourceOutput": "result",
+   "target": "h",
+   "targetInput": "A"
+  },
+  {
+   "source": "v",
+   "sourceOutput": "result",
+   "target": "h",
+   "targetInput": "V"
+  },
+  {
+   "source": "h",
+   "sourceOutput": "result",
+   "target": "h2",
+   "targetInput": "H"
+  },
+  {
+   "source": "w1",
+   "sourceOutput": "table",
+   "target": "h2",
+   "targetInput": "W_1"
+  },
+  {
+   "source": "w2",
+   "sourceOutput": "table",
+   "target": "h2",
+   "targetInput": "W_2"
+  },
+  {
+   "source": "h2",
+   "sourceOutput": "result",
+   "target": "logits",
+   "targetInput": "H"
+  },
+  {
+   "source": "wout",
+   "sourceOutput": "table",
+   "target": "logits",
+   "targetInput": "W_U"
+  },
+  {
+   "source": "logits",
+   "sourceOutput": "result",
+   "target": "probs",
+   "targetInput": "logits"
+  },
+  {
+   "source": "prompt",
+   "sourceOutput": "list",
+   "target": "names",
+   "targetInput": "vals0"
+  },
+  {
+   "source": "attn",
+   "sourceOutput": "result",
+   "target": "aframe",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "names",
+   "sourceOutput": "frame",
+   "target": "attnTable",
+   "targetInput": "f0"
+  },
+  {
+   "source": "aframe",
+   "sourceOutput": "frame",
+   "target": "attnTable",
+   "targetInput": "f1"
+  },
+  {
+   "source": "attnTable",
+   "sourceOutput": "frame",
+   "target": "attnMap",
+   "targetInput": "values"
+  },
+  {
+   "source": "probs",
+   "sourceOutput": "result",
+   "target": "pframe",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "names",
+   "sourceOutput": "frame",
+   "target": "predTable",
+   "targetInput": "f0"
+  },
+  {
+   "source": "pframe",
+   "sourceOutput": "frame",
+   "target": "predTable",
+   "targetInput": "f1"
+  },
+  {
+   "source": "predTable",
+   "sourceOutput": "frame",
+   "target": "predMap",
+   "targetInput": "values"
+  }
+ ]
+}
