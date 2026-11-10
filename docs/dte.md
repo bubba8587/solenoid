@@ -180,11 +180,15 @@ reversed independently.
 **A new feature is never a new leaf** (the author, 2026-11-10). Building a card, a view, an option, a
 target or any other feature, and every choice in its design (what it shows, how it matches rows,
 what it does when something is missing, where it sits), goes in its spec and in the backlog line that
-asked for it, never in a leaf. That the author asked for the feature is the whole authorization. An
-agent adds a leaf only when the author asks for one by name, and touches the tree otherwise only when
-the work would change what an existing leaf says, by extending that leaf. Where PROTOCOL.md says "a
-choice no leaf explains … is a new decision", Solenoid reads it as a decision for the spec, unless
-the author has said it belongs in the tree. When unsure, it is spec.
+asked for it, never in a leaf. That the author asked for the feature is the whole authorization.
+
+A leaf is added, without asking, when a product decision is made. That usually comes one of two ways:
+the author overrides conventional wisdom (Solenoid does a thing differently from Excel, Obsidian or
+the usual app on purpose, and says so), or an agent asks the author a genuinely contested question
+with high stakes and the author answers it. The leaf records that call; the feature it shapes still
+lives in the spec. Otherwise the tree is touched only when the work changes what an existing leaf
+says, by extending that leaf. Where PROTOCOL.md says "a choice no leaf explains … is a new decision",
+Solenoid reads it as a decision for the spec unless it is one of those calls. When unsure, it is spec.
 
 ## Coverage and the exclusion store (`.dtecoverage`)
 

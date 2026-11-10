@@ -97,9 +97,9 @@ make the clean change, update seeds and tests, prune what's outdated.
   item. **Ask the author your ring** before the first leaf-governed task; until answered work at C, subagents at C or
   deeper. Read the governing leaf and spec before changing sockets, names or value handling (`dte.py find`, `show`,
   `blast`); cite leaves as `[[ID]] name`. **Never add a leaf for a new feature** (author 2026-11-10): a new card, view,
-  option or mechanism, and every choice in its design, goes in its spec; add a leaf only when the author asks for one,
-  and extend an existing leaf only when the work changes what it says (`docs/dte.md` § What is a leaf and what is a
-  spec). A hook has an agent check each new leaf against that section (`.claude/settings.json`).
+  option or mechanism, and every choice in its design, goes in its spec. Add a leaf, unasked, when a product decision
+  is made: the author overrides conventional wisdom, or answers a genuinely contested, high-stakes question you put to
+  them. Extend an existing leaf when the work changes what it says (`docs/dte.md` § What is a leaf and what is a spec). A hook has an agent check each new leaf against that section (`.claude/settings.json`).
 - **Specs** (`tree/specs/`, indexed by `docs/subsystem-invariants.md`): read a subsystem's spec in full before touching
   it. Three floor specs govern whole classes of files: `tree/specs/floors/components.md`, `tree/specs/floors/node-classes.md`,
   `tree/specs/floors/stores.md`. Bars and overlays: `tree/specs/canvas/layout-chrome.md`. Before writing a `data()`:
