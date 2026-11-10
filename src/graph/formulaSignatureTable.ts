@@ -145,7 +145,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   WEEKDAY: "date, [type]",
   WEEKNUM: "date, [type]",
   YEARFRAC: "start, end, [basis]",
-  DATEVALUE: "text",
+  DATEVALUE: "text, [order]",
   TIMEVALUE: "text",
   NETWORKDAYS: "start, end, [holidays]",
   WORKDAY: "start, days, [holidays]",

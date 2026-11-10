@@ -757,6 +757,11 @@ fn logical_cell(v: &FrameCell) -> V {
 
 /// Typed text read as a cell of the list's type ([[C58]] tableInputRawText).
 pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
+    frame_cell_ordered(ty, raw, crate::excel_criteria::DateOrder::Auto)
+}
+
+/// A cell's text read as `ty`, a date under `order` (which number is the month in `1/2/26`).
+pub(crate) fn frame_cell_ordered(ty: &str, raw: &str, order: crate::excel_criteria::DateOrder) -> V {
     if ty == "string" {
         return if raw.is_empty() { V::Null } else { V::str(raw) };
     }
@@ -772,7 +777,7 @@ pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
         return V::Num(n);
     }
     if ty == "date" {
-        return match crate::excel_criteria::parse_date(s) {
+        return match crate::excel_criteria::read_date_text(s, order) {
             DateReading::Serial(r) if r.is_finite() => V::Num(r),
             DateReading::Ambiguous(e) => V::err(e),
             _ => V::Num(f64::NAN),

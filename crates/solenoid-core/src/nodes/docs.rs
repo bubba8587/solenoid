@@ -865,6 +865,8 @@ pub(crate) struct SourceColumn {
     cells: Vec<String>,
     unit: Option<String>,
     expr: Option<String>,
+    /// A Date column's order for dates written with numbers alone (`1/2/26`): blank is Auto.
+    order: crate::excel_criteria::DateOrder,
 }
 
 /// `String(x)` of a JSON value, a blank as "".
@@ -907,13 +909,16 @@ pub(crate) fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
                 };
                 let unit = c.get("unit").and_then(Json::as_str).filter(|u| !u.is_empty()).map(String::from);
                 let expr = c.get("expr").and_then(Json::as_str).filter(|e| !trim_space(e).is_empty()).map(String::from);
-                SourceColumn { name, ty, cells, unit, expr }
+                let order =
+                    crate::excel_criteria::DateOrder::parse(c.get("order").and_then(Json::as_str).unwrap_or(""))
+                        .unwrap_or_default();
+                SourceColumn { name, ty, cells, unit, expr, order }
             })
             .collect();
     }
     crate::csv::source_columns(trimmed)
         .into_iter()
-        .map(|(name, ty, cells)| SourceColumn { name, ty, cells, unit: None, expr: None })
+        .map(|(name, ty, cells)| SourceColumn { name, ty, cells, unit: None, expr: None, order: Default::default() })
         .collect()
 }
 
@@ -922,7 +927,7 @@ pub(crate) fn derive_column(s: &SourceColumn) -> Column {
     Column {
         name: s.name.clone(),
         ty: s.ty,
-        values: s.cells.iter().map(|cell| super::list::frame_cell_of(s.ty.as_str(), cell)).collect(),
+        values: s.cells.iter().map(|cell| super::list::frame_cell_ordered(s.ty.as_str(), cell, s.order)).collect(),
         unit: if s.ty == FrameColType::Number {
             s.unit.as_deref().and_then(super::frames::column_unit_from_spec)
         } else {

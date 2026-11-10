@@ -7,7 +7,7 @@ use super::frames::{
     matrix_cells_from_list, select_cube_rows, str_input, tag_cell_unit, thrown, to_core, to_json, trimmed,
     widen_to_frame, UnitTag,
 };
-use super::list::{frame_cell_of, infer_column, present};
+use super::list::{frame_cell_ordered, infer_column, present};
 use super::refs;
 use super::scalar::{read_role, Role};
 use super::Cv;
@@ -680,6 +680,7 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
         );
         return values_answer(c, e.clone(), e);
     }
+    let order = crate::excel_criteria::DateOrder::parse(c.field_str("dateOrder", "")).unwrap_or_default();
     let out: Vec<V> = match read_as.as_str() {
         "text" => col
             .values
@@ -717,10 +718,12 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
                     V::Num(_) => tag(v.clone()),
                     V::Bool(b) => V::Num(if *b { 1.0 } else { 0.0 }),
                     V::Err(_) => v.clone(),
-                    V::Str(s) => match frame_cell_of(if read_as == "date" { "date" } else { "number" }, s) {
-                        n @ (V::Null | V::Err(_)) => n,
-                        n => tag(n),
-                    },
+                    V::Str(s) => {
+                        match frame_cell_ordered(if read_as == "date" { "date" } else { "number" }, s, order) {
+                            n @ (V::Null | V::Err(_)) => n,
+                            n => tag(n),
+                        }
+                    }
                     _ => V::Num(f64::NAN),
                 })
                 .collect()
@@ -803,7 +806,7 @@ fn row_value(c: &Call, key: &str, ty: FrameColType) -> V {
                 v
             }
         }
-        FrameColType::Date => match crate::excel_criteria::parse_date(t) {
+        FrameColType::Date => match crate::excel_criteria::read_date_text(t, crate::excel_criteria::DateOrder::Auto) {
             crate::excel_criteria::DateReading::Serial(d) if d.is_finite() => V::Date(d),
             crate::excel_criteria::DateReading::Ambiguous(e) => V::err(e),
             _ => v,

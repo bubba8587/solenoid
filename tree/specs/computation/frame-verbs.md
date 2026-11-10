@@ -188,7 +188,7 @@ A `0x`, `0b` or `0o` radix prefix and `Infinity` are text, as in Excel. A column
 - Blank is null.
 - Any other text (`yes`, `maybe`, `0x1`) is NaN ([[C58]] tableInputRawText, [[B17]] typedValueModel): a cell holds and shows `NaN`, and a computation turns it into `#TYPE!` naming the value (`logicalOrTypeError`, the core's `logical_or_type_error`). A NaN cell in a logical column matches no filter.
 
-**Dates.** An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates; Get Column's read-as converts those explicitly. One cell that isn't an unambiguous ISO date keeps the whole column as text: declining to guess is always safe, and a wrong date never is ([[C44]] dateSerials).
+**Dates.** An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates. Read as Date (Get Column, Cast, a Frame Input Date column) reads them through `read_date_text`: the shared reader, so a slash date needs a four-digit year (`1/2/26` is NaN, `1/2/2026` `#AMBIGUOUS!`), and under a date order a four-digit-year date of numbers alone takes that order (`1/2/2026` as MDY is 2 January). One cell that isn't an unambiguous ISO date keeps the whole column as text: declining to guess is always safe, and a wrong date never is ([[C44]] dateSerials).
 
 Tests:
 

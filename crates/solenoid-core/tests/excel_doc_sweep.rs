@@ -422,3 +422,29 @@ fn checked_in_excel() {
     let bad = run(&rows, &e);
     assert!(bad.is_empty(), "\n{}", bad.join("\n"));
 }
+
+/// DATEVALUE's order (author 2026-11-10): numbers alone take the order given, a month or day out of range under it is
+/// no date (never another order's reading), and month names and ISO read as always.
+#[test]
+fn datevalue_order() {
+    let e = env();
+    let rows = [
+        ("DATEVALUE(\"1/2/26\")", E),
+        ("DATEVALUE(\"1/2/26\", \"MDY\")", D(46024.0)),
+        ("DATEVALUE(\"1/2/26\", \"DMY\")", D(46054.0)),
+        ("DATEVALUE(\"1/2/2026\", \"mdy\")", D(46024.0)),
+        ("DATEVALUE(\"01-02-2026\", \"DMY\")", D(46054.0)),
+        ("DATEVALUE(\"01.02.2026\", \"DMY\")", D(46054.0)),
+        ("DATEVALUE(\"26/1/2\", \"YMD\")", D(46024.0)),
+        ("DATEVALUE(\"3/15/26\", \"MDY\")", D(46096.0)),
+        ("DATEVALUE(\"3/15/26\", \"DMY\")", E),
+        ("DATEVALUE(\"13/2/26\", \"MDY\")", E),
+        ("DATEVALUE(\"13/2/2026\", \"MDY\")", E),
+        ("DATEVALUE(\"1/2/26\", \"\")", E),
+        ("DATEVALUE(\"1/2/26\", \"XYZ\")", E),
+        ("DATEVALUE(\"5-Mar-24\", \"DMY\")", D(45356.0)),
+        ("DATEVALUE(\"2026-01-02\", \"DMY\")", D(46024.0)),
+    ];
+    let bad = run(&rows, &e);
+    assert!(bad.is_empty(), "\n{}", bad.join("\n"));
+}

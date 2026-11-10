@@ -94,7 +94,7 @@ export const FUNCTION_ARITY: Record<string, readonly [number, number]> = {
   CONVOLVE: [2, 3], CORREL: [2, 2], COUNTDISTINCT: [1, 1], COUNTIF: [2, 2], COUNTIFS: [2, 255], COUPDAYBS: [2, 4],
   COUPDAYSNC: [2, 4], COUPNCD: [2, 4], COUPNUM: [2, 4], COUPPCD: [2, 4], COVAR: [2, 2], "COVARIANCE.P": [2, 2],
   "COVARIANCE.S": [2, 2], CROSSPRODUCT: [2, 2], CUMIPMT: [6, 6], CUMPRINC: [6, 6], CUMRETURNS: [1, 1], CV: [1, 255],
-  DATE: [3, 3], DATEDIF: [3, 3], DATETRUNC: [2, 3], DATEVALUE: [1, 1], DAY: [1, 1], DAYS: [2, 2], DAYS360: [2, 3],
+  DATE: [3, 3], DATEDIF: [3, 3], DATETRUNC: [2, 3], DATEVALUE: [1, 2], DAY: [1, 1], DAYS: [2, 2], DAYS360: [2, 3],
   DB: [4, 5], DDB: [4, 5], DEC2HEX: [1, 2], DECODEBASE64: [1, 1], DECODEURL: [1, 1], DECOMPOSE: [3, 4],
   DEVSQ: [1, 255], DIAGONAL: [1, 1], DIFF: [1, 2], DOLLAR: [1, 2], DRAWDOWN: [1, 1], DROP: [2, 3], DURATION: [4, 6],
   EDATE: [2, 2], EIGENVALUES: [1, 1], EIGENVECTORS: [1, 1], ENCODEBASE64: [1, 1], ENCODEURL: [1, 1], EOMONTH: [2, 2],
