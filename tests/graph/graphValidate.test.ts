@@ -91,6 +91,15 @@ describe("validateGraph — semantics", () => {
     expect(issue?.message).toContain("Cast");
   });
 
+  it("names the card a guessed type meant: its words in another order, or with a word left out", () => {
+    const { issues } = validateText(`A: FrameFilterNode\nB: GroupByNode\nC: ValueInput\nD: ArithmeticNod\n---\n{}`);
+    const hint = (n: string) => issues.find((i) => i.node === n)?.message ?? "";
+    expect(hint("A")).toContain("nearest: `FilterFrameNode`");
+    expect(hint("B")).toContain("nearest: `GroupByFrameNode`");
+    expect(hint("C")).toContain("nearest: `ValueInputNode`");
+    expect(hint("D")).toContain("`ArithmeticNode`");
+  });
+
   it("refuses a setting written as the wrong kind of value, with the form that works", () => {
     const { issues } = validateText(`A: ValueInputNode value=3\nS: SliderInputNode value="2"\n---\n{}`);
     expect(issues.find((i) => i.node === "A")?.message).toContain('value on ValueInputNode is text, so write value="3"');

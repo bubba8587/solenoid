@@ -55,6 +55,25 @@ function nearest(key: string, candidates: Iterable<string>): string {
   return best.length > 0 ? ` — nearest: ${best.join(", ")}` : "";
 }
 
+/** A class name's words, without the closing "Node": `GroupByFrameNode` is group, by, frame. */
+const typeWords = (name: string): string[] =>
+  name.split(/(?=[A-Z])/).map((w) => w.toLowerCase()).filter((w) => w !== "" && w !== "node");
+
+/** The nearest class names to a guessed one: first the classes that hold every word of the guess in any order
+ *  (`FrameFilterNode` is `FilterFrameNode`, `ValueInput` is `ValueInputNode`, `GroupByNode` is `GroupByFrameNode`),
+ *  the ones with the fewest words to spare first, then the nearest spellings. */
+function nearestType(key: string, types: Iterable<string>): string {
+  const all = [...types];
+  const want = typeWords(key);
+  const byWords = want.length === 0 ? [] : all
+    .map((c) => ({ c, words: typeWords(c) }))
+    .filter(({ words }) => want.every((w) => words.includes(w)))
+    .sort((a, b) => a.words.length - b.words.length)
+    .map(({ c }) => c);
+  if (byWords.length === 0) return nearest(key, all);
+  return ` — nearest: ${byWords.slice(0, 2).map((c) => `\`${c}\``).join(", ")}`;
+}
+
 function keyList(keys: string[]): string {
   const shown = keys.slice(0, 10);
   return shown.join(", ") + (keys.length > shown.length ? ", …" : "");
@@ -127,7 +146,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
 
     const Ctor = registry.get(sn.type);
     if (!Ctor) {
-      issues.push({ line: at(name), node: name, message: `unknown node type "${sn.type}"${nearest(sn.type, registry.keys())}: the permissive loader would keep it only as a Placeholder. Types are class names (\`npm run ai-grounding\` lists them all).` });
+      issues.push({ line: at(name), node: name, message: `unknown node type "${sn.type}"${nearestType(sn.type, registry.keys())}: the permissive loader would keep it only as a Placeholder. Types are class names (\`npm run ai-grounding\` lists them all).` });
       instances.set(sn.id, null);
       continue;
     }

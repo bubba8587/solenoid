@@ -37,7 +37,14 @@ export function main(args: string[]): void {
   } else if (wanted) {
     const hits = cards.filter((card) => wanted.some((word) => card.split("\n")[0].toLowerCase().includes(word.toLowerCase())));
     if (hits.length === 0) {
-      console.error(`No card's class or name holds ${wanted.map((w) => `"${w}"`).join(" or ")}. --list shows them all.`);
+      // The cards whose heading holds every word of a guess: "GroupByNode" finds GroupByFrameNode.
+      const words = (w: string) => w.split(/(?=[A-Z])|[\s_-]+/).map((x) => x.toLowerCase()).filter((x) => x !== "" && x !== "node");
+      const near = cards
+        .map((card) => card.split("\n")[0])
+        .filter((head) => wanted.some((w) => words(w).length > 0 && words(w).every((x) => head.toLowerCase().includes(x))))
+        .map((head) => /`(\w+)`/.exec(head)?.[1] ?? head.slice(5));
+      const hint = near.length > 0 ? ` Did you mean ${near.slice(0, 6).join(", ")}?` : "";
+      console.error(`No card's class or name holds ${wanted.map((w) => `"${w}"`).join(" or ")}.${hint} --list shows them all.`);
       process.exitCode = 1;
     } else console.log(hits.join("\n\n"));
   } else if (out) {

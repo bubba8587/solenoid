@@ -424,7 +424,7 @@ A `PlaceholderNode` ([[C35]] unknownViaPlaceholder) keeps the original type (`mi
 |---|---|
 | `v` is not `CURRENT_SAVE_VERSION` | error |
 | a `name` that is not an identifier | error |
-| an unknown type, with the nearest registry names | error |
+| an unknown type, with the nearest registry names: first the classes holding every word of the guess in any order (`FrameFilterNode` for `FilterFrameNode`, `ValueInput` for `ValueInputNode`), then the nearest spellings | error |
 | the constructor throws on this `init` | error |
 | an `init` key the constructed instance does not carry (the whitelists, instance fields, literal and input keys, `valueKeys` for row-growing nodes and `internal` for Composites are accepted) | error |
 | an `op` outside the class's op vocabulary, when that vocabulary has two or more entries (an unknown op constructs without complaint and then miscomputes; a single entry asserts too little) | error |
