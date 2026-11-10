@@ -31,6 +31,9 @@ export interface TablePopupState {
   headers?: string[];
   editableHeaders?: boolean;
   columnTypes?: ("number" | "string" | "date" | "logical")[];
+  /** A read-only frame whose host can retype a column (Local File): its headers carry the type button, and a press
+   *  hands the column and the next type to the host, which recomputes and reopens the popup. */
+  onRetypeColumn?: (col: number, type: "number" | "string" | "date" | "logical") => void;
   /** The source's date order, read where the popup turns a Date column's text into dates (a Frame Input's). */
   dateOrder?: string;
   /** `null` where a column has no source text (a computed column). */

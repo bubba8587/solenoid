@@ -185,6 +185,21 @@ export function coerceFrameCell(type: FrameColType, raw: string, order = ""): Fr
   return NaN;
 }
 
+/** The frame with each named column read again from its source text as the type `types` gives it (a Local File's
+ *  overrides): a column with no source text reads its values' text. `raw` stays, so Text gives back `02134`. */
+export function retypeColumns(frame: FrameValue, types: Record<string, FrameColType>, order = ""): FrameValue {
+  if (!Object.keys(types).length) return frame;
+  return {
+    ...frame,
+    columns: frame.columns.map((c) => {
+      const type = types[c.name];
+      if (!type || type === c.type) return c;
+      const raw = c.raw ?? c.values.map((v) => (v == null ? "" : textOf(v)));
+      return { ...c, type, values: raw.map((t) => coerceFrameCell(type, t, order)), raw, unit: type === "number" ? c.unit : undefined };
+    }),
+  };
+}
+
 /** A list item read as a type. Text reads as a Frame cell does, so what the type can't read is NaN ([[C58]] tableInputRawText). Converts, never filters; the caller passes null and per-cell errors through. */
 export function coerceListItem(type: FrameColType, v: unknown): FrameCell {
   if (typeof v === "string" && type !== "string") return coerceFrameCell(type, v);

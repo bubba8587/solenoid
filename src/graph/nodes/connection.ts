@@ -22,7 +22,7 @@ import { connectionStore, requestNetwork, fetchInBackground } from "../connectio
 import { isDesktop, hasFs, readFileText, listLocalFilesMatching, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
-import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, cubeFromColumns, type FrameValue, type CubeValue } from "../frame";
+import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, cubeFromColumns, retypeColumns, type FrameValue, type CubeValue, type FrameColType } from "../frame";
 import { readParquetFrame, csvToFrame, isFrameRef, readFrame } from "../frameBackend";
 import { isFilePattern } from "../fileGlob";
 import { AppendNode } from "./frame";
@@ -262,13 +262,17 @@ export class ImportXmlNode extends GraphNode {
 /** Every file read and stacked into one table, a first column naming each row's file ([[B11]] maximalMerge):
  *  columns meet by name as Append's do, and a file that doesn't read is named in `failed` while the rest load.
  *  Null once `stale` says a newer read took over. */
-async function readFilesAsOne(folder: string, files: string[], stale: () => boolean, order: string): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[] } | null> {
+async function readFilesAsOne(folder: string, files: string[], stale: () => boolean, order: string, types: Record<string, FrameColType> = {}): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[]; readTypes: Record<string, FrameColType> } | null> {
+  const readTypes: Record<string, FrameColType> = {};
   const frames: FrameValue[] = [];
   const read: Array<{ file: string; table: FrameValue }> = [];
   const failed: string[] = [];
   for (const rel of files) {
     try {
-      const f = /\.parquet$/i.test(rel) ? await readParquetFrame(folder, rel) : csvToFrame(await readFileText(folder, rel), order);
+      const asRead = /\.parquet$/i.test(rel) ? await readParquetFrame(folder, rel) : csvToFrame(await readFileText(folder, rel), order);
+      if (!isSolError(asRead)) for (const c of asRead.columns) readTypes[c.name] ??= c.type;
+      // Each file is retyped from its own source text before stacking, which keeps no `raw`.
+      const f = isSolError(asRead) ? asRead : retypeColumns(asRead, types, order);
       if (isSolError(f)) failed.push(`${rel} (${f.message})`);
       else {
         const name = f.columns.some((c) => c.name === "File") ? "Source file" : "File";
@@ -280,17 +284,17 @@ async function readFilesAsOne(folder: string, files: string[], stale: () => bool
     }
     if (stale()) return null;
   }
-  if (frames.length === 0) return { frame: solError("#REF!", `None of the ${files.length} files read: ${failed[0]}`), perFile: null, failed };
+  if (frames.length === 0) return { frame: solError("#REF!", `None of the ${files.length} files read: ${failed[0]}`), perFile: null, failed, readTypes };
   // The same files unstacked, a row each: its name and its table, for a transform that runs once per file.
   const perFile = cubeFromColumns([
     { name: "File", cells: read.map((r) => r.file), type: "string" },
     { name: "Table", cells: read.map((r) => r.table) },
   ]);
-  if (frames.length === 1) return { frame: frames[0], perFile, failed };
+  if (frames.length === 1) return { frame: frames[0], perFile, failed, readTypes };
   const stack = new AppendNode({ valueKeys: frames.map((_, i) => `f${i}`) });
   const out = (await (stack as unknown as { data(inputs: Record<string, unknown[]>): unknown }).data(Object.fromEntries(frames.map((f, i) => [`f${i}`, [f]])))) as { frame: unknown };
   const frame = isFrameRef(out.frame) ? await readFrame(out.frame) : out.frame;
-  return stale() ? null : { frame: frame as FrameValue | SolError, perFile, failed };
+  return stale() ? null : { frame: frame as FrameValue | SolError, perFile, failed, readTypes };
 }
 
 // ─── LOCAL FILE (a file in the Settings target folder) ──────────────────────────
@@ -304,6 +308,10 @@ export class LocalFileNode extends GraphNode {
   fileName: string;
   /** The CSV's date order: a column of dates written in numbers alone reads as dates in it. */
   dateOrder: DateOrder;
+  /** Column types the user picked in the popup, by column name, over the ones the file reads as. */
+  columnTypes: Record<string, FrameColType> = {};
+  /** The types the file read as before `columnTypes`, so picking that type again drops the pick. */
+  readTypes: Record<string, FrameColType> = {};
   cachedPlan: CubeValue | null = null;
   /** A pattern's files unstacked: a row per file, its name and its table. */
   cachedFiles: CubeValue | null = null;
@@ -316,12 +324,15 @@ export class LocalFileNode extends GraphNode {
   private inflightKey: string | undefined;
   private inflight: Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> | undefined;
 
-  constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number; dateOrder?: DateOrder }) {
+  constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number; dateOrder?: DateOrder; columnTypes?: Record<string, FrameColType> }) {
     super("LocalFile");
     this.label = init?.label ?? "Local File";
     this.fileName = init?.fileName ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
+    if (init?.columnTypes && typeof init.columnTypes === "object") {
+      for (const [name, t] of Object.entries(init.columnTypes)) if (t === "number" || t === "string" || t === "date" || t === "logical") this.columnTypes[name] = t;
+    }
     this.addOutput("frame", frameOut("Frame"));
     this.addOutput("plan", cubeOut("Plan"));
     this.addOutput("files", cubeOut("Files"));
@@ -339,7 +350,7 @@ export class LocalFileNode extends GraphNode {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const folder = getCsvFolder();
     const name = this.fileName.trim();
-    const key = connectionStore.key(this.id, `${folder}\u0000${name}\u0000${this.dateOrder}`);
+    const key = connectionStore.key(this.id, `${folder}\u0000${name}\u0000${this.dateOrder}\u0000${JSON.stringify(this.columnTypes)}`);
     if (key === this.lastKey) return { frame: this.cachedResult, plan: this.cachedPlan, files: this.cachedFiles };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;
@@ -378,8 +389,9 @@ export class LocalFileNode extends GraphNode {
         const files = await listLocalFilesMatching(folder, name);
         if (stale()) return superseded;
         if (files.length === 0) return fail(`No CSV or Parquet file matches ${name}`);
-        const read = await readFilesAsOne(folder, files, stale, this.dateOrder);
+        const read = await readFilesAsOne(folder, files, stale, this.dateOrder, this.columnTypes);
         if (!read) return superseded;
+        this.readTypes = read.readTypes;
         if (isSolError(read.frame)) return fail(read.frame.message, "error", read.frame);
         this.lastKey = key;
         this.cachedResult = read.frame;
@@ -415,8 +427,10 @@ export class LocalFileNode extends GraphNode {
         });
         return { frame: null, plan: plan.cube };
       }
-      const frame = csvToFrame(await readFileText(folder, name), this.dateOrder);
+      const asRead = csvToFrame(await readFileText(folder, name), this.dateOrder);
       if (stale()) return superseded;
+      this.readTypes = Object.fromEntries(asRead.columns.map((c) => [c.name, c.type]));
+      const frame = retypeColumns(asRead, this.columnTypes, this.dateOrder);
       this.lastKey = key;
       this.cachedResult = frame;
       this.cachedPlan = csvPlanToCube(frame);

@@ -54,6 +54,9 @@ import { FX_MODE_META, type FxMode } from "../nodeClasses";
 import { previewed } from "../listPreview";
 import { isEnter } from "../enterKey";
 import { DateOrderToggle } from "./DateOrderToggle";
+import { tablePopup } from "../tablePopupStore";
+import { openFramePopup } from "../valuePopup";
+import { isFrameValue, type FrameColType } from "../frame";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
@@ -309,6 +312,28 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
     void refreshConnection(data.id);
   }
 
+  /** A type picked in the popup's header: the column reads again as it, and picking the type the file read it as
+   *  drops the pick. The popup reopens on the new output. */
+  async function retypeColumn(c: number, type: FrameColType) {
+    const before = data.cachedResult;
+    const name = isFrameValue(before) ? before.columns[c]?.name : undefined;
+    if (!name) return;
+    const next = { ...data.columnTypes };
+    if (data.readTypes[name] === type) delete next[name];
+    else next[name] = type;
+    data.columnTypes = next;
+    // A popup edit fires no canvas event, so the save is scheduled by hand, as a Frame Input's popup save does.
+    scheduleAutosave();
+    data.edited();
+    await processGraph();
+    const shown = tablePopup.get();
+    const after = data.cachedResult;
+    if (!shown || !isFrameValue(after)) return;
+    void openFramePopup(after, {
+      label: shown.title, hostId: data.id, accent: shown.accent, groupColor: shown.groupColor, groupColorDark: shown.groupColorDark,
+    }, { onRetypeColumn: (col, t) => void retypeColumn(col, t) });
+  }
+
   const frameOut = data.outputs.frame;
   const planRows = data.cachedPlan ? cubeRowCount(data.cachedPlan) : 0;
   const fileRows = data.cachedFiles ? cubeRowCount(data.cachedFiles) : 0;
@@ -367,7 +392,11 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>
-            <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+            <FrameDisplay
+              frame={previewed(() => data.cachedResult)}
+              label={nodeDisplayName(data)}
+              popupOverrides={{ onRetypeColumn: (col, t) => void retypeColumn(col, t) }}
+            />
           </div>
         </MeasuredSocketRow>
       )}

@@ -122,7 +122,11 @@ Tests:
 - `chooseFile.test.ts`: a path is read relative to its root (the root itself as empty, nothing outside it), Windows paths with either slash and in any case; off the desktop the app's picker opens and answers, null when closed, and a second ask cancels the first.
 - `filePickerModel.test.ts`: a folder lists its folders first, then its files, numbers in order; a search ranks a name match first and marks it; 100,000 paths answer fast, at most the cap, counting the rest; a cut head drops its partial last line; a listing is kept for the session.
 
+## Dates and column types of a file
+
 **A CSV's date order.** Local File's Dates toggle (`dateOrder`: Auto, MDY, DMY, YMD) is the order its CSV writes dates of numbers alone in (`csvToFrame(text, order)`, `frame_columnar`, `infer_text_column_ordered` in `csv.rs`). In Auto a column types Date only when its dates are ISO ([[C44]] dateSerials, [[frame-verbs#Type inference]]); under an order, a column whose cells read as dates in it (`1/2/26` as MDY) types Date too, with the same tolerance for stray cells as a number column, so one setting converts every such column of the file. A column that doesn't read in the order (`3/15/26` under DMY) stays text, never half-converted. The order is part of the read's key, so changing it re-reads the file, every file of a pattern included. Web Source and the file preview read in Auto.
+
+**Column types from the popup.** Local File's output opens in the Table popup with each column header's type button live (`onRetypeColumn`, the same button and cycle Number / Text / Date / Boolean the Frame Input editor has; [[table-popup]]). A press saves the type by column name in the card's `columnTypes`, re-reads the file and reopens the popup on the new output (`retypeColumn`, `ConnectionNodes.tsx`). The column is read again from its source text (`retypeColumns`, `frame.ts`, from the frame's `raw`), so Text gives back `02134` where Number read `2134`, and Date reads in the card's Dates order. Picking the type the file read the column as drops the entry (`readTypes`), so a column with no pick follows the file. A pick is kept by name, so a re-exported file with its columns moved keeps it; with a pattern, each file is retyped before stacking. The picks are part of the read's key.
 
 ## A folder as one table
 

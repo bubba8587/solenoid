@@ -44,7 +44,7 @@ export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, acce
     void openFramePopup(value, {
       label, hostId,
       accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
-    });
+    }, popupOverrides);
     return;
   }
   const rowCount = source.reduce((m, c) => Math.max(m, c.cells.length), 0);

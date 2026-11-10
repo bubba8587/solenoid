@@ -30,6 +30,9 @@ specific item.
   C44's four-digit-year rule; a named order reads two-digit years as DATEVALUE does (author 2026-11-10).
   Local File has the same Dates toggle, typing every numbers-alone date column of the CSV at once; the Edit Frame
   popup reads a Frame Input's order too.
+- **Local File's column types** are picked in its output's popup (the header type buttons, `onRetypeColumn`), saved by
+  name in `columnTypes` and re-read from the source text. Pivot field drags work again on Windows' desktop webview
+  (`dragDropEnabled: false`) and in Firefox (drag data on each chip).
 - The rig needs Obsidian at `/opt/Obsidian` (the 1.14.4 Linux tarball from obsidian-releases) and `wasm-bindgen-cli`
   0.2.130 for `plugin:build`; neither is in the cloud image.
 

@@ -1163,6 +1163,23 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                         })()}
                         {colFmtControls && fmtButton(c)}
                       </div>
+                    ) : state.onRetypeColumn && !vertical ? (
+                      <div className="table-popup__colhead-edit">
+                        <button
+                          type="button"
+                          className="sol-coltype"
+                          title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean; the source reads the column again as it.`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const i = COLTYPE_ORDER.indexOf(colTypeAt(c));
+                            state.onRetypeColumn?.(c, COLTYPE_ORDER[(i + 1) % COLTYPE_ORDER.length]);
+                          }}
+                        >
+                          <TypeIcon type={colTypeAt(c)} size={12} />
+                        </button>
+                        <span className="table-popup__colhead-label">{colHeaderLabel(c)}</span>
+                        {colFmtControls && fmtButton(c)}
+                      </div>
                     ) : colFmtControls ? (
                       <div className="table-popup__colhead-edit">
                         <span className="table-popup__colhead-label">{colHeaderLabel(c)}</span>
