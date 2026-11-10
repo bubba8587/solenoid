@@ -24,7 +24,7 @@ flowchart LR
 - **Inputs:** `frame` (the table) and `key`, text naming the columns that find a row, split at commas and trimmed. A name matches a column exactly, else ignoring case and spaces at its ends. Empty, its Behavior is `[row number]`: a row's key is its 1-based number. A key column the table lacks answers `#REF!` ("No column "x" for the key"); a key that isn't text is `#TYPE!`.
 - **Outputs:** `frame`, the table with its edits applied, and `edits`, a table of the edits.
 - **Saved:** `cellEdits`, a list of `{ row, column, value }`: the key of the edit's row, its column's name and the text typed, kept as typed ([[C58]] tableInputRawText). The key text rides in `stringLiterals.key`.
-- **The card shows** an Edit Cells button (`CardOpenButton`, the one Frame Input's Edit Frame and Table Input's Edit Table use; with no table wired it opens nothing), the edit list with the Edits socket beside it, centered on the list, and the Frame output row. It is a 340 px card (`nodeXWide`), so each edit's key and value fit on its line.
+- **The card shows**, top to bottom, an Edit Cells button above its inputs, as Frame Input's Edit Frame and Table Input's Edit Table sit (`CardOpenButton`, theirs too; with no table wired it opens nothing), the edit list with the Edits socket beside it, centered on the list, and the Frame output row. It is a 340 px card (`nodeXWide`), so each edit's key and value fit on its line.
 
 ## A row's key
 

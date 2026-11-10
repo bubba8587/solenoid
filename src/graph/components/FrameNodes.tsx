@@ -1325,8 +1325,8 @@ export function EditFrameComponent({ data, emit }: NodeProps<EditFrameNodeType>)
   };
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} />
       <CardOpenButton label="Edit Cells" onOpen={(el) => openEditFramePopup(data, el)} />
+      <InlineInputs node={data} emit={emit} />
       <MeasuredSocketRow side="output" socketKey="edits" nodeId={data.id} emit={emit} payload={data.outputs.edits!.socket} hero>
         <div className="solenoid-pipeline solenoid-edit-frame__edits">
           {edits.length === 0
