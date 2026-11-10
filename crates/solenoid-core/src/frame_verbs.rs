@@ -1699,13 +1699,27 @@ enum Score {
 /// How the pivot laid its frame out, `PivotLayout` in `pivotLayout.ts`, as wire JSON.
 pub type PivotLayoutJson = Json;
 
+/// A calculated value field: its name, and its answer over a cell's source rows (indices into the input), with
+/// whether that answer is a date. Every cell asks it, totals included, so a ratio of sums is right at every level.
+pub struct PivotCalc<'a> {
+    pub name: String,
+    pub eval: CalcEval<'a>,
+}
+/// A calculated field's answer over a cell's source rows, and whether it is a date.
+pub type CalcEval<'a> = Box<dyn Fn(&[usize]) -> (FrameCell, bool) + 'a>;
+
 pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLayoutJson)> {
+    pivot_frame_calc(f, spec, &[])
+}
+
+/// `pivot_frame` with calculated value fields after the spec's values.
+pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -> Res<(FrameValue, PivotLayoutJson)> {
     let keep =
         |names: &[String]| -> Vec<String> { names.iter().filter(|s| !trim_space(s).is_empty()).cloned().collect() };
     let row_fields = keep(&spec.row_fields);
     let col_fields = keep(&spec.col_fields);
     let value_names = keep(&spec.values);
-    if value_names.is_empty() {
+    if value_names.is_empty() && calcs.is_empty() {
         return Err(sol_error(ErrorCode::Value, "PIVOTBY needs at least one value field"));
     }
     let row_cols: Vec<&FrameColumn> = row_fields.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
@@ -1734,6 +1748,8 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let (r_n, c_n, v_n) = (row_leaves.len(), col_leaves.len(), val_cols.len());
 
     let mut cells: Vec<Vec<Vec<Vec<FrameCell>>>> = vec![vec![vec![Vec::new(); c_n]; r_n]; v_n];
+    // Each leaf pair's source rows, for the calculated fields; permuted with `cells` by a value sort.
+    let mut srcs: Vec<Vec<Vec<usize>>> = vec![vec![Vec::new(); c_n]; if calcs.is_empty() { 0 } else { r_n }];
     {
         let row_index: FxHashMap<Vec<CellKey>, usize> =
             row_leaves.iter().enumerate().map(|(i, t)| (tuple_key(t), i)).collect();
@@ -1745,6 +1761,9 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
             if let (Some(&r), Some(&c)) = (r, c) {
                 for (v, vc) in val_cols.iter().enumerate() {
                     cells[v][r][c].push(vc.cell_at(i).clone());
+                }
+                if !calcs.is_empty() {
+                    srcs[r][c].push(i);
                 }
             }
         }
@@ -1798,6 +1817,9 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         for plane in cells.iter_mut() {
             *plane = perm.iter().map(|&r| std::mem::take(&mut plane[r])).collect();
         }
+        if !srcs.is_empty() {
+            srcs = perm.iter().map(|&r| std::mem::take(&mut srcs[r])).collect();
+        }
     }
     let col_val_sort = cs.abs() - 1.0 - col_cols.len() as f64;
     if col_val_sort >= 0.0 && col_val_sort < v_n as f64 && col_val_sort.fract() == 0.0 && c_n > 1 {
@@ -1811,6 +1833,9 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
             for row in plane.iter_mut() {
                 *row = perm.iter().map(|&c| std::mem::take(&mut row[c])).collect();
             }
+        }
+        for row in srcs.iter_mut() {
+            *row = perm.iter().map(|&c| std::mem::take(&mut row[c])).collect();
         }
     }
 
@@ -1938,7 +1963,10 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         }
     }
 
-    let multi_val = v_n > 1;
+    // The calculated fields follow the spec's values: their names head their columns as a value's does.
+    let all_values: Vec<String> = value_names.iter().cloned().chain(calcs.iter().map(|k| k.name.clone())).collect();
+    let value_names = &all_values;
+    let multi_val = all_values.len() > 1;
     let col_header = |co: &AxisOut, v: usize| -> String {
         // Each key as its column shows it, so a date field heads its columns with dates, never serials ([[C137]]).
         let join = |t: &[FrameCell]| {
@@ -1971,7 +1999,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let mut raw_headers = Vec::new();
     let mut body_specs: Vec<(&AxisOut, usize)> = Vec::new();
     for co in &col_out {
-        for v in 0..v_n {
+        for v in 0..all_values.len() {
             raw_headers.push(col_header(co, v));
             body_specs.push((co, v));
         }
@@ -1980,6 +2008,42 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let plans: Vec<ReadingPlan> =
         (0..v_n).map(|v| agg_unit_plan(funcs[v], val_cols[v].unit.as_deref(), Some(val_cols[v].ty))).collect();
     for (bi, (co, v)) in body_specs.iter().enumerate() {
+        if *v >= v_n {
+            let calc = &calcs[*v - v_n];
+            let srcs = &srcs;
+            let mut dates = true;
+            let mut texts = true;
+            let values: Vec<FrameCell> = row_out
+                .iter()
+                .map(|ro| {
+                    let mut at: Vec<usize> = ro
+                        .span
+                        .iter()
+                        .flat_map(|&r| co.span.iter().flat_map(move |&c| srcs[r][c].iter().copied()))
+                        .collect();
+                    if at.is_empty() {
+                        return FrameCell::Null;
+                    }
+                    at.sort_unstable();
+                    let (cell, date) = (calc.eval)(&at);
+                    if !cell.is_null() && !matches!(cell, FrameCell::Err(_)) {
+                        dates &= date;
+                        texts &= matches!(cell, FrameCell::Str(_));
+                    }
+                    cell
+                })
+                .collect();
+            let any = values.iter().any(|x| !x.is_null() && !matches!(x, FrameCell::Err(_)));
+            let ty = if any && dates {
+                FrameColType::Date
+            } else if any && texts {
+                FrameColType::String
+            } else {
+                FrameColType::Number
+            };
+            out_cols.push(FrameColumn::new(body_names[bi].clone(), ty, values));
+            continue;
+        }
         let ty = if val_cols[*v].ty == FrameColType::String && matches!(funcs[*v], AggOp::Min | AggOp::Max) {
             FrameColType::String
         } else if val_cols[*v].ty == FrameColType::Date && funcs[*v].keeps_dates() {
@@ -2015,7 +2079,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         "colFields": col_fields,
         "colTypes": col_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
         "values": value_names,
-        "funcs": funcs,
+        "funcs": funcs.iter().map(|f| serde_json::to_value(f).unwrap_or(Json::Null)).chain(calcs.iter().map(|_| json!("calc"))).collect::<Vec<_>>(),
         "rows": row_out
             .iter()
             .map(|ro| {

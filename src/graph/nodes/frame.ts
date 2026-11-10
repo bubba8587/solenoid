@@ -458,6 +458,7 @@ export class GroupByFrameNode extends GraphNode {
 export class PivotNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     filter: "One cell per source row, in order. Only rows where the mask is TRUE feed the pivot.",
+    calcFn: "A LAMBDA whose parameters name columns, such as LAMBDA(Miles, Gallons, SUM(Miles) / SUM(Gallons)). Each cell, totals included, gives each parameter that column's values in its own rows, so a ratio of sums is right at every level. @ has no row here.",
   };
 
   label: string;
@@ -477,6 +478,10 @@ export class PivotNode extends GraphNode {
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
+  /** Calculated value fields: a name and a LAMBDA per row (`calcName{id}`, `calcFn{id}`). */
+  nextPairId = 0;
+  readonly pairLabels: [string, string] = ["Name", "λ"];
+  readonly pairPlaceholders = ["MPG", undefined] as const;
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
   width = 220; height = 300;
 
@@ -486,6 +491,7 @@ export class PivotNode extends GraphNode {
     filterExclude?: Record<string, string[]>;
     pivotView?: Partial<PivotViewOptions>;
     detailFields?: string[];
+    valueKeys?: string[];
   }) {
     super("Pivot");
     this.pivotView = readPivotView(init?.pivotView);
@@ -504,12 +510,39 @@ export class PivotNode extends GraphNode {
     this.addInput("colFields", strListIn("Columns"));
     this.addInput("values", strListIn("Values"));
     this.addInput("filter", logicalListIn("Filter"));
+    for (const id of pairIdsFromKeys(init?.valueKeys, "calcName")) this.addPairWithId(id);
     this.addOutput("frame", frameOut("Wide"));
+  }
+
+  private addPairWithId(id: number): void {
+    this.addInput(`calcName${id}`, strIn(`Name ${id + 1}`));
+    this.addInput(`calcFn${id}`, lambdaIn(`λ ${id + 1}`));
+    this.nextPairId = Math.max(this.nextPairId, id + 1);
+  }
+
+  valuePairKeys(): Array<[string, string]> {
+    return Object.keys(this.inputs)
+      .filter((k) => k.startsWith("calcName"))
+      .map((k) => { const id = k.slice(8); return [`calcName${id}`, `calcFn${id}`] as [string, string]; });
+  }
+
+  addValuePair(): void {
+    this.addPairWithId(this.nextPairId);
+  }
+
+  removeValuePair(aKey: string): void {
+    const id = aKey.slice(8);
+    for (const k of [`calcName${id}`, `calcFn${id}`]) {
+      this.removeInput(k);
+      delete this.stringLiterals[k];
+    }
   }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
     if (!input || ctx.wired("rowFields") || ctx.wired("colFields") || ctx.wired("values")) return null;
+    // A calculated field's column is known only once it computes.
+    if (this.valuePairKeys().length) return null;
     const valid = new Set(input.columns.map((c) => c.name));
     const rowFields = csvList(this.stringLiterals.rowFields).filter((f) => valid.has(f));
     const colFields = csvList(this.stringLiterals.colFields).filter((f) => valid.has(f));

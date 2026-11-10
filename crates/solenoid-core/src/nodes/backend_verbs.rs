@@ -14,9 +14,10 @@ use crate::excel_functions::{value_text, V};
 use crate::frame::{FrameCell, FrameColType, FrameValue};
 use crate::frame_ref::FrameRef;
 use crate::frame_verbs::{
-    append_frames, bind_columns, compile_filter, join_frames, pivot_frame, FilterOp, JoinOpts, PivotSpec,
+    append_frames, bind_columns, compile_filter, join_frames, pivot_frame_calc, FilterOp, JoinOpts, PivotCalc,
+    PivotSpec,
 };
-use crate::jsnum::number_to_string;
+use crate::jsnum::{number_to_string, trim_space};
 use crate::string_order::compare_strings;
 use serde_json::{json, Map, Value as Json};
 use std::collections::HashSet;
@@ -499,6 +500,50 @@ fn flat_cube(k: &Cube) -> Frame {
     Frame { columns, total_rows: None, approx: None, source: None, layout: None }
 }
 
+/// The card's calculated value fields, in socket order: each a name (blank is `Calculated N`) and the LAMBDA wired
+/// to its λ, whose parameters name the columns it reads ([[C50]] lambdaBindsByName). A row with no LAMBDA is skipped.
+fn calc_fields(c: &Call) -> Vec<(String, Rc<crate::eval::LambdaV>)> {
+    let ids: Vec<String> = c.sockets.iter().filter_map(|s| s.key.strip_prefix("calcFn").map(String::from)).collect();
+    let mut out = Vec::new();
+    for (n, id) in ids.iter().enumerate() {
+        let V::Lambda(lam) = super::stats::first(c, &format!("calcFn{id}")) else { continue };
+        let name = match str_input(c, &format!("calcName{id}"), "") {
+            V::Str(s) if !trim_space(&s).is_empty() => trim_space(&s).to_string(),
+            _ => format!("Calculated {}", n + 1),
+        };
+        out.push((name, lam));
+    }
+    out
+}
+
+/// A calculated field's answer over a cell's rows: each parameter is its column's values in those rows, a date
+/// column's as dates. `@` names this row, and a pivot cell is many rows, so the LAMBDA reads whole lists.
+fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCell, bool) {
+    let mut args = Vec::with_capacity(lam.params.len());
+    for p in &lam.params {
+        let Some(col) = f.columns.iter().find(|k| &k.name == p) else {
+            let e =
+                sol_error(ErrorCode::Name, format!("The calculated field reads {p}, which is no column of the table"));
+            return (FrameCell::Err(Rc::new(e)), false);
+        };
+        let items =
+            V::List(rows.iter().map(|&i| col.values.get(i).cloned().unwrap_or(V::Null)).collect::<Vec<_>>().into());
+        args.push(if col.ty == FrameColType::Date { crate::date_values::wrap(&items) } else { items });
+    }
+    let v = crate::eval::Eval::default().call_lambda(lam, &args);
+    match v {
+        V::List(_) => {
+            let e = sol_error(
+                ErrorCode::Shape,
+                "A calculated field answers one value for each cell, not a list: aggregate it, as SUM(Miles) does",
+            );
+            (FrameCell::Err(Rc::new(e)), false)
+        }
+        V::Date(_) => (core_cell(&v), true),
+        other => (core_cell(&other), false),
+    }
+}
+
 fn pivot(c: &mut Call) -> Answer {
     let raw = first(c, "frame");
     if let Cv::Ref(r) = &raw {
@@ -538,6 +583,11 @@ fn pivot(c: &mut Call) -> Answer {
             }
             for n in names_of(c.field("detailFields")) {
                 want(n);
+            }
+            for (_, lam) in calc_fields(c) {
+                for p in &lam.params {
+                    want(p.clone());
+                }
             }
             wanted
         };
@@ -615,7 +665,8 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
         }
     }
     let [row_fields, col_fields, values] = <[Vec<String>; 3]>::try_from(lists).unwrap_or_default();
-    if values.is_empty() {
+    let calcs = calc_fields(c);
+    if values.is_empty() && calcs.is_empty() {
         if let Some(r) = source {
             return answer(plan(r, drop_nothing()));
         }
@@ -640,7 +691,14 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
         Ok(s) => s,
         Err(e) => return Err(super::frames::thrown(&e.to_string())),
     };
-    let (out, layout) = match pivot_frame(&to_core(f), &spec) {
+    let calcs: Vec<PivotCalc> = calcs
+        .iter()
+        .map(|(name, lam)| PivotCalc {
+            name: name.clone(),
+            eval: Box::new(move |rows: &[usize]| calc_cell(f, lam, rows)),
+        })
+        .collect();
+    let (out, layout) = match pivot_frame_calc(&to_core(f), &spec, &calcs) {
         Ok(r) => r,
         Err(e) => {
             let e = V::err(e);

@@ -33,6 +33,9 @@ specific item.
 - **Local File's column types** are picked in its output's popup (the header type buttons, `onRetypeColumn`), saved by
   name in `columnTypes` and re-read from the source text. Pivot field drags work again on Windows' desktop webview
   (`dragDropEnabled: false`) and in Firefox (drag data on each chip).
+- **PIVOTBY calculated fields**: a Name and a λ per field on the card; the LAMBDA runs per cell over that cell's rows,
+  totals included, so MPG by plate by month is miles over gallons at every level (`pivot_frame_calc`). Explicit
+  aggregates, no `@` (author 2026-11-10).
 - The rig needs Obsidian at `/opt/Obsidian` (the 1.14.4 Linux tarball from obsidian-releases) and `wasm-bindgen-cli`
   0.2.130 for `plugin:build`; neither is in the cloud image.
 

@@ -27,7 +27,8 @@ export interface PivotLayout {
   colFields: string[];
   colTypes: FrameColType[];
   values: string[];
-  funcs: AggOp[];
+  /** Each value's function; `calc` for a calculated field, which a cell's LAMBDA answers. */
+  funcs: (AggOp | "calc")[];
   rows: PivotAxisItem[];
   cols: (PivotAxisItem & { value: number })[];
   details?: PivotDetailColumn[];
@@ -95,7 +96,10 @@ const FUNC_CAPTION: Record<AggOp, string> = {
 
 /** Excel's value field caption: "Sum of Revenue". */
 export function valueCaption(layout: PivotLayout, v: number): string {
-  return `${FUNC_CAPTION[layout.funcs[v]] ?? "Sum"} of ${layout.values[v]}`;
+  const func = layout.funcs[v];
+  // A calculated field is captioned by its own name: it is no function of one column.
+  if (func === "calc") return layout.values[v];
+  return `${FUNC_CAPTION[func] ?? "Sum"} of ${layout.values[v]}`;
 }
 
 /** The key a group is folded under: its prefix of the row tuple. */

@@ -113,7 +113,7 @@ import type { AllocateMode } from "../nodes/allocateOps";
 import type { PayoffOrder } from "../nodes/frame";
 import { PAYOFF_ORDER_META } from "../nodes/frame";
 import { previewed } from "../listPreview";
-import { PairHead } from "./PairedExtensibleInputs";
+import { PairHead, PairedExtensibleInputs } from "./PairedExtensibleInputs";
 import { DateOrderToggle } from "./DateOrderToggle";
 
 const ALLOCATE_MODE_OPTIONS: OpOption<AllocateMode>[] =
@@ -561,6 +561,8 @@ function pivotSummary(data: PivotNodeType): string {
   if (rows.length) parts.push(`Rows: ${rows.join(", ")}`);
   if (cols.length) parts.push(`Cols: ${cols.join(", ")}`);
   if (vals.length) parts.push(`Σ ${vals.map((v) => `${v} (${(data.funcs?.[v] ?? data.agg).toUpperCase()})`).join(", ")}`);
+  const calcs = data.valuePairKeys().map(([name], i) => data.stringLiterals?.[name]?.trim() || `Calculated ${i + 1}`);
+  if (calcs.length) parts.push(`λ ${calcs.join(", ")}`);
   return parts.join(" · ");
 }
 
@@ -582,6 +584,9 @@ export function PivotComponent({ data, emit }: NodeProps<PivotNodeType>) {
         Configure fields…
       </button>
       <div className="solenoid-node__pivot-summary" title={pivotSummary(data)}>{pivotSummary(data)}</div>
+      <CardSection label="Calculated fields" collapsible defaultOpen={data.valuePairKeys().length > 0} sockets={{ node: data, emit, keys: data.valuePairKeys().flat() }}>
+        <PairedExtensibleInputs node={data} emit={emit} rowNoun="calculated field" minRows={0} />
+      </CardSection>
       <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
     </NodeShell>
   );

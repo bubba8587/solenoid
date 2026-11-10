@@ -40,13 +40,15 @@ interface PairedExtensibleNode {
 }
 
 export function PairedExtensibleInputs({
-  node, emit, leadingKeys, trailingKeys, rowNoun = "pair",
+  node, emit, leadingKeys, trailingKeys, rowNoun = "pair", minRows = 1,
 }: {
   node: PairedExtensibleNode;
   emit: Emit;
   leadingKeys?: string[];
   trailingKeys?: string[];
   rowNoun?: string;
+  /** The fewest rows the card keeps: a row's remove button shows above it (PIVOTBY's calculated fields go to none). */
+  minRows?: number;
 }) {
   const connected = useConnectedInputs(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
@@ -128,7 +130,7 @@ export function PairedExtensibleInputs({
       {pairs.map((keys, i) => (
         // The tuple's remove button sits on the rule above it, so every field keeps the full width; one tuple has neither.
         <div key={keys[0]} className="solenoid-node__pair-group solenoid-node__pair-group--headed">
-          {pairs.length > 1 && <PairHead title={`Remove this ${rowNoun}`} onRemove={() => void removePair(keys)} />}
+          {pairs.length > minRows && <PairHead title={`Remove this ${rowNoun}`} onRemove={() => void removePair(keys)} />}
           {keys.map((k, j) => field(k, `${node.pairLabels[j] ?? ""} ${i + 1}`, node.pairPlaceholders?.[j] && `${node.pairPlaceholders[j]} ${i + 1}`))}
         </div>
       ))}

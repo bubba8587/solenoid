@@ -806,6 +806,13 @@ Tests: `frameVerbs.test.ts`: the id column's unit and a shared value unit.
 - **Body types:** number, except a `min` or `max` over a text value column, which is a string column ([[C24]] arraySemantics).
 - **Units and formats:** each body column carries the unit its value field's aggregate takes (as groupBy's, above) and no format; the key columns carry neither. The layout's Details columns take their source columns' formats ([[C127]] pivotView).
 
+**Calculated fields** (author 2026-11-10: explicit formulas, through LAMBDA slots). A calculated value field is a LAMBDA whose parameters name columns ([[C50]] lambdaBindsByName), such as `LAMBDA(Miles, Gallons, SUM(Miles) / SUM(Gallons))`. It runs for every cell, leaves, subtotals and grand totals alike, over that cell's own source rows: each parameter is the list of its column's values in those rows (a Date column's as dates), so a ratio of sums is right at every level, where a ratio computed first and then aggregated would average ratios (`pivot_frame_calc`, `PivotCalc` in `frame_verbs.rs`, `calc_fields` and `calc_cell` in `nodes/backend_verbs.rs`).
+
+- **Explicit, not Excel's.** The formula says its own aggregation. Excel's calculated field applies SUM to every field it names and can take no other function; here AVERAGE, MAX, SUMPRODUCT, COUNTIFS and the rest all work, and a field with no aggregate answers a list, `#SHAPE!`. A cell with one source row hands one-item lists, which read as their item, so such a formula shows a number there: the `#SHAPE!` in the other cells shows the mistake.
+- **No row.** `@` reads the current row, and a pivot cell is many rows, so `@x` is `#REF!` (the evaluator's own message); a parameter naming no column is `#NAME?`.
+- **Its column.** It follows the spec's values, headed as a value is (its name, `<column> | <name>` under column fields), Date when every answer is a date, Text when every answer is text, else Number. The layout's `funcs` carries `calc` for it, and the Pivot view captions it by its name ([[table-popup#The Pivot view]]). It is not sortable by value and carries no unit.
+- **On the card.** A Calculated fields section holds a Name and a λ socket per field (`calcName{id}`, `calcFn{id}`, `PairedExtensibleInputs`, saved through `valueKeys`), none by default; a blank name is `Calculated N`, a row with no LAMBDA wired is skipped, and the summary lists the fields after `λ`. With a calculated field the card declares no output shape ahead of its compute. A lazy input also reads the columns the LAMBDAs name.
+
 **The PIVOTBY card.**
 
 - **No value fields:** it forwards its input unchanged.
