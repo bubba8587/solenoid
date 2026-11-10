@@ -183,7 +183,7 @@ results get retried and settled rulings relapse.
 | `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `tree/specs/canvas/layout-chrome.md` § Desktop window frame |
 | `isAndroidApp`, `src-tauri/capabilities/android.json`, `scripts/android-prep.mjs` | `android.md` |
 | `obsidianWrite.ts`, `frontmatterPatch.ts`, `obsidianTypes.ts`, `pluginColumnTypes.ts` | `../tree/specs/integrations/vault-bridge.md` (VaultBridge Nodes and VaultBridgeFx: which spec governs each), under [[B1]] obsidianBet |
-| `vaultCube.ts`, `dailyNotesConfig.ts`, the Vault Folder node in `nodes/connection.ts` | `../tree/specs/integrations/vault-read.md` (which notes are read, the file columns, how a property column gets its shape and type), under [[B1]] obsidianBet |
+| `vaultCube.ts`, `noteBody.ts`, `dailyNotesConfig.ts`, the Vault Folder node in `nodes/connection.ts` | `../tree/specs/integrations/vault-read.md` (which notes are read, the file columns, how a property column gets its shape and type, and the body as data: tasks, tables and inline fields), under [[B1]] obsidianBet |
 | `taskNotesApi.ts`, `nodes/taskNotes.ts` | `../tree/specs/integrations/tasknotes.md` (the TaskNotes node's three reads and their columns, Write Tasks' plan, Preview and Run), under [[B1]] obsidianBet |
 | `obsidian-plugin/**` | `../tree/specs/integrations/obsidian-plugin.md` (what it has, how it is built, every divergence from the app), under [[C107]] obsidianPlugin |
 | `ConduitComponent.tsx`, conduit faces/lanes | [[C10]] socketLattice; `../tree/specs/canvas/conduit-lane-faces.md` |

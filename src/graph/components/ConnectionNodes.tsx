@@ -1,4 +1,5 @@
 // [[B19]] spreadsheetHabits, [[B11]] maximalMerge, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
+import { CardSection } from "./CardSection";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { collapseStore } from "../collapseStore";
 import type React from "react";
@@ -779,6 +780,14 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
 const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
 const FIELD_INPUT = { flex: 1, width: "auto", minWidth: 0 } as const;
 
+/** What a Vault Folder reads out of each note's body, beside its properties. */
+const VAULT_BODY_READS: { key: "includeBody" | "includeTasks" | "includeTables" | "includeFields"; label: string; title: string }[] = [
+  { key: "includeBody", label: "Body", title: "A note-body column with each note's markdown" },
+  { key: "includeTasks", label: "Tasks", title: "A note-tasks column with each note's checklist items as a table" },
+  { key: "includeTables", label: "Tables", title: "A note-tables column with each note's tables as one table" },
+  { key: "includeFields", label: "Fields", title: "A column for each inline field, written key:: value" },
+];
+
 export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the preview when a read lands
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot()); // the one vault (demo vault when set)
@@ -882,14 +891,20 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               />
             </label>
-            <label className="sol-conn__field" title="Add a body column with each note's markdown">
-              <input
-                type="checkbox" checked={data.includeBody}
-                onChange={(e) => { data.includeBody = e.target.checked; data.edited(); void processGraph(); }}
-                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-              />
-              Include body
-            </label>
+            <CardSection label="From each note">
+              <div className="sol-conn__checks">
+                {VAULT_BODY_READS.map(({ key, label, title }) => (
+                  <label key={key} className="sol-conn__field" title={title}>
+                    <input
+                      type="checkbox" checked={data[key]}
+                      onChange={(e) => { data[key] = e.target.checked; data.edited(); void processGraph(); }}
+                      onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </CardSection>
             <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
             <RefreshIntervalField node={data} />
             {cols.length > 0 && (

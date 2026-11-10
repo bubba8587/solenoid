@@ -6,7 +6,7 @@ tags: [spec, integrations]
 
 # Spec: Vault Read
 
-Serves [[B1]] obsidianBet. The Vault Read is the process behind the Vault Folder node: it reads a folder of an Obsidian vault and answers one Cube, a row per note and a column per property. [[vault-bridge]] names its neighbors; fetching, caching and refresh follow [[live-connections]]. The code is `vaultCube.ts` (`notesToCube`), `dailyNotesConfig.ts` and the Vault Folder node in `nodes/connection.ts`.
+Serves [[B1]] obsidianBet. The Vault Read is the process behind the Vault Folder node: it reads a folder of an Obsidian vault and answers one Cube, a row per note and a column per property. [[vault-bridge]] names its neighbors; fetching, caching and refresh follow [[live-connections]]. The code is `vaultCube.ts` (`notesToCube`), `noteBody.ts`, `dailyNotesConfig.ts` and the Vault Folder node in `nodes/connection.ts`.
 
 ```mermaid
 flowchart TD
@@ -49,7 +49,7 @@ Every Cube starts with the same eleven columns, in this order, whatever the note
 | `embeds` | list of text | the target of every `![[embed]]`, read the same way |
 | `date` | date | the day the file name spells, by the name format below; blank when the name does not match |
 
-With "Include body" on, a twelfth column `note-body` follows: the note's text after its frontmatter.
+With Body ticked under "From each note", a twelfth column `note-body` follows: the note's text after its frontmatter. Tasks and Tables add `note-tasks` and `note-tables` after it (*The body as data*).
 
 An inline tag is read as Obsidian reads one: letters, digits, `_`, `-` and `/` after a `#` that starts a line or follows a space, never all digits (`#1` is no tag), and never inside a code fence or a code span.
 
@@ -59,7 +59,7 @@ An inline tag is read as Obsidian reads one: letters, digits, `_`, `-` and `/` a
 
 After the file columns comes one column per frontmatter key, in the order the keys are first met going down the rows. A note without a key has a blank cell in that column.
 
-A key named like a file column never becomes a second column. `tags` is merged into the `tags` file column. A frontmatter `path`, `name`, `folder`, `ext`, `size`, `created`, `modified`, `links`, `embeds`, `date` or `note-body` is not read at all: the file column of that name keeps its own value, so a note's own `date: 2026-03-04` property does not reach the Cube. This is a gap (`docs/backlog.md` § VaultBridge), and no test pins it.
+A key named like a file column never becomes a second column. `tags` is merged into the `tags` file column. A frontmatter `path`, `name`, `folder`, `ext`, `size`, `created`, `modified`, `links`, `embeds`, `date`, `note-body`, `note-tasks` or `note-tables` is not read at all: the file column of that name keeps its own value, so a note's own `date: 2026-03-04` property does not reach the Cube. This is a gap (`docs/backlog.md` § VaultBridge), and no test pins it.
 
 **A column's shape and type** come from the first source that names the key:
 
@@ -73,10 +73,54 @@ The Solenoid Properties plugin's picks then type the columns inside a nested Cub
 
 **A cell is read as its column's type**, the way a Frame cell of that type reads typed text ([[C58]] tableInputRawText): text the type cannot read is `NaN`, never a blank, so a wrong value stays visible. Under a text type a number or TRUE/FALSE is its text, and a date is the ISO text the note holds, never its serial ([[obsidian-plugin#What Solenoid reads back]]).
 
+## The body as data
+
+A note's properties are not the only data in it. The Vault Folder node's "From each note" section has three more boxes, each off until ticked, that read what people write in the body itself: checklists, tables, and `key:: value` fields. Nothing inside a code fence is read by any of them, and a line inside a quote or a callout is read as if its `>` marks were not there. The code is `noteBody.ts`.
+
+```mermaid
+flowchart LR
+    body["a note's body"] --> t["Tasks: every checklist item"] --> ct["note-tasks: a nested table, a row per item"]
+    body --> b["Tables: every pipe table"] --> cb["note-tables: one nested table, the rows stacked"]
+    body --> f["Fields: every key:: value"] --> cf["a property column per key"]
+    ct --> un["an Unnest node: a row per task or table row, across the folder"]
+    cb --> un
+```
+
+### Tasks
+
+Tasks adds the column `note-tasks`. A note's cell holds a nested table with one row per checklist item, in the order written, and is blank for a note with none. A checklist item is a list item (`-`, `*`, `+` or a number) whose text starts with one character in square brackets, at any indent.
+
+| Column | Type | What it holds |
+|---|---|---|
+| `task` | text | the item's text, without the dates, priority and other fields listed below; tags stay in it |
+| `done` | TRUE/FALSE | TRUE when the brackets hold `x` or `X` |
+| `taskStatus` | text | the character in the brackets when it is neither a space nor an x, such as `/` for in progress or `-` for cancelled; blank otherwise |
+| `taskDue` | date | the date after `📅`, or in `[due:: 2026-09-12]` |
+| `taskScheduled` | date | the date after `⏳`, or in `[scheduled:: …]` |
+| `taskCompleted` | date | the date after `✅`, or in `[completion:: …]` |
+| `taskPriority` | text | `highest`, `high`, `medium`, `low` or `lowest` for `🔺 ⏫ 🔼 🔽 ⏬`, or the word in `[priority:: …]` |
+| `taskTags` | list of text | the item's own `#tags`, without the `#` |
+| `heading` | text | the nearest heading above the item |
+| `line` | number | the item's line in the note's file, counting from 1 |
+
+The emoji fields are the Tasks plugin's and the bracketed ones Dataview's; a bracketed field may use round brackets. The Tasks plugin's other fields (start `🛫`, created `➕`, cancelled `❌`, recurrence `🔁`, id `🆔`, depends on `⛔`, on completion `🏁`) are taken out of `task` with their values and not kept. The four columns a project note often has of its own (status, due, priority, tags) carry `task` in their names so that, after an Unnest node, a task's due date and its note's `due` property sit side by side under different names.
+
+### Tables
+
+Tables adds the column `note-tables`. A note's cell holds one nested table and is blank for a note with no table. A table is a header line with at least one `|`, a line of dashes under it with the same number of cells, and every following line that holds a `|`, up to the first blank line. The outer pipes are optional. A `|` written `\|`, inside a code span, or inside a `[[link|alias]]` belongs to its cell. A row with fewer cells than the header is blank where it is short, and cells past the header are dropped.
+
+A note with several tables has their rows stacked into the one nested table, with a column for every header any of them has and a blank where a table has no such column, as [[live-connections#A folder as one table]] stacks files. Each column takes the type its cells read as, the way an imported file's columns do, so `1,250.50` is the number 1250.5. A first column `heading` names the heading each row's table sits under, which tells the tables apart; when one of the note's tables has a `heading` column of its own, that column is kept and none is added.
+
+### Fields
+
+Fields reads Dataview's inline fields as property columns, beside the frontmatter's and typed by the same sources (*The property columns*). Two forms are read: a line that is `Key:: value`, after an optional list marker and with the key optionally in bold or italic marks, and `[key:: value]` or `(key:: value)` anywhere in a line. The `::` of a line field must be followed by a space or the end of the line, so `std::vector` in prose is no field. A value reads as a number, as TRUE or FALSE, as a date when it is an ISO date, as its text without the quotes when it is in double quotes, and as text otherwise. A key written more than once in a note holds a list. A key with no value is skipped, a field inside a checklist item belongs to the task and is not read here, and a key the note's frontmatter also has keeps the frontmatter's value.
+
+Tests: `noteBody.test.ts`: a checklist item's text, mark, heading and line, in a callout and at an indent, and none from a code fence or a plain list item; the emoji and bracketed dates and priorities read and taken out of the text; the nested table's column names; a table's header, dashes and rows with a pipe kept inside a link, a code span and an escape; a note's tables stacked and typed with their headings, and a table's own `heading` column left alone; each form of inline field and each kind of value, a repeated key as a list; the Vault Folder Cube unchanged until a box is ticked, `note-tasks` and `note-tables` after the file columns and blank for a note with none, a column per inline field, and the frontmatter's value kept for a key written both ways.
+
 ## What the Vault Folder node keeps
 
 - The Cube is held in memory only. It is never saved into the project file, so a shared document carries no note text; opening the document reads the vault again.
-- A read that a newer one overtook (the folder, the Filter, the name format or the vault changed while it ran) lands nowhere, so a slow read never replaces a fresh one.
+- A read that a newer one overtook (the folder, the Filter, the name format, a "From each note" box or the vault changed while it ran) lands nowhere, so a slow read never replaces a fresh one.
 - A failed read clears the Cube and shows the error on the card.
 - A note edited in Obsidian does not reach the Cube until the Vault Folder node refreshes: on its Refresh, on its "refresh every N minutes" setting, or on reopening the document.
 

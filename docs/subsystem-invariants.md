@@ -96,5 +96,5 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 |---|---|---|
 | `../tree/specs/integrations/obsidian-plugin.md` | Solenoid Properties, the Obsidian plugin | `obsidian-plugin/` |
 | `../tree/specs/integrations/vault-bridge.md` | VaultBridge: the cards and processes between a document and a vault | `obsidianWrite.ts`, `frontmatterPatch.ts` |
-| `../tree/specs/integrations/vault-read.md` | Vault Read: a folder of notes as one Cube | `vaultCube.ts`, `dailyNotesConfig.ts` |
+| `../tree/specs/integrations/vault-read.md` | Vault Read: a folder of notes as one Cube, the body's tasks, tables and inline fields included | `vaultCube.ts`, `noteBody.ts`, `dailyNotesConfig.ts` |
 | `../tree/specs/integrations/tasknotes.md` | TaskNotes: reading tasks, events and counts, and Write Tasks | `taskNotesApi.ts`, `nodes/taskNotes.ts` |

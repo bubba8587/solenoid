@@ -897,12 +897,16 @@ export class VaultFolderNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     folder: "The vault subfolder to read. Blank reads the whole vault.",
     glob: "A file-name filter such as 2026-*. Blank keeps every note.",
-    cube: "One row per note: the file columns, then every frontmatter key, with lists and nested tables kept in the cells. Notes are never saved into the project file.",
+    cube: "One row per note: the file columns, then every frontmatter key, with lists and nested tables kept in the cells. A note's checklist items, tables and inline fields join them when ticked. Notes are never saved into the project file.",
   };
   label: string;
   folder: string;
   glob: string;
   includeBody: boolean;
+  /** The body as data: a note's checklist items, its pipe tables, and its inline `key:: value` fields. */
+  includeTasks: boolean;
+  includeTables: boolean;
+  includeFields: boolean;
   nameFormat: string;
   refreshMinutes: number;
   width = 260; height = 240;
@@ -911,12 +915,18 @@ export class VaultFolderNode extends GraphNode {
   private _folder = "";
   private _glob = "";
 
-  constructor(init?: { label?: string; folder?: string; glob?: string; includeBody?: boolean; nameFormat?: string; refreshMinutes?: number }) {
+  constructor(init?: {
+    label?: string; folder?: string; glob?: string; includeBody?: boolean; includeTasks?: boolean; includeTables?: boolean;
+    includeFields?: boolean; nameFormat?: string; refreshMinutes?: number;
+  }) {
     super("VaultFolder");
     this.label = init?.label ?? "Vault Folder";
     this.folder = init?.folder ?? "";
     this.glob = init?.glob ?? "";
     this.includeBody = init?.includeBody ?? false;
+    this.includeTasks = init?.includeTasks ?? false;
+    this.includeTables = init?.includeTables ?? false;
+    this.includeFields = init?.includeFields ?? false;
     this.nameFormat = init?.nameFormat ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.addInput("folder", strIn("Folder"));
@@ -929,7 +939,7 @@ export class VaultFolderNode extends GraphNode {
     const folder = readTextInput(inputs?.folder, this.folder, "Folder").replace(/^\/+|\/+$/g, "");
     const glob = readTextInput(inputs?.glob, this.glob, "Filter");
     const vault = getVaultRoot();
-    const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
+    const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${[this.includeBody, this.includeTasks, this.includeTables, this.includeFields].map((on) => (on ? 1 : 0)).join("")}`);
     if (key !== this._lastKey) {
       this._lastKey = key;
       this._folder = folder;
@@ -977,7 +987,9 @@ export class VaultFolderNode extends GraphNode {
       const { columns, nested } = await this.readColumnPicks(vault);
       const sources: VaultTypeSources = { mdbaseFor: (p) => mdbaseHintFor(collections, folder, p), obsidian, columns, nested };
       const nameFormat = this.nameFormat.trim() || (await this.defaultNameFormat(vault, folder));
-      const cube = notesToCube(notes, sources, { nameFormat, includeBody: this.includeBody });
+      const cube = notesToCube(notes, sources, {
+        nameFormat, includeBody: this.includeBody, includeTasks: this.includeTasks, includeTables: this.includeTables, includeFields: this.includeFields,
+      });
 
       if (!current()) return;
       this.cached = cube;

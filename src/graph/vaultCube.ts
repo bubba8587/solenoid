@@ -9,6 +9,7 @@ import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
 import type { PluginColumnTypes, PluginNestedTables, ColumnPicks } from "./pluginColumnTypes";
 import type { NestedTables } from "./cubeTypes";
 import { fencedLines } from "./managedBlock";
+import { readTasks, tasksCube, readTables, tablesFrame, readInlineFields } from "./noteBody";
 
 export interface VaultNote {
   path: string;
@@ -29,6 +30,12 @@ export interface VaultTypeSources {
 interface VaultCubeOptions {
   nameFormat?: string;
   includeBody?: boolean;
+  /** A `note-tasks` column: each note's checklist items as a nested table. */
+  includeTasks?: boolean;
+  /** A `note-tables` column: each note's pipe tables, stacked, as a nested table. */
+  includeTables?: boolean;
+  /** Each note's inline `key:: value` fields as property columns, beside its frontmatter's. */
+  includeFields?: boolean;
 }
 
 const MS_PER_DAY = 86400000;
@@ -172,12 +179,16 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
     const pf = parseNoteFrontmatter(n.text);
     const fields = new Map<string, { value: FrontmatterValueLoose; guessed: string }>();
     for (const f of pf.fields) fields.set(f.key, { value: f.value, guessed: f.guessed });
+    // A key the frontmatter already holds keeps the frontmatter's value.
+    if (opts.includeFields) for (const f of readInlineFields(pf.body)) if (!fields.has(f.key)) fields.set(f.key, { value: f.value, guessed: f.guessed });
     return { path: n.path, fields, body: pf.body };
   });
 
   const noteByPath = new Map(notes.map((n) => [n.path, n]));
   const builtinCells: Record<string, CubeCell[]> = Object.fromEntries(BUILTINS.map((b) => [b, []]));
   if (opts.includeBody) builtinCells.body = [];
+  const taskCells: CubeCell[] = [];
+  const tableCells: CubeCell[] = [];
   for (const p of parsed) {
     const note = noteByPath.get(p.path)!;
     const fmTags = p.fields.get("tags");
@@ -197,9 +208,11 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
     builtinCells.embeds.push(extractEmbeds(note.text));
     builtinCells.date.push(opts.nameFormat ? dateFromName(baseName(p.path), opts.nameFormat) : null);
     if (opts.includeBody) builtinCells.body.push(p.body);
+    if (opts.includeTasks) taskCells.push(tasksCube(readTasks(p.body, note.text.split("\n").length - p.body.split("\n").length)));
+    if (opts.includeTables) tableCells.push(tablesFrame(readTables(p.body)));
   }
 
-  const builtinNames = new Set<string>([...BUILTINS, "note-body"]);
+  const builtinNames = new Set<string>([...BUILTINS, "note-body", "note-tasks", "note-tables"]);
   const fmKeys: string[] = [];
   const seen = new Set<string>();
   for (const p of parsed) {
@@ -213,6 +226,8 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
   const columns: { name: string; cells: CubeCell[]; type?: FrameColType }[] = [];
   for (const b of BUILTINS) columns.push({ name: b, cells: builtinCells[b], type: colType(b) });
   if (opts.includeBody) columns.push({ name: "note-body", cells: builtinCells.body, type: "string" });
+  if (opts.includeTasks) columns.push({ name: "note-tasks", cells: taskCells });
+  if (opts.includeTables) columns.push({ name: "note-tables", cells: tableCells });
 
   for (const key of fmKeys) {
     const hint = resolveHint(key, parsed, sources);

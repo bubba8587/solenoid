@@ -74,6 +74,10 @@ specific item.
 - **The card reference lists every input that takes a typed value** (`aiGrounding.ts` asks `literalFieldOf`, as the
   canvas does): GROUPBY's `keys` and 77 other cards' fields were born empty and went unlisted.
   `aiGroundingInline.test.ts` holds each listed key to what the validator accepts.
+- **A note's body is data** (`noteBody.ts`, Vault Folder's "From each note" boxes): Tasks gives `note-tasks`, a nested
+  table of every checklist item with its done mark, dates, priority, tags, heading and line; Tables gives
+  `note-tables`, the note's pipe tables stacked and typed as an import is; Fields reads Dataview's `key:: value` as
+  property columns. All three are off until ticked. The example `vault-note-bodies` runs both on the sample vault.
 - **Vault Read and TaskNotes have specs** (`tree/specs/integrations/vault-read.md`, `tree/specs/integrations/tasknotes.md`). Writing them
   found that a note's own `date` or `created` property never reaches Vault Folder's Cube (backlog § VaultBridge).
 
