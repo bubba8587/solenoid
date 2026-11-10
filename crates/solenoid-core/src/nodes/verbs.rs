@@ -365,7 +365,7 @@ pub(crate) fn flat_cube_frame(k: &Cube, only: Option<&[String]>) -> Result<Frame
             let mut cols: Vec<&CubeColumn> = Vec::new();
             for name in names {
                 let Some(col) = k.columns.iter().find(|cc| &cc.name == name) else {
-                    return Err(err(ErrorCode::Ref, format!("column \"{name}\" not found")));
+                    return Err(err(ErrorCode::Ref, crate::frame::column_not_found(name, k.columns.iter().map(|cc| cc.name.as_str()))));
                 };
                 if !cols.iter().any(|x| std::ptr::eq(*x, col)) {
                     cols.push(col);
@@ -648,8 +648,14 @@ pub(crate) fn column_named<'a>(columns: &'a [Column], name: &str) -> Option<&'a 
 
 /// A name the table has no column for: `#REF!`, as the verbs answer, with the columns it does have.
 fn no_such_column<'a>(c: &mut Call, name: &str, has: impl Iterator<Item = &'a str>) -> Answer {
-    let has: Vec<&str> = has.take(12).collect();
-    let e = err(ErrorCode::Ref, format!("column \"{name}\" not found; the table has {}", has.join(", ")));
+    let has: Vec<&str> = has.collect();
+    let e = match crate::frame::case_twin(name, has.iter().copied()) {
+        Some(_) => err(ErrorCode::Ref, crate::frame::column_not_found(name, has.iter().copied())),
+        None => {
+            let shown: Vec<&str> = has.iter().copied().take(12).collect();
+            err(ErrorCode::Ref, format!("column \"{name}\" not found; the table has {}", shown.join(", ")))
+        }
+    };
     values_answer(c, V::Null, e)
 }
 
@@ -1052,7 +1058,7 @@ const CUBE_ROW: &str = "\u{0}row";
 /// A Cube's column read as a frame reads it, its unit beside it, refused where it nests.
 fn scalar_column(cube: &Cube, name: &str) -> Result<(FrameColumn, Option<Json>), SolError> {
     let Some(col) = cube.columns.iter().find(|c| c.name == name) else {
-        return Err(sol_error(ErrorCode::Ref, format!("column \"{name}\" not found")));
+        return Err(sol_error(ErrorCode::Ref, crate::frame::column_not_found(name, cube.columns.iter().map(|c| c.name.as_str()))));
     };
     if col.cells.iter().any(|v| matches!(v, Cv::V(V::List(_)) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_))) {
         return Err(sol_error(
@@ -1211,7 +1217,7 @@ fn select_cube_columns(cube: &Cube, names: &[String], drop: bool) -> Result<Cv, 
                 .iter()
                 .find(|c| &c.name == n)
                 .cloned()
-                .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{n}\" not found")))
+                .ok_or_else(|| sol_error(ErrorCode::Ref, crate::frame::column_not_found(n, cube.columns.iter().map(|c| c.name.as_str()))))
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(cube_from_columns(cols))
@@ -1305,7 +1311,7 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
     for (d, value) in conds.iter().zip(&values) {
         if LIST_OPS.contains(&d.op.as_str()) {
             let Some(raw) = cube.columns.iter().find(|c| c.name == d.column) else {
-                return Err(sol_error(ErrorCode::Ref, format!("column \"{}\" not found", d.column)));
+                return Err(sol_error(ErrorCode::Ref, crate::frame::column_not_found(&d.column, cube.columns.iter().map(|c| c.name.as_str()))));
             };
             let text = crate::jsnum::js_string(&d.value).into_owned();
             tests.push(Test::List(&raw.cells, ListCond::new(&d.op, &text, d.match_case)));

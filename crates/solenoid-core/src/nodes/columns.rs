@@ -1047,13 +1047,15 @@ fn computed_column(c: &mut Call) -> Answer {
         Some(l) => l.body.as_ref().map(|b| crate::eval::row_refs(b)).unwrap_or_default(),
         None => ast.as_ref().map(crate::eval::row_refs).unwrap_or_default(),
     };
+    let names: Vec<&str> = run_table.iter().map(|t| t.name()).collect();
+    let read = |c: &Call, p: &str| case_slip(c, p, &names).unwrap_or_else(|| run_side(c, p));
     let mut sides = rustc_hash::FxHashMap::default();
     for p in params.iter().filter(|p| !has_col(p)) {
-        sides.insert(p.clone(), run_side(c, p));
+        sides.insert(p.clone(), read(c, p));
     }
     let mut row_sides = rustc_hash::FxHashMap::default();
     for p in body_refs.iter().filter(|p| !has_col(p)) {
-        row_sides.insert(p.clone(), run_side(c, p));
+        row_sides.insert(p.clone(), read(c, p));
     }
     let in_plan = match (&lam, &plan) {
         (Some(l), Ok(pl)) => Some(lambda_with_captures(l, &l.units, &|v| pl.side(v))),
@@ -1120,6 +1122,16 @@ fn computed_column(c: &mut Call) -> Answer {
     Ok(vec![("frame".into(), out)])
 }
 
+/// A name the formula reads that nothing is wired or typed into, where a column differs from it only in letter case:
+/// that slip answers `#REF!` saying so, rather than reading as a quiet 0.
+fn case_slip(c: &Call, p: &str, columns: &[&str]) -> Option<V> {
+    if c.wired(p).is_some() || !matches!(c.unwired(p), V::Undef | V::Null) {
+        return None;
+    }
+    crate::frame::case_twin(p, columns.iter().copied())?;
+    Some(err(ErrorCode::Ref, crate::frame::column_not_found(p, columns.iter().copied())))
+}
+
 /// A frame ref's column, computed on its plan's answer, typed, united and placed, the other columns that answer's own:
 /// a ref planning nothing yet. `None` where the ref must be read and run as a value: a wired LAMBDA, a binding, a side
 /// value with a unit, a plan that rescales, or a formula the column runner refuses.
@@ -1144,11 +1156,13 @@ fn on_ref(c: &mut Call, r: &Rc<crate::frame_ref::FrameRef>) -> Result<Option<Vec
     };
     let mut sides = rustc_hash::FxHashMap::default();
     for p in crate::eval::variables(&ast).iter().filter(|p| free(p)) {
-        sides.entry(p.clone()).or_insert_with(|| side(p));
+        let v = case_slip(c, p, &columns).unwrap_or_else(|| side(p));
+        sides.entry(p.clone()).or_insert(v);
     }
     let mut row_sides = rustc_hash::FxHashMap::default();
     for p in crate::eval::row_refs(&ast).iter().filter(|p| free(p)) {
-        row_sides.entry(p.clone()).or_insert_with(|| side(p));
+        let v = case_slip(c, p, &columns).unwrap_or_else(|| side(p));
+        row_sides.entry(p.clone()).or_insert(v);
     }
     let inputs = crate::eval::ColumnInputs {
         table: crate::eval::Table::Frame(&flushed.frame),

@@ -518,6 +518,18 @@ export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: Cube
   return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells, ...(cols[j].type ? { type: cols[j].type } : {}), ...(cols[j].format ? { format: cols[j].format } : {}) })));
 }
 
+/** The column whose name differs from `name` only in letter case, the likely meant one where `name` finds none. */
+export function caseTwin(name: string, has: readonly string[]): string | undefined {
+  const want = name.toLowerCase();
+  return has.find((h) => h !== name && h.toLowerCase() === want);
+}
+
+/** `column "Date" not found`, with a word on case where a column differs from it only in that (as the core says it). */
+export function columnNotFound(name: string, has: readonly string[]): string {
+  const twin = caseTwin(name, has);
+  return twin ? `column "${name}" not found. Column names are case sensitive: the table has "${twin}"` : `column "${name}" not found`;
+}
+
 export function flatCubeToFrame(c: CubeValue, only?: readonly string[] | "scalar"): FrameValue | SolError {
   const nested = (col: CubeColumn) => col.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v));
   let cols: CubeColumn[];
@@ -526,7 +538,7 @@ export function flatCubeToFrame(c: CubeValue, only?: readonly string[] | "scalar
     cols = [];
     for (const name of only) {
       const col = c.columns.find((cc) => cc.name === name);
-      if (!col) return solError("#REF!", `column "${name}" not found`);
+      if (!col) return solError("#REF!", columnNotFound(name, c.columns.map((cc) => cc.name)));
       if (!cols.includes(col)) cols.push(col);
     }
   } else cols = c.columns;

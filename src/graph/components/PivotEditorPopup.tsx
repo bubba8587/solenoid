@@ -4,6 +4,7 @@ import { pivotEditor } from "../pivotEditorStore";
 import { notifyGraphChanged, processGraph } from "../process";
 import { csvList } from "../nodes/frameShapeHook";
 import { listLiteralText } from "../listLiterals";
+import { caseTwin } from "../frame";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameOps";
 import { AGG_OP_META, type PivotNode } from "../nodeClasses";
@@ -96,7 +97,11 @@ export function PivotEditorPopup() {
   const typeOf = (name: string) => fields.find((f) => f.name === name)?.type ?? "number";
   // A saved field whose column the input lacks right now stays in the layout, marked, and counts again once it's back.
   const isMissing = (name: string) => fields.length > 0 && !fields.some((f) => f.name === name);
-  const chipTitle = (field: string) => (isMissing(field) ? `${field} · not in the input now` : `${field} · ${typeOf(field)}`);
+  const missingNote = (field: string) => {
+    const twin = caseTwin(field, fields.map((f) => f.name));
+    return twin ? `Column names are case sensitive: the input has ${twin}` : "not in the input now";
+  };
+  const chipTitle = (field: string) => (isMissing(field) ? `${field} · ${missingNote(field)}` : `${field} · ${typeOf(field)}`);
 
   // Saved and recorded at once, not on the compute's finish, which manual calculation or an early-out pass would skip.
   function commit(next: Cfg) {

@@ -11,7 +11,7 @@ use super::Cv;
 use super::{kit, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{value_text, V};
-use crate::frame::{FrameCell, FrameColType, FrameValue};
+use crate::frame::{case_twin, column_not_found, FrameCell, FrameColType, FrameValue};
 use crate::frame_ref::FrameRef;
 use crate::frame_verbs::{
     append_frames, bind_columns, compile_filter, join_frames, pivot_frame_calc, FilterOp, JoinOpts, PivotCalc,
@@ -522,8 +522,11 @@ fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCel
     let mut args = Vec::with_capacity(lam.params.len());
     for p in &lam.params {
         let Some(col) = f.columns.iter().find(|k| &k.name == p) else {
-            let e =
-                sol_error(ErrorCode::Name, format!("The calculated field reads {p}, which is no column of the table"));
+            let mut msg = format!("The calculated field reads {p}, which is no column of the table");
+            if let Some(h) = case_twin(p, f.columns.iter().map(|k| k.name.as_str())) {
+                msg.push_str(&format!(". Column names are case sensitive: the table has \"{h}\""));
+            }
+            let e = sol_error(ErrorCode::Name, msg);
             return (FrameCell::Err(Rc::new(e)), false);
         };
         let items =
@@ -652,12 +655,21 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
         }
     }
     let valid: HashSet<String> = names.iter().cloned().collect();
+    let names_all: Vec<&str> = names.iter().map(String::as_str).collect();
     let fields = kept(c, &valid);
     let answer = |frame: Cv| -> Answer { Ok(vec![("frame".into(), frame)]) };
     let mut lists = Vec::new();
     for key in AXES {
         match column_list(c, key)? {
-            Some(names) => lists.push(names.into_iter().filter(|n| valid.contains(n)).collect::<Vec<_>>()),
+            Some(names) => {
+                // A field kept while its column is away stays quiet; one only letter case keeps from its column is a slip.
+                if let Some(n) = names.iter().find(|n| !valid.contains(*n) && case_twin(n, names_all.iter().copied()).is_some()) {
+                    let e = V::err(sol_error(ErrorCode::Ref, column_not_found(n, names_all.iter().copied())));
+                    c.show("cachedResult", e.clone());
+                    return answer(Cv::V(e));
+                }
+                lists.push(names.into_iter().filter(|n| valid.contains(n)).collect::<Vec<_>>())
+            }
             None => {
                 c.show("cachedResult", V::Null);
                 return answer(Cv::NULL);

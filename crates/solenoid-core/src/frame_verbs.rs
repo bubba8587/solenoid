@@ -354,7 +354,7 @@ fn require_column<'a>(f: &'a FrameValue, name: &str) -> Res<&'a FrameColumn> {
     f.columns
         .iter()
         .find(|c| c.name == name)
-        .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{name}\" not found")))
+        .ok_or_else(|| sol_error(ErrorCode::Ref, crate::frame::column_not_found(name, f.columns.iter().map(|c| c.name.as_str()))))
 }
 
 pub fn reorder_rows(f: &FrameValue, indices: &[usize]) -> FrameValue {

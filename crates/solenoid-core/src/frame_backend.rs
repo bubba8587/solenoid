@@ -331,7 +331,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     .columns
                     .iter()
                     .find(|c| c.name == p.column)
-                    .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{}\" not found", p.column)))?;
+                    .ok_or_else(|| sol_error(ErrorCode::Ref, crate::frame::column_not_found(&p.column, f.columns.iter().map(|c| c.name.as_str()))))?;
                 columns.push(FrameColumn {
                     name: p.as_,
                     ty: p.ty,

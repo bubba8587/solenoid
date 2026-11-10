@@ -185,6 +185,20 @@ pub fn make_headers(names: &[String], ncols: usize) -> Vec<String> {
         .collect()
 }
 
+/// The column whose name differs from `name` only in letter case, the likely meant one where `name` finds none.
+pub fn case_twin<'a>(name: &str, has: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
+    let want = name.to_lowercase();
+    has.into_iter().find(|h| *h != name && h.to_lowercase() == want)
+}
+
+/// `column "Date" not found`, with a word on case where a column differs from it only in that.
+pub fn column_not_found<'a>(name: &str, has: impl IntoIterator<Item = &'a str>) -> String {
+    match case_twin(name, has) {
+        Some(h) => format!("column \"{name}\" not found. Column names are case sensitive: the table has \"{h}\""),
+        None => format!("column \"{name}\" not found"),
+    }
+}
+
 pub fn get_column<'a>(f: &'a FrameValue, name: &str) -> Option<&'a FrameColumn> {
     let key = trim_space(name);
     if let Some(c) = f.columns.iter().find(|c| c.name == key) {
