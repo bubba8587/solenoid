@@ -31,6 +31,8 @@ export interface TablePopupState {
   headers?: string[];
   editableHeaders?: boolean;
   columnTypes?: ("number" | "string" | "date" | "logical")[];
+  /** The source's date order, read where the popup turns a Date column's text into dates (a Frame Input's). */
+  dateOrder?: string;
   /** `null` where a column has no source text (a computed column). */
   sourceCells?: (string | null)[][];
   onSaveSource?: (columns: FrameSourceColumn[]) => void;

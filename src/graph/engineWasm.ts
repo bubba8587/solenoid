@@ -232,8 +232,8 @@ export function wasmReadBin(handle: string, column?: string, limit?: number): (B
 
 /** A CSV file's text as typed columns (`csv::frame_columnar`): its delimiter guessed, each column's type read off its
  *  cells. */
-export function wasmCsvFrame(text: string): BinaryCells & { rowCount: number } {
-  const reply = JSON.parse(command(() => engine_csv_frame(text))) as { ok?: { columns: BinaryCells["schema"]; rowCount: number }; err?: unknown };
+export function wasmCsvFrame(text: string, order = ""): BinaryCells & { rowCount: number } {
+  const reply = JSON.parse(command(() => engine_csv_frame(text, order))) as { ok?: { columns: BinaryCells["schema"]; rowCount: number }; err?: unknown };
   if ("err" in reply) throwSol(toSolError(reply.err));
   const ok = reply.ok!;
   return command(() => ({ schema: ok.columns, rowCount: ok.rowCount, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));

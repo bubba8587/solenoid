@@ -93,7 +93,7 @@ fn frames_as_frozen() {
     let mut cases = load("csv-frames");
     let mut bad = Vec::new();
     for c in &mut cases {
-        let (out, _) = frame_columnar(c["text"].as_str().unwrap());
+        let (out, _) = frame_columnar(c["text"].as_str().unwrap(), Default::default());
         let mut strs = out.strs.as_str();
         let mut lens = out.lens.iter();
         let mut text = || {
@@ -217,8 +217,23 @@ fn a_number_column_reads_its_stray_cells_as_nan() {
     assert_eq!(ty("1\n2\nsee note\n"), "string");
     assert_eq!(ty("N/A\nnull\n"), "string");
     assert_eq!(ty("2024-01-05\nN/A\n2024-02-01\n"), "date");
-    let (cols, _) = frame_columnar("n\n1\nN/A\n3\n");
+    let (cols, _) = frame_columnar("n\n1\nN/A\n3\n", Default::default());
     assert_eq!(cols.tags[..3], [TAG_NUM, TAG_NUM, TAG_NUM]);
     assert!(cols.nums[1].is_nan());
     assert_eq!(cols.schema[1]["raw"], true, "the source text rides beside the column");
+}
+
+/// An import told its file's date order types a column of numbers-alone dates Date (author 2026-11-10); in Auto the
+/// same column stays text, since a slash date needs a four-digit year ([[C44]] dateSerials).
+#[test]
+fn an_import_reads_slash_dates_under_its_order() {
+    use solenoid_core::excel_criteria::DateOrder;
+    let text = "when,n\n1/2/26,1\n3/15/26,2\n12/1/25,3\n";
+    let ty = |order| frame_columnar(text, order).0.schema[0]["type"].as_str().unwrap().to_string();
+    assert_eq!(ty(DateOrder::Auto), "string");
+    assert_eq!(ty(DateOrder::Mdy), "date");
+    let (cols, _) = frame_columnar(text, DateOrder::Mdy);
+    assert_eq!(cols.nums[..3], [46024.0, 46096.0, 45992.0]);
+    // DMY can't read 3/15/26 (no 15th month): the column keeps its text.
+    assert_eq!(ty(DateOrder::Dmy), "string");
 }

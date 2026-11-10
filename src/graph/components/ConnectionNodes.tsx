@@ -53,6 +53,7 @@ import { getOwningView } from "../activeGraph";
 import { FX_MODE_META, type FxMode } from "../nodeClasses";
 import { previewed } from "../listPreview";
 import { isEnter } from "../enterKey";
+import { DateOrderToggle } from "./DateOrderToggle";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
@@ -351,6 +352,12 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
               onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
             />
           </label>
+        )}
+        {folder && (desktop || isDemoVaultPath(folder)) && (
+          <div className="sol-conn__field" title="How the file writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
+            Dates
+            <DateOrderToggle node={data} />
+          </div>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {desktop && folder && (

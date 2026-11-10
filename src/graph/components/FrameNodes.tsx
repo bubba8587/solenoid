@@ -185,6 +185,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
           value: isFrameValue(data.cachedResult) ? data.cachedResult : { __frame: true, columns: [] },
           label: nodeDisplayName(data), hostId: data.id, source, onSaveSource, onCommitSource,
           lambdaOptions: data.lambdaKeys.map(lambdaSocketName), formLayout: data.activeLayout, cardLayout: data.activeCardLayout,
+          popupOverrides: { dateOrder: data.dateOrder },
         })}
       />
       <CardSection

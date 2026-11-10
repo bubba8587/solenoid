@@ -78,8 +78,9 @@ function decodeWireCell(v: unknown): unknown {
 
 /** A CSV file's text as a typed frame, read on the core ([[C103]] untrustedContentSeams): its delimiter guessed, blank
  *  lines skipped, the first row the header, each column's trimmed text kept as `raw`. */
-export function csvToFrame(text: string): FrameValue {
-  const columns = decodeBinary(wasmCsvFrame(text));
+/** `order` (MDY, DMY, YMD; blank for Auto) types a column of dates written in numbers alone Date, read in that order. */
+export function csvToFrame(text: string, order = ""): FrameValue {
+  const columns = decodeBinary(wasmCsvFrame(text, order));
   for (const c of columns) c.raw ??= c.values.map((v) => (v === null ? "" : (v as string)));
   return { __frame: true, columns };
 }

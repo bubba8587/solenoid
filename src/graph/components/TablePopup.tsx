@@ -325,7 +325,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     if (literalSource && mode === "formatted") {
       return row.map((raw, c) => {
         const type = colTypeAt(c);
-        const f = formatFrameCell(type, coerceFrameCell(type, raw ?? ""));
+        const f = formatFrameCell(type, coerceFrameCell(type, raw ?? "", state.dateOrder ?? ""));
         return f == null ? "" : String(f);
       });
     }
@@ -475,7 +475,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   }
   function controlledCell(raw: CellValue, c: number): string {
     const ann = annFor(c);
-    return controlledCellText(raw, colTypeAt(c), ann, () => cellUnit(c, ann));
+    return controlledCellText(raw, colTypeAt(c), ann, () => cellUnit(c, ann), state?.dateOrder ?? "");
   }
 
   const vertical = !!state.list && listVertical;

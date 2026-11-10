@@ -28,6 +28,7 @@ import { isFilePattern } from "../fileGlob";
 import { AppendNode } from "./frame";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { planFileToPlan, csvPlanToCube } from "../planImport";
+import { isDateOrder, type DateOrder } from "../dateOrder";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
 
@@ -261,13 +262,13 @@ export class ImportXmlNode extends GraphNode {
 /** Every file read and stacked into one table, a first column naming each row's file ([[B11]] maximalMerge):
  *  columns meet by name as Append's do, and a file that doesn't read is named in `failed` while the rest load.
  *  Null once `stale` says a newer read took over. */
-async function readFilesAsOne(folder: string, files: string[], stale: () => boolean): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[] } | null> {
+async function readFilesAsOne(folder: string, files: string[], stale: () => boolean, order: string): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[] } | null> {
   const frames: FrameValue[] = [];
   const read: Array<{ file: string; table: FrameValue }> = [];
   const failed: string[] = [];
   for (const rel of files) {
     try {
-      const f = /\.parquet$/i.test(rel) ? await readParquetFrame(folder, rel) : csvToFrame(await readFileText(folder, rel));
+      const f = /\.parquet$/i.test(rel) ? await readParquetFrame(folder, rel) : csvToFrame(await readFileText(folder, rel), order);
       if (isSolError(f)) failed.push(`${rel} (${f.message})`);
       else {
         const name = f.columns.some((c) => c.name === "File") ? "Source file" : "File";
@@ -301,6 +302,8 @@ export class LocalFileNode extends GraphNode {
   };
   label: string;
   fileName: string;
+  /** The CSV's date order: a column of dates written in numbers alone reads as dates in it. */
+  dateOrder: DateOrder;
   cachedPlan: CubeValue | null = null;
   /** A pattern's files unstacked: a row per file, its name and its table. */
   cachedFiles: CubeValue | null = null;
@@ -313,11 +316,12 @@ export class LocalFileNode extends GraphNode {
   private inflightKey: string | undefined;
   private inflight: Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> | undefined;
 
-  constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number }) {
+  constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number; dateOrder?: DateOrder }) {
     super("LocalFile");
     this.label = init?.label ?? "Local File";
     this.fileName = init?.fileName ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     this.addOutput("frame", frameOut("Frame"));
     this.addOutput("plan", cubeOut("Plan"));
     this.addOutput("files", cubeOut("Files"));
@@ -335,7 +339,7 @@ export class LocalFileNode extends GraphNode {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const folder = getCsvFolder();
     const name = this.fileName.trim();
-    const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
+    const key = connectionStore.key(this.id, `${folder}\u0000${name}\u0000${this.dateOrder}`);
     if (key === this.lastKey) return { frame: this.cachedResult, plan: this.cachedPlan, files: this.cachedFiles };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;
@@ -374,7 +378,7 @@ export class LocalFileNode extends GraphNode {
         const files = await listLocalFilesMatching(folder, name);
         if (stale()) return superseded;
         if (files.length === 0) return fail(`No CSV or Parquet file matches ${name}`);
-        const read = await readFilesAsOne(folder, files, stale);
+        const read = await readFilesAsOne(folder, files, stale, this.dateOrder);
         if (!read) return superseded;
         if (isSolError(read.frame)) return fail(read.frame.message, "error", read.frame);
         this.lastKey = key;
@@ -411,7 +415,7 @@ export class LocalFileNode extends GraphNode {
         });
         return { frame: null, plan: plan.cube };
       }
-      const frame = csvToFrame(await readFileText(folder, name));
+      const frame = csvToFrame(await readFileText(folder, name), this.dateOrder);
       if (stale()) return superseded;
       this.lastKey = key;
       this.cachedResult = frame;

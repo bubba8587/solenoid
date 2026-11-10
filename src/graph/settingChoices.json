@@ -1030,6 +1030,14 @@
    "string"
   ]
  },
+ "LocalFileNode": {
+  "dateOrder": [
+   "",
+   "DMY",
+   "MDY",
+   "YMD"
+  ]
+ },
  "MakeArrayNode": {
   "castTo": [
    "date",

@@ -28,6 +28,8 @@ specific item.
 - **A date order** (`DATEVALUE(text, "MDY")`, and an Auto / MDY / DMY / YMD toggle on Cast to Date, Get Column read as
   Date, the DATEVALUE card and a Frame Input with Date columns): one reader in the core (`read_date_text`). Auto keeps
   C44's four-digit-year rule; a named order reads two-digit years as DATEVALUE does (author 2026-11-10).
+  Local File has the same Dates toggle, typing every numbers-alone date column of the CSV at once; the Edit Frame
+  popup reads a Frame Input's order too.
 - The rig needs Obsidian at `/opt/Obsidian` (the 1.14.4 Linux tarball from obsidian-releases) and `wasm-bindgen-cli`
   0.2.130 for `plugin:build`; neither is in the cloud image.
 

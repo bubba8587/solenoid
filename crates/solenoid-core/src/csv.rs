@@ -2,6 +2,7 @@
 //! CSV text on the `csv` crate with Solenoid's layers on top (`tree/specs/computation/frame-verbs.md` § Reading CSV
 //! text), held to the frozen `fixtures/core/csv-*.json.gz` by `tests/csv.rs`.
 
+use crate::excel_criteria::DateOrder;
 use std::borrow::Cow;
 
 use serde_json::{json, Value as Json};
@@ -252,6 +253,18 @@ pub(crate) fn iso_date_text(t: &str) -> bool {
 }
 
 /// ISO date text as its serial.
+/// `date_text_serial`, and under a date order a date of numbers alone read in that order (`1/2/26` as MDY): an import
+/// told its file's convention types such a column Date, where Auto declines to guess ([[C44]] dateSerials).
+fn date_text_serial_ordered(s: &str, order: DateOrder) -> Option<f64> {
+    if order != DateOrder::Auto && crate::excel_criteria::numbers_alone(trim_space(s)) {
+        return match crate::excel_criteria::read_date_text(s, order) {
+            DateReading::Serial(r) if r.is_finite() => Some(r),
+            _ => None,
+        };
+    }
+    date_text_serial(s)
+}
+
 pub(crate) fn date_text_serial(s: &str) -> Option<f64> {
     let t = trim_space(s);
     if let Some(serial) = plain_date_serial(t) {
@@ -343,6 +356,11 @@ fn missing_marker(s: &str) -> bool {
 /// (`N/A`, `-`, `#DIV/0!`) and up to a tenth of the filled cells of any other text, each read as NaN, its text kept
 /// as the column's `raw`.
 pub fn infer_text_column<'s>(cells: impl Iterator<Item = Option<&'s str>> + Clone) -> Typed {
+    infer_text_column_ordered(cells, DateOrder::Auto)
+}
+
+/// `infer_text_column` with dates of numbers alone read under `order`.
+pub fn infer_text_column_ordered<'s>(cells: impl Iterator<Item = Option<&'s str>> + Clone, order: DateOrder) -> Typed {
     let blank = |c: Option<&str>| c.is_none_or(|s| trim_space(s).is_empty());
     let filled = cells.clone().filter(|c| !blank(*c)).count();
     if filled == 0 {
@@ -383,7 +401,7 @@ pub fn infer_text_column<'s>(cells: impl Iterator<Item = Option<&'s str>> + Clon
     if let Some(v) = logical {
         return Typed::Logical(v);
     }
-    if let Some(v) = read_most(&date_text_serial) {
+    if let Some(v) = read_most(&|s: &str| date_text_serial_ordered(s, order)) {
         return Typed::Date(v);
     }
     Typed::String
@@ -419,7 +437,7 @@ pub fn source_columns(text: &str) -> Vec<(String, FrameColType, Vec<String>)> {
 /// `csvToFrame` in the columnar hand-off: a file's text, its delimiter guessed, as typed columns. Each column's cells
 /// follow its schema entry; a column that isn't text is followed by its trimmed source text (`raw`), a schema entry
 /// marked `raw`. A text column's source is its cells, a blank as "".
-pub fn frame_columnar(text: &str) -> (Columnar, usize) {
+pub fn frame_columnar(text: &str, order: DateOrder) -> (Columnar, usize) {
     let normalized = normalize_newlines(text);
     let rows = rows_of(&normalized, CsvOptions { detect_delimiter: true, keep_blank_lines: false });
     let mut out = Columnar::default();
@@ -432,7 +450,7 @@ pub fn frame_columnar(text: &str) -> (Columnar, usize) {
     out.nums.reserve(names.len() * body);
     for (j, name) in names.into_iter().enumerate() {
         let cells = (1..rows.len()).map(|i| rows.get(i, j));
-        let typed = infer_text_column(cells.clone());
+        let typed = infer_text_column_ordered(cells.clone(), order);
         out.schema.push(json!({ "name": name, "type": typed.ty().as_str(), "len": body }));
         let push = |out: &mut Columnar, tag: u8, n: f64| {
             out.tags.push(tag);

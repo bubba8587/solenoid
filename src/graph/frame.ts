@@ -173,14 +173,15 @@ export interface FrameSourceColumn {
 }
 export type FrameSource = FrameSourceColumn[];
 
-export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
+/** `order` reads a date of numbers alone (`1/2/26`), as a card's date order does; blank is Auto. */
+export function coerceFrameCell(type: FrameColType, raw: string, order = ""): FrameCell {
   if (type === "string") return raw === "" ? null : raw;
   const s = raw.trim();
   if (s === "") return null;
   if (type === "logical") return coerceLogical(s);
   const n = cellToNumber(s);
   if (n !== null) return n;
-  if (type === "date") { const r = parseDate(s); if (isSolError(r)) return r; return Number.isFinite(r) ? r : NaN; }
+  if (type === "date") { const r = parseDate(s, { order }); if (isSolError(r)) return r; return Number.isFinite(r) ? r : NaN; }
   return NaN;
 }
 

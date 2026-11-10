@@ -122,6 +122,8 @@ Tests:
 - `chooseFile.test.ts`: a path is read relative to its root (the root itself as empty, nothing outside it), Windows paths with either slash and in any case; off the desktop the app's picker opens and answers, null when closed, and a second ask cancels the first.
 - `filePickerModel.test.ts`: a folder lists its folders first, then its files, numbers in order; a search ranks a name match first and marks it; 100,000 paths answer fast, at most the cap, counting the rest; a cut head drops its partial last line; a listing is kept for the session.
 
+**A CSV's date order.** Local File's Dates toggle (`dateOrder`: Auto, MDY, DMY, YMD) is the order its CSV writes dates of numbers alone in (`csvToFrame(text, order)`, `frame_columnar`, `infer_text_column_ordered` in `csv.rs`). In Auto a column types Date only when its dates are ISO ([[C44]] dateSerials, [[frame-verbs#Type inference]]); under an order, a column whose cells read as dates in it (`1/2/26` as MDY) types Date too, with the same tolerance for stray cells as a number column, so one setting converts every such column of the file. A column that doesn't read in the order (`3/15/26` under DMY) stays text, never half-converted. The order is part of the read's key, so changing it re-reads the file, every file of a pattern included. Web Source and the file preview read in Auto.
+
 ## A folder as one table
 
 Reading one file and reading a folder of them are one job, so they are one card ([[B11]] maximalMerge). Local File's `fileName` is a file's name or a pattern over many: a name holding `*` or `?` is a pattern (`isFilePattern`, `fileGlob.ts`).

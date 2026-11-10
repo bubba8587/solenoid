@@ -267,7 +267,7 @@ pub(crate) fn datevalue_text(t: &str, order: DateOrder) -> DateReading {
 }
 
 /// Whether the date part (before any time) is numbers and separators alone, as `1/2/26` and `01.02.2026` are.
-fn numbers_alone(t: &str) -> bool {
+pub(crate) fn numbers_alone(t: &str) -> bool {
     let date = t.split_whitespace().next().unwrap_or("");
     date.bytes().any(|b| matches!(b, b'/' | b'-' | b'.'))
         && date.bytes().all(|b| b.is_ascii_digit() || matches!(b, b'/' | b'-' | b'.'))
