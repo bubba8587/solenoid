@@ -66,6 +66,10 @@ specific item.
 - **INDEX's whole column was changed to a column and put back the same day**: the author was holding it. The backlog
   line has what the try showed (right in a formula, splits the card). `CLAUDE.md` § Reflexes now says a change that
   moves a saved graph's answer is the author's call.
+- **LET works in a formula** (`LET(total, SUM(v), total / COUNT(v))`): it was listed among the Logical functions and
+  answered "Unknown function LET". The parser reads it as LAMBDAs called on the spot, so nothing else learned a new
+  scope (`tree/specs/computation/formula-language.md` § LET, `formulaLet.test.ts`). 624 frozen cases moved, every one
+  a LET formula that had frozen that error.
 - **Vault Read and TaskNotes have specs** (`tree/specs/integrations/vault-read.md`, `tree/specs/integrations/tasknotes.md`). Writing them
   found that a note's own `date` or `created` property never reaches Vault Folder's Cube (backlog § VaultBridge).
 

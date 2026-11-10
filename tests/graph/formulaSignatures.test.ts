@@ -28,7 +28,7 @@ describe("formula signatures (display hints)", () => {
 
   it("every hint agrees with its impl's declared arity — the hint IS the contract", () => {
     initPackFormulas();
-    const SPECIAL_FORMS = new Set(["LAMBDA"]);
+    const SPECIAL_FORMS = new Set(["LAMBDA", "LET"]);
     const bad: string[] = [];
     for (const [name, arity] of Object.entries(FUNCTION_ARITY)) {
       if (FRAME_SURFACE_NAMES[name] || SPECIAL_FORMS.has(name)) continue;

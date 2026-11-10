@@ -959,6 +959,13 @@ impl Eval<'_> {
         }
         let site = self.site(raw, args);
         let name = &site.name;
+        if name == "LET" {
+            // A LET in its right form never reaches here: the parser reads it as LAMBDAs.
+            return V::err(sol_error(
+                ErrorCode::Syntax,
+                "LET takes a name and its value, any number of times, then the calculation: LET(x, 2, x * 3)",
+            ));
+        }
         if name == "LAMBDA" {
             let Some((body, ps)) = args.split_last() else {
                 return V::err(sol_error(ErrorCode::Value, "LAMBDA needs a body: LAMBDA(param…, body)"));

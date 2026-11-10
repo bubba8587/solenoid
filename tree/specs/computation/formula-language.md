@@ -695,6 +695,24 @@ In an argument of `MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN` or `GROUPBY`, and in
 
 Tests: `formulaLambda.test.ts`: a bare function name in a host's lambda slot is eta and no variable, two arrays reach the eta function cell by cell, a failure in it is that cell's error, a variable or parameter named like a function wins, and eta rides an application's arguments too (`LAMBDA(f, f(9))(SQRT)` is 3).
 
+### LET
+
+`LET(name1, value1, …, calculation)` names a value inside a formula ([[A5]] excelParity): `LET(total, SUM(v), total / COUNT(v))`. It takes one name and value pair or several, then the calculation, and each later value and the calculation read the names before them, so `LET(a, 2, b, a + 1, a * b)` is 6.
+
+The parser reads a LET as LAMBDAs called on the spot, one per name, innermost last: `LET(a, 2, b, a + 1, a * b)` becomes the tree of `LAMBDA(a, LAMBDA(b, a * b)(a + 1))(2)` (`let_as_lambdas`, `excel_formula.rs`). There is no LET in the syntax tree, so everything that reads a tree (the variables an Expression node turns into sockets, the unit and date analyses, the evaluator) scopes a LET name exactly as it scopes a LAMBDA parameter, with no code of its own. What follows from that:
+
+- A LET name is no variable: `LET(a, k, a * 2) + x` has the variables `k` and `x`. Inside a host that offers fixed names (REDUCE's `acc` and `value`), a LET name is a further name the formula may read.
+- An inner LET shadows an outer name of the same spelling, and a name may hold a LAMBDA: `LET(f, LAMBDA(q, q * q), f(4))` is 16.
+- A value's error reaches the answer only if the calculation reads the name: `LET(a, 1 / 0, 5)` is 5.
+- A name follows the LAMBDA parameter rules: a constant (`e`, `pi`) is refused with `#NAME?`.
+- Each name adds two levels to the depth of the formula's tree, which may be 400 deep (*The registry*).
+
+A LET out of form (no calculation, a pair missing its value, something other than a plain name where a name belongs) stays a call to `LET` in the tree and answers `#SYNTAX!` with "LET takes a name and its value, any number of times, then the calculation: LET(x, 2, x * 3)".
+
+`formulaToLatex` typesets the shape back as `LET(…)`, so the math view shows what was typed. A one-parameter LAMBDA called on the spot (`LAMBDA(a, a * 2)(3)`) has the same tree and is typeset as `LET(a, 3, a * 2)`, which means the same.
+
+Tests: `formulaLet.test.ts`: one name and several, a later value reading an earlier name, a list through a name; a LET name is no variable; shadowing, a name holding a LAMBDA and a LET inside a MAP's LAMBDA; an unread value's error is dropped; each out-of-form LET is `#SYNTAX!` with the form spelled out and a constant name is `#NAME?`; the LaTeX is the LET as typed.
+
 ### Formula hosts
 
 The hosts accept a list, a matrix or a scalar (read as a 1×1), and read a list as one row. Each requires a `LambdaValue` in its lambda slot, else `#VALUE!` "{HOST} needs a LAMBDA as its last argument". A `null` array argument answers `null`. The lambda receives these arguments positionally, Excel's binding:

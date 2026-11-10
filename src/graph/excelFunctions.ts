@@ -115,7 +115,7 @@ export const FUNCTION_ARITY: Record<string, readonly [number, number]> = {
   IMTAN: [1, 1], INDEX: [1, 3], INTERCEPT: [2, 2], INTERLEAVE: [2, 2], INTERPOLATE: [1, 4], INTRATE: [4, 5],
   IQR: [1, 255], IRR: [1, 2], ISBOOLEAN: [1, 1], ISCLOSE: [2, 3], ISOUTLIER: [1, 3], ISOWEEKNUM: [1, 1],
   KENDALL: [2, 2], KRON: [2, 2], KRUSKAL: [2, 255], KSTEST: [2, 2], KURT: [1, 255], LAMBDA: [1, 255], LARGE: [2, 2], LCM: [1, 255],
-  LEFT: [1, 2], LEN: [1, 1], LENGTH: [1, 1], LEVENSHTEIN: [2, 2], LINEST: [1, 2], LINKNAME: [1, 1], LINKPATH: [1, 1], LINSPACE: [3, 3], LN: [1, 1],
+  LEFT: [1, 2], LEN: [1, 1], LENGTH: [1, 1], LET: [3, 255], LEVENSHTEIN: [2, 2], LINEST: [1, 2], LINKNAME: [1, 1], LINKPATH: [1, 1], LINSPACE: [3, 3], LN: [1, 1],
   LOG10: [1, 1], LOG2: [1, 1], LOGEST: [1, 2], "LOGNORM.DIST": [4, 4], "LOGNORM.INV": [3, 3], LAPLACIAN: [1, 1], LOGRETURNS: [1, 1],
   LOWER: [1, 1], LOWESS: [1, 2], MAD: [1, 255], MAKEARRAY: [3, 3], MANNWHITNEY: [2, 2], MAP: [2, 4],
   MATRIXRANK: [1, 1], MAX: [1, 255], MAXDRAWDOWN: [1, 1], MAXIFS: [3, 255], MDETERM: [1, 1], MDURATION: [4, 6], MEANSMOOTH: [1, 2],

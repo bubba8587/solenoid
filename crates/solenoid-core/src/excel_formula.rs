@@ -490,6 +490,13 @@ impl Parser {
                 if self.peek_k(K::Paren, "(") {
                     let args = self.arg_list()?;
                     self.d = Self::deeper(self.d)?;
+                    if t.v.eq_ignore_ascii_case("LET") && is_let(&args) {
+                        // Each binding adds a LAMBDA and its call to the depth.
+                        for _ in 0..args.len() - 1 {
+                            self.d = Self::deeper(self.d)?;
+                        }
+                        return Some(let_as_lambdas(args));
+                    }
                     return Some(Ast::Call { name: t.v, args });
                 }
                 let up = t.v.to_uppercase();
@@ -504,6 +511,27 @@ impl Parser {
             _ => None,
         }
     }
+}
+
+/// LET's arguments in their place: name, value pairs and then the calculation.
+fn is_let(args: &[Ast]) -> bool {
+    args.len() >= 3
+        && args.len() % 2 == 1
+        && args[..args.len() - 1].iter().step_by(2).all(|a| matches!(a, Ast::Name(_)))
+}
+
+/// `LET(a, 1, b, a + 1, a * b)` is `LAMBDA(a, LAMBDA(b, a * b)(a + 1))(1)`: each name is a LAMBDA parameter called with
+/// its value, so a later value and the calculation read the names before them, and every reader of a tree (variables,
+/// units, dates) already knows the scope.
+fn let_as_lambdas(mut args: Vec<Ast>) -> Ast {
+    let mut body = args.pop().expect("is_let checked the count");
+    while let (Some(value), Some(name)) = (args.pop(), args.pop()) {
+        body = Ast::Apply {
+            func: Box::new(Ast::Call { name: "LAMBDA".into(), args: vec![name, body] }),
+            args: vec![value],
+        };
+    }
+    body
 }
 
 pub fn parse_formula(expr: &str) -> Option<Ast> {

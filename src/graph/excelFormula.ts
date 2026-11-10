@@ -185,8 +185,20 @@ function tex(n: Ast, parent: number): string {
     case "name": return symbolLatex(n.name);
     case "unary": return wrap(`${n.op === "-" ? "-" : ""}${tex(n.arg, 6)}`, 6);
     case "percent": return wrap(`${tex(n.arg, 6)}\\%`, 6);
-    case "apply":
+    case "apply": {
+      // A LET is parsed as one-parameter LAMBDAs called on the spot; it is typeset as the LET it was typed as.
+      const pairs: string[] = [];
+      let body: Ast = n;
+      while (
+        body.t === "apply" && body.args.length === 1 && body.fn.t === "call" && body.fn.name === "LAMBDA"
+        && body.fn.args.length === 2 && body.fn.args[0].t === "name"
+      ) {
+        pairs.push(tex(body.fn.args[0], 0), tex(body.args[0], 0));
+        body = body.fn.args[1];
+      }
+      if (pairs.length > 0) return `\\operatorname{LET}\\!\\left(${[...pairs, tex(body, 0)].join(",\\, ")}\\right)`;
       return wrap(`${tex(n.fn, 7)}\\left(${n.args.map((x) => tex(x, 0)).join(", ")}\\right)`, 7);
+    }
     case "call": {
       const name = n.name.toUpperCase();
       // Typeset as typed: an empty slot's reading shows only in the editor ([[D96]] emptySlotShowsItsValue).
