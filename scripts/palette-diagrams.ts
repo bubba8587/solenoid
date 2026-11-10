@@ -205,7 +205,33 @@ function ramps(name: PaletteName, y0: number): [string, number] {
     out += mock(W - PAD - 100, y - 6, 100, 56, r, themeAccent(BUILTIN_PALETTES[name][accentSlot], mode));
     y += 60;
   }
-  return [out, y];
+  const [ladders, ny] = rampLadders(name, y);
+  return [out + ladders, ny];
+}
+
+/** Each ramp key's lightness against Default's, per mode: a ring at Default's key, a dot in this palette's, an arrow
+ *  between. Grounds sit low in dark mode and high in light; the inks the other way. */
+function rampLadders(name: PaletteName, y0: number): [string, number] {
+  const same = name === "Default";
+  const gap = 24, pw = (W - 2 * PAD - gap) / 2, h = 150, top = y0 + 38;
+  let out = text(PAD, y0 + 12, same ? "Each key's lightness, ground to ink." : "Each key's lightness against Default's ramp: ring Default, dot this palette (its fill is the key's own color, so a tint shows).", { size: 10, fill: DIM });
+  MODES.forEach((mode, m) => {
+    const x0 = PAD + m * (pw + gap);
+    const ly = (L: number) => top + h - 8 - L * (h - 16);
+    out += rect(x0, top, pw, h, PANEL, `stroke="${RULE}"`);
+    out += text(x0, top - 5, mode, { size: 9, weight: 600, fill: DIM });
+    for (const L of [0.25, 0.5, 0.75]) out += `<line x1="${x0}" x2="${x0 + pw}" y1="${ly(L)}" y2="${ly(L)}" stroke="${RULE}" stroke-dasharray="3 3"/>`;
+    const kw = (pw - 20) / CHROME_KEYS.length;
+    const from = DEFAULT_CHROME[mode], to = chromeOf(name, mode);
+    CHROME_KEYS.forEach((k, j) => {
+      const x = x0 + 14 + kw * j + kw / 2;
+      const y1 = ly(hexToOklch(from[k])[0]), y2 = ly(hexToOklch(to[k])[0]);
+      if (!same) out += `<circle cx="${x}" cy="${y1}" r="4" fill="none" stroke="${DIM}" stroke-width="1.2"/>` + arrow(x, y1, x, y2, `stroke="${INK}"`);
+      out += `<circle cx="${x}" cy="${y2}" r="4.5" fill="${to[k]}" stroke="${INK}" stroke-width="0.6"/>`;
+      out += text(x, top + h + 11, k.replace(/^(surface|border|text)/, (q) => q[0]).replace(/Bg$/, ""), { size: 7, fill: DIM, anchor: "middle" });
+    });
+  });
+  return [out, top + h + 18];
 }
 
 function bandPlot(band: TintBand | undefined, name: PaletteName, mode: Mode, x: number, y: number, w: number, h: number): string {
