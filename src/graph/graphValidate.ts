@@ -240,22 +240,38 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       const kept = typeof d === "string" ? String(v) : typeof d === "number" && Number.isFinite(Number(v)) ? Number(v) : v;
       return ` \`${k}\` is a setting on this card: write \`${k}=${JSON.stringify(kept)}\`.`;
     };
+    // An input with no field takes its value from a cable alone.
+    const asCable = (k: string): string =>
+      inputKeys.includes(k) ? ` \`${k}\` is an input with no field to type in: cable a Value Input into it (\`${k}<-Name.value\`).` : "";
+    // A key that names no input, and that the card isn't born holding, is read by nothing: the loader keeps it in
+    // the map (a card's own keys live there too, and a card with no inputs keeps only its own), so a misspelled input (`str:column` for Get Column's `name`) would
+    // load, compute from a blank and say nothing.
+    const strayKey = (k: string, map: "literals" | "stringLiterals"): boolean =>
+      inputKeys.length > 0 && !inputKeys.includes(k) && !(k in ((fresh?.[map] as object | undefined) ?? {})) && fresh !== null;
+    const stray = (k: string, map: "lit" | "str"): void => {
+      const own = Object.keys((fresh?.[map === "lit" ? "literals" : "stringLiterals"] as object | undefined) ?? {});
+      issues.push({ line: at(name), node: name, message: `${map}:${k}: ${sn.type} has no input or field named "${k}"${nearest(k, new Set([...inputKeys, ...own]))}, so this value would be silently ignored. Inputs: ${keyList(inputKeys)}.` });
+    };
     for (const k of Object.keys(sn.literals ?? {})) {
       if (!info.hasLiterals) {
-        issues.push({ line: at(name), node: name, message: `lit:${k}: ${sn.type} takes no inline numeric literals (it declares no \`literals\` map), so the loader would silently drop this value.${asSetting(k, sn.literals![k])}` });
+        issues.push({ line: at(name), node: name, message: `lit:${k}: ${sn.type} takes no inline numeric literals (it declares no \`literals\` map), so the loader would silently drop this value.${asSetting(k, sn.literals![k]) || asCable(k)}` });
       } else if (typeof sn.literals![k] !== "number") {
         issues.push({ line: at(name), node: name, message: `lit:${k} must be a number (got ${JSON.stringify(sn.literals![k])}). Non-numeric inline values use str:.` });
       } else if (!(k in kept.lit)) {
         unread(k, "lit");
+      } else if (strayKey(k, "literals")) {
+        stray(k, "lit");
       }
     }
     for (const k of Object.keys(sn.stringLiterals ?? {})) {
       if (!info.hasStringLiterals) {
-        issues.push({ line: at(name), node: name, message: `str:${k}: ${sn.type} takes no inline text literals (it declares no \`stringLiterals\` map), so the loader would silently drop this value.${asSetting(k, sn.stringLiterals![k])}` });
+        issues.push({ line: at(name), node: name, message: `str:${k}: ${sn.type} takes no inline text literals (it declares no \`stringLiterals\` map), so the loader would silently drop this value.${asSetting(k, sn.stringLiterals![k]) || asCable(k)}` });
       } else if (typeof sn.stringLiterals![k] !== "string") {
         issues.push({ line: at(name), node: name, message: `str:${k} must be a string (got ${JSON.stringify(sn.stringLiterals![k])}).` });
       } else if (!(k in kept.str)) {
         unread(k, "str");
+      } else if (strayKey(k, "stringLiterals")) {
+        stray(k, "str");
       }
     }
   }

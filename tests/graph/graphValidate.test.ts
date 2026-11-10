@@ -100,6 +100,13 @@ describe("validateGraph — semantics", () => {
     expect(hint("D")).toContain("`ArithmeticNode`");
   });
 
+  it("refuses an inline key that names no input, and says to cable an input that has no field", () => {
+    const { issues } = validateText(`F: FrameInputNode frameText="a,b\\n1,2"\nG: GetColumnNode str:column="a" frame<-F.frame\nT: TvmNode lit:fv=0\n---\n{}`);
+    expect(issues.find((i) => i.node === "G")?.message).toContain('GetColumnNode has no input or field named "column"');
+    expect(issues.find((i) => i.node === "G")?.message).toContain("Inputs: frame, name");
+    expect(issues.find((i) => i.node === "T")?.message).toContain("cable a Value Input into it (`fv<-Name.value`)");
+  });
+
   it("refuses a setting written as the wrong kind of value, with the form that works", () => {
     const { issues } = validateText(`A: ValueInputNode value=3\nS: SliderInputNode value="2"\n---\n{}`);
     expect(issues.find((i) => i.node === "A")?.message).toContain('value on ValueInputNode is text, so write value="3"');

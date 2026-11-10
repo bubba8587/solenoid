@@ -28,7 +28,10 @@ export function main(args: string[]): void {
   let issues: GraphIssue[];
   let saved: unknown = null;
   if (looksJson) {
-    const data = JSON.parse(raw) as unknown;
+    // The short form the example graphs use (no version, cards placed by their cables) is a save once expanded, as
+    // run-graph and shot-graph read it.
+    const parsed = JSON.parse(raw) as { v?: unknown; nodes?: unknown };
+    const data = (parsed.v === undefined && Array.isArray(parsed.nodes) ? expand(parsed) : parsed) as unknown;
     const structural = validateSavedGraph(data);
     if (!structural.ok) {
       console.error(`${path}: ${structural.reason}`);
