@@ -94,15 +94,16 @@ specific item.
   `frame_verbs.rs`): it skipped the whole column with no notice. The card never errors over one replacement; the
   frame holds the truth, and a total over the column says so.
 - **A tiny transformer, a new example** (`seedGraphs/tiny-transformer.json`, Worked examples): one layer and one head
-  in five stages, each a group ending in its picture, built from table cards with no Expressions: XMATCH finds
-  each typed word in the (alphabetical) vocabulary and CHOOSEROWS picks its embedding row, so editing the prompt moves every answer;
-  MMULT, TRANSPOSE, MAP (`value + value2`, `MAX(0, value)`) and a MAKEARRAY mask do the rest, sized by a COUNT of the
-  prompt. Both softmaxes are one Composite: MAP `EXP(value)`, a BYROW of `1 / SUM(values)`, TOROW, DIAGONAL, and MMULT of
-  that diagonal by the table, which scales each row to sum to 1 (MAP wants equal shapes, so it can't spread a column). Every card earns its place (2026-11-10 pass): no identity W_V (the values are X), a one-unit MLP
-  (W_1 4×1, W_2 1×4), INDEX at row Length for the last word's row. Labeled
-  heatmaps show the embedding table (columns named article, noun, verb, preposition, so cat and mat look alike), attention and predictions, and a bar chart the last word's prediction. Two rows, H on
-  three rotated Conduits. Building it found Frame from Lists failing on a table through
-  TAKE's untyped output, `run-graph` and `seedsCompute.test.ts` never hydrating a Composite (both do now), and the grounding listing TOROW under TableSelect.
+  in five stages, each a group ending in its picture, built from table cards with no Expressions. XMATCH finds each
+  typed word in the (alphabetical) vocabulary and CHOOSEROWS picks its embedding row, so editing the prompt moves every
+  answer; positions are the paper's sines and cosines from a MAKEARRAY sized by a COUNT of the prompt (scaled by 0.1 to
+  sit under the hand-set embeddings); MMULT, TRANSPOSE, MAP and a MAKEARRAY mask do the rest. Both softmaxes are one
+  Composite: MAP `EXP(value)`, BYROW `1 / SUM(values)`, TOROW, DIAGONAL, MMULT. No identity W_V (the words are mixed
+  directly), a one-unit MLP that switches on for a preposition, INDEX at row Length for the last word's row. Heatmaps show
+  the embedding table (columns named article, noun, verb, preposition, so cat and mat look alike), the attention and the
+  predictions; a bar chart the last word's. Two rows, H on three rotated Conduits. Building it found Frame from Lists
+  failing on a table through TAKE's untyped output, the grounding listing TOROW under TableSelect, and `run-graph` and
+  `seedsCompute.test.ts` never hydrating a Composite (both do now).
 - **A new feature is never a new leaf** (the author, 2026-11-10; `docs/dte.md` § What is a leaf and what is a spec,
   `CLAUDE.md`, the leaf-check hook): a feature and its design go in its spec; a leaf is added unasked only for a
   product decision (the author overriding conventional wisdom, or answering a contested, high-stakes question).

@@ -15,7 +15,7 @@
     "collapsed": false,
     "width": 820,
     "height": 560,
-    "body": "# A tiny transformer\n\nThe forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four numbers per word and a vocabulary of five. Read it left to right; each step is a card, and each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is found in the vocabulary, which is in alphabetical order: *the* is word 5, *cat* word 1.\n2. **Embed.** Each word's number picks its row of four numbers out of the embedding table, and each position adds its own. The heatmap shows the table: words used the same way get similar rows, so *cat* and *mat* look alike. Here the four numbers were set by hand to mean article, noun, verb and preposition; a real model learns hundreds of numbers per word, and they rarely mean anything so tidy.\n3. **Attend.** Each word asks with its query and answers with its key. A query times a key, divided by 2 (the square root of the 4 dimensions, which keeps the scores from growing with the size), scores how much one word should look at another; the mask hides the words that come after, and a softmax turns each row into weights that sum to 1 (both Softmax cards are one small graph: Edit Contents shows its steps, ending in a matrix multiply that scales each row by one over its total). The weights mix the words themselves (a full model first passes them through a third matrix, W_V, which here would change nothing), and the mix is added back. Here *sat* and *on* put nearly all their attention on *cat*.\n4. **Think.** A small network with one hidden unit and a ReLU works on each word by itself, and its answer is added back too.\n5. **Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights were set by hand to tell that story; a real model learns billions of them from text. Two things to try: shorten the prompt to *the cat sat* and watch *on* become the next word, or set the 3 in W_K's second row to 0 and watch the attention on *cat* spread out.",
+    "body": "# A tiny transformer\n\nA language model reads a prompt and guesses the next word. This is that calculation at toy size, every step on its own card: one layer, one attention head, four numbers per word and a five-word vocabulary. Read it left to right; each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is looked up in the vocabulary: *the* is word 5, *cat* word 1.\n2. **Embed.** Each word's number picks its row out of the embedding table, so every word becomes four numbers. Words used the same way get similar rows: in the heatmap, *cat* and *mat* light up the same column. Each position then adds its own pattern of sine and cosine waves, so the model can tell the first word from the fourth.\n3. **Attend.** Each word builds a query, what it is looking for, and a key, what it offers. Every query is multiplied by every key and divided by 2, the square root of the four numbers per word, which keeps the scores in a workable range. The mask hides the words that come later, and the Softmax turns each row of scores into weights that add up to 1 (Edit Contents shows how). Each word then takes the weighted mix of the words it can see and adds it to itself. In the attention heatmap, *sat* and *on* both look almost entirely at *cat*.\n4. **Think.** A small network adjusts each word on its own. Its one hidden unit switches on for a preposition, and pushes that word toward predicting *the*.\n5. **Predict.** Each word's numbers are scored against every word in the vocabulary, and a Softmax turns the scores into probabilities. Every position guesses the word after it: after *the*, *cat* or *mat*; after *cat*, *sat*; after *sat*, *on*; after *on*, *the*.\n\nEvery weight here was set by hand so that each step can be read; training is how a real model finds its own, millions of them. Change things and watch: shorten the prompt to *the cat sat* and *on* becomes the favorite, or set the 3 in W_K's second row to 0 and attention stops singling out *cat*.",
     "fieldTypes": {}
    }
   },
@@ -49,7 +49,6 @@
     "members": [
      "embed",
      "tokEmb",
-     "posAll",
      "pos",
      "x",
      "xFrame",
@@ -59,14 +58,14 @@
     ],
     "color": "teal",
     "collapsed": false,
-    "width": 1400,
-    "height": 1216
+    "width": 1429,
+    "height": 1443
    }
   },
   {
    "id": "grp_attend",
    "type": "GroupNode",
-   "x": 2330,
+   "x": 2359,
    "y": 440,
    "init": {
     "label": "3 · Attend: each word looks back at the words before it",
@@ -96,7 +95,7 @@
    "id": "grp_think",
    "type": "GroupNode",
    "x": 300,
-   "y": 1982,
+   "y": 2143,
    "init": {
     "label": "4 · Think: a small network works on each word",
     "members": [
@@ -117,7 +116,7 @@
    "id": "grp_predict",
    "type": "GroupNode",
    "x": 2037,
-   "y": 1982,
+   "y": 2143,
    "init": {
     "label": "5 · Predict: a probability for every word that could come next",
     "members": [
@@ -201,7 +200,7 @@
    "id": "embed",
    "type": "TableInputNode",
    "x": 894,
-   "y": 887,
+   "y": 955,
    "init": {
     "label": "Embedding table: a row per vocabulary word",
     "tableText": "0, 1, 0, 0\n0, 1, 0, 0.1\n0, 0, 0, 1\n0, 0, 1, 0\n1, 0, 0, 0"
@@ -210,37 +209,17 @@
   {
    "id": "tokEmb",
    "type": "TableSelectNode",
-   "x": 1233,
-   "y": 1078,
+   "x": 1260,
+   "y": 498,
    "init": {
     "label": "Look up each word's row"
    }
   },
   {
-   "id": "posAll",
-   "type": "TableInputNode",
-   "x": 894,
-   "y": 1326,
-   "init": {
-    "label": "Position table",
-    "tableText": "0, 0.1, 0, 0.1\n0.1, 0, 0.1, 0\n0.2, 0.1, 0, 0.1\n0.1, 0.2, 0.1, 0\n0, 0.1, 0.1, 0\n0.1, 0, 0, 0.1"
-   }
-  },
-  {
-   "id": "pos",
-   "type": "TakeDropNode",
-   "x": 1233,
-   "y": 1360,
-   "init": {
-    "op": "take",
-    "label": "Positions in use"
-   }
-  },
-  {
    "id": "x",
    "type": "MapTableNode",
-   "x": 1573,
-   "y": 1265,
+   "x": 1602,
+   "y": 731,
    "init": {
     "label": "X: word + position"
    },
@@ -251,7 +230,7 @@
   {
    "id": "wq",
    "type": "TableInputNode",
-   "x": 2683,
+   "x": 2712,
    "y": 498,
    "init": {
     "label": "W_Q",
@@ -261,7 +240,7 @@
   {
    "id": "wk",
    "type": "TableInputNode",
-   "x": 2354,
+   "x": 2383,
    "y": 743,
    "init": {
     "label": "W_K",
@@ -271,7 +250,7 @@
   {
    "id": "q",
    "type": "TableMultNode",
-   "x": 3012,
+   "x": 3041,
    "y": 506,
    "init": {
     "label": "Queries: X·W_Q"
@@ -280,7 +259,7 @@
   {
    "id": "k",
    "type": "TableMultNode",
-   "x": 2683,
+   "x": 2712,
    "y": 751,
    "init": {
     "label": "Keys: X·W_K"
@@ -289,7 +268,7 @@
   {
    "id": "kT",
    "type": "TableTransposeNode",
-   "x": 3012,
+   "x": 3041,
    "y": 806,
    "init": {
     "label": "Keys turned on their side"
@@ -298,7 +277,7 @@
   {
    "id": "raw",
    "type": "TableMultNode",
-   "x": 3350,
+   "x": 3379,
    "y": 676,
    "init": {
     "label": "Every query times every key"
@@ -307,7 +286,7 @@
   {
    "id": "mask",
    "type": "MakeArrayNode",
-   "x": 3350,
+   "x": 3379,
    "y": 971,
    "init": {
     "label": "Causal mask: no looking ahead"
@@ -319,7 +298,7 @@
   {
    "id": "scores",
    "type": "MapTableNode",
-   "x": 3692,
+   "x": 3721,
    "y": 902,
    "init": {
     "label": "Scores: ÷ 2, then mask"
@@ -331,7 +310,7 @@
   {
    "id": "mix",
    "type": "TableMultNode",
-   "x": 4363,
+   "x": 4392,
    "y": 891,
    "init": {
     "label": "Mix the words by their weights"
@@ -340,7 +319,7 @@
   {
    "id": "h",
    "type": "MapTableNode",
-   "x": 4692,
+   "x": 4721,
    "y": 925,
    "init": {
     "label": "Add back X"
@@ -353,17 +332,17 @@
    "id": "w1",
    "type": "TableInputNode",
    "x": 324,
-   "y": 2040,
+   "y": 2201,
    "init": {
-    "label": "W_1: four numbers in, one hidden unit",
-    "tableText": "-1\n0.5\n-1\n1"
+    "label": "W_1: one hidden unit, on for a preposition",
+    "tableText": "-1\n0\n-1\n1"
    }
   },
   {
    "id": "hid",
    "type": "TableMultNode",
    "x": 653,
-   "y": 2048,
+   "y": 2209,
    "init": {
     "label": "MLP 1: into the hidden layer"
    }
@@ -372,7 +351,7 @@
    "id": "relu",
    "type": "MapTableNode",
    "x": 982,
-   "y": 2104,
+   "y": 2265,
    "init": {
     "label": "MLP 2: ReLU"
    },
@@ -384,7 +363,7 @@
    "id": "w2",
    "type": "TableInputNode",
    "x": 982,
-   "y": 2504,
+   "y": 2665,
    "init": {
     "label": "W_2: one hidden unit back out to four",
     "tableText": "0, -1, 0, 1"
@@ -394,7 +373,7 @@
    "id": "out",
    "type": "TableMultNode",
    "x": 1320,
-   "y": 2369,
+   "y": 2530,
    "init": {
     "label": "MLP 3: back out"
    }
@@ -403,7 +382,7 @@
    "id": "h2",
    "type": "MapTableNode",
    "x": 1649,
-   "y": 2394,
+   "y": 2555,
    "init": {
     "label": "Add back H"
    },
@@ -415,7 +394,7 @@
    "id": "wout",
    "type": "TableInputNode",
    "x": 2061,
-   "y": 2111,
+   "y": 2272,
    "init": {
     "label": "Unembedding: a column per vocabulary word",
     "tableText": "1, 1, 0, 0, 0\n0, 0, 0, 1, 0\n0, 0, 2, 0, 0\n0, 0, 0, 0, 1"
@@ -425,7 +404,7 @@
    "id": "logits",
    "type": "TableMultNode",
    "x": 2390,
-   "y": 2119,
+   "y": 2280,
    "init": {
     "label": "Logits: a score per vocabulary word"
    }
@@ -433,8 +412,8 @@
   {
    "id": "xFrame",
    "type": "BuildFrameNode",
-   "x": 1233,
-   "y": 803,
+   "x": 1260,
+   "y": 1518,
    "init": {
     "label": "The embedding table, named"
    },
@@ -445,8 +424,8 @@
   {
    "id": "xTable",
    "type": "BindColumnsNode",
-   "x": 1573,
-   "y": 699,
+   "x": 1602,
+   "y": 1414,
    "init": {
     "label": "Each vocabulary word as four numbers"
    }
@@ -454,8 +433,8 @@
   {
    "id": "xMap",
    "type": "HeatmapNode",
-   "x": 1902,
-   "y": 739,
+   "x": 1931,
+   "y": 1454,
    "init": {
     "label": "Embeddings: cat and mat look alike"
    },
@@ -466,7 +445,7 @@
   {
    "id": "aFrame",
    "type": "BuildFrameNode",
-   "x": 4363,
+   "x": 4392,
    "y": 1299,
    "init": {
     "label": "Attention, named"
@@ -475,7 +454,7 @@
   {
    "id": "attnTable",
    "type": "BindColumnsNode",
-   "x": 4692,
+   "x": 4721,
    "y": 1325,
    "init": {
     "label": "Who looks at whom"
@@ -484,7 +463,7 @@
   {
    "id": "attnMap",
    "type": "HeatmapNode",
-   "x": 5021,
+   "x": 5050,
    "y": 1376,
    "init": {
     "label": "Attention"
@@ -497,7 +476,7 @@
    "id": "pFrame",
    "type": "BuildFrameNode",
    "x": 3063,
-   "y": 2040,
+   "y": 2201,
    "init": {
     "label": "Predictions, named"
    }
@@ -506,7 +485,7 @@
    "id": "predTable",
    "type": "BindColumnsNode",
    "x": 3392,
-   "y": 2057,
+   "y": 2218,
    "init": {
     "label": "The next word, after each word"
    }
@@ -515,7 +494,7 @@
    "id": "predMap",
    "type": "HeatmapNode",
    "x": 3721,
-   "y": 2118,
+   "y": 2279,
    "init": {
     "label": "Next-word predictions"
    },
@@ -527,7 +506,7 @@
    "id": "nextTable",
    "type": "FrameFromListsNode",
    "x": 3392,
-   "y": 2402,
+   "y": 2563,
    "init": {
     "label": "What comes next"
    },
@@ -540,7 +519,7 @@
    "id": "nextChart",
    "type": "ChartNode",
    "x": 3721,
-   "y": 2478,
+   "y": 2639,
    "init": {
     "op": "bar",
     "label": "What comes next"
@@ -549,7 +528,7 @@
   {
    "id": "attn",
    "type": "CompositeNode",
-   "x": 4021,
+   "x": 4050,
    "y": 1038,
    "init": {
     "label": "Softmax: attention weights",
@@ -697,7 +676,7 @@
    "id": "probs",
    "type": "CompositeNode",
    "x": 2719,
-   "y": 2186,
+   "y": 2347,
    "init": {
     "label": "Softmax: probabilities",
     "runMode": "single",
@@ -843,7 +822,7 @@
   {
    "id": "conduit_down",
    "type": "ConduitNode",
-   "x": 5449,
+   "x": 5478,
    "y": 965,
    "init": {
     "label": "Conduit",
@@ -853,8 +832,8 @@
   {
    "id": "conduit_back",
    "type": "ConduitNode",
-   "x": 5449,
-   "y": 1852,
+   "x": 5478,
+   "y": 2013,
    "init": {
     "label": "Conduit",
     "angle": 180
@@ -864,7 +843,7 @@
    "id": "conduit_in",
    "type": "ConduitNode",
    "x": 210,
-   "y": 1852,
+   "y": 2013,
    "init": {
     "label": "Conduit",
     "angle": 90
@@ -874,7 +853,7 @@
    "id": "lastRow",
    "type": "ListIndexNode",
    "x": 3063,
-   "y": 2473,
+   "y": 2634,
    "init": {
     "label": "The last word's row",
     "indexAxes": "rowcol"
@@ -883,8 +862,8 @@
   {
    "id": "vocabNames",
    "type": "FrameFromListsNode",
-   "x": 1233,
-   "y": 498,
+   "x": 1260,
+   "y": 1213,
    "init": {
     "label": "A row per vocabulary word",
     "valueKeys": [
@@ -893,6 +872,21 @@
    },
    "stringLiterals": {
     "name0": "word"
+   }
+  },
+  {
+   "id": "pos",
+   "type": "MakeArrayNode",
+   "x": 1260,
+   "y": 780,
+   "init": {
+    "label": "Positions: a wave pattern for each place"
+   },
+   "stringLiterals": {
+    "formula": "0.1 * IF(MOD(col, 2) = 1, SIN((row - 1) / 10000 ^ ((col - 1) / 4)), COS((row - 1) / 10000 ^ ((col - 2) / 4)))"
+   },
+   "literals": {
+    "cols": 4
    }
   }
  ],
@@ -934,28 +928,10 @@
    "targetInput": "indices"
   },
   {
-   "source": "n",
-   "sourceOutput": "result",
-   "target": "pos",
-   "targetInput": "rows"
-  },
-  {
-   "source": "posAll",
-   "sourceOutput": "table",
-   "target": "pos",
-   "targetInput": "data"
-  },
-  {
    "source": "tokEmb",
    "sourceOutput": "result",
    "target": "x",
    "targetInput": "table"
-  },
-  {
-   "source": "pos",
-   "sourceOutput": "result",
-   "target": "x",
-   "targetInput": "table2"
   },
   {
    "source": "x",
@@ -1250,6 +1226,18 @@
    "sourceOutput": "frame",
    "target": "xTable",
    "targetInput": "f0"
+  },
+  {
+   "source": "n",
+   "sourceOutput": "result",
+   "target": "pos",
+   "targetInput": "rows"
+  },
+  {
+   "source": "pos",
+   "sourceOutput": "result",
+   "target": "x",
+   "targetInput": "table2"
   }
  ]
 }
