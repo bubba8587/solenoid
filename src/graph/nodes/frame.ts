@@ -994,7 +994,7 @@ export class EditFrameNode extends GraphNode {
   editStatus: CellEditStatus[] = [];
   /** The edits the table now gives on its own, as `column` and `row` joined by U+001F: they drop (`coreWatched`). */
   settled: string[] | null = null;
-  width = 270; height = 200;
+  width = 340; height = 200;
 
   constructor(init?: { label?: string; cellEdits?: CellEdit[] }) {
     super("EditFrame");

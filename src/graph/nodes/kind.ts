@@ -309,7 +309,8 @@ export function nodeResizable(node: GraphNode): boolean {
   return node instanceof DisplayNode;
 }
 
-/** The widest tier, 340px: cards that draw a chart or a deck of records in the card, where width is the figure's room. */
+/** The widest tier, 340px: cards that draw a chart or a deck of records in the card, where width is the figure's room,
+ *  and Edit Frame, whose list of edits names each row's key and value. */
 export function nodeXWide(node: GraphNode): boolean {
   return node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode ||
     node instanceof HistogramNode || node instanceof SankeyNode || node instanceof ProportionNode ||
@@ -317,7 +318,7 @@ export function nodeXWide(node: GraphNode): boolean {
     node instanceof CalendarHeatmapNode || node instanceof HeatmapNode || node instanceof QuiverNode ||
     node instanceof RecordNode || node instanceof CardsNode || node instanceof TriangleSolverNode || node instanceof UnitCircleNode ||
     node instanceof CircleSolverNode || node instanceof RegularPolygonNode || node instanceof TwoPointsNode ||
-    node instanceof PolygonPointsNode || node instanceof SolidNode || node instanceof ElementNode;
+    node instanceof PolygonPointsNode || node instanceof SolidNode || node instanceof ElementNode || node instanceof EditFrameNode;
 }
 
 export function nodeWide(node: GraphNode): boolean {

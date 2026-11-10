@@ -1337,47 +1337,43 @@ export function EditFrameComponent({ data, emit }: NodeProps<EditFrameNodeType>)
       >
         Edit cells
       </button>
-      <div className="solenoid-pipeline">
-        {edits.length === 0
-          ? <div className="solenoid-node__text-empty">no edits</div>
-          : (
-            <div className="solenoid-pipeline__list nowheel">
-              {shown.map((e, i) => {
-                const status = data.editStatus[i];
-                const off = status === "stale" || status === "ambiguous";
-                return (
-                  <div key={`${e.column}\u001f${e.row}`} className={`solenoid-pipeline__step solenoid-edit-frame__edit${off ? " solenoid-edit-frame__edit--off" : ""}`} title={off ? EDIT_STATUS_TITLE[status] : `${e.row}: ${e.column} is ${e.value === "" ? "blank" : e.value}`}>
-                    <span className="solenoid-pipeline__num">{i + 1}</span>
-                    <span className="solenoid-pipeline__name">{e.row}</span>
-                    <span className="solenoid-edit-frame__value">{off ? status : `${e.column} = ${e.value === "" ? "blank" : e.value}`}</span>
-                    <button
-                      type="button"
-                      className="solenoid-edit-frame__remove"
-                      title="Take this edit back"
-                      aria-label="Take this edit back"
-                      onPointerDown={stopDragStart}
-                      onMouseDown={stopDragStart}
-                      onClick={(ev) => { ev.stopPropagation(); remove(i); }}
-                    >
-                      <CloseIcon size={10} />
-                    </button>
-                  </div>
-                );
-              })}
-              {edits.length > EDIT_LIST_CAP && <div className="solenoid-edit-frame__more">+{edits.length - EDIT_LIST_CAP} more…</div>}
-            </div>
-          )}
-      </div>
+      <MeasuredSocketRow side="output" socketKey="edits" nodeId={data.id} emit={emit} payload={data.outputs.edits!.socket} hero>
+        <div className="solenoid-pipeline solenoid-edit-frame__edits">
+          {edits.length === 0
+            ? <div className="solenoid-node__text-empty">no edits</div>
+            : (
+              <div className="solenoid-pipeline__list nowheel">
+                {shown.map((e, i) => {
+                  const status = data.editStatus[i];
+                  const off = status === "stale" || status === "ambiguous";
+                  return (
+                    <div key={`${e.column}\u001f${e.row}`} className={`solenoid-pipeline__step solenoid-edit-frame__edit${off ? " solenoid-edit-frame__edit--off" : ""}`} title={off ? EDIT_STATUS_TITLE[status] : `${e.row}: ${e.column} is ${e.value === "" ? "blank" : e.value}`}>
+                      <span className="solenoid-pipeline__num">{i + 1}</span>
+                      <span className="solenoid-pipeline__name">{e.row}</span>
+                      <span className="solenoid-edit-frame__value">{off ? status : `${e.column} = ${e.value === "" ? "blank" : e.value}`}</span>
+                      <button
+                        type="button"
+                        className="solenoid-edit-frame__remove"
+                        title="Take this edit back"
+                        aria-label="Take this edit back"
+                        onPointerDown={stopDragStart}
+                        onMouseDown={stopDragStart}
+                        onClick={(ev) => { ev.stopPropagation(); remove(i); }}
+                      >
+                        <CloseIcon size={10} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {edits.length > EDIT_LIST_CAP && <div className="solenoid-edit-frame__more">+{edits.length - EDIT_LIST_CAP} more…</div>}
+              </div>
+            )}
+        </div>
+      </MeasuredSocketRow>
       <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={data.outputs.frame!.socket}>
         <span className="solenoid-node__io-label">Frame</span>
         <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
           {frame ? <FrameChip value={frame} label={nodeDisplayName(data)} size="sm" /> : isSolError(data.cachedResult) ? <ErrorChip err={data.cachedResult} /> : "—"}
-        </span>
-      </MeasuredSocketRow>
-      <MeasuredSocketRow side="output" socketKey="edits" nodeId={data.id} emit={emit} payload={data.outputs.edits!.socket}>
-        <span className="solenoid-node__io-label">Edits</span>
-        <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
-          {isFrameValue(data.cachedEdits) ? <FrameChip value={data.cachedEdits} label={`${nodeDisplayName(data)}: Edits`} size="sm" /> : "—"}
         </span>
       </MeasuredSocketRow>
     </NodeShell>
