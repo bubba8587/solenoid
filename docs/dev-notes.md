@@ -100,7 +100,7 @@ specific item.
   prompt. Both softmaxes are one Composite: MAP `EXP(value)`, a BYROW of `1 / SUM(values)`, TOROW, DIAGONAL, and MMULT of
   that diagonal by the table, which scales each row to sum to 1 (MAP wants equal shapes, so it can't spread a column). Every card earns its place (2026-11-10 pass): no identity W_V (the values are X), a one-unit MLP
   (W_1 4×1, W_2 1×4), INDEX at row Length for the last word's row. Labeled
-  heatmaps show the embeddings, attention and predictions, and a bar chart the last word's prediction. Two rows, H on
+  heatmaps show the embedding table (columns named article, noun, verb, preposition, so cat and mat look alike), attention and predictions, and a bar chart the last word's prediction. Two rows, H on
   three rotated Conduits. Building it found Frame from Lists failing on a table through
   TAKE's untyped output, `run-graph` and `seedsCompute.test.ts` never hydrating a Composite (both do now), and the grounding listing TOROW under TableSelect.
 - **A new feature is never a new leaf** (the author, 2026-11-10; `docs/dte.md` § What is a leaf and what is a spec,
