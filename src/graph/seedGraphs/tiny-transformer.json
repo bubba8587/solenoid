@@ -15,7 +15,7 @@
     "collapsed": false,
     "width": 820,
     "height": 560,
-    "body": "# A tiny transformer\n\nThe forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four numbers per word and a vocabulary of five. Read it left to right; each step is a card, and each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is found in the vocabulary: *the* is word 1, *cat* word 2.\n2. **Embed.** Each word's place picks its row of four numbers out of the embedding table, and each position adds its own.\n3. **Attend.** Each word asks with its query and answers with its key. A query times a key, divided by 2 (the square root of the 4 dimensions, which keeps the scores from growing with the size), scores how much one word should look at another; the mask hides the words that come after, and a softmax turns each row into weights that sum to 1 (both Softmax cards are one small graph: Edit Contents shows its three steps). The weights mix the values, and the mix is added back. Here *sat* and *on* put nearly all their attention on *cat*.\n4. **Think.** A two-layer network with a ReLU works on each word by itself, and its answer is added back too.\n5. **Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights were set by hand to tell that story; a real model learns billions of them from text. Two things to try: shorten the prompt to *the cat sat* and watch *on* become the next word, or set the 3 in W_K's second row to 0 and watch the attention on *cat* spread out.",
+    "body": "# A tiny transformer\n\nThe forward pass of a language model, the same arithmetic as GPT at toy size: one layer, one attention head, four numbers per word and a vocabulary of five. Read it left to right; each step is a card, and each stage ends in a picture of what it made.\n\n1. **Read the prompt.** Each word of *the cat sat on* is found in the vocabulary: *the* is word 1, *cat* word 2.\n2. **Embed.** Each word's place picks its row of four numbers out of the embedding table, and each position adds its own.\n3. **Attend.** Each word asks with its query and answers with its key. A query times a key, divided by 2 (the square root of the 4 dimensions, which keeps the scores from growing with the size), scores how much one word should look at another; the mask hides the words that come after, and a softmax turns each row into weights that sum to 1 (both Softmax cards are one small graph: Edit Contents shows its steps, ending in a matrix multiply that scales each row by one over its total). The weights mix the values, and the mix is added back. Here *sat* and *on* put nearly all their attention on *cat*.\n4. **Think.** A two-layer network with a ReLU works on each word by itself, and its answer is added back too.\n5. **Predict.** The unembedding scores every word of the vocabulary, and a softmax makes the scores probabilities. Each position predicts the word after it: *the* expects *cat* or *mat*, *cat* expects *sat*, *sat* expects *on*, and *on* expects *the*.\n\nThe weights were set by hand to tell that story; a real model learns billions of them from text. Two things to try: shorten the prompt to *the cat sat* and watch *on* become the next word, or set the 3 in W_K's second row to 0 and watch the attention on *cat* spread out.",
     "fieldTypes": {}
    }
   },
@@ -639,26 +639,45 @@
        "y": 0
       },
       {
-       "id": "totals",
+       "id": "inv",
        "type": "ByAxisNode",
        "init": {
-        "label": "2. Each row's total",
+        "label": "2. One over each row's total",
         "op": "row"
        },
        "stringLiterals": {
-        "formula": "SUM(values)"
+        "formula": "1 / SUM(values)"
        },
        "x": 600,
-       "y": 160
+       "y": 220
       },
       {
-       "id": "divide",
-       "type": "ExpressionNode",
+       "id": "row",
+       "type": "TableReshapeNode",
        "init": {
-        "label": "3. Divide: each row sums to 1",
-        "expr": "weights / totals"
+        "label": "3. As a list",
+        "op": "torow"
        },
        "x": 920,
+       "y": 220
+      },
+      {
+       "id": "diag",
+       "type": "TableDiagNode",
+       "init": {
+        "label": "4. Down a diagonal",
+        "offDiag": "zero"
+       },
+       "x": 1240,
+       "y": 220
+      },
+      {
+       "id": "mult",
+       "type": "TableMultNode",
+       "init": {
+        "label": "5. Scale each row: rows now sum to 1"
+       },
+       "x": 1560,
        "y": 0
       },
       {
@@ -667,7 +686,7 @@
        "init": {
         "label": "Weights"
        },
-       "x": 1240,
+       "x": 1880,
        "y": 0
       }
      ],
@@ -681,23 +700,35 @@
       {
        "source": "exp",
        "sourceOutput": "result",
-       "target": "totals",
+       "target": "inv",
        "targetInput": "table"
+      },
+      {
+       "source": "inv",
+       "sourceOutput": "result",
+       "target": "row",
+       "targetInput": "matrix"
+      },
+      {
+       "source": "row",
+       "sourceOutput": "result",
+       "target": "diag",
+       "targetInput": "diag"
+      },
+      {
+       "source": "diag",
+       "sourceOutput": "result",
+       "target": "mult",
+       "targetInput": "a"
       },
       {
        "source": "exp",
        "sourceOutput": "result",
-       "target": "divide",
-       "targetInput": "weights"
+       "target": "mult",
+       "targetInput": "b"
       },
       {
-       "source": "totals",
-       "sourceOutput": "result",
-       "target": "divide",
-       "targetInput": "totals"
-      },
-      {
-       "source": "divide",
+       "source": "mult",
        "sourceOutput": "result",
        "target": "m_weights",
        "targetInput": "value"
@@ -755,26 +786,45 @@
        "y": 0
       },
       {
-       "id": "totals",
+       "id": "inv",
        "type": "ByAxisNode",
        "init": {
-        "label": "2. Each row's total",
+        "label": "2. One over each row's total",
         "op": "row"
        },
        "stringLiterals": {
-        "formula": "SUM(values)"
+        "formula": "1 / SUM(values)"
        },
        "x": 600,
-       "y": 160
+       "y": 220
       },
       {
-       "id": "divide",
-       "type": "ExpressionNode",
+       "id": "row",
+       "type": "TableReshapeNode",
        "init": {
-        "label": "3. Divide: each row sums to 1",
-        "expr": "weights / totals"
+        "label": "3. As a list",
+        "op": "torow"
        },
        "x": 920,
+       "y": 220
+      },
+      {
+       "id": "diag",
+       "type": "TableDiagNode",
+       "init": {
+        "label": "4. Down a diagonal",
+        "offDiag": "zero"
+       },
+       "x": 1240,
+       "y": 220
+      },
+      {
+       "id": "mult",
+       "type": "TableMultNode",
+       "init": {
+        "label": "5. Scale each row: rows now sum to 1"
+       },
+       "x": 1560,
        "y": 0
       },
       {
@@ -783,7 +833,7 @@
        "init": {
         "label": "Weights"
        },
-       "x": 1240,
+       "x": 1880,
        "y": 0
       }
      ],
@@ -797,23 +847,35 @@
       {
        "source": "exp",
        "sourceOutput": "result",
-       "target": "totals",
+       "target": "inv",
        "targetInput": "table"
+      },
+      {
+       "source": "inv",
+       "sourceOutput": "result",
+       "target": "row",
+       "targetInput": "matrix"
+      },
+      {
+       "source": "row",
+       "sourceOutput": "result",
+       "target": "diag",
+       "targetInput": "diag"
+      },
+      {
+       "source": "diag",
+       "sourceOutput": "result",
+       "target": "mult",
+       "targetInput": "a"
       },
       {
        "source": "exp",
        "sourceOutput": "result",
-       "target": "divide",
-       "targetInput": "weights"
+       "target": "mult",
+       "targetInput": "b"
       },
       {
-       "source": "totals",
-       "sourceOutput": "result",
-       "target": "divide",
-       "targetInput": "totals"
-      },
-      {
-       "source": "divide",
+       "source": "mult",
        "sourceOutput": "result",
        "target": "m_weights",
        "targetInput": "value"

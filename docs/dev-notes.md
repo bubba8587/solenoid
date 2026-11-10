@@ -94,11 +94,11 @@ specific item.
   `frame_verbs.rs`): it skipped the whole column with no notice. The card never errors over one replacement; the
   frame holds the truth, and a total over the column says so.
 - **A tiny transformer, a new example** (`seedGraphs/tiny-transformer.json`, Worked examples): one layer and one head
-  in five stages, each a group ending in its picture, built from table cards and no Expressions but one: XMATCH finds
+  in five stages, each a group ending in its picture, built from table cards with no Expressions: XMATCH finds
   each typed word in the vocabulary and CHOOSEROWS picks its embedding row, so editing the prompt moves every answer;
   MMULT, TRANSPOSE, MAP (`value + value2`, `MAX(0, value)`) and a MAKEARRAY mask do the rest, sized by a COUNT of the
-  prompt. Both softmaxes are one Composite (MAP `EXP(value)`, a BYROW of totals, and `weights / totals`, the one
-  Expression, since only a formula broadcasts a column of totals across a table; MAP wants equal shapes). Labeled
+  prompt. Both softmaxes are one Composite: MAP `EXP(value)`, a BYROW of `1 / SUM(values)`, TOROW, DIAGONAL, and MMULT of
+  that diagonal by the table, which scales each row to sum to 1 (MAP wants equal shapes, so it can't spread a column). Labeled
   heatmaps show the embeddings, attention and predictions, and a bar chart the last word's prediction. Two rows, H on
   three rotated Conduits. Building it found Frame from Lists failing on a table through
   TAKE's untyped output, `run-graph` and `seedsCompute.test.ts` never hydrating a Composite (both do now), and the grounding listing TOROW under TableSelect.
