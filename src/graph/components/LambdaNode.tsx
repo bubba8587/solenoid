@@ -9,6 +9,7 @@ import { applyLambdaChange } from "./expressionEdit";
 import { formulaPopup } from "../formulaPopupStore";
 import "./ExpressionNode.css";
 import { stopDragStart } from "../coarse";
+import { isEnter } from "../enterKey";
 
 // The λ(…) row declares the parameters, bound BY NAME at the consumer ([[C50]]
 // lambdaBindsByName); a formula variable that is not a parameter becomes a captured input row.
@@ -41,7 +42,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
           placeholder="x, y"
           onChange={(e) => setParams(e.target.value)}
           onBlur={commitParams}
-          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) (e.target as HTMLInputElement).blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           spellCheck={false}

@@ -8,6 +8,7 @@ import { nodeDisplayName } from "../catalogUtils";
 import "./commentsPanel.css";
 import { CloseIcon } from "./CloseIcon";
 import { FieldResizeGrip } from "./FieldResizeGrip";
+import { isEnter } from "../enterKey";
 
 // Lucide "message-square".
 const CommentSvg = ({ size = 14 }: { size?: number }) => (
@@ -39,7 +40,7 @@ function ComposeRow({ nodeId, onAdded }: { nodeId: string; onAdded: () => void }
           rows={2}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
+            if (isEnter(e) && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
           }}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}

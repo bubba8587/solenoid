@@ -54,6 +54,7 @@ import { framePopupData } from "../valuePopup";
 import type { FrameValue } from "../frame";
 import { TableEditMenus, TableContextMenu, useEditShortcuts, type EditAxis } from "./TableEditMenu";
 import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex, type AxisSelection } from "../tableEdit";
+import { isEnter } from "../enterKey";
 
 type CellType = "number" | "string" | "date" | "logical";
 type PopupView = "dashboard" | "pivot" | "grid" | "cards" | "form" | "csv";
@@ -1461,7 +1462,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                         onKeyDown={(e) => {
                           if (e.nativeEvent.isComposing) return;
                           if (suggestRef.current?.onKey(e)) return;
-                          if (e.key === "Enter") e.currentTarget.blur();
+                          if (isEnter(e)) e.currentTarget.blur();
                         }}
                       />
                       )}

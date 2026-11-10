@@ -12,6 +12,7 @@ import { PopupShell, popupCardVars } from "./PopupShell";
 import { PopupSkeleton } from "./PopupSkeleton";
 import "./TablePopup.css";
 import "./FilePicker.css";
+import { isEnter } from "../enterKey";
 
 /** One row the list shows: an entry of the folder being browsed, a search match, or a recent pick. */
 type Row = { key: string; kind: "folder" | "file" | "here"; path: string; name: string; detail: string; marks?: [number, number][]; count?: number };
@@ -146,7 +147,7 @@ function PickerBody({ state }: { state: FilePickerState }) {
     else if (e.key === "ArrowUp") { e.preventDefault(); setAt((i) => Math.max(i - 1, 0)); }
     else if (e.key === "PageDown") { e.preventDefault(); setAt((i) => Math.min(i + page, all.length - 1)); }
     else if (e.key === "PageUp") { e.preventDefault(); setAt((i) => Math.max(i - page, 0)); }
-    else if (e.key === "Enter") { e.preventDefault(); act(sel); }
+    else if (isEnter(e)) { e.preventDefault(); act(sel); }
     else if (e.key === "ArrowRight" && sel?.kind === "folder" && !searching) { e.preventDefault(); enter(sel); }
     else if ((e.key === "ArrowLeft" || (e.key === "Backspace" && query === "")) && !searching && folder) { e.preventDefault(); up(); }
   };
@@ -238,7 +239,7 @@ function PickerBody({ state }: { state: FilePickerState }) {
               spellCheck={false}
               autoComplete="off"
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); if (footerPick !== null) choose(footerPick); } }}
+              onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); e.stopPropagation(); if (footerPick !== null) choose(footerPick); } }}
             />
           ) : (
             <span className="file-picker__picked" title={footerPick ?? undefined}>{footerPick === null ? "" : footerPick || rootLabel}</span>

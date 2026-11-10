@@ -1,5 +1,6 @@
 // [[B3]] sameNodeEverywhere (.nokeys: the grid owns its keys), [[C54]] noPerCellFormulas (computed cells are skipped)
 // `vi` is the visual row (an index into the sorted visibleOrder), never the source row; `skip(vi, c)` marks a cell Tab hops over.
+import { composing } from "../enterKey";
 
 export type GridKey =
   | "Enter" | "ShiftEnter"
@@ -7,11 +8,13 @@ export type GridKey =
   | "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight"
   | "Home" | "End";
 
-/** Null lets the browser have the key; Ctrl, Meta and Alt are not ours, and Shift only picks the Enter or Tab variant. */
+/** Null lets the browser have the key; Ctrl, Meta and Alt are not ours, Shift only picks the Enter or Tab variant, and
+ *  nothing is ours while an input method is composing. */
 export function gridKeyOf(e: {
   key: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; altKey: boolean;
+  isComposing?: boolean; keyCode?: number; nativeEvent?: { isComposing?: boolean; keyCode?: number };
 }): GridKey | null {
-  if (e.ctrlKey || e.metaKey || e.altKey) return null;
+  if (e.ctrlKey || e.metaKey || e.altKey || composing(e)) return null;
   switch (e.key) {
     case "Enter": return e.shiftKey ? "ShiftEnter" : "Enter";
     case "Tab": return e.shiftKey ? "ShiftTab" : "Tab";

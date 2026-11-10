@@ -20,6 +20,7 @@ import { foreignCardStore } from "./foreignCardStore";
 import { scriptsWait, allowScripts } from "./scriptGate";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
+import { isEnter } from "./enterKey";
 
 
 const MOBILE_NA = "Not available in mobile mode.";
@@ -247,7 +248,7 @@ function TextRow({ field }: { field: SettingField }) {
           spellCheck={false}
           autoComplete="off"
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); (e.target as HTMLInputElement).blur(); } }}
+          onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); commit(); (e.target as HTMLInputElement).blur(); } }}
           onBlur={commit}
         />
       </span>
@@ -402,7 +403,7 @@ function ApiKeyRow({ id, label, help }: { id: string; label: string; help: strin
           spellCheck={false}
           autoComplete="off"
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } }}
+          onKeyDown={(e) => { if (isEnter(e)) { e.preventDefault(); commit(); } }}
           onBlur={commit}
         />
         {stored && (

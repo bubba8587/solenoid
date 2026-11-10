@@ -51,7 +51,7 @@ export const RULES = [
 
   // ── canvas: layout, cables, gestures, the React Flow view ──
   ["canvas", /^tests\/graph\/(flow|components)\//],
-  ["canvas", /(^|\/)(cable\w*|canvas\w*|group\w*|tidy\w*|layout\w*|standoff\w*|collapseStore|conduit\w*|hic\w*|zoomSettle|touch\w*|pointerGesture|drawnCablePath|pathPoints|selectionOps|lockedContextMenus|landscapePhoneScale|viewPresets|nodeSizeStore|flowPreview|gridKeyboard|modalGuard|fireMenuKey|selectChevron)\.test\./],
+  ["canvas", /(^|\/)(cable\w*|canvas\w*|group\w*|tidy\w*|layout\w*|standoff\w*|collapseStore|conduit\w*|hic\w*|zoomSettle|touch\w*|pointerGesture|drawnCablePath|pathPoints|selectionOps|lockedContextMenus|landscapePhoneScale|viewPresets|nodeSizeStore|flowPreview|gridKeyboard|enterKey|modalGuard|fireMenuKey|selectChevron)\.test\./],
 
   // ── ui: stores, menus, search, popups, settings ──
   ["ui", /(^|\/)(\w+Store|catalogSearch|searchSamples|nameSurfaces|commentStore|problemsStore|pinStore|inspectorStore|settingsStore)\.test\./],

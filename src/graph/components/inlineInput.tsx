@@ -25,6 +25,7 @@ import { drawnFieldOf, keyedKindOf, type KeyedKind, type DrawnField } from "../l
 export type { KeyedKind } from "../literalFields";
 import { TypeIcon } from "./TypeIcon";
 import "./colType.css";
+import { isEnter } from "../enterKey";
 
 // Body-height estimate only; socket placement is measured per row.
 export const INPUT_ROW_PITCH = 28;
@@ -83,7 +84,7 @@ export function useDraftCommit<T>(
     commit();
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+    if (isEnter(e)) { e.preventDefault(); e.currentTarget.blur(); }
     else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
   };
   return { draft, setDraft, onBlur, onKeyDown };
@@ -106,7 +107,7 @@ export function useEditableLabel(node: { label: string; edited?: () => void }, o
     if (draft !== node.label) { node.label = draft; node.edited?.(); scheduleAutosave(); onCommit?.(); }
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+    if (isEnter(e)) { e.preventDefault(); e.currentTarget.blur(); }
     else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
   };
   return {

@@ -5,6 +5,7 @@ import { isSolError } from "../errorValue";
 import { settingsStore } from "../settingsStore";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { CalendarIcon } from "./CalendarIcon";
+import { isEnter } from "../enterKey";
 
 /** Examples for the (i) popup — valid inputs across the relative + absolute forms. No prose. */
 const FORMAT_EXAMPLES = ["today", "tomorrow", "yesterday", "next friday", "last monday", "in 3 days", "2 weeks ago", "15-Mar-2026", "2026-03-15"];
@@ -52,7 +53,7 @@ export function DateEntry({ raw, onCommit }: { raw: string; onCommit: (text: str
           setEditing(false);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+          if (isEnter(e)) { e.preventDefault(); e.currentTarget.blur(); }
           else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
         }}
         onPointerDown={stop}

@@ -21,6 +21,10 @@ specific item.
   (`liftedToward`), not floored, since a floor merged Equinox's grays and Solarized's blue and sky.
 - **Each palette is drawn in its spec** (`tree/specs/canvas/palettes/*.svg`, from `scripts/palette-diagrams.ts`: each
   slot's move from Default in OKLab); `paletteDiagrams.test.ts` fails while a checked-in diagram is stale.
+- **Modern Web Guidance 1.0** (Chrome's agent skills, `npx modern-web-guidance`, telemetry off with `DISABLE_TELEMETRY=1`):
+  its `legacy-scan` found 34 Enter handlers that committed mid-IME-composition. Every Enter check now goes through
+  `isEnter` (`enterKey.ts`), sweep-enforced. Its other two findings (`field-sizing: content`, `sibling-index()`) are
+  not Baseline in the desktop and Android webviews yet, so they stand.
 - The rig needs Obsidian at `/opt/Obsidian` (the 1.14.4 Linux tarball from obsidian-releases) and `wasm-bindgen-cli`
   0.2.130 for `plugin:build`; neither is in the cloud image.
 

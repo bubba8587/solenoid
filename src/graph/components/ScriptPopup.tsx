@@ -12,6 +12,7 @@ import { JsEditor } from "./JsEditor";
 import { PopupShell } from "./PopupShell";
 import { nodeDisplayName } from "../catalogUtils";
 import "./ScriptPopup.css";
+import { isEnter } from "../enterKey";
 
 function scriptNodeOf(nodeId: string | null): ScriptNode | null {
   if (!nodeId) return null;
@@ -88,7 +89,7 @@ export function ScriptPopup() {
           placeholder="(x) => x * 2"
           autoFocus
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); commitAndClose(); }
+            if (isEnter(e) && (e.ctrlKey || e.metaKey)) { e.preventDefault(); commitAndClose(); }
           }}
         />
         {node.cachedError && <div className="script-popup__error">{node.cachedError}</div>}

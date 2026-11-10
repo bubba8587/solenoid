@@ -32,6 +32,7 @@ import { DOT_SPACING } from "./gridSnapStore";
 import { canvasLockStore } from "./canvasLock";
 import { computeOverlayStore } from "./computeOverlayStore";
 import { documentStore } from "./documentStore";
+import { isEnter } from "./enterKey";
 
 interface CanvasKeyboardDeps {
   editorRef: MutableRefObject<GraphEditor<Schemes> | null>;
@@ -144,7 +145,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
 
     if (drawModeStore.armed() && !editable && !e.ctrlKey && !e.metaKey) {
       if (e.key === "Escape") { drawModeStore.disarm(); e.preventDefault(); return; }
-      if (e.key === "Enter") { finishDrawing(); e.preventDefault(); return; }
+      if (isEnter(e)) { finishDrawing(); e.preventDefault(); return; }
       if (e.key === "Backspace") { drawModeStore.undoPoint(); e.preventDefault(); return; }
     }
 
@@ -154,7 +155,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         if (!locked) void deleteSelected();
         e.preventDefault(); return;
       }
-      if (e.key === "Enter" && !isAddMenuOpen()) {
+      if (isEnter(e) && !isAddMenuOpen()) {
         paletteStore.open(); e.preventDefault(); return;
       }
       if (e.key === "Escape" && isolateStore.isActive()) {

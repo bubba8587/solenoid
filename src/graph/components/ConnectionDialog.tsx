@@ -12,6 +12,7 @@ import type { SolenoidConnection } from "../schemes";
 import { useFocusTrap } from "./useFocusTrap";
 import { useEscapeToClose } from "./useEscapeToClose";
 import "./connectionDialog.css";
+import { isEnter } from "../enterKey";
 
 const TYPE_LABEL: Record<SocketDataType, string> = {
   number: "Number", numlist: "Number/List", list: "List", string: "Text",
@@ -94,7 +95,7 @@ function EndpointCombo({
           if (!open) return;
           if (e.key === "ArrowDown") { e.preventDefault(); setActive((i) => Math.min(i + 1, results.length - 1)); }
           else if (e.key === "ArrowUp") { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)); }
-          else if (e.key === "Enter" && results[active]) { e.preventDefault(); pick(results[active]); }
+          else if (isEnter(e) && results[active]) { e.preventDefault(); pick(results[active]); }
         }}
         spellCheck={false}
       />

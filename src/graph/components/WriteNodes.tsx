@@ -27,6 +27,7 @@ import "./WriteNodes.css";
 import "./ImportObsidianNode.css";
 import { stopDragStart } from "../coarse";
 import { previewed } from "../listPreview";
+import { isEnter } from "../enterKey";
 
 type WriteNodeData = WriteFileNodeType & {
   path: string; format: WriteFormat; enabled: boolean; status: string; statusMessage: string;
@@ -107,7 +108,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
             spellCheck={false}
             onChange={(e) => setPath(e.target.value)}
             onBlur={commitPath}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           />

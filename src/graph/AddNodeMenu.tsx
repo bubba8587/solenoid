@@ -15,6 +15,7 @@ import { SOCKET_COLORS, type SocketDataType } from "./sockets";
 const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kind], appThemeStore.getMode());
 import { ChevronRightIcon, ChevronLeftIcon, BookIcon } from "./components/Icons";
 import { frStore } from "./frStore";
+import { isEnter } from "./enterKey";
 
 function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
   // One type tints the row like a kind accent, in that type's socket color; several make the flag.
@@ -503,7 +504,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     if (searching) {
       if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
-      else if (e.key === "Enter" && results[activeIndex]) { select(results[activeIndex]); }
+      else if (isEnter(e) && results[activeIndex]) { select(results[activeIndex]); }
       else if (e.key === "Escape") { e.stopPropagation(); setQuery(""); }
       return;
     }
@@ -536,7 +537,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       const isDescend = openLeft ? !goRight : goRight;
       if (isDescend) { if (active?.kind === "category") setTreePath([...treePath, 0]); }
       else if (treePath.length > 1) setTreePath(treePath.slice(0, -1));
-    } else if (e.key === "Enter") {
+    } else if (isEnter(e)) {
       if (active?.kind === "category") setTreePath([...treePath, 0]);
       else if (active?.kind === "leaf") select(active.entry);
     }

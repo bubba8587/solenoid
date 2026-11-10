@@ -27,6 +27,7 @@ import { openPackSettings } from "../Settings";
 import { FolderPage, leavesOf } from "./FolderPage";
 import "./nodeCard.css";
 import type { GraphNode } from "../graphModel";
+import { isEnter } from "../enterKey";
 
 /** An op or formula row's leaf ("list-smooth__op-gaussian") belongs to its host card. */
 const cardTypeOf = (leaf: NodeCatalogEntry) => leaf.type.split("__")[0];
@@ -171,7 +172,7 @@ export function CardReference() {
           onKeyDown={(e) => {
             if (e.key === "ArrowDown" && results.length) { e.preventDefault(); const i = Math.min(active + 1, results.length - 1); setActive(i); pick(results[i]); }
             else if (e.key === "ArrowUp" && results.length) { e.preventDefault(); const i = Math.max(active - 1, 0); setActive(i); pick(results[i]); }
-            else if (e.key === "Enter" && results[active]) pick(results[active]);
+            else if (isEnter(e) && results[active]) pick(results[active]);
             else if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); }
           }}
           // Touch must not pop the on-screen keyboard over the fresh panel.

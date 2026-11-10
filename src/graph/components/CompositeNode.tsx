@@ -28,6 +28,7 @@ import { ChartFigure } from "./chartView";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import { nodeDisplayName } from "../catalogUtils";
+import { isEnter } from "../enterKey";
 
 function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} full={false} />;
@@ -175,7 +176,7 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
             defaultValue={valuesToCsv(node.dataTableValues[p.id])}
             placeholder="for example, 1, 2, 3"
             onBlur={(e) => { node.setDataTableValues(p.id, parseCsvValues(e.target.value)); recompute(); }}
-            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            onKeyDown={(e) => { if (isEnter(e)) (e.target as HTMLInputElement).blur(); }}
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             spellCheck={false}

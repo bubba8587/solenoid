@@ -52,6 +52,7 @@ import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { getOwningView } from "../activeGraph";
 import { FX_MODE_META, type FxMode } from "../nodeClasses";
 import { previewed } from "../listPreview";
+import { isEnter } from "../enterKey";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
@@ -85,7 +86,7 @@ function RefreshIntervalField({ node }: { node: { id: string; refreshMinutes: nu
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
         onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}
       />
@@ -146,7 +147,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           spellCheck={false}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
@@ -186,7 +187,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
           spellCheck={false}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
@@ -199,7 +200,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
             value={idx}
             onChange={(e) => setIdx(e.target.value)}
             onBlur={commit}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           />
@@ -239,7 +240,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           spellCheck={false}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
@@ -251,7 +252,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           spellCheck={false}
           onChange={(e) => setQuery(e.target.value)}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
@@ -346,7 +347,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
               placeholder="monthly/*.csv" spellCheck={false}
               onChange={(e) => setPattern(e.target.value)}
               onBlur={(e) => commitPattern(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
               onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
             />
           </label>
@@ -434,7 +435,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
           spellCheck={false}
           onChange={(e) => setInput(e.target.value)}
           onBlur={(e) => commitInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           {...stopDrag}
         />
         {preset.frequencies && (
@@ -523,7 +524,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
       <input
         className="sol-conn__num" type="number" value={val}
         onChange={(e) => set(e.target.value)} onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
         onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
       />
     </label>
@@ -608,7 +609,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
           <input
             className="sol-conn__num" type="number" value={year} placeholder="[this year]"
             onChange={(e) => setYear(e.target.value)} onBlur={commitYear}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
             onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
           />
         </label>
@@ -616,7 +617,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
           className="sol-conn__url sol-placeholder-example" type="text" value={region} placeholder="Region, for example US-CA (optional)"
           spellCheck={false}
           onChange={(e) => setRegion(e.target.value)} onBlur={commitRegion}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
         />
         <div className="sol-conn__note">Nager.Date public holidays.</div>
@@ -695,7 +696,7 @@ function FxDateRow({ data, emit, socketKey, label }: {
         <input
           className="sol-conn__num" type="date" value={val}
           onChange={(e) => setVal(e.target.value)} onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
         />
       )}
@@ -878,7 +879,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 spellCheck={false} disabled={connected.has("glob")}
                 onChange={(e) => setGlob(e.target.value)}
                 onBlur={(e) => commitField(e.target.value, data.glob, setGlob, (v) => { data.glob = v; })}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               />
             </label>
@@ -888,7 +889,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="[auto]" spellCheck={false}
                 onChange={(e) => setNameFormat(e.target.value)}
                 onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               />
             </label>
@@ -979,7 +980,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
           autoComplete="off"
           onChange={(e) => setToken(e.target.value)}
           onBlur={commitToken}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />

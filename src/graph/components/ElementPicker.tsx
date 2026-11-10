@@ -7,6 +7,7 @@ import { useSeriesColors } from "./chartCore";
 import { PopupShell } from "./PopupShell";
 import { formatScalar } from "./format";
 import "./ElementPicker.css";
+import { isEnter } from "../enterKey";
 
 /** The Element node's periodic-table picker; module store, mounted once in App. */
 export function ElementPicker() {
@@ -60,7 +61,7 @@ export function ElementPicker() {
           placeholder="Fe, iron, 26…"
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && best) { e.preventDefault(); pick(best.symbol); }
+            if (isEnter(e) && best) { e.preventDefault(); pick(best.symbol); }
           }}
         />
         {/* On a phone the detail sits above the table, full width: there is no hover, and a tap picks and stays open. */}

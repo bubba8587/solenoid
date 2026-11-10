@@ -33,6 +33,7 @@ import { useIsMobile } from "./useDeviceMode";
 import { searchLibrary, type SearchHit } from "./workspaceSearch";
 import { treeKeyStep, typeAhead, type KeyRow, type TreeKey } from "./workspaceRows";
 import { nodeNameStore } from "./nodeNameStore";
+import { isEnter } from "./enterKey";
 
 
 type Cat = "group" | "input" | "display" | "other";
@@ -497,7 +498,7 @@ export function OutlinePanel() {
       return;
     }
     if (onChild) return;
-    if (e.key === "Enter") { take(); handleRowDoubleClick(id); return; }
+    if (isEnter(e)) { take(); handleRowDoubleClick(id); return; }
     if (e.key === " ") {
       take();
       if (rowById.get(id)?.path.length) return;
