@@ -29,6 +29,7 @@ import type {
   MergeColumnsNode as MergeColumnsNodeType,
   HeadersNode as HeadersNodeType,
   DropBlankRowsNode as DropBlankRowsNodeType,
+  EditFrameNode as EditFrameNodeType,
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
   SensitivityMode,
@@ -58,6 +59,8 @@ import { RecordLayoutField } from "./RecordLayoutField";
 import { XLookupNode, type LookupDirection } from "../nodes/frame";
 import { suggestFrameLayout } from "../cardLayout";
 import { CloseIcon } from "./CloseIcon";
+import { ErrorChip } from "./ErrorChip";
+import { openEditFramePopup } from "./editFramePopup";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META, lambdaSocketName } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { isCubeValue } from "../frame";
@@ -1295,6 +1298,88 @@ export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
       <ArgSelect value={agg} onChange={setAgg} options={WINDOW_FN_OPTIONS} />
       <InlineInputs node={data} emit={emit} />
       <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+    </NodeShell>
+  );
+}
+
+// ─── EDIT FRAME ────────────────────────────────────────────────────────────────
+
+/** How many edits the card lists; the rest are counted under them. */
+const EDIT_LIST_CAP = 20;
+
+const EDIT_STATUS_TITLE: Record<string, string> = {
+  stale: "No row has this key now, or the column is gone, so this edit changes nothing.",
+  ambiguous: "Two or more rows have this key, so this edit changes none of them. Add a column to Key that tells them apart.",
+};
+
+export function EditFrameComponent({ data, emit }: NodeProps<EditFrameNodeType>) {
+  const [, bump] = useState(0);
+  const edits = data.cellEdits;
+  const shown = edits.slice(0, EDIT_LIST_CAP);
+  const frame = isFrameValue(data.cachedResult) ? data.cachedResult : null;
+  const remove = (i: number) => {
+    data.removeCellEdit(i);
+    bump((n) => n + 1);
+    data.edited();
+    void processGraph(data.id);
+  };
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} />
+      <button
+        type="button"
+        className="solenoid-node__recalc-btn"
+        disabled={!frame}
+        title="Opens the table to type into its cells or tick its boxes"
+        onPointerDown={stopDragStart}
+        onMouseDown={stopDragStart}
+        onClick={(e) => { e.stopPropagation(); openEditFramePopup(data, e.currentTarget); }}
+      >
+        Edit cells
+      </button>
+      <div className="solenoid-pipeline">
+        {edits.length === 0
+          ? <div className="solenoid-node__text-empty">no edits</div>
+          : (
+            <div className="solenoid-pipeline__list nowheel">
+              {shown.map((e, i) => {
+                const status = data.editStatus[i];
+                const off = status === "stale" || status === "ambiguous";
+                return (
+                  <div key={`${e.column}\u001f${e.row}`} className={`solenoid-pipeline__step solenoid-edit-frame__edit${off ? " solenoid-edit-frame__edit--off" : ""}`} title={off ? EDIT_STATUS_TITLE[status] : `${e.row}: ${e.column} is ${e.value === "" ? "blank" : e.value}`}>
+                    <span className="solenoid-pipeline__num">{i + 1}</span>
+                    <span className="solenoid-pipeline__name">{e.row}</span>
+                    <span className="solenoid-edit-frame__value">{off ? status : `${e.column} = ${e.value === "" ? "blank" : e.value}`}</span>
+                    <button
+                      type="button"
+                      className="solenoid-edit-frame__remove"
+                      title="Take this edit back"
+                      aria-label="Take this edit back"
+                      onPointerDown={stopDragStart}
+                      onMouseDown={stopDragStart}
+                      onClick={(ev) => { ev.stopPropagation(); remove(i); }}
+                    >
+                      <CloseIcon size={10} />
+                    </button>
+                  </div>
+                );
+              })}
+              {edits.length > EDIT_LIST_CAP && <div className="solenoid-edit-frame__more">+{edits.length - EDIT_LIST_CAP} more…</div>}
+            </div>
+          )}
+      </div>
+      <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={data.outputs.frame!.socket}>
+        <span className="solenoid-node__io-label">Frame</span>
+        <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
+          {frame ? <FrameChip value={frame} label={nodeDisplayName(data)} size="sm" /> : isSolError(data.cachedResult) ? <ErrorChip err={data.cachedResult} /> : "—"}
+        </span>
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="edits" nodeId={data.id} emit={emit} payload={data.outputs.edits!.socket}>
+        <span className="solenoid-node__io-label">Edits</span>
+        <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
+          {isFrameValue(data.cachedEdits) ? <FrameChip value={data.cachedEdits} label={`${nodeDisplayName(data)}: Edits`} size="sm" /> : "—"}
+        </span>
+      </MeasuredSocketRow>
     </NodeShell>
   );
 }

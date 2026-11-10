@@ -23,6 +23,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | Spec | Subsystem | Main code |
 |---|---|---|
 | `../tree/specs/computation/compute-pass.md` | the recompute pass, calc modes, the per-node wrappers and arrival coercion | `graphCompute.ts`, `process.ts`, `passSession.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs` |
+| `../tree/specs/computation/edit-frame.md` | Edit Frame: cells of a computed table changed by hand, each kept as an edit found by its row's key | `nodes/edit_frame.rs`, `EditFrameNode`, `editFramePopup.ts` |
 | `../tree/specs/computation/formula-language.md` | the formula grammar, operators, name resolution, dispatch, broadcasting, LAMBDA, Expression | `excelFormula.ts`, `excelFunctions.ts`, `formulaSignatures.ts` |
 | `../tree/specs/computation/excel-divergences.md` | where Solenoid answers otherwise than Excel, and where it answers as Excel where Formula.js did not, and why | `crates/solenoid-core/src/excel_functions.rs`, `fns_*.rs` |
 | `../tree/specs/computation/function-records.md` | one record per function: its cases, Excel's answers beside Solenoid's, the edge grid, the Excel round trip, readiness | `fixtures/functions/` (not built yet) |

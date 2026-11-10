@@ -861,6 +861,41 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Edit Frame's edits, listed as a Pipeline lists its steps; an edit that changes nothing is struck in the error ink. */
+.solenoid-edit-frame__edit { cursor: default; align-items: center; }
+.solenoid-edit-frame__edit:hover { background: none; }
+.solenoid-edit-frame__value {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.solenoid-edit-frame__edit--off .solenoid-pipeline__name { text-decoration: line-through; color: var(--text-muted); }
+.solenoid-edit-frame__edit--off .solenoid-edit-frame__value { color: var(--sol-error); }
+.solenoid-edit-frame__remove {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.solenoid-edit-frame__remove:hover { color: var(--text); background: var(--btn-hover); }
+.solenoid-edit-frame__more {
+  padding: 3px 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
 .solenoid-pipeline__fault {
   padding: 2px 4px;
   color: var(--sol-error);

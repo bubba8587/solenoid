@@ -41,7 +41,7 @@ export const INIT_FIELD_ORDER = [
 export const INIT_EXTRA_FIELD_ORDER = [
   "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "varRequired", "bindings",
   "keyOrder", "pivotView", "detailFields", "boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues",
-  "literalKinds",
+  "literalKinds", "cellEdits",
 ] as const;
 
 /** The saved fields only the canvas reads (a card's size, fold, colour, place, text styling): a card's call leaves them
@@ -105,6 +105,9 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
     if (saved) init.pivotView = saved;
   }
   if (Array.isArray(n.detailFields) && n.detailFields.length) init.detailFields = [...(n.detailFields as string[])];
+  if (Array.isArray(n.cellEdits) && n.cellEdits.length) {
+    init.cellEdits = (n.cellEdits as { row: string; column: string; value: string }[]).map((e) => ({ row: e.row, column: e.column, value: e.value }));
+  }
   for (const k of ["boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues", "literalKinds"] as const) {
     if (n[k] && typeof n[k] === "object" && Object.keys(n[k]).length) init[k] = { ...(n[k]) };
   }

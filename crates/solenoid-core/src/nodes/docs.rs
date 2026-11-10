@@ -992,7 +992,7 @@ fn option_word<'a>(opts: &str, key: &str, values: &[&'a str]) -> Option<&'a str>
 }
 
 /// A cell as a Record shows it: an error as its code, a logical as TRUE or FALSE, a date as its text.
-fn frame_cell_text(col: &Column, v: &V) -> V {
+pub(crate) fn frame_cell_text(col: &Column, v: &V) -> V {
     match v {
         V::Err(e) => V::str(e.code.as_str()),
         V::Bool(b) => V::str(if *b { "TRUE" } else { "FALSE" }),

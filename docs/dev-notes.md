@@ -84,6 +84,15 @@ specific item.
   changing the one character between the brackets (`planTaskMark`, `setTaskMarks`); a line that is no longer the item
   read is refused. A property write leaves out `note-tasks`, `note-tables` and `backlinks` and never copies an inline
   field into the frontmatter (`resolveKeyOrField`).
+- **Edit Frame changes a computed table's cells by hand** (`tree/specs/computation/edit-frame.md`): its popup
+  takes typing and ticks over the table with its edits applied, rows and columns fixed (`fixedRows`); each changed cell
+  is kept as `{ row, column, value }`, the row found by its Key columns' text (`path, task` for a vault's tasks), so
+  an edit follows its row through a reorder. Stale and ambiguous edits stay listed and change nothing; an edit the
+  table now gives on its own drops (`settled`, `coreWatched`). The edits list as Pipeline's steps, 20 shown and the rest
+  counted; the Edits output is the edits as a table (column, row, previous, new, status).
+- **A new feature is never a new leaf** (the author, 2026-11-10; `docs/dte.md` § What is a leaf and what is a spec,
+  `CLAUDE.md`, the leaf-check hook): a feature and its design go in its spec; a leaf is added unasked only for a
+  product decision (the author overriding conventional wisdom, or answering a contested, high-stakes question).
 - **Import Obsidian Note mints `note-tasks` and `note-tables` outputs** when the note has a checklist or a table
   (`bodyFields`), beside the outputs its frontmatter gives.
 - **Unnest's output takes its value's type** ([[C136]] typesKnownAfterCalc): it was the fixed untyped socket, so a

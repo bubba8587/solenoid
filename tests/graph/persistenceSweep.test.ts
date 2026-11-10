@@ -160,6 +160,9 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    rowKeys: "Edit Frame's row keys as its body last read them, for its popup; the body reads them again from the table each run",
+    editStatus: "Edit Frame's status of each edit on the last run, for its list; the body works it out again each run",
+    settled: "Edit Frame's edits its body found the table now gives, which its coreWatched drops from cellEdits",
     pairPlaceholders: "class-constant muted text for an empty pair field; never a value",
     cleanSource: "The SVG Picker's memo of the last scrubbed markup; stringLiterals.source holds the persisted text ([[C103]])",
     columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[C107]])",

@@ -15,6 +15,7 @@ mod control;
 mod cube_source;
 mod date;
 mod docs;
+mod edit_frame;
 pub(crate) mod elements;
 pub mod fields;
 mod finance;
@@ -401,6 +402,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| formula::run(kind, c))
         .or_else(|| sched::run(kind, c))
         .or_else(|| docs::run(kind, c))
+        .or_else(|| edit_frame::run(kind, c))
         .or_else(|| verbs::run(kind, c))
         .or_else(|| columns::run(kind, c))
         .or_else(|| backend_verbs::run(kind, c))
@@ -501,6 +503,7 @@ pub const DIRECT: &[&str] = &[
     "DurationNode",
     "ESeriesNode",
     "EarnedValueNode",
+    "EditFrameNode",
     "ElementNode",
     "EmSpectrumNode",
     "EpochNode",

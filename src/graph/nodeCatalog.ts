@@ -4,7 +4,7 @@ import {
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
-  FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode,
+  FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, WindowNode,
   ArithmeticNode, DisplayNode, MathFXNode,
   FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupListsNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ComparisonNode, ConduitNode, CastNode, ConstantNode, PhysicsConstantNode, MRoundNode,
@@ -714,6 +714,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "fill-blanks", label: "Fill Down", description: "Fills blank cells from the neighboring row: Down carries the last value forward, Up the next one back. Power Query: Fill Down.", create: () => new FillBlanksNode(), parity: false, keywords: "fill down up forward backward blanks nulls merged cells carry propagate ffill bfill clean" },
           { type: "replace-values", label: "Replace Values", description: "Find-and-replace in one column or all. Whole-cell swaps cells equal to Find, taking the column's type; Substring rewrites inside text cells. Ignores case unless Aa is on. Power Query: Replace Values.", create: () => new ReplaceValuesNode(), parity: false, keywords: "replace find substitute swap value cells fix clean search change" },
           { type: "drop-blank-rows", label: "Drop Blank Rows", description: "Removes blank rows: only fully blank spacer rows, or any row with a blank cell. Errors count as values. Power Query: Remove Blank Rows.", create: () => new DropBlankRowsNode(), parity: false, keywords: "drop remove blank empty rows spacers nulls complete clean" },
+          { type: "edit-frame", added: "1.6", label: "Edit Frame", description: "Changes cells of a table by hand: open it, type a value or tick a box, and each change is kept as an edit of that cell. Key names the columns that find a row again when the table above changes, such as path and task for a vault's tasks; empty, a row is found by its number. Edits gives every change as a table: column, row, previous, new and status.", create: () => new EditFrameNode(), parity: false, keywords: "edit cell override hand manual tick check task done correct fix patch" },
         ],
       },
       {

@@ -12,7 +12,7 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   SPLITCOLUMN: "Split Column", ADDINDEX: "Add Index", MERGECOLUMNS: "Merge Columns",
   HEADERS: "Headers", TABLESIZE: "Table Size",
   PIVOTBY: "PIVOTBY", UNPIVOT: "Unpivot", NEST: "Nest", UNNEST: "Unnest",
-  FILLDOWN: "Fill Down", REPLACEVALUES: "Replace Values", DROPBLANKROWS: "Drop Blank Rows",
+  FILLDOWN: "Fill Down", REPLACEVALUES: "Replace Values", DROPBLANKROWS: "Drop Blank Rows", EDITFRAME: "Edit Frame",
   DECISIONMATRIX: "Decision Matrix", CUBEINPUT: "Cube Input", GROUPCOSTSETTLE: "Group Cost Settle", PAYOFFPLANNER: "Payoff Planner", SENSITIVITY: "Sensitivity", ALLOCATOR: "Allocator", RECONCILE: "Reconcile", DESCRIBE: "Describe", CORRELATIONMATRIX: "Correlation Matrix", KMEANS: "K-Means", PCA: "PCA", LOGISTICREGRESSION: "Logistic Regression", WINDOW: "Window",
   NESTJOIN: "Nest Join", BUILDCUBE: "Build Cube", CUBECOLUMNS: "Cube Columns",
   CUBEROLLUP: "Cube Rollup",

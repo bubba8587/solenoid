@@ -174,6 +174,7 @@ results get retried and settled rulings relapse.
 | `crates/solenoid-graph/`, `graphEditor.ts`, `graphModel.ts`, `dataflowEngine.ts` | `../tree/specs/computation/graph-core.md`; [[C130]] rustCore |
 | `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `heldValues.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[C130]] rustCore |
 | `crates/solenoid-core/`, `engineWasm.ts`, `engineWasm/`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D99]] rustIsSpec |
+| `nodes/edit_frame.rs`, `EditFrameNode` and `EditFrameComponent` (`nodes/frame.ts`, `FrameNodes.tsx`), `editFramePopup.ts` | `../tree/specs/computation/edit-frame.md` (a row's key, applying an edit, stale and settled edits, the Edits table, the edit list, the popup) |
 | `frameOps.ts`, `frameBackend.ts`, `binaryCells.ts`, `frame.ts`, `frameShape.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `crates/solenoid-core/src/frame_verbs.rs`, `frame_backend.rs`, `binary.rs`, `crates/solenoid-parquet` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
 | `csv.ts` (and the core's `csv` module) | `../tree/specs/computation/frame-verbs.md` § Reading CSV text; [[C103]] untrustedContentSeams |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |

@@ -509,7 +509,7 @@ fn decompose(c: &mut Call) -> Answer {
 
 // ─── K-Means, Logistic ──────────────────────────────────────────────────────────
 
-fn frame_in(c: &Call, key: &str) -> Option<Rc<Frame>> {
+pub(crate) fn frame_in(c: &Call, key: &str) -> Option<Rc<Frame>> {
     match card(c, key) {
         Cv::Frame(f) => Some(f),
         _ => None,

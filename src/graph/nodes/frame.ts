@@ -975,6 +975,78 @@ export class DropBlankRowsNode extends GraphNode {
   }
 }
 
+// ─── EDIT FRAME ────────────────────────────────────────────────────────────────
+
+/** One cell changed by hand: the key of its row (`rowKeys`), its column's name and the text typed. */
+export interface CellEdit { row: string; column: string; value: string }
+/** What an edit did on the last run (`tree/specs/computation/edit-frame.md`). */
+export type CellEditStatus = "applied" | "settled" | "stale" | "ambiguous";
+
+export class EditFrameNode extends GraphNode {
+  label: string;
+  cellEdits: CellEdit[];
+  stringLiterals: Record<string, string> = { key: "" };
+  cachedResult: FrameValue | SolError | null = null;
+  cachedEdits: FrameValue | null = null;
+  /** Each row's key, in the table's order, as the body read it. */
+  rowKeys: string[] = [];
+  /** Each saved edit's status, in `cellEdits`' order. */
+  editStatus: CellEditStatus[] = [];
+  /** The edits the table now gives on its own, as `column` and `row` joined by U+001F: they drop (`coreWatched`). */
+  settled: string[] | null = null;
+  width = 270; height = 200;
+
+  constructor(init?: { label?: string; cellEdits?: CellEdit[] }) {
+    super("EditFrame");
+    this.label = init?.label ?? "Edit Frame";
+    this.cellEdits = Array.isArray(init?.cellEdits)
+      ? init.cellEdits
+        .filter((e) => e && typeof e.row === "string" && typeof e.column === "string" && typeof e.value === "string")
+        .map((e) => ({ row: e.row, column: e.column, value: e.value }))
+      : [];
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("key", strIn("Key"));
+    this.addOutput("frame", frameOut("Frame"));
+    this.addOutput("edits", frameOut("Edits"));
+  }
+
+  frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
+    return outKey === "frame" ? ctx.inputShape("frame") : null;
+  }
+
+  /** Sets each change on the cell its row key and column name find: a new edit or a changed one. */
+  setCellEdits(changes: readonly CellEdit[]): void {
+    const next = [...this.cellEdits];
+    for (const ch of changes) {
+      const at = next.findIndex((e) => e.row === ch.row && e.column === ch.column);
+      if (at >= 0) next[at] = { ...ch };
+      else next.push({ ...ch });
+    }
+    this.cellEdits = next;
+  }
+
+  removeCellEdit(index: number): void {
+    this.cellEdits = this.cellEdits.filter((_, i) => i !== index);
+  }
+
+  static coreWatch = "settled";
+  coreWatched(): void {
+    const drop = new Set(this.settled ?? []);
+    if (drop.size === 0) return;
+    const kept = this.cellEdits.filter((e) => !drop.has(`${e.column}\u001f${e.row}`));
+    if (kept.length === this.cellEdits.length) return;
+    this.cellEdits = kept;
+    queueMicrotask(() => {
+      this.edited();
+      void getOwningView(this.id)?.rerenderNode(this.id);
+    });
+  }
+
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut; edits: FrameOut };
+  }
+}
+
 // ─── DECISION MATRIX ───────────────────────────────────────────────────────────
 
 export type DecisionDetail = "summary" | "breakdown";

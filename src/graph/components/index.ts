@@ -122,7 +122,7 @@ export {
   NestComponent, UnnestComponent, AppendComponent, BindColumnsComponent, RenameComponent,
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent, ChoiceLadderComponent, SettleComponent, PayoffPlannerComponent, AllocatorComponent,
   ReconcileComponent,
-  FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
+  FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent, EditFrameComponent,
   DescribeComponent, CorrMatrixComponent, KMeansComponent, PcaComponent, LogisticComponent, WindowComponent,
 } from "./FrameNodes";
 

@@ -851,7 +851,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
 
-  const editsRows = editable && (view === "grid" || view === "form");
+  const editsRows = editable && !state.fixedRows && (view === "grid" || view === "form");
   const rowAxis: EditAxis | undefined = editsRows ? {
     noun: view === "form" ? "Record" : "Row",
     sides: view === "form" ? ["before", "after"] : ["above", "below"],
@@ -1521,7 +1521,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
         <CsvEditor
           value={csvText}
           onChange={onCsvChange}
-          readOnly={!editable}
+          readOnly={!editable || !!state.fixedRows}
           markedCols={computedColSet}
           firstBodyRow={hasHeaderLine ? 1 : 0}
           error={csvError}

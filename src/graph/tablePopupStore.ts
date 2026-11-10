@@ -41,6 +41,8 @@ export interface TablePopupState {
   groupColorDark?: string;
   list?: boolean;
   fixedCols?: boolean;
+  /** Cells take edits, but no row is added or removed, and the CSV view only reads (Edit Frame). */
+  fixedRows?: boolean;
   formatControls?: "columns" | "matrix";
   columnUnits?: (ColumnUnit | undefined)[];
   columnFormats?: (FormatAnnotation | undefined)[];
