@@ -239,7 +239,7 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     restoreLiterals(back, saved);
     expect(back.valuePairKeys()).toEqual(n.valuePairKeys());
     back.addValuePair();
-    expect(back.valuePairKeys().at(-1)).toEqual(["calcName3", "calcFn3"]);
+    expect(back.valuePairKeys()[2]).toEqual(["calcName3", "calcFn3"]);
     expect(back.stringLiterals.calcName2).toBe("Range");
   });
 });
