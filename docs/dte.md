@@ -59,8 +59,8 @@ leaf, because none is a product call.
   condition that would remove it. An exception no condition could remove means the rule was
   written wrong.
 - **Spec first** (DTE B8 recordWhenDecided, A8 threeLayers). A new subsystem, naming law,
-  declaration format or many-file sweep writes its rule down before the code lands: the spec for
-  how it works, a leaf only for a choice a person could make. Ordinary work needs neither.
+  declaration format or many-file sweep writes down how it works in its spec before the code lands.
+  Ordinary work needs no spec edit beyond what it changes, and no work needs a new leaf (below).
 - **Comments are the last resort** (DTE B38 commentsMigrate). The policy is
   `tree/specs/floors/engineering.md` § Comments.
 - **A spec draws its mechanisms.** A flow, a decision chain or a shape the prose describes gets a
@@ -176,6 +176,15 @@ example: nobody decided "do not diverge from Formula.js"; the decision is Excel 
 `tree/specs/computation/excel-divergences.md`. One decision may govern several things when turning it off
 for one would break the others; do not split those, and do not merge things that were ever
 reversed independently.
+
+**A new feature is never a new leaf** (the author, 2026-11-10). Building a card, a view, an option, a
+target or any other feature, and every choice in its design (what it shows, how it matches rows,
+what it does when something is missing, where it sits), goes in its spec and in the backlog line that
+asked for it, never in a leaf. That the author asked for the feature is the whole authorization. An
+agent adds a leaf only when the author asks for one by name, and touches the tree otherwise only when
+the work would change what an existing leaf says, by extending that leaf. Where PROTOCOL.md says "a
+choice no leaf explains … is a new decision", Solenoid reads it as a decision for the spec, unless
+the author has said it belongs in the tree. When unsure, it is spec.
 
 ## Coverage and the exclusion store (`.dtecoverage`)
 
