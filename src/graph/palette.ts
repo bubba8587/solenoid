@@ -276,12 +276,6 @@ function equinoxPalette(): Record<PaletteSlot, string> {
 }
 const EQUINOX = equinoxPalette();
 
-const PEAR = {
-  pearFill: "#649117", pearBright: "#b8d532",
-  blossomFill: "#d5537f",
-  honey: "#9c6f0e", honeyBright: "#d99a17",
-  quiet: "#8b8269", danger: "#bb4029",
-} as const;
 /** A color's OKLab a/b: where its hue and chroma sit, apart from its lightness. */
 const okAb = ([, c, h]: [number, number, number]): [number, number] =>
   [c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
@@ -304,14 +298,16 @@ function pulledToward(base: Record<PaletteSlot, string>, anchor: PaletteSlot, t:
 const ANCHOR_PULL = 0.1;
 const ANCHOR_GRAY_PULL = 0.03;
 
-const ORCHARD_BASE: Record<PaletteSlot, string> = {
-  gold:      PEAR.honeyBright,
-  amber:     PEAR.honey,
-  lime:      PEAR.pearBright,
-  green:     PEAR.pearFill,
-  pink:      PEAR.blossomFill,
-  vermilion: PEAR.danger,
-  gray:      PEAR.quiet,
+/** Orchard's hand-picked earth tones: honey, olive, rust and blossom on the warm side, the cool slots at the same
+ *  muted saturation and value. Not derived from Default; the lean toward lime below is. */
+const EARTH_TONES: Record<PaletteSlot, string> = {
+  gold:      "#d99a17",
+  amber:     "#9c6f0e",
+  lime:      "#b8d532",
+  green:     "#649117",
+  pink:      "#d5537f",
+  vermilion: "#bb4029",
+  gray:      "#8b8269",
   teal:      "#4f9080",
   sky:       "#5f9bb5",
   blue:      "#4a739f",
@@ -319,7 +315,7 @@ const ORCHARD_BASE: Record<PaletteSlot, string> = {
   purple:    "#9b5f95",
 };
 
-const ORCHARD = pulledToward(ORCHARD_BASE, "lime", ANCHOR_PULL, ANCHOR_GRAY_PULL);
+const ORCHARD = pulledToward(EARTH_TONES, "lime", ANCHOR_PULL, ANCHOR_GRAY_PULL);
 
 const BLUEPRINT_BASE: Record<PaletteSlot, string> = {
   gold:      "#e8b84b",
@@ -431,18 +427,42 @@ export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> 
 
 export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
 
-/** How each built-in palette turns Default's slots into its own, in one sentence: what the spec's palette diagrams
- *  caption (`scripts/palette-diagrams.ts`), beside Default and the palette drawn side by side. */
-export const PALETTE_RECIPES: Record<PaletteName, string> = {
-  "Default": "The original set: every other palette is drawn as what it does to these.",
-  "Muted": "Authored by hand: Default's hues at about 0.62 of their saturation, lightness nudged toward the middle.",
-  "Colorblind-safe": "Each socket slot takes its own Okabe-Ito color; the node-kind slots reuse the nearest.",
-  "Solarized": "Each slot takes Solarized's accent nearest its hue; four are blended into Solarized's gaps.",
-  "Equinox": `Hue and chroma removed; OK lightness kept in order and stretched onto ${EQUINOX_BAND[0]} to ${EQUINOX_BAND[1]}.`,
-  "Orchard": `Each slot takes Pear's matching hue (cool ones blended in at Pear's saturation and value), then leans ${ANCHOR_PULL * 100}% toward its lime.`,
-  "Blueprint": `Each slot takes a chalky mid-value pencil color, then leans ${ANCHOR_PULL * 100}% toward its blue.`,
-  "Neon": `Saturation and value pushed ${NEON_STEP * 100}% toward full, then each hue nudged toward brightness, spacing guarded.`,
-  "Dawn and Dusk": `Chroma scaled to ${DD_SATURATION * 100}%, then ${DD_TINT * 100}% toward plasma's dusk (gray ${DD_GRAY_TINT * 100}%); lightness kept.`,
+/** How each built-in palette gets from Default's slots to its own: a plain sentence, and the moves in order, each
+ *  with the slot set it leaves (the last is the palette). What the spec's palette diagrams draw
+ *  (`scripts/palette-diagrams.ts`), one arrow per move. */
+export interface PaletteMove { does: string; slots: Record<PaletteSlot, string> }
+export interface PaletteRecipe { says: string; moves: PaletteMove[] }
+const neonPushed = (): Record<PaletteSlot, string> => Object.fromEntries(COLOR_PALETTE.map((slot) => {
+  if (slot === "gray") return [slot, PALETTE.gray];
+  const [h, sat, v] = rgbToHsv(...parseHex(PALETTE[slot])!);
+  return [slot, neonAt(h, 1 - (1 - sat) * NEON_STEP, 1 - (1 - v) * NEON_STEP)];
+})) as Record<PaletteSlot, string>;
+const ddSoftened = (): Record<PaletteSlot, string> => Object.fromEntries(COLOR_PALETTE.map((slot) => {
+  const [L, c, h] = hexToOklch(PALETTE[slot]);
+  return [slot, oklchToHex(L, c * DD_SATURATION, h)];
+})) as Record<PaletteSlot, string>;
+export const PALETTE_RECIPES: Record<PaletteName, PaletteRecipe> = {
+  "Default": { says: "The original set. Every other palette is drawn as what it does to these colors.", moves: [] },
+  "Muted": { says: "Hand-picked: Default's hues kept, each at about 0.62 of its saturation, lightness drawn toward the middle, so nothing glares.", moves: [
+    { does: "hand-picked, quieter", slots: MUTED }] },
+  "Colorblind-safe": { says: "Each socket slot takes its own color from the Okabe-Ito set, which stays apart under every common color blindness; the four node-kind slots reuse the nearest.", moves: [
+    { does: "replaced by Okabe-Ito", slots: COLORBLIND }] },
+  "Solarized": { says: "Each slot takes the Solarized accent nearest its hue; four slots Solarized has no accent for are blended into its gaps.", moves: [
+    { does: "replaced by Solarized", slots: SOLARIZED }] },
+  "Equinox": { says: `All color drained: every slot becomes a gray at its own lightness, the lightness range stretched onto ${EQUINOX_BAND[0]} to ${EQUINOX_BAND[1]} so the grays stay apart.`, moves: [
+    { does: "drained to gray, lightness stretched", slots: EQUINOX }] },
+  "Orchard": { says: `Hand-picked earth tones (darker, warm hues kept rich, cool ones muted), then every color leans ${ANCHOR_PULL * 100}% toward the lime so the set reads as one orchard.`, moves: [
+    { does: "hand-picked earth tones", slots: EARTH_TONES },
+    { does: `${ANCHOR_PULL * 100}% toward lime`, slots: ORCHARD }] },
+  "Blueprint": { says: `Hand-picked chalky pencil colors at a middle value that hold up on deep blue and on white, then every color leans ${ANCHOR_PULL * 100}% toward the blue.`, moves: [
+    { does: "hand-picked pencil colors", slots: BLUEPRINT_BASE },
+    { does: `${ANCHOR_PULL * 100}% toward blue`, slots: BLUEPRINT }] },
+  "Neon": { says: `Every color pushed ${NEON_STEP * 100}% of the way to full saturation and brightness, then each hue slid toward the brightest hue nearby, never so far it crowds a neighbor.`, moves: [
+    { does: `pushed ${NEON_STEP * 100}% toward full`, slots: neonPushed() },
+    { does: "slid toward brightness", slots: NEON }] },
+  "Dawn and Dusk": { says: `Every color softened to ${DD_SATURATION * 100}% of its chroma, then tinted ${DD_TINT * 100}% toward plasma's dusk, a purplish burgundy, so the set reads as one evening. Lightness never moves.`, moves: [
+    { does: `softened to ${DD_SATURATION * 100}%`, slots: ddSoftened() },
+    { does: `${DD_TINT * 100}% toward dusk`, slots: DAWN_DUSK }] },
 };
 
 // ── The chrome ramp a palette may author ──────────────────────────────────────
@@ -759,7 +779,7 @@ function oklchToLinear(L: number, C: number, h: number): [number, number, number
   ];
 }
 
-function oklchToHex(L: number, C: number, h: number): string {
+export function oklchToHex(L: number, C: number, h: number): string {
   let rgb = oklchToLinear(L, C, h);
   if (rgb.some((c) => c < -1e-4 || c > 1 + 1e-4)) {
     let lo = 0, hi = C;
