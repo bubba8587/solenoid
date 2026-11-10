@@ -245,6 +245,9 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 - [ ] **Date filters on a pivot field**: the field's exclusion list as a year › month › day tree rather than a checkbox per day, plus Before, After, Between. Relative ones (This Month, Year to Date) recalculate as days pass, which [[C44]] dateSerials keeps opt-in: the author's call.
 - [ ] **Custom subtotal functions**: a field's subtotals with a function other than its cells' (Excel's Field Settings ▸ Custom subtotals). Totals today re-aggregate the source with the value's own function.
 
+## Desktop (low priority, author 2026-11-10)
+- [ ] **"Open with" Solenoid for a graph's `.json` on Windows**: Solenoid listed in Explorer's Open with menu for `.json`, opening that file. Today graphs save as `.json` (`JSON_FILTER`, `fileBridge.ts`), the bundle registers no file associations (`tauri.conf.json`) and nothing reads a path the app is launched with. Needs: a `bundle.fileAssociations` entry for `.json` that adds Solenoid to Open with without taking the default handler (every `.json` on the machine is not a graph); reading the path from the launch arguments and opening it as Open… does, refusing a `.json` that isn't a graph with a message; and the single-instance plugin so a second open goes to the running window. A file opened this way is foreign, so its connection cards wait for the network gate ([[C103]] untrustedContentSeams). macOS and Linux take the same association later.
+
 ## Workspace tree (`v2.0/26-navigator-tree.md`, [[C132]] workspaceTree)
 - [ ] Desktop: the tree reads the Documents folder ([[D103]] folderOnDisk), rename and move on disk, the watcher with bundle 21 Stage 0, Reveal in file manager and Copy path in the row menu. Graph files stay `.json` (the author, 2026-11-06).
 - [ ] Pages and page folders as rows once bundle 20's model lands; drop outline rows on a page row; This page search scope; drop the `?navpreview=1` mock (`workspacePreview.ts`).
