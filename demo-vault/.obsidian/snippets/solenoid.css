@@ -1159,7 +1159,7 @@ kbd {
   --accent-h: 44;
   --accent-s: 92%;
   --accent-l: 52%;
-  --sol-ink-accent: var(--sol-accent);
+  --sol-ink-accent: #f5b914;
   --sol-number: #f5b914;
   --sol-list: #d09d11;
   --sol-table: #e99900;

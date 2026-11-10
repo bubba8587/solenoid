@@ -6,6 +6,19 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-10: light-mode theming, Orchard's earth band, dark links; cloud session)
+- **Orchard light under a non-home accent was a pastel wash**: the rotation carried its cream's chroma (0.022, borders
+  0.040) to blue, pink and violet, two to three times Blueprint's. Fixed by a rule, not a table: an earth band
+  (`CHROME_EARTH`, `earthChroma`) scales the turned ramp's chroma by where its hue lands. Lime and green pass as
+  authored. A per-accent table of hand-picked grounds was tried first and dropped for the rule (author: derivable over
+  tweaks, looks first; grounds may resemble each other, accents must stay distinct).
+- **Dawn and Dusk light read lime**: its ground took plasma's yellow end at chroma 0.03. Now plasma's sunrise orange
+  (0.8) at 0.016, a pale apricot. Solarized's cream is its canonical base3 and stays.
+- **Dark-mode links in the plugin were dull**: the accent as text is lifted toward OK L 0.8 keeping 40% of its distance
+  (`liftedToward`), not floored, since a floor merged Equinox's grays and Solarized's blue and sky.
+- The rig needs Obsidian at `/opt/Obsidian` (the 1.14.4 Linux tarball from obsidian-releases) and `wasm-bindgen-cli`
+  0.2.130 for `plugin:build`; neither is in the cloud image.
+
 ### SESSION DIGEST (2026-11-09c: open-latitude fixes after 1.6, the headless runner for agents; cloud session)
 - **Align, Distribute and a card opening end with the No-Overlap Pass** ([[C112]] noOverlapsEver; `selectionOps.ts`
   `settle`, `cardsExpanded`), the cards just placed or opened holding still.
