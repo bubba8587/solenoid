@@ -27,7 +27,6 @@ export const FORMULA_CARD_HOMES: Record<string, FormulaHome> = {
   FROMEPOCH: { type: "date-epoch-from" },
   TOEPOCH: { type: "date-epoch-to" },
   GRIDDATA: { type: "interpolate", via: "Points mode" },
-  LET: { type: "expression", via: "each name is a variable socket" },
   HISTOGRAM2D: { type: "histogram", via: "2-D mode" },
   ISBOOLEAN: { type: "is-test", via: "ISBOOLEAN" },
   ISOUTLIER: { type: "list-outliers" },

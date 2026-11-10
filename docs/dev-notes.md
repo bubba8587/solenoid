@@ -66,10 +66,9 @@ specific item.
 - **INDEX's whole column was changed to a column and put back the same day**: the author was holding it. The backlog
   line has what the try showed (right in a formula, splits the card). `CLAUDE.md` § Reflexes now says a change that
   moves a saved graph's answer is the author's call.
-- **LET works in a formula** (`LET(total, SUM(v), total / COUNT(v))`): it was listed among the Logical functions and
-  answered "Unknown function LET". The parser reads it as LAMBDAs called on the spot, so nothing else learned a new
-  scope (`tree/specs/computation/formula-language.md` § LET, `formulaLet.test.ts`). 624 frozen cases moved, every one
-  a LET formula that had frozen that error.
+- **LET stays out of the formula language, on purpose** (author 2026-11-10): every name in a formula is already a
+  wireable socket, so naming a value is what a cable does. It was added and reverted the same day; the reason now
+  sits in `tree/specs/computation/formula-language.md` § Blocked and wrong-surface names.
 - **The strict validator refuses a setting of the wrong kind** (`ValueInputNode value=3` read as 0 with no word; it
   now says `write value="3"`), and `validate-graph` reports a missing `---` line where it used to crash.
 - **The card reference lists every input that takes a typed value** (`aiGrounding.ts` asks `literalFieldOf`, as the

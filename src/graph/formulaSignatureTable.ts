@@ -320,7 +320,6 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   DROP: "array, rows, [columns]",
   // ── lambda helpers ──
   LAMBDA: "parameter1, …, calculation",
-  LET: "name1, value1, [name2, value2], …, calculation",
   MAP: "array1, [array2], [array3], lambda",
   BYROW: "array, lambda",
   BYCOL: "array, lambda",
