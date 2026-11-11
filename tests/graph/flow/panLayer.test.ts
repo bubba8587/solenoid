@@ -50,9 +50,11 @@ describe("pan layer", () => {
     expect(vp.promoted()).toBe(false);
   });
 
-  it("gates on Chromium with a fine pointer, outside the HTML-in-Canvas mode", () => {
+  it("gates on Chromium outside the HTML-in-Canvas mode, a coarse pointer only far out", () => {
     expect(promotesPans(false, true, "dom")).toBe(true);
     expect(promotesPans(true, true, "dom")).toBe(false);
+    expect(promotesPans(true, true, "dom", 0.4)).toBe(true);
+    expect(promotesPans(true, true, "dom", 0.5)).toBe(false);
     expect(promotesPans(false, false, "dom")).toBe(false);
     expect(promotesPans(false, true, "html")).toBe(false);
     expect(isPressPan({ type: "touchstart" })).toBe(true);

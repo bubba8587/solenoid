@@ -62,8 +62,9 @@ layer mid-pan, mid-pan screenshots identical to the canvas at rest. The mechanis
 Extended to touch pans, then kept up between strokes, primed at rest and held by a do-nothing animation (which makes Chrome
 record the layer whole instead of re-recording as a long pan outruns its painted margin; `ShouldUseInfiniteCullRect` returns
 true for a transform with an active animation). In emulation the hitches went away, but on the author's phone it helped only
-zoomed far out, did little in the middle, and made close zoom worse. All of it was reverted (commit `409383f`). Phones stay
-off the layer. Do not retry it without a test on a real device at close zoom.
+zoomed far out, did little in the middle, and made close zoom worse. All of it was reverted (commit `409383f`). Phones stayed
+off the layer. Do not retry it without a test on a real device at close zoom. 2026-11-11: a phone takes the plain per-press
+layer again, only at zoom 0.4 or below (none of the between-strokes holding), awaiting the author's test on the phone.
 
 ## 3. Every socket subscribed to React Flow's store (shipped)
 
