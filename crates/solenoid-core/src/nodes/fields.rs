@@ -115,6 +115,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("BondPricingNode", "redemption", Empty::Fallback(Fill::Num(100.0))),
     ("BondPricingNode", "yld", Empty::Fallback(Fill::Num(0.07))),
     ("BooleanOpNode", "a", Empty::Fallback(Fill::Bool(false))),
+    ("BootstrapNode", "seed", Empty::Behavior("from values")),
     ("BoxplotNode", "options", Empty::Fallback(Fill::Text(""))),
     ("BuildCubeNode", "name", Empty::Fallback(Fill::Text(""))),
     ("BuildCubeNode", "v0", Empty::Fallback(Fill::Text(""))),

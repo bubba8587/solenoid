@@ -158,8 +158,9 @@ const isBootstrapOp = (op: unknown): op is BootstrapOp => typeof op === "string"
 export class BootstrapNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "Blanks and text are skipped.",
-    low: "With High, the middle 95% of the statistic across thousands of resamples of the values. The draws are the same every time.",
-    high: "With Low, the middle 95% of the statistic across thousands of resamples of the values. The draws are the same every time.",
+    seed: "Which shuffle the resamples come from. Empty, it comes from the values, so the same values always give the same interval. Wire a Slider here to watch how much Low and High move from one shuffle to the next.",
+    low: "With High, the middle 95% of the statistic across thousands of resamples of the values.",
+    high: "With Low, the middle 95% of the statistic across thousands of resamples of the values.",
   };
 
   label: string;
@@ -169,6 +170,7 @@ export class BootstrapNode extends GraphNode {
   cachedHigh: Num = null;
   plotX: Plot = null;
   plotY: Plot = null;
+  literals: Record<string, number> = {};
   width = 240;
   height = 300;
 
@@ -177,6 +179,7 @@ export class BootstrapNode extends GraphNode {
     this.label = init?.label ?? "";
     this.op = isBootstrapOp(init?.op) ? init.op : "mean";
     this.addInput("list", listIn("Values"));
+    this.addInput("seed", numIn("Seed"));
     this.addOutput("estimate", numOut(BOOTSTRAP_OP_META[this.op].label));
     this.addOutput("low", numOut("Low"));
     this.addOutput("high", numOut("High"));

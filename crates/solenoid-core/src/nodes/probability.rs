@@ -450,8 +450,23 @@ fn ab_test_or_err(c: &mut Call) -> Result<Option<[f64; 4]>, V> {
 fn resample_count(n: usize) -> usize {
     (20_000_000 / n.max(1)).clamp(1_000, 10_000)
 }
-/// The resampling seed: fixed, so the same values give the same interval on every pass and every machine.
-const SEED: u32 = 0x5eed_b007;
+/// The resampling seed an empty Seed field stands for: a fingerprint of the values (FNV-1a over each number's bits, in
+/// order), so the same values give the same interval on every pass and machine, and two cards with different values
+/// shuffle independently rather than in step.
+fn seed_from_values(xs: &[f64]) -> u32 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for x in xs {
+        for b in x.to_bits().to_le_bytes() {
+            h = (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    (h ^ (h >> 32)) as u32
+}
+
+/// A typed seed as the generator's 32 bits: any whole number, negative ones wrapping round.
+fn seed_typed(n: f64) -> u32 {
+    (n.round().rem_euclid(4_294_967_296.0)) as u32
+}
 const BINS: usize = 30;
 
 fn median(xs: &mut [f64]) -> f64 {
@@ -538,7 +553,12 @@ fn bootstrap_or_err(c: &mut Call) -> Result<Option<[f64; 3]>, V> {
     }
     let n = xs.len();
     let estimate = stat(&op, &mut xs.clone());
-    let mut rng = crate::planners::mulberry32(SEED);
+    let seed = match num_of(c.read("seed"))? {
+        Some(n) if n.is_finite() => seed_typed(n),
+        Some(_) => return Err(err(ErrorCode::Value, "Seed takes a whole number")),
+        None => seed_from_values(&xs),
+    };
+    let mut rng = crate::planners::mulberry32(seed);
     let mut buf = vec![0.0; n];
     let mut stats: Vec<f64> = (0..resample_count(n))
         .map(|_| {
@@ -627,6 +647,15 @@ mod tests {
         let (a, b) = range("normal", &[0.0, 1.0], false);
         assert!(close(a, -3.09, 0.01) && close(b, 3.09, 0.01));
         assert!(range("gamma", &[50.0, 1.0], false).0 > 20.0);
+    }
+
+    #[test]
+    fn the_seed_follows_the_values_unless_typed() {
+        assert_eq!(seed_from_values(&[1.0, 2.0, 3.0]), seed_from_values(&[1.0, 2.0, 3.0]));
+        assert_ne!(seed_from_values(&[1.0, 2.0, 3.0]), seed_from_values(&[1.0, 2.0, 4.0]));
+        assert_ne!(seed_from_values(&[1.0, 2.0, 3.0]), seed_from_values(&[3.0, 2.0, 1.0]));
+        assert_eq!(seed_typed(42.4), 42);
+        assert_eq!(seed_typed(-1.0), u32::MAX);
     }
 
     #[test]

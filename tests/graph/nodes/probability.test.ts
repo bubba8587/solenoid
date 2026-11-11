@@ -107,6 +107,23 @@ describe("Bootstrap", () => {
     expect(n.plotY!.reduce((s, c) => s! + c!, 0)).toBe(10_000);
   });
 
+  it("an empty Seed comes from the values; a typed one picks that shuffle", () => {
+    const n = new BootstrapNode();
+    const fromValues = n.data({ list: values });
+    expect(new BootstrapNode().data({ list: values })).toEqual(fromValues);
+    n.literals.seed = 7;
+    const seven = n.data({ list: values });
+    expect(new BootstrapNode().data({ list: values, seed: [7] })).toEqual(seven);
+    const sevenCounts = n.plotY;
+    n.data({ list: values, seed: [8] });
+    expect(n.plotY).not.toEqual(sevenCounts);
+    // On values that aren't whole numbers the interval itself moves from shuffle to shuffle.
+    const smooth = [[3.1, 5.4, 4.2, 6.7, 2.3, 8.9, 5.05, 4.4, 7.2, 3.8, 5.6, 6.1]];
+    const lows = new Set([1, 2, 3, 4, 5].map((k) => n.data({ list: smooth, seed: [k] }).low));
+    expect(lows.size).toBeGreaterThan(1);
+    expect(seven.estimate).toBe(fromValues.estimate);
+  });
+
   it("the op picks the statistic and names the output", () => {
     const n = new BootstrapNode({ op: "median" });
     expect(n.data({ list: values }).estimate).toBe(5.5);

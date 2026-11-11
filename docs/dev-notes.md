@@ -10,7 +10,9 @@ specific item.
 - New pack, Probability (off by default, Analysis): Probability Between, A/B Test, Bootstrap, each drawing the
   distribution behind its answer (`tree/specs/computation/probability-pack.md`). A/B Test integrates Beta beliefs
   rather than sampling: B beats A matches Evan Miller's closed form to 10⁻⁵ (Rust tests), the lift interval matched
-  200k Monte Carlo draws. Bootstrap's resampling seed is fixed so the interval never moves on recalculation.
+  200k Monte Carlo draws. Bootstrap's draws are seeded, so the interval never moves on recalculation.
+  Bootstrap's Seed input: empty seeds from a fingerprint of the values (one shared constant had tied two cards'
+  shuffles together); a typed or wired number picks the shuffle.
   Probabilities and lifts author a `percent` format (`annotationFor`): shown 92.45%, computed as 0.9245.
 - Pads dragged their whole card (Curve, XY Pad, Point Plotter, Grid Painter): React Flow's d3-drag listens natively on
   the card wrapper, below React's root, so a React `stopPropagation()` is too late. They now carry `.nodrag nopan`, and
