@@ -44,13 +44,25 @@ function sortWords(type: string): [string, string] {
   return ["A to Z", "Z to A"];
 }
 
-export function pivotMenuSections({ target, layout, host, options, onOptions, copyText }: {
+/** A value field's Number format pick, the paintbrush's: `""` is none (the value's own), null a value not a number. */
+export interface PivotValueFormat {
+  get(value: number): string | null;
+  set(value: number, format: string): void;
+}
+const QUICK_FORMATS: { id: string; label: string }[] = [
+  { id: "", label: "Auto" }, { id: "decimal", label: "Decimal" }, { id: "integer", label: "Integer" },
+  { id: "percent", label: "Percent" }, { id: "scientific", label: "Scientific" },
+];
+
+export function pivotMenuSections({ target, layout, host, options, onOptions, copyText, format }: {
   target: PivotMenuTarget;
   layout: PivotLayout;
   host: PivotMenuHost;
   options: PivotViewOptions;
   onOptions: (next: PivotViewOptions) => void;
   copyText: (text: string) => void;
+  /** Number format picks, where the popup can write them. */
+  format?: PivotValueFormat;
 }): PointerMenuSection[] {
   const cfg = host.config();
   const edit = (change: (c: PivotConfig) => void) => { const next = copyOf(host.config()); change(next); host.apply(next); };
@@ -143,6 +155,14 @@ export function pivotMenuSections({ target, layout, host, options, onOptions, co
     sections.push({ heading: "Show Values As", items: [
       { label: "No Calculation", checked: !share, onClick: () => edit((c) => { if (share) c.funcs[name] = "sum"; }) },
       ...SHOW_AS.map((o) => ({ label: o.label, checked: share && cfg.relativeTo === o.relativeTo, onClick: () => edit((c) => { c.funcs[name] = "percentof"; c.relativeTo = o.relativeTo; }) })),
+    ] });
+  }
+  const cur = format?.get(v) ?? null;
+  if (format && cur !== null) {
+    const known = QUICK_FORMATS.some((f) => f.id === cur);
+    sections.push({ heading: "Number Format", items: [
+      ...QUICK_FORMATS.map((f) => ({ label: f.label, checked: cur === f.id, onClick: () => format.set(v, f.id) })),
+      ...(known ? [] : [{ label: "Other", checked: true, onClick: () => {} }]),
     ] });
   }
   const at = cfg.rows.length + cfg.vals.indexOf(name) + 1;

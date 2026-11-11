@@ -12,7 +12,7 @@ import { IS_COARSE } from "../coarse";
 import { APP_LOCALE } from "../locale";
 import { ColumnFormatButton } from "./columnHeadControls";
 import { PointerMenu } from "./TableEditMenu";
-import { PivotFieldDropdown, pivotMenuSections, type PivotMenuHost, type PivotMenuTarget } from "./PivotViewMenu";
+import { PivotFieldDropdown, pivotMenuSections, type PivotMenuHost, type PivotMenuTarget, type PivotValueFormat } from "./PivotViewMenu";
 import "./PivotTableView.css";
 
 const FORM_OPTIONS: { value: PivotForm; label: string }[] = [
@@ -181,7 +181,7 @@ function PivotDetails({ layout, item, indent }: { layout: PivotLayout; item: num
   );
 }
 
-export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt, query, ribbon, menuHost, copyText }: {
+export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt, query, ribbon, menuHost, copyText, valueFormat }: {
   layout: PivotLayout;
   options: PivotViewOptions;
   onOptions: (next: PivotViewOptions) => void;
@@ -193,6 +193,7 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
   /** The Pivot card the right-click menu edits; with none (a note's pivot) right-click is the browser's own. */
   menuHost?: PivotMenuHost;
   copyText?: (text: string) => void;
+  valueFormat?: PivotValueFormat;
 }) {
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; target: PivotMenuTarget } | null>(null);
   const [drop, setDrop] = useState<{ at: { x: number; y: number }; axis: "rows" | "cols"; field: number } | null>(null);
@@ -363,7 +364,7 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
       )}
       {menu && menuHost && (
         <PointerMenu at={menu.at} label="Pivot table" onClose={() => setMenu(null)}
-          sections={pivotMenuSections({ target: menu.target, layout, host: menuHost, options, onOptions, copyText: copyText ?? (() => {}) })} />
+          sections={pivotMenuSections({ target: menu.target, layout, host: menuHost, options, onOptions, copyText: copyText ?? (() => {}), format: valueFormat })} />
       )}
     </div>
   );

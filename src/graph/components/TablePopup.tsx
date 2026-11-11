@@ -51,7 +51,7 @@ import { PivotTableView, PivotRibbon, PivotSheetButton, type PivotRibbonProps } 
 import { FittingChoice } from "./PopupChoice";
 import { DEFAULT_PIVOT_VIEW, livePivotFolds, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
 import { framePopupData } from "../valuePopup";
-import type { PivotMenuHost } from "./PivotViewMenu";
+import type { PivotMenuHost, PivotValueFormat } from "./PivotViewMenu";
 import type { FrameValue } from "../frame";
 import { TableEditMenus, TableContextMenu, useEditShortcuts, type EditAxis } from "./TableEditMenu";
 import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex, type AxisSelection } from "../tableEdit";
@@ -1024,6 +1024,19 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     keysOf: (field) => host.keysOf(field),
   } : undefined;
 
+  /** The paintbrush's per-value pick, for the menu: a number value's columns, written together. */
+  const pivotValueCols = (v: number) => {
+    const keyCols = state.pivot!.rowFields.length;
+    return state.pivot!.cols.flatMap((it, j) => (it.value === v ? [keyCols + j] : []));
+  };
+  const pivotFormatPick: PivotValueFormat | undefined = state.pivot && state.formatControls === "columns" ? {
+    get: (v) => { const c = pivotValueCols(v); return c.length && colTypeAt(c[0]) === "number" ? fmtRow(c[0]).value : null; },
+    set: (v, f) => {
+      for (const c of pivotValueCols(v)) { if (f) persistColFmt(c, { format: f }, false); else clearColFmt(c, false); }
+      if (state.pinNodeId) void processGraph(state.pinNodeId);
+    },
+  } : undefined;
+
   const pivotRibbonProps: PivotRibbonProps | null = state.pivot ? {
     layout: state.pivot,
     options: pivotOpts,
@@ -1103,6 +1116,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
           query={query}
           ribbon={pivotRibbonProps && <PivotRibbon {...pivotRibbonProps} />}
           menuHost={pivotMenuHost}
+          valueFormat={pivotFormatPick}
           copyText={(t) => void copyText(t)}
         />
       ) : view === "grid" ? (

@@ -6,7 +6,7 @@ import type { FrameValue } from "../../src/graph/frame";
 import { buildPivotModel, pivotLayoutOf, DEFAULT_PIVOT_VIEW, type PivotViewOptions } from "../../src/graph/pivotLayout";
 import type { PivotConfig } from "../../src/graph/pivotConfig";
 import { pivotKey } from "../../src/graph/pivotConfig";
-import { keyLabel, pivotMenuSections, type PivotMenuTarget } from "../../src/graph/components/PivotViewMenu";
+import { keyLabel, pivotMenuSections, type PivotMenuTarget, type PivotValueFormat } from "../../src/graph/components/PivotViewMenu";
 
 const sales: FrameValue = {
   __frame: true,
@@ -26,11 +26,11 @@ const base = (): PivotConfig => ({
 });
 
 /** The menu for a target over a fake card; `pick(label)` clicks that line and gives what the card was set to. */
-function menu(target: PivotMenuTarget, cfg = base(), options: PivotViewOptions = DEFAULT_PIVOT_VIEW) {
+function menu(target: PivotMenuTarget, cfg = base(), options: PivotViewOptions = DEFAULT_PIVOT_VIEW, format?: PivotValueFormat) {
   let applied: PivotConfig | null = null;
   let view: PivotViewOptions | null = null;
   const host = { agg: "sum" as const, config: () => cfg, apply: (n: PivotConfig) => { applied = n; }, keysOf: async () => ({ keys: ["N", "S", ""], total: 3 }) };
-  const sections = pivotMenuSections({ target, layout, host, options, onOptions: (v) => { view = v; }, copyText: () => {} });
+  const sections = pivotMenuSections({ target, layout, host, options, onOptions: (v) => { view = v; }, copyText: () => {}, format });
   const items = sections.flatMap((s) => s.items);
   const find = (label: string) => {
     const it = items.find((i) => i.label === label);
@@ -111,6 +111,17 @@ describe("the Pivot view's menu on a value", () => {
     const m = menu(value, share);
     expect(m.find("% of Row Total").checked).toBe(true);
     expect(m.pick("No Calculation")!.funcs.Amt).toBe("sum");
+  });
+
+  it("picks a Number format for the value, checking the current one, and none for a value that is no number", () => {
+    const picks: [number, string][] = [];
+    const fmt = (cur: string | null): PivotValueFormat => ({ get: () => cur, set: (v, f) => { picks.push([v, f]); } });
+    const m = menu(value, base(), DEFAULT_PIVOT_VIEW, fmt("percent"));
+    expect(m.find("Percent").checked).toBe(true);
+    m.pick("Auto");
+    expect(picks).toEqual([[0, ""]]);
+    expect(menu(value, base(), DEFAULT_PIVOT_VIEW, fmt("custom")).find("Other").checked).toBe(true);
+    expect(menu(value, base(), DEFAULT_PIVOT_VIEW, fmt(null)).headings).not.toContain("Number Format");
   });
 
   it("sorts rows by the value and removes the value field", () => {
