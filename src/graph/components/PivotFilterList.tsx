@@ -1,5 +1,5 @@
 // [[C44]] dateSerials, [[frame-verbs#pivot]]
-import { useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { serialToJsDate } from "../nodes/dateSerial";
 import { SearchField } from "./SearchField";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
@@ -126,7 +126,7 @@ export function PivotFilterList({ type, keys, total, hidden, label, onChange }: 
         <button onClick={() => setShown(matches, true)}>All</button>
         <button onClick={() => setShown(matches, false)}>None</button>
       </div>
-      <div ref={setBox} className="pivot-filter__scroll" style={{ height: Math.min(Math.max(rows.length, 1), 12) * ROW_PX } as CSSProperties}
+      <div ref={setBox} className="pivot-filter__scroll" style={{ height: Math.min(Math.max(rows.length, 1), 12) * ROW_PX }}
         onScroll={(e) => setTop(e.currentTarget.scrollTop)}>
         <div style={{ height: rows.length * ROW_PX, position: "relative" }}>
           {rows.slice(first, last).map((r, i) => {
