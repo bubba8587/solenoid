@@ -55,9 +55,9 @@ is parked there.
   is `archive/1.4-plan.md` E3 (Materials & Mechanical content) + `2.0-plan.md` Arc 7 (the
   composite pack shape + distribution).
 - **`release-notes-features.md`** — the curated selling list / What's-New source for
-  the release in progress (1.6), with the bar for what earns a spot.
-- **`release-notes-1.6.md`** — the full draft GitHub release notes for 1.6, in 1.5's shape,
-  for the author's copy edit; it archives when 1.6 ships.
+  1.6 and its patch releases (1.6.1 on top), with the bar for what earns a spot.
+- **`release-notes-1.6.md`** — the GitHub release notes for 1.6, in 1.5's shape.
+- **`release-notes-1.6.1.md`** — the GitHub release notes for 1.6.1, in 1.6's shape.
 - **`android.md`** — the Android app: what is prepared, the first build on the author's
   machine, and what to check then.
 - **`out-of-scope.md`** — the standing NO list.
