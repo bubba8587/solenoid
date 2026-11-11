@@ -34,8 +34,10 @@ person and the next model. The author is one person building this with models; t
   A cloud checkout can start far behind: `git fetch origin develop` and `git status -sb` before the first edit.
 - **`bleeding-edge`** builds Solenoid on the newest of everything; its leaves and specs live only on that branch.
   Never merge it into a work branch: port a finding with `node .github/bleeding-edge/port.mjs <commit>`.
-- **Releasing** (on the author's word, "let's get X out"): merge `develop` → `main`, bump the version (package.json,
-  Cargo.toml, tauri.conf.json), tag `vX.Y.Z`; `desktop-build.yml` publishes the release. From the dev machine the agent
+- **Releasing** (on the author's word, "let's get X out"): `node scripts/release-version.mjs X.Y.Z` on `develop` (every
+  version file, the cards' `NEXT_RELEASE` marks frozen, the next guess set), the What's New deck
+  (`src/graph/whatsNewSlides.ts`), then merge `develop` → `main` and tag `vX.Y.Z`; `desktop-build.yml` publishes the release.
+  A card added or reworked on `develop` says `added`/`updated: NEXT_RELEASE` (`src/graph/release.ts`), never a number. From the dev machine the agent
   pushes the tag too (author 2026-09-22); from a cloud session the tag push fails, so merge, bump, stop, and remind the
   author to create the release on GitHub.
 

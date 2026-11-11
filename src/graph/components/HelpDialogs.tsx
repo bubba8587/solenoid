@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { helpDialogStore, WHATS_NEW_VERSION } from "../helpDialogStore";
+import { helpDialogStore, WHATS_NEW_TITLE } from "../helpDialogStore";
 import { CloseIcon } from "./CloseIcon";
 import { SLIDES } from "../whatsNewSlides";
 import pkg from "../../../package.json";
@@ -57,7 +57,7 @@ function About() {
         className="solenoid-helpdlg__btn solenoid-helpdlg__btn--accent"
         onClick={() => helpDialogStore.openWhatsNew()}
       >
-        What's new in {WHATS_NEW_VERSION}
+        {WHATS_NEW_TITLE}
       </button>
     </div>
   );
@@ -68,9 +68,9 @@ function WhatsNew({ slide, setSlide }: { slide: number; setSlide: (n: number) =>
   const last = slide === SLIDES.length - 1;
   return (
     <div className="solenoid-helpdlg__whatsnew">
-      <div className="solenoid-helpdlg__eyebrow">What's new in {WHATS_NEW_VERSION}</div>
+      <div className="solenoid-helpdlg__eyebrow">{WHATS_NEW_TITLE}</div>
       <div className="solenoid-helpdlg__slide">
-        <div className="solenoid-helpdlg__slide-num">{slide + 1} / {SLIDES.length}</div>
+        <div className="solenoid-helpdlg__slide-num">{slide + 1} / {SLIDES.length} · {s.version}</div>
         <div className="solenoid-helpdlg__slide-title">{s.title}</div>
         <div className="solenoid-helpdlg__slide-body">{s.body}</div>
       </div>

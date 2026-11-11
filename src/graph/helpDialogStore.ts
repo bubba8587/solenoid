@@ -1,10 +1,11 @@
 // [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 import { createValueStore } from "./storeKit";
+import { WHATS_NEW_VERSION } from "./whatsNewSlides";
 
 type HelpDialog = "about" | "whatsnew";
 
-// Bump when the What's New slides change; it is not the app version.
-export const WHATS_NEW_VERSION = "1.6";
+// The newest release with slides (whatsNewSlides.ts): a new one shows the dialog once more.
+export { WHATS_NEW_VERSION, WHATS_NEW_TITLE } from "./whatsNewSlides";
 const SEEN_KEY = "solenoid.whatsNewSeen";
 
 const core = createValueStore<HelpDialog>();

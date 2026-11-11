@@ -16,6 +16,7 @@ const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kin
 import { ChevronRightIcon, ChevronLeftIcon, BookIcon } from "./components/Icons";
 import { frStore } from "./frStore";
 import { isEnter } from "./enterKey";
+import type { Release } from "./release";
 
 function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
   // One type tints the row like a kind accent, in that type's socket color; several make the flag.
@@ -59,14 +60,12 @@ export type NodeCatalogEntry = {
   places?: string;
   /** Cards placed with this one and cabled into it, such as a preset's physical constants ([[C76]] formulaPackDefault). */
   companions?: () => Companion[];
-  /** The release that brought the card; none is 1.5 or earlier (`addedIn`). */
+  /** The release that brought the card; none is 1.5 or earlier (`addedIn`). A card new on `develop` says `NEXT_RELEASE` (release.ts). */
   added?: Release;
-  /** The latest release that reworked it in a way worth telling a user. */
+  /** The latest release that reworked it in a way worth telling a user; `NEXT_RELEASE` while that release is unreleased. */
   updated?: Release;
 };
 
-/** A Solenoid release, as `major.minor`. */
-export type Release = "1.5" | "1.6";
 export const addedIn = (e: Pick<NodeCatalogEntry, "added">): Release => e.added ?? "1.5";
 
 /** A card placed beside another and cabled from its `output` into the other's `input`. */

@@ -12,7 +12,17 @@ headlined. Every sentence has to pass "would anyone care?", so internals, fixes 
 Left out on purpose: the Choice Ladder, Gantt, Schedule and Earned Value (hidden for 1.6), Isolate (switched
 off), the Android build (not in 1.6) and the headless CLI (unpublished).
 
-## The deck
+## 1.6.1
+
+The deck shows 1.6.1's slides ahead of 1.6's, titled "What's new in 1.6 and 1.6.1" (`deckReleases`): a patch release
+adds to its x.y's deck, and the next x.y starts a fresh one. The changelog is `release-notes-1.6.1.md`.
+
+- **[slide] Pivot calculated fields.** Give a PIVOTBY a calculated field, like Profit / Sales, and it's worked out from each cell's own rows, not by adding up a column. See the Pivot calculated fields example.
+- **[slide] Updated theming.** The light palettes got retuned. Orchard keeps its warm ground under any accent, Dawn wakes up apricot instead of lime, and links read brighter in dark mode.
+- **[slide] GPU renderer, now on Chrome's stable API.** The HTML-in-Canvas renderer (Settings, Renderer) runs on Chrome's shipped API, no flag needed from Chrome 157. Big graphs pan and zoom on one canvas, cables, charts and all.
+- **[slide] Edit Frame.** Change cells of any table by hand, even a computed one. Every edit is kept, listed, and finds its row again when the table above it changes.
+
+## The deck (1.6)
 
 - **[slide] Rust port (yes, us too).** The app's core now runs Rust via WebAssembly for much faster row operations. Try the Rust engine speed test example with a high row count.
 - **[slide] Dashboards.** Wire any number of charts, tables, numbers or documents to the new Dashboard card.
