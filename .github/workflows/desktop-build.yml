@@ -96,11 +96,17 @@ jobs:
         with:
           workspaces: "src-tauri -> target"
 
-      # From GitHub's cache once a run has fetched them: the runner's Ubuntu mirror can time out every package for
-      # 20 s each (2026-11-11, a 16-minute step). The compiler, curl, wget and file come with the runner image. On a
-      # cache miss, apt gives up on a slow mirror sooner and retries.
-      - name: Set apt timeouts
-        run: printf 'Acquire::Retries "3";\nAcquire::http::Timeout "10";\nAcquire::https::Timeout "10";\n' | sudo tee /etc/apt/apt.conf.d/99ci-timeouts
+      # From GitHub's cache once a main run has fetched them. The compiler, curl, wget and file come with the runner
+      # image. On 2026-11-11 the runner's own DNS took 20 s to fail on every Ubuntu host (azure.archive, archive,
+      # security) while packages.microsoft.com resolved, making a 16-minute step twice: public resolvers answer beside
+      # it (systemd-resolved takes the first reply), and apt gives up on a slow mirror sooner and retries.
+      - name: Make apt resilient
+        run: |
+          sudo mkdir -p /etc/systemd/resolved.conf.d
+          printf '[Resolve]\nDNS=1.1.1.1 8.8.8.8\n' | sudo tee /etc/systemd/resolved.conf.d/99ci-dns.conf
+          sudo systemctl restart systemd-resolved
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "10";\nAcquire::https::Timeout "10";\n' | sudo tee /etc/apt/apt.conf.d/99ci-timeouts
+          time getent hosts azure.archive.ubuntu.com || echo "azure.archive.ubuntu.com still does not resolve"
 
       - name: Install Tauri's Linux prerequisites
         uses: awalsh128/cache-apt-pkgs-action@v1.6.3
