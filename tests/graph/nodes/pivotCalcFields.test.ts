@@ -76,6 +76,38 @@ describe("PIVOTBY calculated fields", () => {
 // over seeded random logs (blank plates and values, zero-gallon groups, two row fields, a column field, subtotal
 // depths on both axes either side, a filter mask). Default order keeps each group contiguous, so a subtotal is every
 // row under its prefix; the core's differential test (`crates/solenoid-core/tests/pivot_calc.rs`) covers the sorts.
+describe("PIVOTBY calculated fields over column names with spaces", () => {
+  const spaced = new FrameInputNode({
+    frameText: frameSourceToText([
+      { name: "Plate", type: "string", cells: ["ABC-123", "ABC-123", "ABC-123", "XYZ-789", "XYZ-789", "XYZ-789"] },
+      { name: "Miles Driven", type: "number", cells: ["100", "200", "200", "200", "150", "250"] },
+      { name: "Fuel Gallons", type: "number", cells: ["4", "6", "10", "20", "4", "6"] },
+    ]),
+  }).data({}).frame as FrameValue;
+  const byPlate = (params: string, expr: string) => {
+    const n = new PivotNode({ rowTotalDepth: 1, valueKeys: ["calcName0", "calcFn0"] });
+    Object.assign(n.stringLiterals, { rowFields: "Plate", values: "", calcName0: "MPG" });
+    const out = n.data({ frame: [spaced], rowFields: [["Plate"]], colFields: [[]], values: [[]], calcFn0: [lambda(params, expr)] }).frame as FrameValue;
+    return out.columns.find((c) => c.name === "MPG")!.values;
+  };
+
+  it("a bracketed parameter names a column with a space, and the body reads it in its brackets", () => {
+    expect(byPlate("[Miles Driven], [Fuel Gallons]", "SUM([Miles Driven]) / SUM([Fuel Gallons])")).toEqual([25, 20, 22]);
+  });
+
+  it("[Column] in the body reads that column over the cell's rows, with no parameter at all", () => {
+    expect(byPlate("", "SUM([Miles Driven]) / SUM([Fuel Gallons])")).toEqual([25, 20, 22]);
+  });
+
+  it("a bracket naming no column is #NAME?, and a malformed bracket parameter is refused by the LAMBDA card", () => {
+    const cell = byPlate("", "SUM([Miles driven])")[2];
+    expect(isSolError(cell) && cell.code).toBe("#NAME?");
+    expect(isSolError(cell) && cell.message).toContain('the table has "Miles Driven"');
+    const bad = lambda("[Miles", "1");
+    expect(isSolError(bad) && bad.code).toBe("#NAME?");
+  });
+});
+
 describe("PIVOTBY calculated fields against a brute-force oracle", () => {
   function rng(seed: number) {
     let a = seed >>> 0;

@@ -11,6 +11,10 @@ specific item.
   cards' `NEXT_RELEASE` marks and moved the guess to 1.7 (`src/graph/release.ts`). Tags are the author's: `v1.6.1` on
   `main`, and `0.1.11` on Solenoid-Properties `main` (`52b0979`). GitHub notes: `docs/release-notes-1.6.1.md`.
 - What's New combines an x.y with its patches (`deckReleases`): "What's new in 1.6 and 1.6.1", 1.6.1's four slides first.
+- Calculated fields read columns with spaces: a bracketed LAMBDA parameter (`[Miles Driven]`, typed or on the LAMBDA
+  card) is a plain one with a space, and an unbound `[Column]` in a field's body reads the cell's rows
+  (`Eval::with_slices`). Configure Fields lists the fields by name (`calcFieldNames`). A wired λ's parameter naming no
+  column reads blank through a side input, by design (as an unknown name in a formula does), not a silent bug.
 - The plugin export had started carrying `nodes/frame.ts` (a type import in `pivotConfig.ts`), which `plugin:lint` failed
   with 8 errors; fixed structurally, 0 errors, and a clean `npm ci && npm run build` in the snapshot passes.
 

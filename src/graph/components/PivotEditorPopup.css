@@ -118,6 +118,9 @@
 /* A clear but legible "used" cue: a configured pivot has most fields used, and 0.55 washed the list out. */
 .pivot-chip--used { opacity: 0.74; }
 /* A saved field the input lacks right now: kept, and set apart until its column comes back. */
+/* A calculated field: wired on the card, always a value, so it's listed but not dragged. */
+.pivot-chip--calc { cursor: default; border-style: dashed; }
+.pivot-chip--calc:active { cursor: default; }
 .pivot-chip--missing { border-style: dashed; border-color: var(--sol-warn); color: var(--text-muted); }
 .pivot-chip__glyph {
   display: inline-flex;

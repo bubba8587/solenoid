@@ -458,7 +458,7 @@ export class GroupByFrameNode extends GraphNode {
 export class PivotNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     filter: "One cell per source row, in order. Only rows where the mask is TRUE feed the pivot.",
-    calcFn: "A LAMBDA whose parameters name columns, such as LAMBDA(Miles, Gallons, SUM(Miles) / SUM(Gallons)). Each cell, totals included, gives each parameter that column's values in its own rows, so a ratio of sums is right at every level. @ has no row here.",
+    calcFn: "A LAMBDA whose parameters name columns, such as LAMBDA(Miles, Gallons, SUM(Miles) / SUM(Gallons)). Each cell, totals included, gives each parameter that column's values in its own rows, so a ratio of sums is right at every level. A name with a space goes in brackets, [Miles Driven], and [Column] in the body reads the cell's rows with no parameter needed. @ has no row here.",
   };
 
   label: string;

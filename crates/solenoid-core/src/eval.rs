@@ -645,6 +645,8 @@ impl Drop for CallDepth {
 #[derive(Default)]
 pub struct Eval<'a> {
     row: Option<&'a RowCtx<'a>>,
+    /// Where `[name]` reads with no row: a PIVOTBY calculated field's cell hands each column over the cell's own rows.
+    slices: Option<&'a dyn Fn(&str) -> V>,
     /// Keeps the range memo across calls outside a row too: a formula evaluated once per item (`formula`).
     memo_calls: bool,
     /// A range function called again with the very same arguments (a whole column, row after row).
@@ -718,6 +720,13 @@ struct Site {
     traits: Option<Rc<Traits>>,
     empty: Vec<bool>,
     any_empty: bool,
+}
+
+impl<'a> Eval<'a> {
+    /// An evaluator whose `[name]` reads `slice(name)`: a calculated field's columns over one cell's rows.
+    pub fn with_slices(slice: &'a dyn Fn(&str) -> V) -> Self {
+        Eval { slices: Some(slice), ..Eval::default() }
+    }
 }
 
 impl Eval<'_> {
@@ -810,12 +819,13 @@ impl Eval<'_> {
                     },
                 },
             },
-            Ast::WholeCol(name) => match self.row {
-                None => V::err(sol_error(
+            Ast::WholeCol(name) => match (self.row, self.slices) {
+                (Some(row), _) => row.whole(name),
+                (None, Some(slice)) => slice(name),
+                (None, None) => V::err(sol_error(
                     ErrorCode::Ref,
                     "[column] reads a whole table column, so it only works inside a computed column",
                 )),
-                Some(row) => row.whole(name),
             },
             Ast::Name(name) => constant_value(name).map_or_else(|| env.get(name).cloned().unwrap_or(V::Undef), V::Num),
             Ast::Unary { op, arg } => {

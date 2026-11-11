@@ -314,6 +314,8 @@ fn ast_to_formula(n: &Ast) -> String {
         Ast::WholeCol(name) => format!("[{name}]"),
         Ast::Str(v) => format!("\"{v}\""),
         Ast::Bool(v) => (if *v { "TRUE()" } else { "FALSE()" }).into(),
+        // A bracketed LAMBDA parameter (`bracket_params`) is a name with a space, written back in its brackets.
+        Ast::Name(name) if !is_ident(name) => format!("[{name}]"),
         Ast::Name(name) => name.clone(),
         Ast::Call { name, args: a } => format!("{name}({})", args(a)),
         Ast::Apply { func, args: a } => format!("({})({})", ast_to_formula(func), args(a)),
