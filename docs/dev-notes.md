@@ -6,6 +6,14 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-11b: Solenoid 1.6.1, Solenoid Properties 0.1.11; cloud session)
+- Released from `develop`: `main` at `342cb77be`, versions 1.6.1 by `scripts/release-version.mjs`, which also froze the
+  cards' `NEXT_RELEASE` marks and moved the guess to 1.7 (`src/graph/release.ts`). Tags are the author's: `v1.6.1` on
+  `main`, and `0.1.11` on Solenoid-Properties `main` (`52b0979`). GitHub notes: `docs/release-notes-1.6.1.md`.
+- What's New combines an x.y with its patches (`deckReleases`): "What's new in 1.6 and 1.6.1", 1.6.1's four slides first.
+- The plugin export had started carrying `nodes/frame.ts` (a type import in `pivotConfig.ts`), which `plugin:lint` failed
+  with 8 errors; fixed structurally, 0 errors, and a clean `npm ci && npm run build` in the snapshot passes.
+
 ### SESSION DIGEST (2026-11-11: HTML-in-Canvas on the shipped API; phone pan layer tried and reverted; cloud session)
 - HTML-in-Canvas follows the API as shipped (Chrome 157 default-on; the 155 changes): the canvas wears `content="drawable"`,
   each clone wrapper `drawable`, every draw passes `preserveElementGeometry: true`, the canvas is `aria-hidden`, and the
