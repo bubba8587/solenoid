@@ -572,6 +572,16 @@ fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCel
             v => args.push(v),
         }
     }
+    // A LAMBDA card's capture naming a column reads its slice (`lambda_body`); one off a column only by letter case
+    // would read the card's empty slot, a 0, so it is #NAME? with the hint instead.
+    for name in lam.captured.iter().flatten() {
+        if !f.columns.iter().any(|k| &k.name == name)
+            && case_twin(name, f.columns.iter().map(|k| k.name.as_str())).is_some()
+            && let V::Err(e) = slice(name)
+        {
+            return (FrameCell::Err(e), false);
+        }
+    }
     // `[Column]` in the body that no parameter names reads the same slice, so a field needs no parameters at all.
     let v = crate::eval::Eval::with_slices(&slice).call_lambda(lam, &args);
     match v {

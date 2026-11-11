@@ -91,6 +91,7 @@ describe("PIVOTBY calculated fields over column names with spaces", () => {
       { name: "Plate", type: "string", cells: ["ABC-123", "ABC-123", "ABC-123", "XYZ-789", "XYZ-789", "XYZ-789"] },
       { name: "Miles Driven", type: "number", cells: ["100", "200", "200", "200", "150", "250"] },
       { name: "Fuel Gallons", type: "number", cells: ["4", "6", "10", "20", "4", "6"] },
+      { name: "Gallons", type: "number", cells: ["4", "6", "10", "20", "4", "6"] },
     ]),
   }).data({}).frame as FrameValue;
   const byPlate = (params: string, expr: string) => {
@@ -106,6 +107,13 @@ describe("PIVOTBY calculated fields over column names with spaces", () => {
 
   it("[Column] in the body reads that column over the cell's rows, with no parameter at all", () => {
     expect(byPlate("", "SUM([Miles Driven]) / SUM([Fuel Gallons])")).toEqual([25, 20, 22]);
+  });
+
+  it("a bare name no parameter binds reads its column too, and one no column has is #NAME?, never a blank", () => {
+    expect(byPlate("", "SUM([Miles Driven]) / SUM(Gallons)")).toEqual([25, 20, 22]);
+    const cell = byPlate("", "SUM([Miles Driven]) / SUM(gallons)")[2];
+    expect(isSolError(cell) && cell.code).toBe("#NAME?");
+    expect(isSolError(cell) && cell.message).toContain('the table has "Gallons"');
   });
 
   it("a bracket naming no column is #NAME?, and a malformed bracket parameter is refused by the LAMBDA card", () => {

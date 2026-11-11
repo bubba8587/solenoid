@@ -827,7 +827,14 @@ impl Eval<'_> {
                     "[column] reads a whole table column, so it only works inside a computed column",
                 )),
             },
-            Ast::Name(name) => constant_value(name).map_or_else(|| env.get(name).cloned().unwrap_or(V::Undef), V::Num),
+            // A name nothing binds reads its column where there are columns: a calculated field's `Gallons` is
+            // `[Gallons]`, and a name no column has is #NAME?, not a blank that sums to 0.
+            Ast::Name(name) => match (constant_value(name), env.get(name), self.slices) {
+                (Some(c), ..) => V::Num(c),
+                (None, Some(v), _) => v.clone(),
+                (None, None, Some(slice)) => slice(name),
+                (None, None, None) => V::Undef,
+            },
             Ast::Unary { op, arg } => {
                 let a = self.eval(arg, env);
                 let neg = *op == UnaryOp::Neg;
@@ -933,13 +940,19 @@ impl Eval<'_> {
 
     fn lambda_body(&self, lam: &LambdaV, body: &Ast, args: &[V]) -> V {
         if let Some(captured) = &lam.captured {
-            // `compilePositional` over the parameters, then the captures; a column outranks a capture ([[C22]] rowFormulaRefs).
+            // `compilePositional` over the parameters, then the captures; a column outranks a capture ([[C22]] rowFormulaRefs),
+            // in a computed column and in a calculated field's slice alike.
             let mut inner: Env = FxHashMap::default();
             for (i, p) in lam.params.iter().enumerate() {
                 inner.insert(p.clone(), args.get(i).cloned().unwrap_or(V::Undef));
             }
             for c in captured {
-                let v = match self.row.and_then(|r| r.column(c).map(|col| r.whole_of(col))) {
+                let column = match (self.row, self.slices) {
+                    (Some(r), _) => r.column(c).map(|col| r.whole_of(col)),
+                    (None, Some(slice)) => Some(slice(c)).filter(|v| !matches!(v, V::Err(_))),
+                    (None, None) => None,
+                };
+                let v = match column {
                     Some(whole) => whole,
                     None => lam.env.get(c).cloned().unwrap_or(V::Undef),
                 };
