@@ -35,12 +35,20 @@ function findPivotHost(hostId: string): PivotHost | null {
       return outputOf(node);
     },
     async keysOf(field) {
-      // A field lists all its values once it filters: make it one (an empty list hides nothing), then read them.
-      if (!(field in node.filterExclude)) {
+      // A field lists all its values only while it filters: make it one for a pass, read them, and put it back, so a
+      // look at the list leaves no empty filter behind.
+      const added = !(field in node.filterExclude);
+      if (added) {
         node.filterExclude = { ...node.filterExclude, [field]: [] };
         await processGraph(node.id);
       }
-      return node.sourceColumns.find((c) => c.name === field)?.distinct ?? [];
+      const col = node.sourceColumns.find((c) => c.name === field);
+      const out = { keys: col?.distinct ?? [], total: col?.distinctTotal ?? col?.distinct.length ?? 0 };
+      if (added && (node.filterExclude[field]?.length ?? 0) === 0) {
+        const { [field]: _gone, ...rest } = node.filterExclude;
+        node.filterExclude = rest;
+      }
+      return out;
     },
     editFields(onClosed, accent) {
       pivotEditor.open({ node, nodeId: node.id, title: nodeDisplayName(node), accent, onClosed: () => void processGraph(node.id).then(() => onClosed(outputOf(node))) });

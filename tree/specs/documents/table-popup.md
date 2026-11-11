@@ -297,7 +297,8 @@ A PIVOTBY output opens on the Pivot view ([[C127]] pivotView): the frame drawn a
 - **On an item** (a row label, a column header, a subtotal): Keep Only it (every other value of the field hidden, read with `keysOf`, which makes the field a filter so its whole value list comes back), Hide it, Clear Filter from the field; Sort the field A to Z or Z to A (Smallest to Largest, Oldest to Newest by type) or No Sort, the current one checked; Collapse All and Expand All of an outer row field (the view's folds only); Move Up, Move Down, Move to Columns or Rows, Remove; Copy the label.
 - **On a value cell or value header:** Summarize By (Sum, Count, Average, Max, Min, Median, and the field's own function when it is another; the rest are in Configure Fields), Show Values As (No Calculation or a `% of` total, which is PERCENTOF with its Relative To), Sort Rows by the value either way, Copy the cell, Remove the value field. A calculated field offers only the sort and Copy.
 - **On a field header:** the item menu without an item: Clear Filter, Sort, the field's moves.
-- A pivot with no card behind it (a note's) keeps the browser's own menu.
+- **A field header's ▾** (the row fields' header and the column fields' caption) opens the field's Sort and its value checklist (`PivotFieldDropdown`, the same `PivotFilterList` Configure Fields uses), each tick written to the card at once; over a Compact header naming several row fields, a pick of which. Reading a field's whole value list makes it a filter for one pass and puts it back, so a look leaves no empty filter in Configure Fields.
+- A pivot with no card behind it (a note's) keeps the browser's own menu and draws no ▾.
 
 Tests: `pivotLayout.test.ts`: the Pivot view's layout, model, filter, totals, saved options and Details. `pivotViewMenu.test.ts`: each menu line against the setting it writes.
 

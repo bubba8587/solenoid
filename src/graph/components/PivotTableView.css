@@ -190,3 +190,20 @@ thead .pivot-view__label--sticky { z-index: 3; }
   .pivot-view__label,
   .pivot-view__value { padding: 2px 6px; }
 }
+
+/* A field header's ▾ (sort and filter), beside its name. */
+.pivot-view__fieldhead { display: inline-flex; align-items: center; gap: 4px; }
+.pivot-view__drop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.pivot-view__drop:hover { color: var(--text); border-color: var(--border-strong, var(--border)); }

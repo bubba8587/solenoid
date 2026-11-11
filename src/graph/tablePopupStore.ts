@@ -100,8 +100,8 @@ export interface PivotHost {
   config(): PivotConfig;
   /** Writes the settings, recomputes the Pivot and gives its new output. */
   setConfig(next: PivotConfig): Promise<FrameValue | null>;
-  /** Every value a field takes, sorted and up to 10,000, for Keep Only. */
-  keysOf(field: string): Promise<string[]>;
+  /** Every value a field takes, sorted and up to 10,000, and how many there are, for Keep Only and the field's list. */
+  keysOf(field: string): Promise<{ keys: string[]; total: number }>;
 }
 /** Finds the Pivot node behind a host. Installed by the app; the Obsidian plugin has no graph, so its pivot views keep their options for the session. */
 interface PivotHostAction { find(hostId: string): PivotHost | null }

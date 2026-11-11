@@ -6,7 +6,7 @@ import type { FrameValue } from "../../src/graph/frame";
 import { buildPivotModel, pivotLayoutOf, DEFAULT_PIVOT_VIEW, type PivotViewOptions } from "../../src/graph/pivotLayout";
 import type { PivotConfig } from "../../src/graph/pivotConfig";
 import { pivotKey } from "../../src/graph/pivotConfig";
-import { pivotMenuSections, type PivotMenuTarget } from "../../src/graph/components/PivotViewMenu";
+import { keyLabel, pivotMenuSections, type PivotMenuTarget } from "../../src/graph/components/PivotViewMenu";
 
 const sales: FrameValue = {
   __frame: true,
@@ -29,7 +29,7 @@ const base = (): PivotConfig => ({
 function menu(target: PivotMenuTarget, cfg = base(), options: PivotViewOptions = DEFAULT_PIVOT_VIEW) {
   let applied: PivotConfig | null = null;
   let view: PivotViewOptions | null = null;
-  const host = { agg: "sum" as const, config: () => cfg, apply: (n: PivotConfig) => { applied = n; }, keysOf: async () => ["N", "S", ""] };
+  const host = { agg: "sum" as const, config: () => cfg, apply: (n: PivotConfig) => { applied = n; }, keysOf: async () => ({ keys: ["N", "S", ""], total: 3 }) };
   const sections = pivotMenuSections({ target, layout, host, options, onOptions: (v) => { view = v; }, copyText: () => {} });
   const items = sections.flatMap((s) => s.items);
   const find = (label: string) => {
@@ -117,5 +117,14 @@ describe("the Pivot view's menu on a value", () => {
     expect(menu(value).pick("Largest to Smallest")!.rowSort).toBe(-3);
     expect(menu(value).pick("Smallest to Largest")!.rowSort).toBe(3);
     expect(menu(value).pick("Remove Sum of Amt")!.vals).toEqual([]);
+  });
+});
+
+describe("a field header's value list", () => {
+  it("shows a key in its field's type and the blank as (blank)", () => {
+    expect(keyLabel("date", "46023")).toBe("01-Jan-2026");
+    expect(keyLabel("string", "")).toBe("(blank)");
+    expect(keyLabel("string", "007")).toBe("007");
+    expect(keyLabel("number", "#N/A")).toBe("#N/A");
   });
 });

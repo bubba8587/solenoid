@@ -3,6 +3,7 @@ import { useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
 import { serialToJsDate } from "../nodes/dateSerial";
 import { SearchField } from "./SearchField";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
+import "./PivotFilterList.css";
 
 /** One line of the list: a value, or a date field's year or month over the values under it. */
 interface Row {

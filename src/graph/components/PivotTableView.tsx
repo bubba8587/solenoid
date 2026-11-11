@@ -12,7 +12,7 @@ import { IS_COARSE } from "../coarse";
 import { APP_LOCALE } from "../locale";
 import { ColumnFormatButton } from "./columnHeadControls";
 import { PointerMenu } from "./TableEditMenu";
-import { pivotMenuSections, type PivotMenuHost, type PivotMenuTarget } from "./PivotViewMenu";
+import { PivotFieldDropdown, pivotMenuSections, type PivotMenuHost, type PivotMenuTarget } from "./PivotViewMenu";
 import "./PivotTableView.css";
 
 const FORM_OPTIONS: { value: PivotForm; label: string }[] = [
@@ -195,6 +195,7 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
   copyText?: (text: string) => void;
 }) {
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; target: PivotMenuTarget } | null>(null);
+  const [drop, setDrop] = useState<{ at: { x: number; y: number }; axis: "rows" | "cols"; field: number } | null>(null);
   const onMenu = (target: PivotMenuTarget | null) => (menuHost && target ? (e: React.MouseEvent) => {
     e.preventDefault();
     setMenu({ at: { x: e.clientX, y: e.clientY }, target });
@@ -288,7 +289,22 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
                     scope={h.role === "field" || h.role === "corner" ? undefined : "col"}
                     className={`pivot-view__head pivot-view__head--${h.role}${h.colSpan > 1 ? " pivot-view__head--span" : ""}${h.role === "corner" || h.role === "field" ? (compact ? " pivot-view__label--sticky" : "") : ""}`}
                     onContextMenu={onMenu(headTarget(h))}
-                  >{h.text}</th>
+                  >
+                    {menuHost && (h.role === "field" || h.role === "caption") && (h.role === "caption" ? layout.colFields.length : layout.rowFields.length) > 0
+                      ? (
+                        <span className="pivot-view__fieldhead">
+                          {h.text}
+                          <button type="button" className="pivot-view__drop" aria-label="Sort and filter" title="Sort and filter" aria-haspopup="dialog"
+                            onClick={(e) => {
+                              const r = e.currentTarget.getBoundingClientRect();
+                              setDrop({ at: { x: r.left, y: r.bottom + 2 }, axis: h.role === "caption" ? "cols" : "rows", field: h.field ?? 0 });
+                            }}>
+                            <ChevronDownIcon size={11} strokeWidth={2.2} />
+                          </button>
+                        </span>
+                      )
+                      : h.text}
+                  </th>
                 ))}
               </tr>
             ))}
@@ -342,6 +358,9 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
           </tbody>
         </table>
       </div>
+      {drop && menuHost && (
+        <PivotFieldDropdown key={`${drop.axis}${drop.field}`} at={drop.at} axis={drop.axis} initialField={drop.field} layout={layout} host={menuHost} onClose={() => setDrop(null)} />
+      )}
       {menu && menuHost && (
         <PointerMenu at={menu.at} label="Pivot table" onClose={() => setMenu(null)}
           sections={pivotMenuSections({ target: menu.target, layout, host: menuHost, options, onOptions, copyText: copyText ?? (() => {}) })} />

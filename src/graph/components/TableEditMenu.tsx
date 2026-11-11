@@ -86,7 +86,7 @@ export function editMenuItems(row?: EditAxis, col?: EditAxis): { insert: MenuIte
   };
 }
 
-function useOutsideClose(open: boolean, ref: React.RefObject<HTMLElement | null>, close: () => void) {
+export function useOutsideClose(open: boolean, ref: React.RefObject<HTMLElement | null>, close: () => void) {
   const cb = useRef(close);
   cb.current = close;
   useEffect(() => {

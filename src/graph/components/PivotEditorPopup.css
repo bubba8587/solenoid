@@ -176,74 +176,6 @@
   white-space: nowrap;
 }
 .pivot-filter__caret { color: var(--text-dim); display: inline-flex; vertical-align: middle; }
-.pivot-filter__list {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface-sunken);
-  padding: 4px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.pivot-filter__actions { display: flex; align-items: center; gap: 6px; }
-.pivot-filter__search { flex: 1 1 auto; min-width: 0; }
-.pivot-filter__actions button {
-  font-size: 10px;
-  padding: 1px 7px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-}
-/* Only the lines in view are drawn: each sits at its own offset in a box as tall as the whole list. */
-.pivot-filter__scroll { overflow: auto; position: relative; resize: vertical; min-height: 22px; }
-.pivot-filter__opt {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 12px;
-  color: var(--text);
-}
-.pivot-filter__opt label { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.pivot-filter__opt input { margin: 0; flex: none; }
-.pivot-filter__opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pivot-filter__opt--group span { font-weight: 600; }
-.pivot-filter__opt:hover { background: color-mix(in srgb, var(--text) 6%, transparent); border-radius: 3px; }
-.pivot-filter__fold {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--text-dim);
-  cursor: pointer;
-  flex: none;
-}
-.pivot-filter__only {
-  visibility: hidden;
-  flex: none;
-  font-size: 10px;
-  padding: 0 6px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  margin-right: 2px;
-}
-.pivot-filter__opt:hover .pivot-filter__only,
-.pivot-filter__only:focus-visible { visibility: visible; }
-.pivot-filter__empty { font-size: 11px; color: var(--text-muted); padding: 4px 2px; }
-.pivot-filter__note { font-size: 10px; color: var(--text-muted); }
-
 /* Resized by its grip, the editor's body takes the height and the zones stretch into it. */
 .pivot-editor.sol-popup--sized { max-width: none; max-height: none; }
 .pivot-editor.sol-popup--sized .pivot-editor__body { flex: 1 1 auto; min-height: 0; }
@@ -277,7 +209,5 @@
   .pivot-chip__x { width: 24px; height: 24px; font-size: 16px; }
   .pivot-ctl,
   .pivot-zone__add { font-size: 12px; padding: 5px 20px 5px 6px; }
-  .pivot-filter__actions button { font-size: 12px; padding: 4px 9px; }
-  .pivot-filter__only { visibility: visible; }
   .pivot-editor__done { font-size: 13px; padding: 9px 16px; }
 }
