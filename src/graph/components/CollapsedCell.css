@@ -8,6 +8,11 @@
   min-width: 68px;
   max-width: 220px;
 }
+/* A group member's 2px layout border makes room for its thicker frame around a header; the cell has no header and
+   draws its own 2px edge, so it keeps 1px and its tint meets that edge in a group as out of one. */
+.sol-cell-collapse.solenoid-node--collapsed.solenoid-node--grouped {
+  border-width: 1px;
+}
 .sol-cell-collapse.solenoid-node--collapsed .solenoid-node__body {
   padding: 4px 10px 4px 20px;
   background: color-mix(in srgb, var(--node-accent, var(--accent)) 24%, var(--surface));
