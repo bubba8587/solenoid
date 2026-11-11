@@ -125,6 +125,38 @@ describe("PIVOTBY calculated fields over column names with spaces", () => {
   });
 });
 
+describe("PIVOTBY calculated fields: every way of naming the columns answers or says why", () => {
+  const t = new FrameInputNode({ frameText: frameSourceToText([
+    { name: "Plate", type: "string", cells: ["A", "A", "B"] },
+    { name: "Mileage Driven", type: "number", cells: ["100", "200", "300"] },
+    { name: "Gallons", type: "number", cells: ["4", "6", "10"] },
+  ]) }).data({}).frame as FrameValue;
+  const mpgOfA = (params: string, expr: string): unknown => {
+    const lam = new LambdaNode({ params, expr }).data({}).result;
+    if (isSolError(lam)) return lam;
+    const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0"] });
+    Object.assign(n.stringLiterals, { rowFields: "Plate", values: "", calcName0: "MPG" });
+    const out = n.data({ frame: [t], rowFields: [["Plate"]], colFields: [[]], values: [[]], calcFn0: [lam] }).frame as FrameValue;
+    return pivotViewFrame(out).columns.find((c) => c.name === "MPG")!.values[0];
+  };
+
+  // The author's 1.6.1 reports: a parameter, a bracket and a bare name mixed, cased off, or none declared at all.
+  it("never a quiet #DIV/0! or a wrong number: the MPG, or #NAME? naming the column and the table's own spelling", () => {
+    const miles = ["[Mileage Driven]", "[mileage driven]"];
+    const gallons = ["Gallons", "[Gallons]", "gallons", "[gallons]"];
+    const params = ["", "[Mileage Driven]", "[Mileage Driven], Gallons", "[mileage driven], gallons", "Gallons", "[Gallons]"];
+    for (const p of params) for (const m of miles) for (const g of gallons) {
+      const v = mpgOfA(p, `SUM(${m}) / SUM(${g})`);
+      const exact = !/[a-z]/.test(m[1] + g.replace("[", "")[0]) && !/^\[mileage|(^|, )gallons/.test(p);
+      if (exact) expect([p, m, g, v]).toEqual([p, m, g, 30]);
+      else {
+        expect([p, m, g, isSolError(v) && v.code]).toEqual([p, m, g, "#NAME?"]);
+        expect(isSolError(v) && v.message).toMatch(/the table has "(Mileage Driven|Gallons)"/);
+      }
+    }
+  });
+});
+
 describe("PIVOTBY calculated fields against a brute-force oracle", () => {
   function rng(seed: number) {
     let a = seed >>> 0;
