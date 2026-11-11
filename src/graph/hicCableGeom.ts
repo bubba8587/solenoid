@@ -13,10 +13,11 @@ export interface CableEnds {
   targetFlipped?: boolean;
 }
 
-export function cablePolyline(shape: CableShape, ends: CableEnds): { x: number; y: number }[] {
+/** The router's own SVG path, the one the DOM cable draws, in world coordinates. */
+export function cablePathD(shape: CableShape, ends: CableEnds): string {
   const sourcePosition = ends.sourceFlipped ? Position.Left : Position.Right;
   const targetPosition = ends.targetFlipped ? Position.Right : Position.Left;
-  const d = getCablePath(shape, {
+  return getCablePath(shape, {
     sourceX: intoSocket(ends.sx, sourcePosition),
     sourceY: ends.sy,
     sourcePosition,
@@ -26,5 +27,9 @@ export function cablePolyline(shape: CableShape, ends: CableEnds): { x: number; 
     targetPosition,
     targetAngleDeg: ends.targetAngleDeg ?? null,
   });
-  return parsePathPoints(d);
+}
+
+/** The path flattened, for bounds; drawing strokes `cablePathD` itself, so curves stay exact at any zoom. */
+export function cablePolyline(shape: CableShape, ends: CableEnds): { x: number; y: number }[] {
+  return parsePathPoints(cablePathD(shape, ends));
 }

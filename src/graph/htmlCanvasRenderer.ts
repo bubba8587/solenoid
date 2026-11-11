@@ -1,7 +1,8 @@
 // [[C42]] htmlInCanvasRenderer, [[A1]] visualGraphCalculator
 
 import { Camera } from "./hicCamera";
-import { cablePolyline } from "./hicCableGeom";
+import { cablePathD } from "./hicCableGeom";
+import { parsePathPoints } from "./pathPoints";
 import type { SnapCable } from "./hicGraphSnapshot";
 import type { CableShape } from "./cableShape";
 import { packAtlas, type AtlasPlacement } from "./rasterAtlas";
@@ -28,12 +29,14 @@ type LayoutCanvas = HTMLCanvasElement & {
 const DRAW_OPTS: DrawElementImageOptions = { preserveElementGeometry: true };
 
 const REF: number = 1;
+/** Texture px per natural px a raster draws at: the clone lays out at REF, and drawElementImage re-rasters its paint at this size. */
+const RASTER = 2;
 const MIP_MIN_PX = 6;
 const DEFAULT_QUALITY = 1.0;
 
-function computeIdealMipLevel(scale: number, quality: number = DEFAULT_QUALITY, dpr: number = 1): number {
-  const target = quality * scale * dpr;
-  return Math.max(0, Math.floor(Math.log2(REF / Math.max(target, 1e-4))));
+/** The pyramid level for a top bitmap of `top` texture px per natural px; each level halves. */
+function mipLevel(top: number, target: number): number {
+  return Math.max(0, Math.floor(Math.log2(top / Math.max(target, 1e-4))));
 }
 const PAD = 10;
 
@@ -58,7 +61,7 @@ interface EngineNode {
   x: number; y: number; w: number; h: number;
   isGroup: boolean;
 }
-interface CableGeom { pts: { x: number; y: number }[]; minX: number; minY: number; maxX: number; maxY: number }
+interface CableGeom { path: Path2D; minX: number; minY: number; maxX: number; maxY: number }
 interface CableSpec {
   sourceId: string; srcOffX: number; srcOffY: number; srcAbsX: number; srcAbsY: number; sourceAngleDeg: number | null; sourceFlipped: boolean;
   targetId: string; tgtOffX: number; tgtOffY: number; tgtAbsX: number; tgtAbsY: number; targetAngleDeg: number | null; targetFlipped: boolean;
@@ -353,8 +356,8 @@ export class HtmlCanvasRenderer {
       const s = this.nodeById.get(c.sourceId), t = this.nodeById.get(c.targetId);
       const sx = s ? s.x + c.srcOffX : c.srcAbsX, sy = s ? s.y + c.srcOffY : c.srcAbsY;
       const ex = t ? t.x + c.tgtOffX : c.tgtAbsX, ey = t ? t.y + c.tgtOffY : c.tgtAbsY;
-      const pts = cablePolyline(this.cableShape, { sx, sy, ex, ey, sourceAngleDeg: c.sourceAngleDeg, targetAngleDeg: c.targetAngleDeg, sourceFlipped: c.sourceFlipped, targetFlipped: c.targetFlipped });
-      this.cableGeoms[i] = HtmlCanvasRenderer.geomOf(pts);
+      const d = cablePathD(this.cableShape, { sx, sy, ex, ey, sourceAngleDeg: c.sourceAngleDeg, targetAngleDeg: c.targetAngleDeg, sourceFlipped: c.sourceFlipped, targetFlipped: c.targetFlipped });
+      this.cableGeoms[i] = HtmlCanvasRenderer.geomOf(d);
     }
     this.dirty = true;
   }
@@ -363,15 +366,17 @@ export class HtmlCanvasRenderer {
     return "#" + (n & 0xffffff).toString(16).padStart(6, "0");
   }
 
-  private static geomOf(pts: { x: number; y: number }[]): CableGeom | null {
+  private static geomOf(d: string): CableGeom | null {
+    const pts = parsePathPoints(d);
     if (pts.length < 2) return null;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const p of pts) {
       if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y;
       if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
     }
-    return { pts, minX, minY, maxX, maxY };
+    return { path: new Path2D(d), minX, minY, maxX, maxY };
   }
+
 
   hitTest(sx: number, sy: number): string | null {
     const { wx, wy } = this.cam.toWorld(sx, sy);
@@ -555,7 +560,7 @@ export class HtmlCanvasRenderer {
       }
       if (!top && this.sctx && typeof this.sctx.drawElementImage === "function") {
         try {
-          const refW = Math.max(1, Math.round(pw * REF)), refH = Math.max(1, Math.round(ph * REF));
+          const refW = Math.max(1, Math.round(pw * RASTER)), refH = Math.max(1, Math.round(ph * RASTER));
           this.scratch.width = refW; this.scratch.height = refH;
           this.sctx.clearRect(0, 0, refW, refH);
           this.sctx.drawElementImage(n.refImg ?? n.refEl, 0, 0, refW, refH, DRAW_OPTS);
@@ -567,7 +572,7 @@ export class HtmlCanvasRenderer {
         HtmlCanvasRenderer.logPathOnce("bitmap paths unavailable — building mips via paint-event raster + region snapshot");
         continue;
       }
-      n.pyramid = await this.downscaleChain(top, pw, ph, REF);
+      n.pyramid = await this.downscaleChain(top, pw, ph, top.width / pw);
       this.builtCount++;
       this.dirty = true;
     }
@@ -609,8 +614,8 @@ export class HtmlCanvasRenderer {
     if (pending.length) {
       const items = pending.map((n) => ({
         id: n.id,
-        w: Math.max(1, Math.round((n.w + 2 * PAD) * REF)),
-        h: Math.max(1, Math.round((n.h + 2 * PAD) * REF)),
+        w: Math.max(1, Math.round((n.w + 2 * PAD) * RASTER)),
+        h: Math.max(1, Math.round((n.h + 2 * PAD) * RASTER)),
       }));
       const layout = packAtlas(items, canvas.width, canvas.height);
       const byId = new Map(pending.map((n) => [n.id, n]));
@@ -679,7 +684,7 @@ export class HtmlCanvasRenderer {
         let top: ImageBitmap;
         try { top = await createImageBitmap(atlas, p.x, p.y, p.w, p.h); }
         catch (e) { this.noteRasterFailure(n, e); continue; }
-        n.pyramid = await this.downscaleChain(top, pw, ph, REF * p.scale);
+        n.pyramid = await this.downscaleChain(top, pw, ph, RASTER * p.scale);
         n.needsPaintRaster = false;
         this.builtCount++;
         this.dirty = true;
@@ -695,18 +700,15 @@ export class HtmlCanvasRenderer {
     ctx.lineWidth = 1.8 * cam.scale;
     ctx.lineJoin = "round";
     const byColor = new Map<string, Path2D>();
+    // World to CSS px; the stroke happens under the backing-store transform alone, so lineWidth stays in screen px.
+    const toScreen = new DOMMatrix([cam.scale, 0, 0, cam.scale, cam.tx, cam.ty]);
     for (let i = 0; i < this.cableGeoms.length; i++) {
       const g = this.cableGeoms[i];
       if (!g || g.maxX < vp.minX || g.minX > vp.maxX || g.maxY < vp.minY || g.minY > vp.maxY) continue;
       const color = this.cables[i]?.color ?? "#7a8296";
       let path = byColor.get(color);
       if (!path) { path = new Path2D(); byColor.set(color, path); }
-      const s0 = cam.toScreen(g.pts[0].x, g.pts[0].y);
-      path.moveTo(s0.sx, s0.sy);
-      for (let j = 1; j < g.pts.length; j++) {
-        const s = cam.toScreen(g.pts[j].x, g.pts[j].y);
-        path.lineTo(s.sx, s.sy);
-      }
+      path.addPath(g.path, toScreen);
     }
     // Must match cableOpacity's non-hover default, or the gesture swap visibly pops.
     ctx.globalAlpha = 0.72;
@@ -742,8 +744,8 @@ export class HtmlCanvasRenderer {
     const { bsx, bsy } = this;
     const camCTM = () => ctx.setTransform(bsx * cam.scale, 0, 0, bsy * cam.scale, bsx * cam.tx, bsy * cam.ty);
 
-    const idealI = computeIdealMipLevel(cam.scale, this.quality, dpr);
-    this.curMip = useCached ? REF / Math.pow(2, idealI) : 0;
+    const target = this.quality * cam.scale * dpr;
+    this.curMip = useCached ? RASTER / Math.pow(2, mipLevel(RASTER, target)) : 0;
 
     const m = 40;
     const tl = cam.toWorld(-m, -m);
@@ -754,7 +756,7 @@ export class HtmlCanvasRenderer {
     const drawOne = (n: EngineNode): boolean => {
       const dx = n.x - PAD, dy = n.y - PAD, dw = n.w + 2 * PAD, dh = n.h + 2 * PAD;
       if (useCached) {
-        if (n.pyramid.length) { ctx.drawImage(n.pyramid[Math.min(idealI, n.pyramid.length - 1)].bmp, dx, dy, dw, dh); return true; }
+        if (n.pyramid.length) { ctx.drawImage(n.pyramid[Math.min(mipLevel(n.pyramid[0].scale, target), n.pyramid.length - 1)].bmp, dx, dy, dw, dh); return true; }
         if (n.refImg) { try { ctx.drawElementImage!(n.refImg, dx, dy, dw, dh, DRAW_OPTS); this.slowDraws++; return true; } catch { return false; } }
         try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh, DRAW_OPTS); this.slowDraws++; return true; } catch { return false; }
       }
