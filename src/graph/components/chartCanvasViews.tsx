@@ -16,6 +16,7 @@ import type {
   ProportionPayload, QuiverPayload, ContourPayload,
 } from "../chartValue";
 import { iterMin, iterMax } from "../nodes/mathUtils";
+import { canvasDrawn } from "../canvasDrawn";
 
 
 type Ctx = CanvasRenderingContext2D;
@@ -761,7 +762,7 @@ function useThemedCanvas(draw: (canvas: HTMLCanvasElement) => void) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const faces = useAppFaces();
   const ref = useRef<HTMLCanvasElement>(null);
-  useLayoutEffect(() => { if (faces && ref.current) draw(ref.current); });
+  useLayoutEffect(() => { if (faces && ref.current) { draw(ref.current); canvasDrawn(ref.current); } });
   return ref;
 }
 
@@ -793,7 +794,7 @@ function useHoverCanvas<L>(draw: (c: HTMLCanvasElement) => L | null, deps: unkno
   const ref = useRef<HTMLCanvasElement>(null);
   const layout = useRef<L | null>(null);
   useLayoutEffect(() => {
-    if (faces && ref.current) layout.current = draw(ref.current);
+    if (faces && ref.current) { layout.current = draw(ref.current); canvasDrawn(ref.current); }
   }, [...deps, theme, faces]);
   return [ref, layout] as const;
 }

@@ -10,6 +10,7 @@ import type { Schemes } from "../schemes";
 import type { View } from "../view";
 import { nodeDomWeight } from "../nodes/kind";
 import { snapshotVectors } from "../hicVectors";
+import { CANVAS_DRAWN } from "../canvasDrawn";
 import { semanticZoomStore } from "../semanticZoomStore";
 import { collapseStore } from "../collapseStore";
 import { groupCollapseStore } from "../groupCollapse";
@@ -157,9 +158,33 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
         for (const n of r.addedNodes) { const h = rootOf(n); if (h) dirtyRoots.set(h.root, h.order); }
       }
     });
+    // A card's own DOM changing re-captures it: a figure finishes drawing after its first render (measured containers, async
+    // layout), and a card's state can change with no render-pipe call. RF's writes on the wrapper itself (its transform, the
+    // selected and dragging classes, the live mark) move or mark the card, so they are not a change to how it looks.
+    const nodeObserver = new MutationObserver((records) => {
+      for (const r of records) {
+        const t = r.target instanceof Element ? r.target : r.target.parentElement;
+        if (!t || t.classList.contains("react-flow__nodes")) continue;
+        if (r.type === "attributes" && t.classList.contains("react-flow__node")) continue;
+        const id = t.closest<HTMLElement>(".react-flow__node")?.dataset.id;
+        if (id && specById.has(id)) { count("card-dom"); scheduleRebuild(id); }
+      }
+    });
+    // A figure's canvas redrawing changes pixels, not DOM, so it says so (canvasDrawn.ts).
+    const onCanvasDrawn = (e: Event) => {
+      const id = (e.target as Element | null)?.closest<HTMLElement>(".react-flow__node")?.dataset.id;
+      if (id && specById.has(id)) { count("canvas-drawn"); scheduleRebuild(id); }
+    };
+    let observedNodes: Element | null = null;
     const observe = () => {
       observer.disconnect();
       for (const el of [edgesOf(), portalOf()]) if (el) observer.observe(el, { subtree: true, childList: true, attributes: true });
+      nodeObserver.disconnect();
+      const nodes = holder().querySelector(".react-flow__nodes");
+      if (nodes) nodeObserver.observe(nodes, { subtree: true, childList: true, attributes: true, characterData: true });
+      observedNodes?.removeEventListener(CANVAS_DRAWN, onCanvasDrawn);
+      observedNodes = nodes;
+      observedNodes?.addEventListener(CANVAS_DRAWN, onCanvasDrawn);
     };
     const flushVectors = () => {
       if (!dirtyRoots.size) return;
@@ -285,9 +310,11 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
       if (lassoActiveStore.get()) { heldForLasso = true; return; }
       arm();
     };
+    // Throttled, not debounced: a card whose DOM keeps changing would otherwise push its re-capture back forever.
     const arm = () => {
-      clearTimeout(rebuildTimer);
+      if (rebuildTimer) return;
       rebuildTimer = window.setTimeout(() => {
+        rebuildTimer = 0;
         walkFrames = WALK_SETTLE;
         const ids = dirtyIds;
         dirtyIds = new Set();
@@ -418,6 +445,8 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
       setHolderMuted(false);
       clearLive();
       observer.disconnect();
+      nodeObserver.disconnect();
+      observedNodes?.removeEventListener(CANVAS_DRAWN, onCanvasDrawn);
       engine.dispose();
     };
   }, [active, editor, view, rf]);

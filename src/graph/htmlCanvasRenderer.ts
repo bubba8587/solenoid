@@ -55,6 +55,8 @@ interface EngineNode {
   pyramid: PyramidLevel[];
   mipFailed?: boolean;
   needsPaintRaster?: boolean;
+  /** The clone's images are still decoding, so a raster now would cache them blank. */
+  decoding?: boolean;
   rasterAttempts?: number;
   x: number; y: number; w: number; h: number;
   isGroup: boolean;
@@ -183,7 +185,11 @@ export class HtmlCanvasRenderer {
 
   setNodes(specs: EngineNodeSpec[]): void {
     this.releaseNodes();
-    this.nodes = specs.map((s) => ({ id: s.id, refEl: this.cloneFor(s.el, s.w, s.h), srcEl: s.el, refImg: null, pyramid: [], x: s.x, y: s.y, w: s.w, h: s.h, isGroup: s.isGroup, z: s.z }));
+    this.nodes = specs.map((s) => {
+      const n: EngineNode = { id: s.id, refEl: this.cloneFor(s.el, s.w, s.h), srcEl: s.el, refImg: null, pyramid: [], x: s.x, y: s.y, w: s.w, h: s.h, isGroup: s.isGroup, z: s.z };
+      this.trackDecode(n, this.lastDecode);
+      return n;
+    });
     this.sortNodes();
     this.nodeById.clear();
     for (const n of this.nodes) this.nodeById.set(n.id, n);
@@ -207,6 +213,7 @@ export class HtmlCanvasRenderer {
       n.rasterAttempts = 0;
       n.refEl.remove();
       n.refEl = this.cloneFor(s.el, s.w, s.h);
+      this.trackDecode(n, this.lastDecode);
       n.srcEl = s.el;
       changed = true;
     }
@@ -217,6 +224,9 @@ export class HtmlCanvasRenderer {
     this.dirty = true;
     if (this.canvas.requestPaint) this.canvas.requestPaint();
   }
+
+  /** The decode `cloneFor`'s last clone is waiting on, read by its caller right after. */
+  private lastDecode: Promise<unknown> | null = null;
 
   private cloneFor(el: HTMLElement, w: number, h: number): HTMLElement {
     const wrap = document.createElement("div");
@@ -242,7 +252,7 @@ export class HtmlCanvasRenderer {
     card.style.margin = "0";
     card.style.pointerEvents = "none";
     HtmlCanvasRenderer.syncFormState(el, card);
-    HtmlCanvasRenderer.syncCanvasState(el, card);
+    this.lastDecode = HtmlCanvasRenderer.syncCanvasState(el, card);
     HtmlCanvasRenderer.uniquifyIds(card);
     rel.appendChild(card);
     wrap.appendChild(rel);
@@ -274,16 +284,39 @@ export class HtmlCanvasRenderer {
     }
   }
 
-  private static syncCanvasState(orig: HTMLElement, clone: HTMLElement): void {
+  /** A figure's `<canvas>` becomes an `<img>` of its pixels in the clone: drawElementImage draws a canvas nested in a
+   *  drawable subtree as a misplaced slice of itself (Chrome 157), and an image as it is. Resolves once every image has
+   *  decoded, since a raster before that caches the figure blank; null when the card has no canvas. */
+  private static syncCanvasState(orig: HTMLElement, clone: HTMLElement): Promise<unknown> | null {
     const src = orig.querySelectorAll<HTMLCanvasElement>("canvas");
     const dst = clone.querySelectorAll<HTMLCanvasElement>("canvas");
-    if (src.length !== dst.length) return;
+    if (!src.length || src.length !== dst.length) return null;
+    const decodes: Promise<unknown>[] = [];
     for (let i = 0; i < src.length; i++) {
       const s = src[i], d = dst[i];
       if (!s.width || !s.height) continue;
-      d.width = s.width; d.height = s.height;
-      try { d.getContext("2d")?.drawImage(s, 0, 0); } catch { /* tainted/GPU-lost canvas — leave blank */ }
+      let url: string;
+      try { url = s.toDataURL(); } catch { continue; } // A tainted canvas can't be read; it captures blank.
+      const img = document.createElement("img");
+      for (const a of d.getAttributeNames()) if (a !== "width" && a !== "height") img.setAttribute(a, d.getAttribute(a)!);
+      img.src = url;
+      d.replaceWith(img);
+      decodes.push(img.decode().catch(() => undefined));
     }
+    return decodes.length ? Promise.all(decodes) : null;
+  }
+
+  /** Holds a card's raster until its clone's images have decoded. */
+  private trackDecode(n: EngineNode, pending: Promise<unknown> | null): void {
+    if (!pending) { n.decoding = false; return; }
+    n.decoding = true;
+    const el = n.refEl;
+    void pending.then(() => {
+      if (n.refEl !== el || this.disposed) return;
+      n.decoding = false;
+      this.dirty = true;
+      if (this.canvas.requestPaint) this.canvas.requestPaint();
+    });
   }
 
   private static idSeq = 0;
@@ -589,7 +622,7 @@ export class HtmlCanvasRenderer {
     const pending: EngineNode[] = [];
     for (const n of this.nodes) {
       if (pending.length >= HtmlCanvasRenderer.RASTER_BATCH) break;
-      if (!n.needsPaintRaster || n.pyramid.length || n.mipFailed) continue;
+      if (!n.needsPaintRaster || n.pyramid.length || n.mipFailed || n.decoding) continue;
       pending.push(n);
     }
     if (pending.length) {
