@@ -15,6 +15,8 @@ import "./PivotEditorPopup.css";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
 import { TypeIcon } from "./TypeIcon";
 import { PivotFilterList } from "./PivotFilterList";
+import { dropOutputCables } from "./cablePrune";
+import { getOwningView } from "../activeGraph";
 
 // The per-value function list derives from AGG_OP_META; the pivot is the one surface
 // that also offers the pivotOnly ops.
@@ -85,6 +87,14 @@ export function PivotEditorPopup() {
     // The field list (a new filter's values) comes back with the compute: draw again once it lands.
     void processGraph(node.id).then(() => setLanded((n) => n + 1));
     setCfg(next);
+  }
+  /** The totals are the Pivot view's; Export totals hands them on as Row Totals and Column Totals outputs. */
+  async function setExportTotals(on: boolean) {
+    if (!on) await dropOutputCables(node.id, ["rowTotals", "colTotals"]);
+    node.setExportTotals(on);
+    await getOwningView(node.id)?.rerenderNode(node.id);
+    notifyGraphChanged();
+    void processGraph(node.id).then(() => setLanded((n) => n + 1));
   }
   const zoneArr = (c: Cfg, z: Zone) => (z === "rows" ? c.rows : z === "cols" ? c.cols : z === "details" ? c.details : c.vals);
   const copyZones = (c: Cfg): Cfg => ({ ...c, rows: [...c.rows], cols: [...c.cols], vals: [...c.vals], details: [...c.details], funcs: { ...c.funcs } });
@@ -344,6 +354,10 @@ export function PivotEditorPopup() {
       </div>
 
       <div className="pivot-editor__footer">
+        <label className="pivot-editor__export" title="Totals show in the Pivot view only. On, the card also outputs them as Row Totals and Column Totals.">
+          <input type="checkbox" checked={node.exportTotals} onChange={(e) => void setExportTotals(e.target.checked)} />
+          Export totals
+        </label>
         <button className="pivot-editor__done" onClick={close}>Done</button>
       </div>
     </PopupShell>

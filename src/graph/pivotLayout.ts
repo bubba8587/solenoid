@@ -1,6 +1,6 @@
 // [[C127]] pivotView
 import { isSolError } from "./errorValue";
-import { frameRowCount, type FrameCell, type FrameColType } from "./frame";
+import { frameRowCount, type FrameCell, type FrameColType, type FrameValue } from "./frame";
 import type { AggOp } from "./frameOps";
 import { frameSidecar } from "./frameSidecar";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -35,13 +35,93 @@ export interface PivotLayout {
   rows: PivotAxisItem[];
   cols: (PivotAxisItem & { value: number })[];
   details?: PivotDetailColumn[];
+  /** The totals, which a PIVOTBY card keeps out of its Frame: each total row's cells across every view column, each
+   *  total column's cells down every view row, by their place among `rows` and `cols` ([[C127]] pivotView). */
+  totals?: PivotTotalCells;
 }
 
-const layouts = frameSidecar<PivotLayout>((f, l) => l.rows.length === frameRowCount(f) && l.rowFields.length + l.cols.length === f.columns.length);
+export interface PivotTotalCells {
+  rows: { index: number; cells: FrameCell[] }[];
+  cols: { index: number; name: string; type: FrameColType; unit?: unknown; values: FrameCell[] }[];
+}
+
+const layouts = frameSidecar<PivotLayout>((f, l) =>
+  l.rows.length - (l.totals?.rows.length ?? 0) === frameRowCount(f)
+  && l.rowFields.length + l.cols.length - (l.totals?.cols.length ?? 0) === f.columns.length);
 
 export const setPivotLayout = layouts.set;
 /** The layout a frame was pivoted with, or null once it no longer has that shape. */
 export const pivotLayoutOf = layouts.of;
+
+/** Where a place in the Pivot view reads (`r` among the layout's rows, `c` among its key and body columns): a total
+ *  from the layout, any other cell from the Frame at its own place, which `out` reads. `styleCol` is the Frame column
+ *  whose type and format a view column borrows: a total column borrows its value's first column. */
+export interface PivotAddress {
+  cell<T>(r: number, c: number, out: (row: number, col: number) => T): T | FrameCell;
+  styleCol(c: number): number;
+}
+
+const addresses = new WeakMap<PivotLayout, PivotAddress>();
+
+export function pivotAddress(layout: PivotLayout): PivotAddress {
+  const known = addresses.get(layout);
+  if (known) return known;
+  const totalRows = new Map((layout.totals?.rows ?? []).map((t) => [t.index, t.cells]));
+  const totalCols = new Map((layout.totals?.cols ?? []).map((t) => [t.index, t.values]));
+  const before = (indices: Iterable<number>, at: number) => { let n = 0; for (const i of indices) if (i < at) n++; return n; };
+  const outRow = (r: number) => r - before(totalRows.keys(), r);
+  const outCol = (c: number) => c - before(totalCols.keys(), c);
+  const keys = layout.rowFields.length;
+  const addr: PivotAddress = {
+    cell: (r, c, out) => {
+      const row = totalRows.get(r);
+      if (row) return row[c] ?? null;
+      const col = totalCols.get(c);
+      if (col) return col[r] ?? null;
+      return out(outRow(r), outCol(c));
+    },
+    styleCol: (c) => {
+      if (!totalCols.has(c)) return outCol(c);
+      const v = layout.cols[c - keys]?.value ?? 0;
+      const j = layout.cols.findIndex((it, k) => it.value === v && !totalCols.has(keys + k));
+      return j < 0 ? outCol(c) : outCol(keys + j);
+    },
+  };
+  addresses.set(layout, addr);
+  return addr;
+}
+
+/** The pivot as its view lays it out, totals in their places: the card's Frame with each total row and column put back
+ *  (`pivotAddress`). A Frame with no totals on its layout is itself. */
+export function pivotViewFrame(f: FrameValue): FrameValue {
+  const layout = pivotLayoutOf(f);
+  if (!layout?.totals || (layout.totals.rows.length === 0 && layout.totals.cols.length === 0)) return f;
+  const addr = pivotAddress(layout);
+  const keys = layout.rowFields.length;
+  const width = keys + layout.cols.length;
+  const totalCols = new Map(layout.totals.cols.map((t) => [t.index, t]));
+  const columns = Array.from({ length: width }, (_, c) => {
+    const total = totalCols.get(c);
+    const base = f.columns[addr.styleCol(c)];
+    const values = layout.rows.map((_, r) => addr.cell(r, c, (or, oc) => f.columns[oc]?.values[or] ?? null) as FrameCell);
+    return total ? { name: total.name, type: total.type, values } : { ...base, values };
+  });
+  return { __frame: true, columns };
+}
+
+/** A value's columns in the Frame: its leaf columns, past the row keys. */
+export function valueColumns(layout: PivotLayout, v: number): number[] {
+  const keys = layout.rowFields.length;
+  const totals = new Set((layout.totals?.cols ?? []).map((t) => t.index));
+  const out: number[] = [];
+  let at = keys;
+  layout.cols.forEach((it, j) => {
+    if (totals.has(keys + j)) return;
+    if (it.value === v) out.push(at);
+    at++;
+  });
+  return out;
+}
 
 export type PivotForm = "compact" | "outline" | "tabular";
 export type PivotEmpty = "blank" | "zero" | "dash";

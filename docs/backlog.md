@@ -254,6 +254,9 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 - [ ] Row status beyond unsaved: changed on disk, a Problems count (needs problems kept per document).
 - [ ] Drag on touch (long-press to lift); today touch moves through Move to….
 
+## Alerts (author 2026-11-11)
+- [ ] **Clear All on a right-click** of the Alerts HUD, and **old alerts clear themselves** once the card that raised them no longer shows that status (today an entry stays until dismissed).
+
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 - [ ] **Remove drag-to-scrub** (author 2026-11-04: it doesn't work in the app and isn't wanted): `useNumberScrub` in `inlineInput.tsx` (the number field) and `ValueInputNode.tsx`, and whatever spec or test mentions it.
 - [ ] **Custom logomarks on desktop** (author 2026-11-01): let a desktop user replace each of the app's logomarks (the wordmark, the mark in the menu bar and top bar, the app-menu trigger, the help dialogs' and the site nav's marks; `TopBar.tsx`, `MenuBar.tsx`, `HelpDialogs.tsx`, `siteNav.tsx`) with their own SVG of exactly the same size, refused when its box differs. Desktop only (it reads a local file); kept per install, with a way back to the default.

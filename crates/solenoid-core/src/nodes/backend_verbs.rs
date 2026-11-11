@@ -14,8 +14,8 @@ use crate::excel_functions::{value_text, V};
 use crate::frame::{case_twin, column_not_found, FrameCell, FrameColType, FrameValue};
 use crate::frame_ref::FrameRef;
 use crate::frame_verbs::{
-    append_frames, bind_columns, compile_filter, join_frames, pivot_frame_calc, FilterOp, JoinOpts, PivotCalc,
-    PivotSpec,
+    append_frames, bind_columns, compile_filter, join_frames, pivot_frame_calc, split_pivot_totals, FilterOp, JoinOpts,
+    PivotCalc, PivotSpec,
 };
 use crate::jsnum::{number_to_string, trim_space};
 use crate::string_order::compare_strings;
@@ -859,12 +859,26 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
             return answer(Cv::V(e));
         }
     };
-    let mut frame = from_core(&out);
-    for (k, core) in frame.columns.iter_mut().zip(&out.columns) {
-        k.unit = core.unit.as_ref().map(|u| u.to_json());
+    // The totals are the Pivot view's, never the Frame's ([[C127]] pivotView): the output is the leaf rows by the leaf
+    // columns, the totals ride on its layout, and Export totals hands them on as their own Frames.
+    let split = split_pivot_totals(&to_core(f), &out, &layout);
+    let wire = |core: &crate::frame::FrameValue| {
+        let mut w = from_core(core);
+        for (k, kc) in w.columns.iter_mut().zip(&core.columns) {
+            k.unit = kc.unit.as_ref().map(|u| u.to_json());
+        }
+        w
+    };
+    let mut layout = layout;
+    layout["totals"] = split.totals;
+    let mut plain = wire(&split.plain);
+    plain.layout = Some(Rc::new(layout));
+    let plain = Cv::Frame(Rc::new(plain));
+    c.show("cachedResult", plain.clone());
+    let mut outs = vec![("frame".to_string(), plain)];
+    if c.field("exportTotals").and_then(Json::as_bool).unwrap_or(false) {
+        outs.push(("rowTotals".into(), Cv::Frame(Rc::new(wire(&split.row_totals)))));
+        outs.push(("colTotals".into(), Cv::Frame(Rc::new(wire(&split.col_totals)))));
     }
-    frame.layout = Some(Rc::new(layout));
-    let frame = Cv::Frame(Rc::new(frame));
-    c.show("cachedResult", frame.clone());
-    answer(frame)
+    Ok(outs)
 }

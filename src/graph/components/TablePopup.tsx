@@ -49,7 +49,7 @@ import "./colType.css";
 import { ChevronDownIcon } from "./Icons";
 import { PivotTableView, PivotRibbon, PivotSheetButton, type PivotRibbonProps } from "./PivotTableView";
 import { FittingChoice } from "./PopupChoice";
-import { DEFAULT_PIVOT_VIEW, livePivotFolds, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
+import { DEFAULT_PIVOT_VIEW, livePivotFolds, pivotAddress, valueColumns, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
 import { framePopupData } from "../valuePopup";
 import type { PivotMenuHost, PivotValueFormat } from "./PivotViewMenu";
 import type { FrameValue } from "../frame";
@@ -993,15 +993,16 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     tablePopup.close();
     pivotHost.current?.editFields((f) => { if (f) tablePopup.open({ ...opened, ...framePopupData(f) }); }, opened.accent);
   }
+  // The view's places hold the totals the Frame leaves out; the rest read the Frame ([[C127]] pivotView).
+  const pivotAt = (r: number, c: number) => pivotAddress(state.pivot!).cell(r, c, (or, oc) => state.data[or]?.[oc] ?? null) as CellValue;
   const pivotCellText = (r: number, c: number): string => {
-    const raw = state.data[r]?.[c] ?? null;
+    const raw = pivotAt(r, c);
     if (displayMode === "source") return raw === null ? "" : isSolError(raw) ? raw.code : String(raw);
-    return controlledCell(raw, c);
+    return controlledCell(raw, pivotAddress(state.pivot!).styleCol(c));
   };
   /** One Number format per value field, written to each of its columns. */
   const pivotValueFormat = state.pivot && state.formatControls === "columns" ? (v: number) => {
-    const keyCols = state.pivot!.rowFields.length;
-    const colsOf = state.pivot!.cols.flatMap((it, j) => (it.value === v ? [keyCols + j] : []));
+    const colsOf = valueColumns(state.pivot!, v);
     if (!colsOf.length || colTypeAt(colsOf[0]) !== "number") return null;
     return (
       <FormatStyleSelect
@@ -1027,8 +1028,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
 
   /** The paintbrush's per-value pick, for the menu: a number value's columns, written together. */
   const pivotValueCols = (v: number) => {
-    const keyCols = state.pivot!.rowFields.length;
-    return state.pivot!.cols.flatMap((it, j) => (it.value === v ? [keyCols + j] : []));
+    return valueColumns(state.pivot!, v);
   };
   const pivotFormatPick: PivotValueFormat | undefined = state.pivot && state.formatControls === "columns" ? {
     get: (v) => { const c = pivotValueCols(v); return c.length && colTypeAt(c[0]) === "number" ? fmtRow(c[0]).value : null; },
@@ -1044,7 +1044,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     onOptions: setPivotView,
     totals: pivotTotals,
     valueFormat: pivotValueFormat,
-    formatPicked: state.pivot.cols.some((_, j) => !!colLocal[state.pivot!.rowFields.length + j]),
+    formatPicked: state.pivot.values.some((_, v) => valueColumns(state.pivot!, v).some((c) => !!colLocal[c])),
     onFields: pivotHost.current ? editPivotFields : undefined,
   } : null;
 
@@ -1113,7 +1113,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
           options={pivotOpts}
           onOptions={setPivotView}
           cellText={pivotCellText}
-          isErrorAt={(r, c) => isSolError(state.data[r]?.[c])}
+          isErrorAt={(r, c) => isSolError(pivotAt(r, c))}
           query={query}
           ribbon={pivotRibbonProps && <PivotRibbon {...pivotRibbonProps} />}
           menuHost={pivotMenuHost}

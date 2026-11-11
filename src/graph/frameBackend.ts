@@ -115,6 +115,13 @@ export function attachPivotLayout(frame: FrameValue, wire: unknown): void {
   const cells = (items: { tuple: FrameCell[] }[]) => items.map((it) => ({ ...it, tuple: it.tuple.map((x) => decodeWireCell(x) as FrameCell) }));
   const layout: PivotLayout = { ...w, rows: cells(w.rows) as PivotLayout["rows"], cols: cells(w.cols) as PivotLayout["cols"] };
   if (w.details) layout.details = w.details.map((d) => ({ ...d, values: d.values.map((x) => decodeWireCell(x) as FrameCell) }));
+  if (w.totals) {
+    const decode = (xs: unknown[]) => xs.map((x) => decodeWireCell(x) as FrameCell);
+    layout.totals = {
+      rows: w.totals.rows.map((t) => ({ index: t.index, cells: decode(t.cells) })),
+      cols: w.totals.cols.map((t) => ({ ...t, values: decode(t.values) })),
+    };
+  }
   setPivotLayout(frame, layout);
 }
 

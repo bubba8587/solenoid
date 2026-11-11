@@ -469,6 +469,9 @@ export class PivotNode extends GraphNode {
   rowSort = 0;
   colSort = 0;
   relativeTo = 0;
+  /** The totals are the Pivot view's, never the Frame's ([[C127]] pivotView); on, they also go out as Row Totals and
+   *  Column Totals. */
+  exportTotals = false;
   // Per field, the value keys to hide; ANDed with the wired `filter` mask.
   filterExclude: Record<string, string[]> = {};
   /** How the popup's Pivot view draws the output; display only. */
@@ -489,6 +492,7 @@ export class PivotNode extends GraphNode {
   constructor(init?: {
     label?: string; agg?: AggOp; funcs?: Record<string, AggOp>;
     rowTotalDepth?: number; colTotalDepth?: number; rowSort?: number; colSort?: number; relativeTo?: number;
+    exportTotals?: boolean;
     filterExclude?: Record<string, string[]>;
     pivotView?: Partial<PivotViewOptions>;
     detailFields?: string[];
@@ -513,6 +517,19 @@ export class PivotNode extends GraphNode {
     this.addInput("filter", logicalListIn("Filter"));
     for (const id of pairIdsFromKeys(init?.valueKeys, "calcName")) this.addPairWithId(id);
     this.addOutput("frame", frameOut("Wide"));
+    this.setExportTotals(init?.exportTotals === true);
+  }
+
+  /** Adds or removes the Row Totals and Column Totals outputs; the caller drops a departing output's cables first. */
+  setExportTotals(on: boolean): void {
+    this.exportTotals = on;
+    if (on && !this.outputs.rowTotals) {
+      this.addOutput("rowTotals", frameOut("Row Totals"));
+      this.addOutput("colTotals", frameOut("Column Totals"));
+    } else if (!on && this.outputs.rowTotals) {
+      this.removeOutput("rowTotals");
+      this.removeOutput("colTotals");
+    }
   }
 
   private addPairWithId(id: number): void {
@@ -539,7 +556,9 @@ export class PivotNode extends GraphNode {
     }
   }
 
-  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+  frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
+    // Row Totals and Column Totals take their columns from the data; the Frame's own shape has no totals in it.
+    if (outKey !== "frame") return null;
     const input = ctx.inputShape("frame");
     if (!input || ctx.wired("rowFields") || ctx.wired("colFields") || ctx.wired("values")) return null;
     // A calculated field's column is known only once it computes.
@@ -550,11 +569,11 @@ export class PivotNode extends GraphNode {
     const values = csvList(this.stringLiterals.values).filter((f) => valid.has(f));
     if (!values.length) return input;
     const funcs = values.map((name) => this.funcs[name] ?? this.agg);
-    return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs, rowTotalDepth: this.rowTotalDepth }, input);
+    return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs }, input);
   }
 
   data(inputs: Inputs) {
-    return nodeOnCore(this, inputs) as { frame: FrameOut };
+    return nodeOnCore(this, inputs) as { frame: FrameOut; rowTotals?: FrameOut; colTotals?: FrameOut };
   }
 }
 

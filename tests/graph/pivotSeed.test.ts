@@ -7,6 +7,7 @@ import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
 import type { FrameValue, FrameCell } from "../../src/graph/frame";
 import { readFrame, type FrameInput } from "../../src/graph/frameBackend";
+import { pivotViewFrame } from "../../src/graph/pivotLayout";
 import seed from "../fixtures/pivot-tables.json"; // the retired seed, kept as the Pivot fixture (2026-09-16)
 
 // Runs the "Pivot tables (one source, many views)" seed through a real editor +
@@ -42,10 +43,12 @@ describe("pivot-tables seed", () => {
       );
     }
 
-    const frameOf = async (seedId: string) => {
+    const cardFrame = async (seedId: string) => {
       const out = (await engine.fetch(byId.get(seedId)!.id)) as Record<string, unknown>;
       return (await readFrame(out.frame as FrameInput)) as FrameValue;
     };
+    // Each pivot as its view lays it out, totals in their places ([[C127]] pivotView: the card's Frame has none).
+    const frameOf = async (seedId: string) => pivotViewFrame(await cardFrame(seedId));
     const col = (f: FrameValue, name: string): FrameCell[] => {
       const c = f.columns.find((x) => x.name === name);
       return c!.values;
@@ -54,6 +57,9 @@ describe("pivot-tables seed", () => {
     const north = (f: FrameValue) => col(f, "Region").indexOf("North");
 
     // p1 — Region × Category SUM with row + column grand totals.
+    const p1Card = await cardFrame("p1");
+    expect(p1Card.columns.map((c) => c.name)).toEqual(["Region", "Electronics", "Furniture", "Office"]);
+    expect(p1Card.columns[0].values).toEqual(["East", "North", "South", "West"]);
     const p1 = await frameOf("p1");
     expect(p1.columns.map((c) => c.name)).toEqual(["Region", "Electronics", "Furniture", "Office", "Grand Total"]);
     expect(col(p1, "Region")).toEqual(["East", "North", "South", "West", "Grand Total"]);

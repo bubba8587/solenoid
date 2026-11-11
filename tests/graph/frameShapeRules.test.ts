@@ -258,7 +258,7 @@ describe("a wired config socket makes the shape unknown", () => {
     }
   });
 
-  it("totals turn a non-text key that holds a Total label into text, as the run does", async () => {
+  it("Group By's totals turn a non-text key that holds a Total label into text, as the run does; a Pivot's Frame has no totals", async () => {
     const DATED = "Year, Qtr, Qty\n2024, 1, 5\n2024, 2, 7\n2025, 1, 3";
     const g = new GroupByFrameNode({ totalDepth: 1 });
     g.stringLiterals.keys = "Year, Qtr";
@@ -269,7 +269,8 @@ describe("a wired config socket makes the shape unknown", () => {
     const p = new PivotNode({ rowTotalDepth: -1 });
     p.stringLiterals.rowFields = "Year, Qtr";
     p.stringLiterals.values = "Qty";
-    expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:string", "Qtr:number", "Qty:number"]);
+    // The totals are the Pivot view's, so the card's keys keep their types ([[C127]] pivotView).
+    expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:number", "Qtr:number", "Qty:number"]);
   });
 
 

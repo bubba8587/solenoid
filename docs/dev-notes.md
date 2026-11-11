@@ -15,6 +15,9 @@ specific item.
   card) is a plain one with a space, and an unbound `[Column]` in a field's body reads the cell's rows
   (`Eval::with_slices`). Configure Fields lists the fields by name (`calcFieldNames`). A wired λ's parameter naming no
   column reads blank through a side input, by design (as an unknown name in a formula does), not a silent bug.
+- PIVOTBY's totals are its view's ([[C127]] pivotView, the exception it carried removed): the card's Frame is leaf rows
+  by leaf columns, the totals ride on the layout (`split_pivot_totals`, `pivotAddress`, `pivotViewFrame`), and Export
+  totals adds Row Totals and Column Totals. `PIVOTBY()` in a formula keeps Excel's spill, an exception the author took.
 - The plugin export had started carrying `nodes/frame.ts` (a type import in `pivotConfig.ts`), which `plugin:lint` failed
   with 8 errors; fixed structurally, 0 errors, and a clean `npm ci && npm run build` in the snapshot passes.
 
