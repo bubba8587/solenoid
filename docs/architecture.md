@@ -262,7 +262,7 @@ idle is always the real DOM. There is no third renderer; do not build one.
 | `pathPoints.ts` (+`.test.ts`) | pure M/L/C/Q path → polyline flattening (`parsePathPoints`) |
 | `rasterAtlas.ts` (+`.test.ts`) | the capture atlas (`packAtlas`) — one canvas read-back per paint |
 | `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB mixing — a canvas can't evaluate `color-mix`/`var()` |
-| `domSync.ts` (+`.test.ts`) | DOM↔canvas transform sync (`camFromDrawMatrix`, viewport steering) |
+| `domSync.ts` (+`.test.ts`) | DOM↔canvas transform sync (`holderSyncTransform`: the viewport steered to the camera the canvas drew) |
 | `zoomSettle.ts` (+`.test.ts`) | The gesture-exit settle window (default 420 ms; `window.__zoomSettle` override) |
 | `canvasCapture.ts` | Static-export capture, deliberately separate from the live HTML-in-Canvas capture |
 | `devHarness.ts` | DEV-only screenshot-comparison hooks (tree-shaken from production) |

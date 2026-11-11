@@ -310,14 +310,11 @@ function RendererSection() {
         help={
           supported
             ? "Faster zoom and pan on big graphs. Experimental. The DOM renderer is the fallback."
-            : "Requires Chrome with chrome://flags/#canvas-draw-element. Unavailable in this browser."
+            : "Needs Chrome 157 or later. Unavailable in this browser."
         }
         on={on && supported}
         onToggle={() => { if (supported) renderModeStore.set(on ? "dom" : "html"); }}
       />
-      {!supported && (
-        <div className="solenoid-settings__note">Enable the flag and reload to use the canvas renderer.</div>
-      )}
     </div>
   );
 }

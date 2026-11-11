@@ -5,26 +5,27 @@ import { cablePolyline } from "./hicCableGeom";
 import type { SnapCable } from "./hicGraphSnapshot";
 import type { CableShape } from "./cableShape";
 import { packAtlas, type AtlasPlacement } from "./rasterAtlas";
-import { camFromDrawMatrix, plausibleNativeCam, type CamXform } from "./domSync";
+import type { CamXform } from "./domSync";
 import { IS_COARSE } from "./coarse";
 
 // An imperative engine, so HMR must invalidate or a stale instance stays alive.
 if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot?.invalidate());
 
 // ── WICG HTML-in-Canvas typing (not in lib.dom yet) ──────────────────────────────
-interface ElementImageLike { width: number; height: number; close?: () => void }
+interface ElementImageLike { close(): void }
+interface DrawElementImageOptions { preserveElementGeometry?: boolean }
 type Ctx2D = CanvasRenderingContext2D & {
-  drawElementImage?: (el: Element | ElementImageLike, dx: number, dy: number, dw?: number, dh?: number) => DOMMatrix | undefined;
-  getElementTransform?: (el: Element | ElementImageLike, drawTransform: DOMMatrix) => DOMMatrix;
+  drawElementImage?: (el: Element | ElementImageLike, dx: number, dy: number, dw: number, dh: number, opts?: DrawElementImageOptions) => void;
   reset?: () => void;
 };
 type LayoutCanvas = HTMLCanvasElement & {
-  layoutSubtree?: boolean;
+  content?: string;
   requestPaint?: () => void;
-  onpaint?: ((e: Event) => void) | null;
   captureElementImage?: (el: Element) => ElementImageLike;
-  getElementTransform?: (el: Element, drawTransform: DOMMatrix) => DOMMatrix;
+  getElementImageDefaultSize?: (el: Element | ElementImageLike) => { width: number; height: number };
 };
+/** The clones are pictures, never targets: a draw that synced their geometry would make them hit-testable where they land. */
+const DRAW_OPTS: DrawElementImageOptions = { preserveElementGeometry: true };
 
 const REF: number = 1;
 const MIP_MIN_PX = 6;
@@ -113,8 +114,9 @@ export class HtmlCanvasRenderer {
   constructor(host: HTMLElement) {
     this.host = host;
     this.canvas = document.createElement("canvas") as LayoutCanvas;
-    this.canvas.setAttribute("layoutsubtree", "");
-    this.canvas.layoutSubtree = true;
+    this.canvas.setAttribute("content", "drawable");
+    // The clones duplicate the real cards, which the accessibility tree already has.
+    this.canvas.setAttribute("aria-hidden", "true");
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
     this.canvas.style.height = "100%";
@@ -122,7 +124,7 @@ export class HtmlCanvasRenderer {
     this.ctx = this.canvas.getContext("2d") as Ctx2D;
 
     this.scratch = document.createElement("canvas") as LayoutCanvas;
-    this.scratch.setAttribute("layoutsubtree", "");
+    this.scratch.setAttribute("content", "drawable");
     this.sctx = this.scratch.getContext("2d") as Ctx2D | null;
 
     this.resize();
@@ -224,6 +226,8 @@ export class HtmlCanvasRenderer {
 
   private cloneFor(el: HTMLElement, w: number, h: number): HTMLElement {
     const wrap = document.createElement("div");
+    // drawElementImage and captureElementImage throw on an element without it.
+    wrap.setAttribute("drawable", "");
     wrap.style.position = "absolute";
     wrap.style.left = "0"; wrap.style.top = "0"; wrap.style.margin = "0";
     wrap.style.boxSizing = "content-box";
@@ -408,19 +412,11 @@ export class HtmlCanvasRenderer {
         "| drawElementImage(main):", typeof this.ctx.drawElementImage,
         "| drawElementImage(scratch):", typeof this.sctx?.drawElementImage,
         "| node:", n.id, `${n.w}×${n.h}`, "refImg:", !!n.refImg);
-    const get = this.nativeGetElementTransform();
-    log("getElementTransform:", get ? (typeof this.ctx.getElementTransform === "function" ? "on ctx" : "on canvas") : "unavailable");
-    if (get && typeof DOMMatrix === "function") {
-      try {
-        const m = get(n.refEl, new DOMMatrix());
-        log("getElementTransform(identity) →", m ? `a=${m.a} d=${m.d} e=${m.e} f=${m.f}` : String(m));
-      } catch (e) { log("getElementTransform THREW:", String(e)); }
-    }
     let img: ElementImageLike | null = null;
     if (typeof this.canvas.captureElementImage === "function") {
       try {
         img = this.canvas.captureElementImage(n.refEl);
-        log("capture OK:", img && { w: img.width, h: img.height, ctor: (img as object).constructor?.name });
+        log("capture OK:", img && { ...this.canvas.getElementImageDefaultSize?.(img), ctor: (img as object).constructor?.name });
       } catch (e) { log("capture THREW:", String(e)); }
     }
     const src = img ?? n.refImg;
@@ -432,17 +428,17 @@ export class HtmlCanvasRenderer {
       if (this.sctx && typeof this.sctx.drawElementImage === "function") {
         this.scratch.width = 64; this.scratch.height = 64;
         if (src) {
-          try { this.sctx.drawElementImage(src, 0, 0, 64, 64); log("scratch.draw(capture) OK"); }
+          try { this.sctx.drawElementImage(src, 0, 0, 64, 64, DRAW_OPTS); log("scratch.draw(capture) OK"); }
           catch (e) { log("scratch.draw(capture) THREW:", String(e)); }
         }
-        try { this.sctx.drawElementImage(n.refEl, 0, 0, 64, 64); log("scratch.draw(element) OK"); }
+        try { this.sctx.drawElementImage(n.refEl, 0, 0, 64, 64, DRAW_OPTS); log("scratch.draw(element) OK"); }
         catch (e) { log("scratch.draw(element) THREW:", String(e)); }
         try { const b = await createImageBitmap(this.scratch); log("createImageBitmap(scratch) OK:", b.width, b.height); b.close(); }
         catch (e) { log("createImageBitmap(scratch) THREW:", String(e)); }
       }
       try {
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.ctx.drawElementImage!(n.refEl, 0, 0, 64, 64);
+        this.ctx.drawElementImage!(n.refEl, 0, 0, 64, 64, DRAW_OPTS);
         const b = await createImageBitmap(this.canvas, 0, 0, 64, 64);
         const pc = document.createElement("canvas"); pc.width = 64; pc.height = 64;
         const pctx = pc.getContext("2d")!;
@@ -500,7 +496,7 @@ export class HtmlCanvasRenderer {
         const clone = (n.refEl.firstElementChild?.firstElementChild ?? n.refEl.firstElementChild) as HTMLElement | null;
         console.log("[hc-diag]", {
           id: n.id, w: n.w, h: n.h, PAD, dpr: this.dpr,
-          imgW: n.refImg.width, imgH: n.refImg.height,
+          img: this.canvas.getElementImageDefaultSize?.(n.refImg),
           cloneOffsetW: clone?.offsetWidth, cloneOffsetH: clone?.offsetHeight,
         });
         const origCard = n.srcEl;
@@ -562,7 +558,7 @@ export class HtmlCanvasRenderer {
           const refW = Math.max(1, Math.round(pw * REF)), refH = Math.max(1, Math.round(ph * REF));
           this.scratch.width = refW; this.scratch.height = refH;
           this.sctx.clearRect(0, 0, refW, refH);
-          this.sctx.drawElementImage(n.refImg ?? n.refEl, 0, 0, refW, refH);
+          this.sctx.drawElementImage(n.refImg ?? n.refEl, 0, 0, refW, refH, DRAW_OPTS);
           top = await createImageBitmap(this.scratch, 0, 0, refW, refH);
         } catch (e) { top = null; HtmlCanvasRenderer.logPathOnce(`scratch raster rejected (${String(e)})`); }
       }
@@ -626,7 +622,7 @@ export class HtmlCanvasRenderer {
           const n = byId.get(p.id);
           if (!n) continue;
           try {
-            ctx.drawElementImage!(n.refEl, p.x, p.y, p.w, p.h);
+            ctx.drawElementImage!(n.refEl, p.x, p.y, p.w, p.h, DRAW_OPTS);
             n.needsPaintRaster = false; // In flight, so later paints skip it until the snapshot resolves; a failure re-arms it.
             drawnJobs.push({ n, p });
           } catch (e) {
@@ -755,18 +751,14 @@ export class HtmlCanvasRenderer {
     const vp = { minX: tl.wx, minY: tl.wy, maxX: br.wx, maxY: br.wy };
     const inView = (n: EngineNode): boolean => n.x + n.w >= vp.minX && n.x <= vp.maxX && n.y + n.h >= vp.minY && n.y <= vp.maxY;
 
-    let syncM: DOMMatrix | undefined;
-    let syncAnchor: { x: number; y: number } | null = null;
-
     const drawOne = (n: EngineNode): boolean => {
       const dx = n.x - PAD, dy = n.y - PAD, dw = n.w + 2 * PAD, dh = n.h + 2 * PAD;
-      const keepSync = (m: DOMMatrix | undefined) => { if (m && !syncM) { syncM = m; syncAnchor = { x: dx, y: dy }; } };
       if (useCached) {
         if (n.pyramid.length) { ctx.drawImage(n.pyramid[Math.min(idealI, n.pyramid.length - 1)].bmp, dx, dy, dw, dh); return true; }
-        if (n.refImg) { try { keepSync(ctx.drawElementImage!(n.refImg, dx, dy, dw, dh)); this.slowDraws++; return true; } catch { return false; } }
-        try { keepSync(ctx.drawElementImage!(n.refEl, dx, dy, dw, dh)); this.slowDraws++; return true; } catch { return false; }
+        if (n.refImg) { try { ctx.drawElementImage!(n.refImg, dx, dy, dw, dh, DRAW_OPTS); this.slowDraws++; return true; } catch { return false; } }
+        try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh, DRAW_OPTS); this.slowDraws++; return true; } catch { return false; }
       }
-      try { keepSync(ctx.drawElementImage!(n.refEl, dx, dy, dw, dh)); return true; } catch { return false; }
+      try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh, DRAW_OPTS); return true; } catch { return false; }
     };
 
     let drawn = 0;
@@ -779,28 +771,8 @@ export class HtmlCanvasRenderer {
     this.nVisible = drawn;
     this.drawSelection();
 
-    // ── Presented camera, for the DOM-only sync (domSync.ts) ─────────────────────
-    const book: CamXform = { k: cam.scale, x: cam.tx, y: cam.ty };
-    if (!syncM && drawn > 0 && typeof DOMMatrix === "function") {
-      const get = this.nativeGetElementTransform();
-      if (get) {
-        const first = this.nodes.find((n) => inView(n));
-        if (first) {
-          const fx = first.x - PAD, fy = first.y - PAD;
-          try {
-            const dm = new DOMMatrix([cam.scale, 0, 0, cam.scale, cam.scale * fx + cam.tx, cam.scale * fy + cam.ty]);
-            const m = get(first.refEl, dm);
-            if (m) { syncM = m; syncAnchor = { x: fx, y: fy }; }
-          } catch { /* experimental surface — the bookkeeping camera covers it */ }
-        }
-      }
-    }
-    let presented = book;
-    if (syncM && syncAnchor) {
-      const nat = camFromDrawMatrix(syncM, syncAnchor.x, syncAnchor.y);
-      if (nat && plausibleNativeCam(nat, book)) presented = nat;
-    }
-    this.presented = presented;
+    // The camera this frame drew, for the DOM-only sync (domSync.ts): the paint re-read it from the transform source.
+    this.presented = { k: cam.scale, x: cam.tx, y: cam.ty };
 
     const t1 = performance.now();
     const dt = this.lastDrawTs ? t1 - this.lastDrawTs : 16;
@@ -808,14 +780,6 @@ export class HtmlCanvasRenderer {
     const inst = 1000 / Math.max(1, dt);
     this.fpsEMA = this.fpsEMA ? this.fpsEMA * 0.8 + inst * 0.2 : inst;
     this.lastFrameMs = t1 - t0;
-  }
-
-  private nativeGetElementTransform(): ((el: Element, m: DOMMatrix) => DOMMatrix | undefined) | null {
-    const c = this.ctx.getElementTransform;
-    if (typeof c === "function") return c.bind(this.ctx);
-    const k = this.canvas.getElementTransform;
-    if (typeof k === "function") return k.bind(this.canvas);
-    return null;
   }
 
   private hasUnbuiltVisible(): boolean {

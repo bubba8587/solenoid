@@ -6,6 +6,14 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-11: HTML-in-Canvas on the shipped API; phone pan layer tried and reverted; cloud session)
+- HTML-in-Canvas follows the API as shipped (Chrome 157 default-on; the 155 changes): the canvas wears `content="drawable"`,
+  each clone wrapper `drawable`, every draw passes `preserveElementGeometry: true`, the canvas is `aria-hidden`, and the
+  presented camera is the renderer's own (`drawElementImage` returns nothing now). Pre-155 builds aren't offered the mode.
+  Unexercised in a browser: the container's Chromium is 153, the old API. Spec: [[html-in-canvas]].
+- The plain pan layer on phones at zoom 0.4 and below made no difference on the author's phone; reverted
+  (`canvas-frame-cost-findings.md` § 2).
+
 ### SESSION DIGEST (2026-11-10: light and dark theming, the tint band, dark links; cloud session)
 - **Orchard light under a non-home accent was a pastel wash**: the rotation carried its cream's chroma (0.022, borders
   0.040) to blue, pink and violet, two to three times Blueprint's. Fixed by a rule, not a table: an earth band
