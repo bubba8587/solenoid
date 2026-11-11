@@ -19,8 +19,13 @@ specific item.
   and portal cards are captured like any card, and cards and vectors draw in the DOM's z order. Gone: the canvas's own
   cable router, the socket snapshot, the DOM-only set and the holder-to-canvas camera sync. Checked on Chrome 157 (a
   downloaded Chrome for Testing): canvas-only and DOM-only frames of one page match, and no live DOM shows in any frame
-  of a wheel zoom. Open: on personal-finance the canvas's Accounts card kept a "missing" capture after the live card
-  loaded its CSV, so some card update reaches neither the render pipe nor a subscribed store; untraced.
+  of a wheel zoom.
+- HIC capture freshness: a MutationObserver on the cards, a `sol-canvas-drawn` event from canvas figures, and a clone's
+  canvases as images (Chrome draws a nested canvas as a misplaced slice). chart-showcase: 9 of 42 cards were stale (the
+  personal-finance Accounts card was the same bug); now none at load or after a slider moves, and no seed mutates a card
+  at idle. The canvas sits under React Flow and paints the backing itself, so a selected card shows over the groups the
+  canvas draws. A rebuild keeps unchanged cards' bitmaps (drop-then-pan 6.9 s to 1.85 s at 4× throttle). Test harness
+  for all of this: canvas-only against DOM-only frames of one page, per card (scratchpad scripts; not in the repo).
 
 ### SESSION DIGEST (2026-11-10: light and dark theming, the tint band, dark links; cloud session)
 - **Orchard light under a non-home accent was a pastel wash**: the rotation carried its cream's chroma (0.022, borders

@@ -192,18 +192,30 @@ export class HtmlCanvasRenderer {
     return out;
   }
 
-  setNodes(specs: EngineNodeSpec[]): void {
-    this.releaseNodes();
-    this.nodes = specs.map((s) => {
+  /** `keep` reuses a card whose element and size are unchanged, with its bitmaps, and only moves or restacks it: a card's own
+   *  changes reach a re-capture another way ([[html-in-canvas#Keeping the capture fresh]]). Without it every card is re-cloned. */
+  setNodes(specs: EngineNodeSpec[], keep = false): void {
+    const kept = new Set<EngineNode>();
+    let fresh = 0;
+    const next = specs.map((s) => {
+      const o = keep ? this.nodeById.get(s.id) : undefined;
+      if (o && o.srcEl === s.el && o.w === s.w && o.h === s.h) {
+        o.x = s.x; o.y = s.y; o.z = s.z; o.isGroup = s.isGroup;
+        kept.add(o);
+        return o;
+      }
+      fresh++;
       const n: EngineNode = { id: s.id, refEl: this.cloneFor(s.el, s.w, s.h), srcEl: s.el, refImg: null, pyramid: [], x: s.x, y: s.y, w: s.w, h: s.h, isGroup: s.isGroup, z: s.z };
       this.trackDecode(n, this.lastDecode);
       return n;
     });
+    for (const n of this.nodes) if (!kept.has(n)) this.releaseNode(n);
+    this.nodes = next;
     this.sortNodes();
     this.nodeById.clear();
     for (const n of this.nodes) this.nodeById.set(n.id, n);
-    this.captured = false;
-    this.builtCount = 0;
+    if (fresh) this.captured = false;
+    this.builtCount = this.nodes.filter((n) => n.pyramid.length).length;
     this.dirty = true;
     if (this.canvas.requestPaint) this.canvas.requestPaint();
   }
@@ -490,12 +502,14 @@ export class HtmlCanvasRenderer {
   }
 
   // ── internals ──────────────────────────────────────────────────────────────────
+  private releaseNode(n: EngineNode): void {
+    n.refImg?.close?.();
+    for (const p of n.pyramid) p.bmp?.close?.();
+    n.refEl.remove();
+  }
+
   private releaseNodes(): void {
-    for (const n of this.nodes) {
-      n.refImg?.close?.();
-      for (const p of n.pyramid) p.bmp?.close?.();
-      n.refEl.remove();
-    }
+    for (const n of this.nodes) this.releaseNode(n);
     this.nodes = [];
     this.nodeById.clear();
   }

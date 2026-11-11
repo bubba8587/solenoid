@@ -209,7 +209,8 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
 
 
     // A collapsed group's members read as hidden by computed visibility, so the build un-hides the holder and re-hides it before yielding (no paint in between).
-    const doBuild = (): boolean => {
+    /** `recapture` re-clones every card; otherwise a card whose element and size are unchanged keeps its bitmaps. */
+    const doBuild = (recapture = true): boolean => {
       if (!holder().isConnected) return false;
       const hidden = holder().classList.contains("solenoid-html-hidden");
       if (hidden) setHolderHidden(false);
@@ -219,7 +220,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
       readBacking();
       observe();
       if (!specs.length) return false;
-      engine.setNodes(specs);
+      engine.setNodes(specs, !recapture);
       return true;
     };
 
@@ -317,8 +318,10 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
     let rebuildTimer = 0;
     let dirtyIds: Set<string> | null = new Set();
     let heldForLasso = false;
-    const scheduleRebuild = (id?: string) => {
+    let recaptureAll = false;
+    const scheduleRebuild = (id?: string, recapture = false) => {
       if (!built) return;
+      if (recapture) recaptureAll = true;
       if (id === undefined) dirtyIds = null;
       else if (dirtyIds) dirtyIds.add(id);
       if (lassoActiveStore.get()) { heldForLasso = true; return; }
@@ -345,7 +348,9 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
             return;
           }
         }
-        doBuild();
+        const all = recaptureAll;
+        recaptureAll = false;
+        doBuild(all);
       }, 150);
     };
     const triggers: Record<string, number> = {};
@@ -354,7 +359,10 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
       () => ({ ...engine.getStats(), vectorLayers: vectorCount });
     (window as unknown as { __hcProbe?: () => void }).__hcProbe = () => engine.probe();
     const count = (cause: string) => { triggers[cause] = (triggers[cause] ?? 0) + 1; };
-    const fullRebuild = (cause: string) => () => { count(cause); scheduleRebuild(); };
+    // A rebuild re-reads which cards show, where and in what order, and keeps every unchanged card's bitmaps; a card's own look
+    // reaches it through the render pipe, the card observer or its canvas. `recapture` is for a change that restyles cards
+    // without touching their DOM (CSS variables, a root class), which only a re-clone picks up.
+    const fullRebuild = (cause: string, recapture = false) => () => { count(cause); scheduleRebuild(undefined, recapture); };
     // Not cableValueStore: its bump carries no ids, so it would force a full rebuild every pass; values arrive per id through the render pipe.
     // A rebuild held for a lasso runs on release, with every id collected meanwhile.
     const unsubLasso = lassoActiveStore.subscribe(() => {
@@ -368,10 +376,10 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
     const unsubGroupCollapse = groupCollapseStore.subscribe(fullRebuild("groupCollapse"));
     const unsubSize = nodeSizeStore.subscribe(fullRebuild("nodeSize"));
     const unsubMembership = groupMembershipStore.subscribe(fullRebuild("membership"));
-    const unsubTheme = appThemeStore.subscribe(fullRebuild("theme"));
-    const unsubFmt = formatAnnotationStore.subscribe(fullRebuild("formatAnnotation"));
+    const unsubTheme = appThemeStore.subscribe(fullRebuild("theme", true));
+    const unsubFmt = formatAnnotationStore.subscribe(fullRebuild("formatAnnotation", true));
     // Semantic zoom flips a root CSS class the captured bitmaps don't know about.
-    const unsubSemantic = semanticZoomStore.subscribe(fullRebuild("semanticZoom"));
+    const unsubSemantic = semanticZoomStore.subscribe(fullRebuild("semanticZoom", true));
     const unsubRender = view.onRender((id) => { count("render-pipe"); scheduleRebuild(id); });
 
     let lastK = NaN, lastX = NaN, lastY = NaN;
