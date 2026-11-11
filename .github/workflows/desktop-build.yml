@@ -2,14 +2,9 @@ name: Build (desktop)
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - "claude/**"
-    # A version tag (e.g. v0.1.1-alpha) is the "this push is a release"
-    # signal — it triggers the same builds, then the release job publishes a
-    # GitHub Release with both platforms' files. A normal commit push only
-    # builds the artifacts; it does NOT release.
+    # A version tag (e.g. v0.1.1-alpha) is the release: it builds both platforms, then the release job publishes a
+    # GitHub Release with their files. A push to main doesn't build: the tag that follows a merge builds the same tree.
+    # Run it by hand (workflow_dispatch) for artifacts without a release.
     tags:
       - "v*"
   workflow_dispatch:

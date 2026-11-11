@@ -4,6 +4,8 @@ name: Rust supply chain
 # (public/third-party-licenses-rust.txt), and the desktop shell's own lints and tests.
 on:
   push:
+    # Not main or a tag: a merge there carries develop's tree, already checked.
+    branches-ignore: [main]
     paths:
       - "crates/**"
       - "src-tauri/**"

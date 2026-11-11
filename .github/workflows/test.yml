@@ -5,6 +5,8 @@ name: Test
 
 on:
   push:
+    # Not main: a merge there carries develop's tree, already tested. Naming branches only also skips tag pushes.
+    branches-ignore: [main]
   pull_request:
   workflow_dispatch:
 
