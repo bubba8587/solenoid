@@ -78,8 +78,7 @@ jobs:
   linux:
     needs: find-build
     if: ${{ !cancelled() && needs.find-build.outputs.run_id == '' }}
-    # The oldest supported runner: an AppImage built against a newer glibc will
-    # not start on an older distro.
+    # The oldest supported runner: a .deb built against a newer glibc will not start on an older distro.
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
@@ -117,18 +116,16 @@ jobs:
       - name: Install JS dependencies
         run: npm ci
 
-      # The AppImage is the portable file (download, mark executable, run);
-      # the .deb installs it with a launcher on Debian and Ubuntu.
-      - name: Build the AppImage and the .deb
-        run: npm run tauri build -- --bundles appimage,deb
+      # The .deb installs it with a launcher on Debian, Ubuntu and Mint. No AppImage until someone asks (author
+      # 2026-11-11): it carries its own WebKitGTK, 92 MB to the .deb's 18, and the longest bundling step.
+      - name: Build the .deb
+        run: npm run tauri build -- --bundles deb
 
-      - name: Upload the Linux bundles
+      - name: Upload the .deb
         uses: actions/upload-artifact@v4
         with:
           name: solenoid-linux-${{ github.sha }}
-          path: |
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/deb/*.deb
+          path: src-tauri/target/release/bundle/deb/*.deb
           if-no-files-found: error
           retention-days: 30
 
@@ -161,7 +158,6 @@ jobs:
         run: |
           v="${GITHUB_REF_NAME#v}"
           cp "$(find built -name 'solenoid.exe' | head -1)" "solenoid-$v-windows-x64.exe"
-          cp "$(find built -name '*.AppImage' | head -1)" "solenoid-$v-linux-x64.AppImage"
           cp "$(find built -name '*.deb' | head -1)" "solenoid-$v-linux-amd64.deb"
           ls -l solenoid-*
 
@@ -170,7 +166,6 @@ jobs:
         with:
           files: |
             solenoid-*-windows-x64.exe
-            solenoid-*-linux-x64.AppImage
             solenoid-*-linux-amd64.deb
           fail_on_unmatched_files: true
           # Tags containing a hyphen (v0.1.1-alpha, v0.2.0-beta.1) are marked

@@ -163,7 +163,7 @@ the slot rotation is `../tree/specs/documents/per-doc-autosave-persistence.md` Â
   modes including Monte Carlo and by-row; Pipeline is a manual-mode preset of one chain, [[C53]]
   pipelineIsCompositePreset); charts; Note (a pure source), Report (a pure sink) and Mermaid;
   about ten domain packs; and Placeholder for unknown types.
-- **Desktop:** the Tauri shell (Windows portable exe; Linux AppImage and .deb), local files
+- **Desktop:** the Tauri shell (Windows portable exe; Linux .deb), local files
   (Parquet included), F12 devtools, the accent window border, and images bundled
   beside the document.
 
