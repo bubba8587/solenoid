@@ -24,7 +24,8 @@ import { holderSyncTransform, holderTransform } from "../domSync";
 import "./htmlCanvasLayer.css";
 
 const RENDERER_MIN_NODES = 100;
-const HOLD_ZOOM = 0.4;
+/** Held at every zoom: going back to the DOM repaints every card on screen, which on a phone cost more than the canvas saved. */
+const HOLD_ZOOM = Infinity;
 const WALK_SETTLE = 4;
 
 const graphDomWeight = (ed: GraphEditor<Schemes>): number => {

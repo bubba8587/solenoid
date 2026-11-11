@@ -40,8 +40,8 @@ Tests:
    - A scale change repaints the whole visible DOM at the new raster scale, while a pan only recomposites, and wheel zoom is notchy with no held-pointer signal. A short zoom settle would leave and re-enter the gesture on every notch and pay that repaint each time.
    - A longer settle doesn't cure choppy zoom: a deployed 3000 ms A/B ruled it out.
    - `window.__zoomSettle` overrides the zoom settle live, so a deployed preview can be A/B'd with no redeploy. Only a finite, non-negative number is taken; anything else falls back to the default rather than set a nonsense timer.
-4. **Held.** If the gesture ends below `HOLD_ZOOM = 0.4`, the canvas keeps drawing at rest. The DOM comes back muted (by opacity, so it still hit-tests) and the selected or focused cards show as live DOM on top. The renderer skips those live cards (`setDomLive`), so nothing paints twice. At that zoom DOM text is unreadable anyway, every card is in view so the settle repaint would be at its most expensive, and holding removes the pop at gesture end. `window.__hcHoldZoom` overrides it.
-5. **Idle.** Above the hold zoom the holder is fully restored and the canvas clears to transparent. The canvas element itself stays visible even when idle, because capture needs it rendered.
+4. **Held.** When a gesture ends below `HOLD_ZOOM`, the canvas keeps drawing at rest. The DOM comes back muted (by opacity, so it still hit-tests) and the selected or focused cards show as live DOM on top. The renderer skips those live cards (`setDomLive`), so nothing paints twice. `HOLD_ZOOM` is `Infinity`, so the layer holds at every zoom: going back to the DOM repaints every card on screen at the device's pixel density, and zoomed in, where pans are short and many, that repaint on each settle made a phone pan worse than zoomed out (author, 2026-11-11). It was 0.4, where DOM text is unreadable anyway. The trade: a card at rest is the 1× capture, soft past 100% zoom on a dense screen, and an unselected card shows no hover state. A redraw from the live element on settle was weighed and refused, since it is the same full-resolution repaint. `window.__hcHoldZoom` overrides it live (0.4 restores the old line). **Reopen if** the softness or the missing hover states cost more than the pan saves.
+5. **Idle.** Above the hold zoom (only under an `__hcHoldZoom` override) the holder is fully restored and the canvas clears to transparent. The canvas element itself stays visible even when idle, because capture needs it rendered.
 
 ```mermaid
 stateDiagram-v2
@@ -54,8 +54,8 @@ stateDiagram-v2
     Build --> Idle: captured
     Idle --> Gesture: a camera change
     Held --> Gesture: a camera change
-    Gesture --> Idle: settled at zoom 0.4 or more
-    Gesture --> Held: settled below zoom 0.4
+    Gesture --> Idle: settled at or above the hold zoom (an override only)
+    Gesture --> Held: settled below the hold zoom (every zoom by default)
 ```
 
 A lasso never enters the gesture: it moves no camera, so the swap would only show a stale snapshot.
