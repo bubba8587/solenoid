@@ -4,8 +4,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AggOp } from "../frameOps";
 import { formatFrameCell, type FrameCell } from "../frame";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { PivotConfig } from "../pivotConfig";
-import { pivotKey } from "../pivotConfig";
+import { DATE_GROUPS, dateGroupOf, pivotKey, regroupField } from "../pivotConfig";
 import { FUNC_CAPTION, groupKey, valueCaption, type PivotLayout, type PivotViewOptions } from "../pivotLayout";
 import { useOutsideClose, type PointerMenuItem, type PointerMenuSection } from "./TableEditMenu";
 import { useEscapeLayer } from "./escapeLayers";
@@ -135,6 +136,14 @@ export function pivotMenuSections({ target, layout, host, options, onOptions, co
     const item = target.kind === "item" ? target : null;
     sections.push({ heading: item ? `${name}: ${item.text}` : name, items: filterItems(name, item?.key, item?.text) });
     sections.push({ heading: "Sort", items: sortItems(target.axis, name, types[target.field] ?? "string") });
+    // A date field, or one already grouped: Excel's Group, by a period, and back to the dates.
+    const grouped = dateGroupOf(name);
+    if ((grouped || types[target.field] === "date") && (target.axis === "rows" ? cfg.rows : cfg.cols).includes(name)) {
+      sections.push({ heading: "Group By", items: [
+        ...DATE_GROUPS.map((u) => ({ label: u, checked: grouped?.unit === u, onClick: () => host.apply(regroupField(host.config(), target.axis, name, u)) })),
+        { label: "Dates", checked: !grouped, onClick: () => host.apply(regroupField(host.config(), target.axis, name, null)) },
+      ] });
+    }
     sections.push({ items: fieldItems(target.axis, target.field, name) });
     if (item) sections.push({ items: [{ label: "Copy", onClick: () => copyText(item.text) }] });
     return sections;
@@ -182,11 +191,11 @@ export function pivotMenuSections({ target, layout, host, options, onOptions, co
 }
 
 /** A field value's key as the list shows it: a number or date in its type, the blank as `(blank)`. */
-export function keyLabel(type: string, key: string): string {
+export function keyLabel(type: string, key: string, format?: FormatAnnotation | null): string {
   if (key === "") return "(blank)";
   const n = Number(key);
   if ((type === "number" || type === "date") && key.trim() !== "" && Number.isFinite(n)) {
-    const f = formatFrameCell(type as never, n);
+    const f = formatFrameCell(type as never, n, format ?? undefined);
     return f == null ? key : String(f);
   }
   return key;
@@ -235,7 +244,8 @@ export function PivotFieldDropdown({ at, axis, initialField = 0, layout, host, o
   const cur = cfg[sortKey];
   const [up, down] = sortWords(type);
   const write = (change: (c: PivotConfig) => void) => { const next = copyOf(host.config()); change(next); host.apply(next); };
-  const label = (k: string) => keyLabel(type, k);
+  const format = (axis === "rows" ? layout.rowFormats : layout.colFormats)?.[field] ?? null;
+  const label = (k: string) => keyLabel(type, k, format);
   return (
     <div ref={ref} className="pivot-field-drop sol-popup-menu__list sol-popup-menu__list--at" role="dialog" aria-label={`${name} sort and filter`}
       style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>

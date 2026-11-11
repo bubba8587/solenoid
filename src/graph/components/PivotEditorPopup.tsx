@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { pivotEditor } from "../pivotEditorStore";
 import { notifyGraphChanged, processGraph } from "../process";
-import { pivotConfigOf, writePivotConfig, type PivotConfig } from "../pivotConfig";
+import { DATE_GROUPS, dateGroupOf, pivotConfigOf, regroupField, writePivotConfig, type DateGroup, type PivotConfig } from "../pivotConfig";
 import { caseTwin } from "../frame";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameOps";
@@ -120,7 +120,10 @@ export function PivotEditorPopup() {
   function valueLabel(field: string, key: string): string {
     if (key === "") return "(blank)";
     // A blank key must not read as serial 0 — `Number("")` is 0 (30-Dec-1899).
-    if (typeOf(field) === "date" && key.trim() !== "") { const n = Number(key); return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : key; }
+    if (typeOf(field) === "date" && key.trim() !== "") {
+      const n = Number(key);
+      return Number.isFinite(n) ? formatDateSerial(n, dateGroupOf(field)?.unit === "Months" ? "MMM YYYY" : DEFAULT_DATE_FORMAT) : key;
+    }
     return key;
   }
   /** Firefox starts no HTML5 drag without data on it, so the field's name rides along; the drop reads `drag`. */
@@ -169,6 +172,13 @@ export function PivotEditorPopup() {
     >
       <span className="pivot-chip__glyph">{TYPE_GLYPH(typeOf(field))}</span>
       <span className="pivot-chip__name">{field}</span>
+      {(zone === "rows" || zone === "cols") && typeOf(dateGroupOf(field)?.from ?? field) === "date" && (
+        <select className="pivot-chip__func" value={dateGroupOf(field)?.unit ?? ""} title="Group by" onPointerDown={(e) => e.stopPropagation()}
+          onChange={(e) => commit(regroupField(cfg, zone, field, (e.target.value || null) as DateGroup | null))}>
+          <option value="">Dates</option>
+          {DATE_GROUPS.map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+      )}
       <button className="pivot-chip__x" onClick={() => removeField(zone, field)} aria-label="Remove" title="Remove">×</button>
     </span>
   );

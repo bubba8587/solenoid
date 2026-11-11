@@ -1689,6 +1689,20 @@ pub(crate) fn format_frame_cell(ty: FrameColType, v: &FrameCell) -> String {
     }
 }
 
+/// A pivot key's text in its column's own date pattern where it has one (a month field's `Jan 2026`), else as
+/// `format_frame_cell` writes it.
+fn key_text(col: &FrameColumn, v: &FrameCell) -> String {
+    let pattern = col
+        .format
+        .as_ref()
+        .filter(|f| f.get("format").and_then(Json::as_str) == Some("date_custom"))
+        .and_then(|f| f.get("customPattern").and_then(Json::as_str));
+    match (col.ty, v, pattern) {
+        (FrameColType::Date, FrameCell::Num(n), Some(p)) if n.is_finite() => format_date_serial(*n, p),
+        _ => format_frame_cell(col.ty, v),
+    }
+}
+
 enum Score {
     Null,
     N(f64),
@@ -1954,7 +1968,7 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         if marked && c.ty != FrameColType::String {
             let values = values
                 .iter()
-                .map(|v| if v.is_null() { FrameCell::Null } else { FrameCell::str(&format_frame_cell(c.ty, v)) })
+                .map(|v| if v.is_null() { FrameCell::Null } else { FrameCell::str(&key_text(c, v)) })
                 .collect();
             out_cols.push(FrameColumn::new(key_names[k].clone(), FrameColType::String, values));
         } else {
@@ -1972,7 +1986,7 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
             t.iter()
                 .enumerate()
                 .map(|(k, x)| match col_cols.get(k) {
-                    Some(col) if col.ty == FrameColType::Date && !x.is_null() => format_frame_cell(col.ty, x),
+                    Some(col) if col.ty == FrameColType::Date && !x.is_null() => key_text(col, x),
                     _ => js_string(x).into_owned(),
                 })
                 .collect::<Vec<_>>()
@@ -2075,8 +2089,10 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     let mut layout = json!({
         "rowFields": row_fields,
         "rowTypes": row_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
+        "rowFormats": row_cols.iter().map(|c| c.format.as_deref().cloned().unwrap_or(Json::Null)).collect::<Vec<_>>(),
         "colFields": col_fields,
         "colTypes": col_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
+        "colFormats": col_cols.iter().map(|c| c.format.as_deref().cloned().unwrap_or(Json::Null)).collect::<Vec<_>>(),
         "values": value_names,
         "funcs": funcs.iter().map(|f| serde_json::to_value(f).unwrap_or(Json::Null)).chain(calcs.iter().map(|_| json!("calc"))).collect::<Vec<_>>(),
         "rows": row_out

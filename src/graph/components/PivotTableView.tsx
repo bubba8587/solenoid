@@ -5,6 +5,7 @@ import {
   type GrandMode, type PivotBodyRow, type PivotEmpty, type PivotForm, type PivotLayout, type PivotTotals, type PivotViewOptions, type SubtotalMode,
 } from "../pivotLayout";
 import { formatFrameCell, type FrameCell } from "../frame";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 import { ChevronDownIcon, ChevronRightIcon, MinusSquareIcon, PlusSquareIcon, SlidersIcon } from "./Icons";
 import { PopupChoice, segmentsWidth, useFitsWidth } from "./PopupChoice";
 import { useEscapeLayer } from "./escapeLayers";
@@ -43,10 +44,10 @@ interface PivotTotalsControl {
   setGrand: (mode: GrandMode) => void;
 }
 
-/** The fields' text in their own type: a date key reads as a date, not its serial. */
-const itemText = (types: readonly string[]) => (field: number, cell: FrameCell): string => {
+/** The fields' text in their own type and format: a date key reads as a date, not its serial, a month as `Jan 2026`. */
+const itemText = (types: readonly string[], formats: readonly (FormatAnnotation | null)[] = []) => (field: number, cell: FrameCell): string => {
   if (cell == null) return "(blank)";
-  const f = formatFrameCell((types[field] ?? "string") as never, cell);
+  const f = formatFrameCell((types[field] ?? "string") as never, cell, formats[field] ?? undefined);
   return f == null ? "(blank)" : String(f);
 };
 
@@ -203,7 +204,7 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
   } : undefined);
   // Which groups show their source rows is the popup's own state, never saved.
   const [openDetails, setOpenDetails] = useState<ReadonlySet<string>>(() => new Set());
-  const model = buildPivotModel(layout, options, itemText(layout.rowTypes), itemText(layout.colTypes), liveDetailKeys(layout, openDetails));
+  const model = buildPivotModel(layout, options, itemText(layout.rowTypes, layout.rowFormats), itemText(layout.colTypes, layout.colFormats), liveDetailKeys(layout, openDetails));
   const set = (patch: Partial<PivotViewOptions>) => onOptions({ ...options, ...patch });
   const toggleDetail = (key: string) => setOpenDetails((cur) => {
     const next = new Set(cur);

@@ -238,10 +238,11 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 - [ ] **`Text`** (wrapping SVG text) for long titles and labels.
 - Skipped on purpose, reopen if the reason goes: `ResponsiveContainer` (we size every figure), `RechartsThemeProvider` and its themes (the palette themes charts), animation (`AnimationControllerProvider` and the rest; charts draw static), the shape primitives (`Cross`, `Curve`, `Dot`, `Polygon`, `Rectangle`, `Sector`, `Trapezoid`, `Surface`, `Layer`, `ZIndexLayer`) except as building blocks for the items above.
 
-## Pivot (`tree/specs/computation/frame-verbs.md` § pivot; calculated fields landed 2026-11-10)
-- [ ] **Date grouping on a pivot field**: a date field grouped by Day, Week, Month, Quarter or Year in Configure Fields, the same field placeable at several levels (Year › Month), headers `Jan 2026`, `Q1 2026`. Today a date field pivots each distinct day; bucketing takes a Computed Column with `DATETRUNC` first.
+## Pivot (`tree/specs/computation/frame-verbs.md` § pivot; calculated fields landed 2026-11-10, date grouping and the view's menu 2026-11-11)
+- [ ] **Needs the author's call: a blank column item heads its column `null`** (a pivot whose column field has blanks: `js_string` of a null key in `col_header`, `frame_verbs.rs`); Excel heads it `(blank)`, as the Pivot view's labels already read. Renaming moves the output's column names, which a saved graph reads, so it waits (2026-11-11).
+- [ ] **Needs the author's call: items in first-seen order.** A pivot lists its items in the order the data first shows them unless a sort is set; Excel sorts them ascending by default. Grouped date fields make it plain (Days read in log order). Sorting by default moves every unsorted pivot's row order (2026-11-11).
 - [ ] **A Timeline card**: a date column in, a period strip to drag across (Day, Month, Quarter, Year), out the filtered frame and a logical mask for PIVOTBY's Filter input, so one Timeline drives several pivots, as Excel's connects to several. Slicer picks distinct values only.
-- [ ] **Date filters on a pivot field**: the field's exclusion list as a year › month › day tree rather than a checkbox per day, plus Before, After, Between. Relative ones (This Month, Year to Date) recalculate as days pass, which [[C44]] dateSerials keeps opt-in: the author's call.
+- [ ] **Date filters on a pivot field, what is left**: Before, After and Between on a date field, and relative ones (This Month, Year to Date), which recalculate as days pass and so stay opt-in by [[C44]] dateSerials: the author's call. The year › month › day checklist landed 2026-11-11 (`PivotFilterList.tsx`).
 - [ ] **Custom subtotal functions**: a field's subtotals with a function other than its cells' (Excel's Field Settings ▸ Custom subtotals). Totals today re-aggregate the source with the value's own function.
 
 ## Desktop (low priority, author 2026-11-10)

@@ -24,8 +24,11 @@ interface PivotDetailColumn { name: string; type: FrameColType; values: readonly
 export interface PivotLayout {
   rowFields: string[];
   rowTypes: FrameColType[];
+  /** Each row field's display format, where its column carries one (a month field's `MMM YYYY`). */
+  rowFormats?: (FormatAnnotation | null)[];
   colFields: string[];
   colTypes: FrameColType[];
+  colFormats?: (FormatAnnotation | null)[];
   values: string[];
   /** Each value's function; `calc` for a calculated field, which a cell's LAMBDA answers. */
   funcs: (AggOp | "calc")[];

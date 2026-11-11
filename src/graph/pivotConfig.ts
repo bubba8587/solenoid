@@ -57,3 +57,29 @@ export function pivotKey(cell: FrameCell): string {
   if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
   return String(cell);
 }
+
+/** Excel's grouped date fields, as the core derives them (`date_group_of`): `Months (When)` is `When` by month. */
+export const DATE_GROUPS = ["Years", "Quarters", "Months", "Weeks", "Days"] as const;
+export type DateGroup = (typeof DATE_GROUPS)[number];
+
+export function dateGroupOf(name: string): { unit: DateGroup; from: string } | null {
+  const m = /^(Years|Quarters|Months|Weeks|Days) \((.+)\)$/.exec(name);
+  return m ? { unit: m[1] as DateGroup, from: m[2] } : null;
+}
+
+/** The field a date column is placed as: grouped, or the column itself with no grouping. */
+export const groupedName = (from: string, unit: DateGroup | null): string => (unit ? `${unit} (${from})` : from);
+
+/** A placed field regrouped where it stands in its zone; a filter on the old grouping goes, since its keys no longer match. */
+export function regroupField(c: PivotConfig, zone: "rows" | "cols", field: string, unit: DateGroup | null): PivotConfig {
+  const from = dateGroupOf(field)?.from ?? field;
+  const name = groupedName(from, unit);
+  if (name === field) return c;
+  const list = [...c[zone]];
+  const at = list.indexOf(field);
+  if (at < 0) return c;
+  if (list.includes(name)) list.splice(at, 1); else list[at] = name;
+  const exclude = { ...c.exclude };
+  delete exclude[field];
+  return { ...c, [zone]: list, exclude };
+}
