@@ -47,12 +47,21 @@ export function jsonToFrame(text: string): FrameValue {
   throw new Error("Unsupported JSON shape");
 }
 
-function remoteTextToFrame(text: string, contentType: string, url: string): FrameValue {
+/** Column type picks as saved: by name, each one of the four types, anything else dropped. */
+function pickedColumnTypes(raw: unknown): Record<string, FrameColType> {
+  const out: Record<string, FrameColType> = {};
+  if (raw && typeof raw === "object") {
+    for (const [name, t] of Object.entries(raw)) if (t === "number" || t === "string" || t === "date" || t === "logical") out[name] = t;
+  }
+  return out;
+}
+
+function remoteTextToFrame(text: string, contentType: string, url: string, order = ""): FrameValue {
   const looksJson =
     /json/i.test(contentType) ||
     /\.json(\?|$)/i.test(url) ||
     /^\s*[[{]/.test(text);
-  return looksJson ? jsonToFrame(text) : csvToFrame(text);
+  return looksJson ? jsonToFrame(text) : csvToFrame(text, order);
 }
 
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
@@ -64,24 +73,32 @@ export class WebSourceNode extends GraphNode {
   label: string;
   url: string;
   refreshMinutes: number;
+  /** The CSV's date order: a column of dates written in numbers alone reads as dates in it. */
+  dateOrder: DateOrder;
+  /** Column types the user picked in the popup, by column name, over the ones the source reads as. */
+  columnTypes: Record<string, FrameColType> = {};
+  /** The types the source read as before `columnTypes`, so picking that type again drops the pick. */
+  readTypes: Record<string, FrameColType> = {};
   cachedResult: FrameValue | null = null;
   width = 260; height = 200;
 
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
 
-  constructor(init?: { label?: string; url?: string; refreshMinutes?: number }) {
+  constructor(init?: { label?: string; url?: string; refreshMinutes?: number; dateOrder?: DateOrder; columnTypes?: Record<string, FrameColType> }) {
     super("WebSource");
     this.label = init?.label ?? "Web Source";
     this.url = init?.url ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
+    this.columnTypes = pickedColumnTypes(init?.columnTypes);
     this.addOutput("frame", frameOut("Frame"));
   }
 
   data(): { frame: FrameValue | null } {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const ref = this.url.trim();
-    const key = connectionStore.key(this.id, ref);
+    const key = connectionStore.key(this.id, `${ref}\u0000${this.dateOrder}\u0000${JSON.stringify(this.columnTypes)}`);
     if (key === this.lastKey) { this.inflightKey = key; return { frame: this.cachedResult }; }
     if (ref !== "" && !requestNetwork(this.id)) return { frame: this.cachedResult };
     if (this.inflightKey !== key) {
@@ -102,7 +119,9 @@ export class WebSourceNode extends GraphNode {
     try {
       const { text: body, contentType } = await fetchText(ref, { from: this.id });
       if (this.inflightKey !== key) return { frame: this.cachedResult };
-      const frame = remoteTextToFrame(body, contentType, ref);
+      const asRead = remoteTextToFrame(body, contentType, ref, this.dateOrder);
+      this.readTypes = Object.fromEntries(asRead.columns.map((c) => [c.name, c.type]));
+      const frame = retypeColumns(asRead, this.columnTypes, this.dateOrder);
       this.cachedResult = frame;
       this.lastKey = key;
       connectionStore.setState(this.id, {
@@ -331,7 +350,7 @@ export class LocalFileNode extends GraphNode {
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     if (init?.columnTypes && typeof init.columnTypes === "object") {
-      for (const [name, t] of Object.entries(init.columnTypes)) if (t === "number" || t === "string" || t === "date" || t === "logical") this.columnTypes[name] = t;
+      this.columnTypes = pickedColumnTypes(init.columnTypes);
     }
     this.addOutput("frame", frameOut("Frame"));
     this.addOutput("plan", cubeOut("Plan"));

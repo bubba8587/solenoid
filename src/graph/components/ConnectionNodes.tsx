@@ -131,6 +131,37 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
 
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
 
+/** A card that reads a file's text into a table: what its popup's type buttons change. */
+interface RetypableSource {
+  id: string;
+  cachedResult: unknown;
+  columnTypes: Record<string, FrameColType>;
+  readTypes: Record<string, FrameColType>;
+  edited(): void;
+}
+
+/** A type picked in the popup's header: the column reads again as it, and picking the type the source read it as
+ *  drops the pick. The popup reopens on the new output. */
+async function retypeAndReopen(data: RetypableSource, c: number, type: FrameColType): Promise<void> {
+  const before = data.cachedResult;
+  const name = isFrameValue(before) ? before.columns[c]?.name : undefined;
+  if (!name) return;
+  const next = { ...data.columnTypes };
+  if (data.readTypes[name] === type) delete next[name];
+  else next[name] = type;
+  data.columnTypes = next;
+  // A popup edit fires no canvas event, so the save is scheduled by hand, as a Frame Input's popup save does.
+  scheduleAutosave();
+  data.edited();
+  await processGraph();
+  const shown = tablePopup.get();
+  const after = data.cachedResult;
+  if (!shown || !isFrameValue(after)) return;
+  void openFramePopup(after, {
+    label: shown.title, hostId: data.id, accent: shown.accent, groupColor: shown.groupColor, groupColorDark: shown.groupColorDark,
+  }, { onRetypeColumn: (col, t) => void retypeAndReopen(data, col, t) });
+}
+
 export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>) {
   const [url, setUrl] = useState(data.url);
   useEffect(() => { setUrl(data.url); }, [data.url]);
@@ -155,9 +186,14 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
+        <div className="sol-conn__field" title="How the source writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
+          Dates
+          <DateOrderToggle node={data} />
+        </div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField node={data} />
-        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)}
+          popupOverrides={{ onRetypeColumn: (col, t) => void retypeAndReopen(data, col, t) }} />
       </div>
     </NodeShell>
   );
@@ -312,27 +348,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
     void refreshConnection(data.id);
   }
 
-  /** A type picked in the popup's header: the column reads again as it, and picking the type the file read it as
-   *  drops the pick. The popup reopens on the new output. */
-  async function retypeColumn(c: number, type: FrameColType) {
-    const before = data.cachedResult;
-    const name = isFrameValue(before) ? before.columns[c]?.name : undefined;
-    if (!name) return;
-    const next = { ...data.columnTypes };
-    if (data.readTypes[name] === type) delete next[name];
-    else next[name] = type;
-    data.columnTypes = next;
-    // A popup edit fires no canvas event, so the save is scheduled by hand, as a Frame Input's popup save does.
-    scheduleAutosave();
-    data.edited();
-    await processGraph();
-    const shown = tablePopup.get();
-    const after = data.cachedResult;
-    if (!shown || !isFrameValue(after)) return;
-    void openFramePopup(after, {
-      label: shown.title, hostId: data.id, accent: shown.accent, groupColor: shown.groupColor, groupColorDark: shown.groupColorDark,
-    }, { onRetypeColumn: (col, t) => void retypeColumn(col, t) });
-  }
+  const retypeColumn = (c: number, type: FrameColType) => retypeAndReopen(data, c, type);
 
   const frameOut = data.outputs.frame;
   const planRows = data.cachedPlan ? cubeRowCount(data.cachedPlan) : 0;

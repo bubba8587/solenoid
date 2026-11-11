@@ -128,6 +128,8 @@ Tests:
 
 **Column types from the popup.** Local File's output opens in the Table popup with each column header's type button live (`onRetypeColumn`, the same button and cycle Number / Text / Date / Boolean the Frame Input editor has; [[table-popup]]). A press saves the type by column name in the card's `columnTypes`, re-reads the file and reopens the popup on the new output (`retypeColumn`, `ConnectionNodes.tsx`). The column is read again from its source text (`retypeColumns`, `frame.ts`, from the frame's `raw`), so Text gives back `02134` where Number read `2134`, and Date reads in the card's Dates order. Picking the type the file read the column as drops the entry (`readTypes`), so a column with no pick follows the file. A pick is kept by name, so a re-exported file with its columns moved keeps it; with a pattern, each file is retyped before stacking. The picks are part of the read's key.
 
+**Web Source does the same** (2026-11-11): its Dates toggle orders a fetched CSV's dates (JSON reads as before), and its popup's type buttons save `columnTypes` against the `readTypes` the source read, so a refetch reads the picks again. Both cards share the retype (`retypeAndReopen`, `ConnectionNodes.tsx`) and the saved picks' reading (`pickedColumnTypes`). Tests: `webSourceDates.test.ts`.
+
 ## A folder as one table
 
 Reading one file and reading a folder of them are one job, so they are one card ([[B11]] maximalMerge). Local File's `fileName` is a file's name or a pattern over many: a name holding `*` or `?` is a pattern (`isFilePattern`, `fileGlob.ts`).
