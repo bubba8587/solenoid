@@ -1,12 +1,8 @@
 // [[C42]] htmlInCanvasRenderer, [[A1]] visualGraphCalculator
 
 import { Camera } from "./hicCamera";
-import { cablePathD } from "./hicCableGeom";
-import { parsePathPoints } from "./pathPoints";
-import type { SnapCable } from "./hicGraphSnapshot";
-import type { CableShape } from "./cableShape";
+import { styleKey, type VShape } from "./hicVectors";
 import { packAtlas, type AtlasPlacement } from "./rasterAtlas";
-import type { CamXform } from "./domSync";
 import { IS_COARSE } from "./coarse";
 
 // An imperative engine, so HMR must invalidate or a stale instance stays alive.
@@ -46,6 +42,8 @@ export interface EngineNodeSpec {
   x: number; y: number;
   w: number; h: number;
   isGroup: boolean;
+  /** The card's stacking order on the DOM canvas (its RF wrapper's z-index); cards and vector layers draw in this order. */
+  z: number;
 }
 
 interface PyramidLevel { scale: number; bmp: ImageBitmap }
@@ -60,12 +58,7 @@ interface EngineNode {
   rasterAttempts?: number;
   x: number; y: number; w: number; h: number;
   isGroup: boolean;
-}
-interface CableGeom { path: Path2D; minX: number; minY: number; maxX: number; maxY: number }
-interface CableSpec {
-  sourceId: string; srcOffX: number; srcOffY: number; srcAbsX: number; srcAbsY: number; sourceAngleDeg: number | null; sourceFlipped: boolean;
-  targetId: string; tgtOffX: number; tgtOffY: number; tgtAbsX: number; tgtAbsY: number; targetAngleDeg: number | null; targetFlipped: boolean;
-  color: string;
+  z: number;
 }
 
 interface RendererStats {
@@ -84,9 +77,9 @@ export class HtmlCanvasRenderer {
 
   private nodes: EngineNode[] = [];
   private readonly nodeById = new Map<string, EngineNode>();
-  private cables: CableSpec[] = [];
-  private cableGeoms: (CableGeom | null)[] = [];
-  private cableShape: CableShape = "diagonal";
+  /** Vector layers by key (a cable, the standoff svg…), each at its z; `order` breaks a z tie as the DOM does: edges, then cards, then overlays. */
+  private readonly vectorLayers = new Map<object, { z: number; order: number; shapes: VShape[] }>();
+  private vectorBuckets: Array<{ z: number; order: number; s: VShape }> | null = null;
   private quality = DEFAULT_QUALITY;
   private dpr = 1;
   private bsx = 1;
@@ -99,7 +92,6 @@ export class HtmlCanvasRenderer {
   private builtCount = 0;
   private disposed = false;
   private transformSource: (() => { k: number; x: number; y: number }) | null = null;
-  private presented: CamXform | null = null;
 
   private lastDrawTs = 0;
   private fpsEMA = 0;
@@ -141,9 +133,6 @@ export class HtmlCanvasRenderer {
     this.transformSource = fn;
   }
 
-  getPresented(): CamXform | null {
-    return this.presented;
-  }
 
   setTransform(scale: number, tx: number, ty: number): void {
     if (this.cam.scale === scale && this.cam.tx === tx && this.cam.ty === ty) return;
@@ -194,7 +183,8 @@ export class HtmlCanvasRenderer {
 
   setNodes(specs: EngineNodeSpec[]): void {
     this.releaseNodes();
-    this.nodes = specs.map((s) => ({ id: s.id, refEl: this.cloneFor(s.el, s.w, s.h), srcEl: s.el, refImg: null, pyramid: [], x: s.x, y: s.y, w: s.w, h: s.h, isGroup: s.isGroup }));
+    this.nodes = specs.map((s) => ({ id: s.id, refEl: this.cloneFor(s.el, s.w, s.h), srcEl: s.el, refImg: null, pyramid: [], x: s.x, y: s.y, w: s.w, h: s.h, isGroup: s.isGroup, z: s.z }));
+    this.sortNodes();
     this.nodeById.clear();
     for (const n of this.nodes) this.nodeById.set(n.id, n);
     this.captured = false;
@@ -208,7 +198,7 @@ export class HtmlCanvasRenderer {
     for (const s of specs) {
       const n = this.nodeById.get(s.id);
       if (!n) continue;
-      n.x = s.x; n.y = s.y; n.w = s.w; n.h = s.h;
+      n.x = s.x; n.y = s.y; n.w = s.w; n.h = s.h; n.z = s.z;
       n.refImg?.close?.(); n.refImg = null;
       for (const p of n.pyramid) p.bmp?.close?.();
       n.pyramid = [];
@@ -221,6 +211,7 @@ export class HtmlCanvasRenderer {
       changed = true;
     }
     if (!changed) return;
+    this.sortNodes();
     this.captured = false;
     this.builtCount = Math.max(0, this.nodes.filter((n) => n.pyramid.length).length);
     this.dirty = true;
@@ -334,49 +325,39 @@ export class HtmlCanvasRenderer {
     return false;
   }
 
-  setCables(cables: SnapCable[], shape: CableShape): void {
-    this.cableShape = shape;
-    this.cables = cables.map((cb) => {
-      const s = this.nodeById.get(cb.source), t = this.nodeById.get(cb.target);
-      return {
-        sourceId: cb.source, srcOffX: s ? cb.sx - s.x : 0, srcOffY: s ? cb.sy - s.y : 0, srcAbsX: cb.sx, srcAbsY: cb.sy, sourceAngleDeg: cb.sourceAngleDeg, sourceFlipped: cb.sourceFlipped,
-        targetId: cb.target, tgtOffX: t ? cb.ex - t.x : 0, tgtOffY: t ? cb.ey - t.y : 0, tgtAbsX: cb.ex, tgtAbsY: cb.ey, targetAngleDeg: cb.targetAngleDeg, targetFlipped: cb.targetFlipped,
-        color: HtmlCanvasRenderer.hexColor(cb.color),
-      };
-    });
-    this.cableGeoms = new Array(this.cables.length).fill(null);
-    this.relayoutCables();
-  }
-
-  /** `moved` limits routing to cables touching those ids; omit it to route all. */
-  relayoutCables(moved?: Set<string>): void {
-    for (let i = 0; i < this.cables.length; i++) {
-      const c = this.cables[i];
-      if (moved && !moved.has(c.sourceId) && !moved.has(c.targetId)) continue;
-      const s = this.nodeById.get(c.sourceId), t = this.nodeById.get(c.targetId);
-      const sx = s ? s.x + c.srcOffX : c.srcAbsX, sy = s ? s.y + c.srcOffY : c.srcAbsY;
-      const ex = t ? t.x + c.tgtOffX : c.tgtAbsX, ey = t ? t.y + c.tgtOffY : c.tgtAbsY;
-      const d = cablePathD(this.cableShape, { sx, sy, ex, ey, sourceAngleDeg: c.sourceAngleDeg, targetAngleDeg: c.targetAngleDeg, sourceFlipped: c.sourceFlipped, targetFlipped: c.targetFlipped });
-      this.cableGeoms[i] = HtmlCanvasRenderer.geomOf(d);
-    }
+  /** Replaces one vector layer's shapes; an empty list removes it. */
+  setVectorLayer(key: object, z: number, order: number, shapes: VShape[]): void {
+    if (shapes.length) this.vectorLayers.set(key, { z, order, shapes });
+    else if (!this.vectorLayers.delete(key)) return;
+    this.vectorBuckets = null;
     this.dirty = true;
   }
 
-  private static hexColor(n: number): string {
-    return "#" + (n & 0xffffff).toString(16).padStart(6, "0");
+  clearVectorLayers(): void {
+    this.vectorLayers.clear();
+    this.vectorBuckets = null;
+    this.dirty = true;
   }
 
-  private static geomOf(d: string): CableGeom | null {
-    const pts = parsePathPoints(d);
-    if (pts.length < 2) return null;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const p of pts) {
-      if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y;
-      if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
+  /** Shapes that share a z, an order and a style merge into one path, so a frame strokes a handful of paths, not one per cable. */
+  private buckets(): Array<{ z: number; order: number; s: VShape }> {
+    if (this.vectorBuckets) return this.vectorBuckets;
+    const byKey = new Map<string, { z: number; order: number; s: VShape }>();
+    for (const { z, order, shapes } of this.vectorLayers.values()) {
+      for (const sh of shapes) {
+        const key = `${z}|${order}|${styleKey(sh)}`;
+        let b = byKey.get(key);
+        if (!b) { b = { z, order, s: { ...sh, path: new Path2D() } }; byKey.set(key, b); }
+        b.s.path.addPath(sh.path);
+      }
     }
-    return { path: new Path2D(d), minX, minY, maxX, maxY };
+    this.vectorBuckets = [...byKey.values()].sort((a, b) => a.z - b.z || a.order - b.order);
+    return this.vectorBuckets;
   }
 
+  private sortNodes(): void {
+    this.nodes.sort((a, b) => a.z - b.z);
+  }
 
   hitTest(sx: number, sy: number): string | null {
     const { wx, wy } = this.cam.toWorld(sx, sy);
@@ -694,25 +675,19 @@ export class HtmlCanvasRenderer {
     }
   }
 
-  private drawCables(vp: { minX: number; minY: number; maxX: number; maxY: number }): void {
-    const { ctx, cam, bsx, bsy } = this;
-    ctx.setTransform(bsx, 0, 0, bsy, 0, 0);
-    ctx.lineWidth = 1.8 * cam.scale;
-    ctx.lineJoin = "round";
-    const byColor = new Map<string, Path2D>();
-    // World to CSS px; the stroke happens under the backing-store transform alone, so lineWidth stays in screen px.
-    const toScreen = new DOMMatrix([cam.scale, 0, 0, cam.scale, cam.tx, cam.ty]);
-    for (let i = 0; i < this.cableGeoms.length; i++) {
-      const g = this.cableGeoms[i];
-      if (!g || g.maxX < vp.minX || g.minX > vp.maxX || g.maxY < vp.minY || g.minY > vp.maxY) continue;
-      const color = this.cables[i]?.color ?? "#7a8296";
-      let path = byColor.get(color);
-      if (!path) { path = new Path2D(); byColor.set(color, path); }
-      path.addPath(g.path, toScreen);
+  /** Under the camera transform, so a stroke's world width scales with the zoom as the DOM's does. */
+  private drawVector(v: VShape): void {
+    const { ctx } = this;
+    ctx.globalAlpha = v.alpha;
+    if (v.fill) { ctx.fillStyle = v.fill; ctx.fill(v.path); }
+    if (v.stroke && v.width > 0) {
+      ctx.strokeStyle = v.stroke;
+      ctx.lineWidth = v.width;
+      ctx.lineCap = v.cap;
+      ctx.lineJoin = v.join;
+      ctx.setLineDash(v.dash ?? []);
+      ctx.stroke(v.path);
     }
-    // Must match cableOpacity's non-hover default, or the gesture swap visibly pops.
-    ctx.globalAlpha = 0.72;
-    for (const [color, path] of byColor) { ctx.strokeStyle = color; ctx.stroke(path); }
     ctx.globalAlpha = 1;
   }
 
@@ -740,7 +715,7 @@ export class HtmlCanvasRenderer {
     this.slowDraws = 0;
     if (typeof ctx.reset === "function") ctx.reset(); else ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!this.active) { this.presented = null; this.lastFrameMs = performance.now() - t0; return; }
+    if (!this.active) { this.lastFrameMs = performance.now() - t0; return; }
     const { bsx, bsy } = this;
     const camCTM = () => ctx.setTransform(bsx * cam.scale, 0, 0, bsy * cam.scale, bsx * cam.tx, bsy * cam.ty);
 
@@ -763,18 +738,23 @@ export class HtmlCanvasRenderer {
       try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh, DRAW_OPTS); return true; } catch { return false; }
     };
 
+    // Cards and vector layers in the DOM's stacking order: by z, and at a tie edges, then cards, then overlays (order 0, 1, 2).
     let drawn = 0;
     camCTM();
     const skip = this.domLive;
-    for (const n of this.nodes) { if (n.isGroup && !skip.has(n.id) && inView(n) && drawOne(n)) drawn++; }
-    this.drawCables(vp);
-    camCTM();
-    for (const n of this.nodes) { if (!n.isGroup && !skip.has(n.id) && inView(n) && drawOne(n)) drawn++; }
+    const buckets = this.buckets();
+    let bi = 0;
+    const drawBucketsBefore = (z: number, order: number) => {
+      while (bi < buckets.length && (buckets[bi].z < z || (buckets[bi].z === z && buckets[bi].order < order))) this.drawVector(buckets[bi++].s);
+    };
+    for (const n of this.nodes) {
+      drawBucketsBefore(n.z, 1);
+      if (!skip.has(n.id) && inView(n) && drawOne(n)) drawn++;
+    }
+    drawBucketsBefore(Infinity, 0);
     this.nVisible = drawn;
     this.drawSelection();
 
-    // The camera this frame drew, for the DOM-only sync (domSync.ts): the paint re-read it from the transform source.
-    this.presented = { k: cam.scale, x: cam.tx, y: cam.ty };
 
     const t1 = performance.now();
     const dt = this.lastDrawTs ? t1 - this.lastDrawTs : 16;

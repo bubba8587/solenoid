@@ -256,13 +256,9 @@ idle is always the real DOM. There is no third renderer; do not build one.
 | `htmlCanvasRenderer.ts` | The HTML-in-Canvas renderer: captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
 | `components/HtmlCanvasLayer.tsx` | Mounted by FlowSurface (both canvases) over the editor and view it renders; engages when mode is `html` ≥100 weighted nodes: gesture swap (RF viewport hidden ↔ canvas), held on at rest below 40% zoom (DOM muted, selected/focused cards live), targeted re-capture per changed node id (the flowView `render` pipe), DOM-only escape hatch (conduits) |
 | `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (the transform `htmlCanvasRenderer` drives; the Pixi-era pan/zoom/pinch/fit helpers are deleted) |
-| `hicCableGeom.ts` (+`.test.ts`) | `cablePolyline` — the app's REAL router (`getCablePath`) flattened via `pathPoints.ts`, so canvas cables match DOM cables |
-| `hicGraphSnapshot.ts` | measures socket world-positions and lists the cables the HTML-in-Canvas layer draws |
-| `hicSocketGlyph.ts` (+tests) | socket-glyph classification the snapshot uses |
-| `pathPoints.ts` (+`.test.ts`) | pure M/L/C/Q path → polyline flattening (`parsePathPoints`) |
+| `hicVectors.ts` (+`.test.ts`) | every SVG the viewport draws outside the cards (cables, ribbons, standoffs, drawn cables) copied onto the HTML-in-Canvas layer as world-space vectors |
 | `rasterAtlas.ts` (+`.test.ts`) | the capture atlas (`packAtlas`) — one canvas read-back per paint |
 | `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB mixing — a canvas can't evaluate `color-mix`/`var()` |
-| `domSync.ts` (+`.test.ts`) | DOM↔canvas transform sync (`holderSyncTransform`: the viewport steered to the camera the canvas drew) |
 | `zoomSettle.ts` (+`.test.ts`) | The gesture-exit settle window (default 420 ms; `window.__zoomSettle` override) |
 | `canvasCapture.ts` | Static-export capture, deliberately separate from the live HTML-in-Canvas capture |
 | `devHarness.ts` | DEV-only screenshot-comparison hooks (tree-shaken from production) |

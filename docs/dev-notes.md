@@ -13,6 +13,14 @@ specific item.
   Unexercised in a browser: the container's Chromium is 153, the old API. Spec: [[html-in-canvas]].
 - The plain pan layer on phones at zoom 0.4 and below made no difference on the author's phone; reverted
   (`canvas-frame-cost-findings.md` § 2).
+- HIC holds at every zoom (the swap back to the DOM was the zoomed-in phone cost), rasters captures at 2× with the clone
+  still laid out at 1×, and keeps nothing live DOM through a gesture: every cable, ribbon, Conduit lane, standoff and drawn
+  cable is copied from the DOM's own SVG as world-space vectors (`hicVectors.ts`, a MutationObserver per layer), Conduits
+  and portal cards are captured like any card, and cards and vectors draw in the DOM's z order. Gone: the canvas's own
+  cable router, the socket snapshot, the DOM-only set and the holder-to-canvas camera sync. Checked on Chrome 157 (a
+  downloaded Chrome for Testing): canvas-only and DOM-only frames of one page match, and no live DOM shows in any frame
+  of a wheel zoom. Open: on personal-finance the canvas's Accounts card kept a "missing" capture after the live card
+  loaded its CSV, so some card update reaches neither the render pipe nor a subscribed store; untraced.
 
 ### SESSION DIGEST (2026-11-10: light and dark theming, the tint band, dark links; cloud session)
 - **Orchard light under a non-home accent was a pastel wash**: the rotation carried its cream's chroma (0.022, borders

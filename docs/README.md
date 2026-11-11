@@ -125,7 +125,7 @@ results get retried and settled rulings relapse.
 | `emptySlots.ts`, `crates/solenoid-core/data/call_traits.json` (`blanks`) | `../tree/specs/values/input-roles.md` § Empty slots, § Placeholders; [[D96]] emptySlotShowsItsValue |
 | `nodes/equation.ts`, `crates/solenoid-core/src/nodes/formula.rs` (Equation) | [[C47]] equationNode; `../tree/specs/computation/equation-solver.md` |
 | `semanticZoomStore.ts` | [[A1]] visualGraphCalculator; `../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom |
-| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[A1]] visualGraphCalculator |
+| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[A1]] visualGraphCalculator |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; `../tree/specs/canvas/pointer-gestures.md` |
 | `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | [[B3]] sameNodeEverywhere; `../tree/specs/canvas/react-flow-surface-contract.md`; [[A1]] visualGraphCalculator |
 | `graphCompute.ts`, `process.ts`, `passSession.ts`, `calcModeStore.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs`, `session.rs`, `pass.rs` (the pass and the input boundary) | `../tree/specs/computation/compute-pass.md`; [[C23]] calcModes; `../tree/specs/values/error-values.md` |

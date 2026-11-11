@@ -35,7 +35,7 @@ export const RULES = [
 
   // ── named exceptions, above the broad rules below that would claim them by prefix ──
   ["ui", /(^|\/)(tableEdit|tableSortFilter|tablePopupSuggest)\.test\./],
-  ["canvas", /(^|\/)(baseView|domSync|renderMode|liveCardUnmounted|isolate\w*|drillStackGate|cablePendingReconnect|deleteSelectionScope|presentSocketStore|socketFlip|fcDockReload|pushWorldDockedFc|tidyDisplayFcWidth|fcChainDelete)\.test\./],
+  ["canvas", /(^|\/)(baseView|renderMode|liveCardUnmounted|isolate\w*|drillStackGate|cablePendingReconnect|deleteSelectionScope|presentSocketStore|socketFlip|fcDockReload|pushWorldDockedFc|tidyDisplayFcWidth|fcChainDelete)\.test\./],
 
   // ── frames: tables, cubes and their verbs ──
   ["frames", /(^|\/)(frame\w*|cube\w*|pivot\w*|csv|coreCsv|coreInferColumn|corePlanReaders|reconcile|joinUnits|computedColumn\w*|table\w*|columnSort|columnPicker|describeProfile|backendVerbCards|lazyVerbBodies|lazyFrameReads|lazyChain|cellErrorScan|listSortOrder|listPreview|tableFooterStats|frameHint|indexPosition|conduitFilterTypes)\.test\./],
@@ -51,7 +51,7 @@ export const RULES = [
 
   // ── canvas: layout, cables, gestures, the React Flow view ──
   ["canvas", /^tests\/graph\/(flow|components)\//],
-  ["canvas", /(^|\/)(cable\w*|canvas\w*|group\w*|tidy\w*|layout\w*|standoff\w*|collapseStore|conduit\w*|hic\w*|zoomSettle|touch\w*|pointerGesture|drawnCablePath|pathPoints|selectionOps|lockedContextMenus|landscapePhoneScale|viewPresets|nodeSizeStore|flowPreview|gridKeyboard|enterKey|modalGuard|fireMenuKey|selectChevron)\.test\./],
+  ["canvas", /(^|\/)(cable\w*|canvas\w*|group\w*|tidy\w*|layout\w*|standoff\w*|collapseStore|conduit\w*|hic\w*|zoomSettle|touch\w*|pointerGesture|drawnCablePath|selectionOps|lockedContextMenus|landscapePhoneScale|viewPresets|nodeSizeStore|flowPreview|gridKeyboard|enterKey|modalGuard|fireMenuKey|selectChevron)\.test\./],
 
   // ── ui: stores, menus, search, popups, settings ──
   ["ui", /(^|\/)(\w+Store|catalogSearch|searchSamples|nameSurfaces|commentStore|problemsStore|pinStore|inspectorStore|settingsStore)\.test\./],

@@ -6,23 +6,19 @@
   pointer-events: none;
 }
 
-/* The canvas cables are a static snapshot, so the DOM-only cables' flow beads freeze to match. */
-.solenoid-html-frozen .solenoid-cable-flow {
-  animation-play-state: paused;
-}
-
-/* RF writes inline `visibility: visible` on every node wrapper, so hiding the viewport alone leaves cards painting over the canvas. */
-.solenoid-html-hidden .react-flow__node:not(.solenoid-hic-domonly) {
+/* Only ever at a layer's root (a card's RF wrapper, an edge's svg, a portal child): the vector snapshot reads everything below as the
+   DOM shows it. RF writes inline `visibility: visible` on every node wrapper, hence the !important. */
+.solenoid-html-hidden .react-flow__node {
   visibility: hidden !important;
 }
-
-/* The canvas color and dots live in the viewport now, and the canvas draws cards over them, so they stay through the gesture. */
-.solenoid-html-hidden .sol-canvas-backing {
-  visibility: visible;
+.solenoid-html-hidden .react-flow__edges > *,
+.solenoid-html-hidden .react-flow__viewport-portal > :not(.sol-canvas-backing) {
+  opacity: 0 !important;
 }
 
-/* Muted by opacity, since the DOM must stay hit-testable, which visibility hidden is not. */
-.solenoid-html-muted .react-flow__node:not(.solenoid-hic-domonly):not(.solenoid-hic-live),
-.solenoid-html-muted .react-flow__edge:not(.solenoid-hic-domonly) {
+/* Held: muted by opacity, since the DOM must stay hit-testable, which visibility hidden is not. The canvas draws all of it. */
+.solenoid-html-muted .react-flow__node:not(.solenoid-hic-live),
+.solenoid-html-muted .react-flow__edges > *,
+.solenoid-html-muted .react-flow__viewport-portal > :not(.sol-canvas-backing) {
   opacity: 0 !important;
 }

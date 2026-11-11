@@ -8,7 +8,6 @@ export const plan: Pick<Plan, "files"> = {
     "tests/graph/groupPushCore.test.ts": "canvas layout, no function answers",
     "tests/graph/tidyArrangeGroups.test.ts": "canvas layout, no function answers",
     "tests/graph/layoutTidyIntegration.test.ts": "canvas layout, no function answers",
-    "tests/graph/hicCableGeom.test.ts": "cable geometry, no function answers",
     "tree/specs/canvas/auto-arrange-tidy.md": "canvas layout, no function answers",
     "tests/graph/passBench.test.ts": "a benchmark of card chains; it times, it answers nothing",
     "tests/graph/cardBatchBench.test.ts": "a benchmark of card bodies; it times, it answers nothing",
