@@ -5,12 +5,15 @@ Pivot calculated fields, retuned themes, the GPU renderer on Chrome's stable API
 Highlights
 
 - PIVOTBY calculated fields: name a field and give it a LAMBDA over columns, like `SUM(Miles) / SUM(Gallons)`. Every cell, subtotal and grand total runs it on its own rows, so a ratio stays right at every level instead of averaging row ratios. See the Pivot calculated fields example.
+  - A column name with spaces goes in brackets, `SUM([Unit Price])`, as in Computed Columns.
+  - Wired-in calculated fields show in Configure Fields' field list, ready to drag into Values.
 - The Pivot view grew up.
   - A right-click menu edits the Pivot from the table.
   - Each field header has a sort and filter button; a filtered field shows as a chip.
   - Filters list every value, searchable, and dates by year and month.
   - Group a date field by years, quarters, months, weeks or days.
   - A value's number format, from the view's menu.
+  - Subtotals and grand totals belong to the view: the Pivot's table is the plain rows and columns, so Grid view, the popup and the next card see no total rows. Tick Export totals to get them as two more tables, Row Totals and Column Totals.
 - Updated theming.
   - Orchard's light mode keeps its warm ground under a blue, pink or violet accent instead of washing pastel, and its amber is a clear burnt orange.
   - Dawn and Dusk's light ground is a pale apricot instead of lime.
@@ -67,3 +70,4 @@ Fixes
 - A running or sliding sum no longer stays infinite after a huge number leaves its window.
 - Replace Values writes NaN for a replacement its column can't read.
 - A marker a drill-in undo or redo brings back gets its port again.
+- DATEDIF set to months or a remainder opens DATEDIF's reference, not DAYS'; SLOPE, INTERCEPT, STEYX, PERCENTILE, PERCENTRANK and QUARTILE open their own too.
