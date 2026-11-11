@@ -25,7 +25,7 @@ The formula language itself is [[formula-language]]. This spec covers what is di
 | `ROW()` | this row's 1-based number (`set_row_number`, `excel_functions.rs`); outside a computed column it is `#NAME?` saying where it works |
 | `ROWS(price)` | the row count, since a whole column is a column |
 
-Brackets spell a name that isn't a valid identifier. A column is found by its exact name; a numeric name is still a name, never a position.
+Brackets spell a name that isn't a valid identifier. A column is found by its exact name; a numeric name is still a name, never a position. A LAMBDA's parameter takes them too, typed (`LAMBDA([Unit Price], [Unit Price] * 2)`) or on the LAMBDA card (Parameters `[Unit Price], Qty`): the parameter is the name inside, and the LAMBDA's own body reads it where it writes the bracket, while a bracket it doesn't name stays a column read (`bracket_params` and `bind_bracket_params` in `excel_formula.rs`; a name that isn't an identifier prints back in its brackets). So a wired λ binds a column with a space as it binds any other ([[C50]] lambdaBindsByName).
 
 So `revenue / SUM(revenue)` gives each row's share of the total, and `SUMIFS(amt, cat, @cat)` sums the rows in this row's category. A whole column where one value is needed is a `#SHAPE!` on that row that points at `@` ("A computed column needs one value per row. Use @name to read this row's cell."), never a silent read of this row's cell.
 

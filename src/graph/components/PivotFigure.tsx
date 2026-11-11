@@ -4,7 +4,7 @@ import { PivotTableView } from "./PivotTableView";
 import { fmtCell } from "./FrameDisplay";
 import { frameFormatStore } from "../frameFormatStore";
 import { getPivotHostAction } from "../tablePopupStore";
-import { DEFAULT_PIVOT_VIEW, livePivotFolds, type PivotLayout, type PivotViewOptions } from "../pivotLayout";
+import { DEFAULT_PIVOT_VIEW, livePivotFolds, pivotAddress, type PivotLayout, type PivotViewOptions } from "../pivotLayout";
 import { isSolError } from "../errorValue";
 import type { FrameValue } from "../frame";
 
@@ -18,11 +18,14 @@ export function PivotFigure({ frame, layout, sourceId }: { frame: FrameValue; la
     return { ...seeded, collapsed: livePivotFolds(layout, seeded.collapsed) };
   });
   const onOptions = (next: PivotViewOptions) => { setOptions(next); host?.setView(next); };
+  // The totals ride on the layout, the rest is the Frame's ([[C127]] pivotView).
+  const addr = pivotAddress(layout);
+  const at = (r: number, c: number) => addr.cell(r, c, (or, oc) => frame.columns[oc]?.values[or] ?? null);
   const cellText = (r: number, c: number): string => {
-    const col = frame.columns[c];
+    const col = frame.columns[addr.styleCol(c)];
     if (!col) return "";
     const ann = (sourceId ? frameFormatStore.get(sourceId, col.name) : undefined) ?? col.format;
-    return fmtCell(col.values[r] ?? null, col.type, ann);
+    return fmtCell(at(r, c) ?? null, col.type, ann);
   };
   return (
     <div className="pivot-figure">
@@ -31,7 +34,7 @@ export function PivotFigure({ frame, layout, sourceId }: { frame: FrameValue; la
         options={options}
         onOptions={onOptions}
         cellText={cellText}
-        isErrorAt={(r, c) => isSolError(frame.columns[c]?.values[r])}
+        isErrorAt={(r, c) => isSolError(at(r, c))}
         query=""
         ribbon={null}
       />

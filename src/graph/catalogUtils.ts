@@ -175,6 +175,21 @@ export function classifyType(type: string): NodeClass {
 export const FLAT_CATALOG: Map<string, NodeCatalogEntry> =
   flattenCatalog(buildCatalog(false));
 
+/** An op no leaf of its own stands for (DATEDIF's months, CORREL's other measures) is its host card's: without this
+ *  the class's first leaf caught it, so a DATEDIF set to months read as DAYS. */
+function fillHostOps(idx: Map<string, string>, value: (host: NodeCatalogEntry) => string | undefined): void {
+  for (const decl of NODE_OPS) {
+    if (!decl.ops) continue;
+    const host = FLAT_CATALOG.get(decl.type);
+    const v = host && value(host);
+    if (!v) continue;
+    for (const o of decl.ops) {
+      const key = `${decl.ctor.name}::${o.op}`;
+      if (!idx.has(key)) idx.set(key, v);
+    }
+  }
+}
+
 let _descIndex: Map<string, string> | null = null;
 function descIndex(): Map<string, string> {
   if (_descIndex) return _descIndex;
@@ -191,6 +206,7 @@ function descIndex(): Map<string, string> {
       // A leaf that fails to build must not break hover for everything else.
     }
   }
+  fillHostOps(_descIndex, (h) => h.description);
   return _descIndex;
 }
 
@@ -219,6 +235,7 @@ function nameIndex(): Map<string, string> {
       if (!_nameIndex.has(`${ctor}::`)) _nameIndex.set(`${ctor}::`, entry.label);
     } catch { /* a leaf that fails to build must not break naming for the rest */ }
   }
+  fillHostOps(_nameIndex, (h) => h.label);
   return _nameIndex;
 }
 
@@ -235,6 +252,7 @@ function typeIndex(): Map<string, string> {
       if (!_typeIndex.has(`${ctor}::`)) _typeIndex.set(`${ctor}::`, type);
     } catch { /* a leaf that fails to build must not break the lookup for the rest */ }
   }
+  fillHostOps(_typeIndex, (h) => h.type);
   return _typeIndex;
 }
 

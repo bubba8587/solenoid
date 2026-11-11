@@ -15,7 +15,7 @@ import { readFrame, type FrameInput } from "../../../src/graph/frameBackend";
 import seed from "../../../src/graph/seedGraphs/pivot-calculated-fields.json";
 import { restoreLiterals } from "../../../src/graph/literalFields";
 import { isSolError } from "../../../src/graph/errorValue";
-import { pivotLayoutOf } from "../../../src/graph/pivotLayout";
+import { pivotLayoutOf, pivotViewFrame } from "../../../src/graph/pivotLayout";
 
 // A fleet's fuel log: MPG per plate per month is miles over gallons in that cell's rows.
 const log = new FrameInputNode({
@@ -34,7 +34,7 @@ function pivot(expr: string, params: string, values = "") {
   Object.assign(n.stringLiterals, { rowFields: "Plate", colFields: "Month", values, calcName0: "MPG" });
   // The graph hands a card its field lists as inputs; a direct call passes them so.
   const valueList = values.split(",").map((v) => v.trim()).filter(Boolean);
-  const out = n.data({ frame: [log], rowFields: [["Plate"]], colFields: [["Month"]], values: [valueList], calcFn0: [lambda(params, expr)] }).frame as FrameValue;
+  const out = pivotViewFrame(n.data({ frame: [log], rowFields: [["Plate"]], colFields: [["Month"]], values: [valueList], calcFn0: [lambda(params, expr)] }).frame as FrameValue);
   return { n, out, col: (name: string) => out.columns.find((c) => c.name === name)!.values };
 }
 
@@ -46,6 +46,15 @@ describe("PIVOTBY calculated fields", () => {
     expect(col("2026-02")).toEqual([20, 40, 30]);
     // XYZ-789 averages its months to 25; its miles over its gallons are 20.
     expect(col("Grand Total")).toEqual([25, 20, 22]);
+  });
+
+  it("the card's Frame leaves the totals to its view: no Grand Total row or column", () => {
+    const n = new PivotNode({ rowTotalDepth: 1, colTotalDepth: 1, valueKeys: ["calcName0", "calcFn0"] });
+    Object.assign(n.stringLiterals, { rowFields: "Plate", colFields: "Month", values: "", calcName0: "MPG" });
+    const raw = n.data({ frame: [log], rowFields: [["Plate"]], colFields: [["Month"]], values: [[]], calcFn0: [lambda("Miles, Gallons", "SUM(Miles) / SUM(Gallons)")] }).frame as FrameValue;
+    expect(raw.columns.map((c) => c.name)).toEqual(["Plate", "2026-01", "2026-02"]);
+    expect(raw.columns[0].values).toEqual(["ABC-123", "XYZ-789"]);
+    expect(pivotViewFrame(raw).columns.map((c) => c.name)).toEqual(["Plate", "2026-01", "2026-02", "Grand Total"]);
   });
 
   it("sits beside the ordinary value fields, named in the headers as a value is", () => {
@@ -76,6 +85,38 @@ describe("PIVOTBY calculated fields", () => {
 // over seeded random logs (blank plates and values, zero-gallon groups, two row fields, a column field, subtotal
 // depths on both axes either side, a filter mask). Default order keeps each group contiguous, so a subtotal is every
 // row under its prefix; the core's differential test (`crates/solenoid-core/tests/pivot_calc.rs`) covers the sorts.
+describe("PIVOTBY calculated fields over column names with spaces", () => {
+  const spaced = new FrameInputNode({
+    frameText: frameSourceToText([
+      { name: "Plate", type: "string", cells: ["ABC-123", "ABC-123", "ABC-123", "XYZ-789", "XYZ-789", "XYZ-789"] },
+      { name: "Miles Driven", type: "number", cells: ["100", "200", "200", "200", "150", "250"] },
+      { name: "Fuel Gallons", type: "number", cells: ["4", "6", "10", "20", "4", "6"] },
+    ]),
+  }).data({}).frame as FrameValue;
+  const byPlate = (params: string, expr: string) => {
+    const n = new PivotNode({ rowTotalDepth: 1, valueKeys: ["calcName0", "calcFn0"] });
+    Object.assign(n.stringLiterals, { rowFields: "Plate", values: "", calcName0: "MPG" });
+    const out = pivotViewFrame(n.data({ frame: [spaced], rowFields: [["Plate"]], colFields: [[]], values: [[]], calcFn0: [lambda(params, expr)] }).frame as FrameValue);
+    return out.columns.find((c) => c.name === "MPG")!.values;
+  };
+
+  it("a bracketed parameter names a column with a space, and the body reads it in its brackets", () => {
+    expect(byPlate("[Miles Driven], [Fuel Gallons]", "SUM([Miles Driven]) / SUM([Fuel Gallons])")).toEqual([25, 20, 22]);
+  });
+
+  it("[Column] in the body reads that column over the cell's rows, with no parameter at all", () => {
+    expect(byPlate("", "SUM([Miles Driven]) / SUM([Fuel Gallons])")).toEqual([25, 20, 22]);
+  });
+
+  it("a bracket naming no column is #NAME?, and a malformed bracket parameter is refused by the LAMBDA card", () => {
+    const cell = byPlate("", "SUM([Miles driven])")[2];
+    expect(isSolError(cell) && cell.code).toBe("#NAME?");
+    expect(isSolError(cell) && cell.message).toContain('the table has "Miles Driven"');
+    const bad = lambda("[Miles", "1");
+    expect(isSolError(bad) && bad.code).toBe("#NAME?");
+  });
+});
+
 describe("PIVOTBY calculated fields against a brute-force oracle", () => {
   function rng(seed: number) {
     let a = seed >>> 0;
@@ -117,11 +158,12 @@ describe("PIVOTBY calculated fields against a brute-force oracle", () => {
       const mask = rand() < 0.3 ? rows.map(() => rand() < 0.75) : null;
       const node = new PivotNode({ rowTotalDepth: depth(), colTotalDepth: depth(), valueKeys: ["calcName0", "calcFn0"] });
       Object.assign(node.stringLiterals, { rowFields: rowFields.join(", "), colFields: colFields.join(", "), values: "", calcName0: "MPG" });
-      const out = node.data({
+      const raw = node.data({
         frame: [frame], rowFields: [rowFields], colFields: [colFields], values: [[]], calcFn0: [mpg],
         ...(mask ? { filter: [mask] } : {}),
       }).frame as FrameValue;
-      const layout = pivotLayoutOf(out);
+      const layout = pivotLayoutOf(raw);
+      const out = pivotViewFrame(raw);
       expect(layout, `case ${k}`).toBeTruthy();
       const key = (v: unknown) => (v === null || v === undefined || v === "" ? "\u0000" : String(v));
       const matches = (i: number, fields: string[], tuple: unknown[]) =>
@@ -156,7 +198,7 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     Object.assign(n.stringLiterals, { rowFields: rows.join(", "), colFields: cols.join(", "), values: values.join(", ") });
     const inputs: Record<string, unknown[]> = { frame: [cfg.frame ?? log], rowFields: [rows], colFields: [cols], values: [values] };
     cfg.calcs.forEach(([name, lam], i) => { n.stringLiterals[`calcName${i}`] = name; if (lam !== undefined) inputs[`calcFn${i}`] = [lam]; });
-    const out = (await n.data(inputs)).frame as FrameValue;
+    const out = pivotViewFrame((await n.data(inputs)).frame as FrameValue);
     return { n, out, col: (name: string) => out.columns.find((c) => c.name === name), names: out.columns.map((c) => c.name) };
   };
   const MPG = lambda("Miles, Gallons", "SUM(Miles) / SUM(Gallons)");
@@ -272,7 +314,7 @@ describe("the Pivot calculated fields seed", () => {
     }
     const table = async (id: string) => {
       const out = (await engine.fetch(byId.get(id)!.id)) as Record<string, unknown>;
-      const f = (await readFrame(out.frame as FrameInput)) as FrameValue;
+      const f = pivotViewFrame((await readFrame(out.frame as FrameInput)) as FrameValue);
       return Object.fromEntries(f.columns.map((c) => [c.name, c.values]));
     };
     const r = (xs: unknown[]) => xs.map((x) => (typeof x === "number" ? Math.round(x * 1e6) / 1e6 : x));

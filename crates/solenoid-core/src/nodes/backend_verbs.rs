@@ -14,8 +14,8 @@ use crate::excel_functions::{value_text, V};
 use crate::frame::{case_twin, column_not_found, FrameCell, FrameColType, FrameValue};
 use crate::frame_ref::FrameRef;
 use crate::frame_verbs::{
-    append_frames, bind_columns, compile_filter, join_frames, pivot_frame_calc, FilterOp, JoinOpts, PivotCalc,
-    PivotSpec,
+    append_frames, bind_columns, compile_filter, join_frames, pivot_frame_calc, split_pivot_totals, FilterOp, JoinOpts,
+    PivotCalc, PivotSpec,
 };
 use crate::jsnum::{number_to_string, trim_space};
 use crate::string_order::compare_strings;
@@ -548,21 +548,32 @@ fn calc_fields(c: &Call) -> Vec<(String, Rc<crate::eval::LambdaV>)> {
 /// A calculated field's answer over a cell's rows: each parameter is its column's values in those rows, a date
 /// column's as dates. `@` names this row, and a pivot cell is many rows, so the LAMBDA reads whole lists.
 fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCell, bool) {
-    let mut args = Vec::with_capacity(lam.params.len());
-    for p in &lam.params {
-        let Some(col) = f.columns.iter().find(|k| &k.name == p) else {
+    // A column over this cell's rows, a Date column as dates; a name no column has is #NAME?, with a case hint.
+    let slice = |p: &str| -> V {
+        let Some(col) = f.columns.iter().find(|k| k.name == p) else {
             let mut msg = format!("The calculated field reads {p}, which is no column of the table");
             if let Some(h) = case_twin(p, f.columns.iter().map(|k| k.name.as_str())) {
                 msg.push_str(&format!(". Column names are case sensitive: the table has \"{h}\""));
             }
-            let e = sol_error(ErrorCode::Name, msg);
-            return (FrameCell::Err(Rc::new(e)), false);
+            return V::err(sol_error(ErrorCode::Name, msg));
         };
         let items =
             V::List(rows.iter().map(|&i| col.values.get(i).cloned().unwrap_or(V::Null)).collect::<Vec<_>>().into());
-        args.push(if col.ty == FrameColType::Date { crate::date_values::wrap(&items) } else { items });
+        if col.ty == FrameColType::Date {
+            crate::date_values::wrap(&items)
+        } else {
+            items
+        }
+    };
+    let mut args = Vec::with_capacity(lam.params.len());
+    for p in &lam.params {
+        match slice(p) {
+            V::Err(e) => return (FrameCell::Err(e), false),
+            v => args.push(v),
+        }
     }
-    let v = crate::eval::Eval::default().call_lambda(lam, &args);
+    // `[Column]` in the body that no parameter names reads the same slice, so a field needs no parameters at all.
+    let v = crate::eval::Eval::with_slices(&slice).call_lambda(lam, &args);
     match v {
         V::List(_) => {
             let e = sol_error(
@@ -848,12 +859,26 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
             return answer(Cv::V(e));
         }
     };
-    let mut frame = from_core(&out);
-    for (k, core) in frame.columns.iter_mut().zip(&out.columns) {
-        k.unit = core.unit.as_ref().map(|u| u.to_json());
+    // The totals are the Pivot view's, never the Frame's ([[C127]] pivotView): the output is the leaf rows by the leaf
+    // columns, the totals ride on its layout, and Export totals hands them on as their own Frames.
+    let split = split_pivot_totals(&to_core(f), &out, &layout);
+    let wire = |core: &crate::frame::FrameValue| {
+        let mut w = from_core(core);
+        for (k, kc) in w.columns.iter_mut().zip(&core.columns) {
+            k.unit = kc.unit.as_ref().map(|u| u.to_json());
+        }
+        w
+    };
+    let mut layout = layout;
+    layout["totals"] = split.totals;
+    let mut plain = wire(&split.plain);
+    plain.layout = Some(Rc::new(layout));
+    let plain = Cv::Frame(Rc::new(plain));
+    c.show("cachedResult", plain.clone());
+    let mut outs = vec![("frame".to_string(), plain)];
+    if c.field("exportTotals").and_then(Json::as_bool).unwrap_or(false) {
+        outs.push(("rowTotals".into(), Cv::Frame(Rc::new(wire(&split.row_totals)))));
+        outs.push(("colTotals".into(), Cv::Frame(Rc::new(wire(&split.col_totals)))));
     }
-    frame.layout = Some(Rc::new(layout));
-    let frame = Cv::Frame(Rc::new(frame));
-    c.show("cachedResult", frame.clone());
-    answer(frame)
+    Ok(outs)
 }

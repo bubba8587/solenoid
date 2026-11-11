@@ -175,7 +175,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       ]},
       { type: "pair", children: [
         { type: "cx-from",       label: "COMPLEX",     description: "Builds a complex number from real and imaginary parts. Excel: `COMPLEX`.", accent: CX, create: () => new ComplexFromNode(), parity: false },
-        { type: "lambda-make", updated: "1.6",   label: "LAMBDA",      description: "A reusable formula for MAP, BYROW, REDUCE and computed columns. Parameters fill in order, and any other variable becomes an input. Excel: `LAMBDA`.", accent: "lambda", create: () => new LambdaNode(), parity: false },
+        { type: "lambda-make", updated: "1.6",   label: "LAMBDA",      description: "A reusable formula for MAP, BYROW, REDUCE and computed columns. Parameters fill in order, and any other variable becomes an input. A parameter naming a column with a space goes in brackets: `[Unit Price]`. Excel: `LAMBDA`.", accent: "lambda", create: () => new LambdaNode(), parity: false },
       ]},
       { type: "pair", children: [
         { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },

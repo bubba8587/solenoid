@@ -5,6 +5,8 @@ name: Engine test
 
 on:
   push:
+    # Not main or a tag: a merge there carries develop's tree, already checked.
+    branches-ignore: [main]
     paths:
       - "crates/**"
       - "fixtures/frame-verbs/**"

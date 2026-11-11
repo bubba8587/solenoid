@@ -7,7 +7,7 @@ use super::Cv;
 use super::{err, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::eval::{variables, Env, LambdaV};
-use crate::excel_formula::{constant_value, parse_formula, Ast};
+use crate::excel_formula::{bind_bracket_params, constant_value, parse_formula, Ast};
 use crate::excel_functions::V;
 use crate::jsnum::trim_space;
 use std::rc::Rc;
@@ -43,22 +43,33 @@ fn at_col_names(ast: &Ast, out: &mut Vec<String>) {
     }
 }
 
+/// A parameter as written: `[Unit Price]` names a column with a space, as in a computed column; the rest are plain names.
+fn param_name(p: &str) -> Option<String> {
+    match p.strip_prefix('[').and_then(|q| q.strip_suffix(']')).map(trim_space) {
+        Some(inner) if !inner.is_empty() && !inner.contains(['[', ']']) => Some(inner.to_string()),
+        Some(_) => None,
+        None => is_ident(p).then(|| p.to_string()),
+    }
+}
+
 fn lambda(c: &mut Call) -> Answer {
-    let params: Vec<String> =
+    let written: Vec<String> =
         c.field_str("params", "x").split(',').map(trim_space).filter(|p| !p.is_empty()).map(String::from).collect();
+    let named: Vec<Option<String>> = written.iter().map(|p| param_name(p)).collect();
     let expr = c.field_str("expr", "").to_string();
     let refuse = |c: &mut Call, shown: Option<String>, result: V| {
         c.show("cachedValue", V::Null);
         c.show("cachedError", shown.map_or(V::Null, |s| V::str(&s)));
         Ok(vec![("result".to_string(), Cv::V(result))])
     };
-    if !params.iter().all(|p| is_ident(p)) {
+    if named.iter().any(Option::is_none) {
         return refuse(
             c,
             Some("Bad parameter name".into()),
-            err(ErrorCode::Name, "A lambda parameter name isn't a valid identifier"),
+            err(ErrorCode::Name, "A lambda parameter is a plain name, or a name in brackets: [Unit Price]"),
         );
     }
+    let params: Vec<String> = named.into_iter().flatten().collect();
     if params.iter().enumerate().any(|(i, p)| params[..i].contains(p)) {
         return refuse(
             c,
@@ -82,6 +93,7 @@ fn lambda(c: &mut Call) -> Answer {
         let message = hint.clone().unwrap_or_else(|| "The lambda body has a syntax error".into());
         return refuse(c, Some(hint.unwrap_or_else(|| "Syntax error".into())), err(ErrorCode::Syntax, message));
     };
+    let ast = bind_bracket_params(ast, &params);
     let mut names = variables(&ast);
     at_col_names(&ast, &mut names);
     let captured: Vec<String> = names.into_iter().filter(|n| !params.contains(n)).collect();

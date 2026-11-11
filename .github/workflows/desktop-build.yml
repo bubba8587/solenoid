@@ -2,25 +2,49 @@ name: Build (desktop)
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - "claude/**"
-    # A version tag (e.g. v0.1.1-alpha) is the "this push is a release"
-    # signal — it triggers the same builds, then the release job publishes a
-    # GitHub Release with both platforms' files. A normal commit push only
-    # builds the artifacts; it does NOT release.
+    # One build per release. A merge to main builds both platforms, which also keeps the Rust and apt caches warm on
+    # main, the only branch a tag's run can read caches from. A version tag (e.g. v0.1.1-alpha) is the release: it
+    # publishes the files main's run built for the same commit, waiting for that run if it is still going, and builds
+    # them itself only when main has no build of that commit.
+    branches: [main]
     tags:
       - "v*"
   workflow_dispatch:
 
-# Required so the release job can create a Release via GITHUB_TOKEN.
+# contents: the release job creates a Release. actions: a tag's run finds and downloads main's build.
 permissions:
   contents: write
+  actions: read
 
 jobs:
+  # On a tag: the run id of main's successful build of this commit, or empty when there is none.
+  find-build:
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      run_id: ${{ steps.find.outputs.run_id }}
+    steps:
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          id=$(gh run list --workflow desktop-build.yml --branch main --commit "$GITHUB_SHA" --event push \
+            --json databaseId,status,conclusion --jq '[.[] | select(.conclusion != "cancelled")][0].databaseId // empty')
+          if [ -n "$id" ] && gh run watch "$id" --exit-status --interval 30 > /dev/null; then
+            echo "Publishing main's build: run $id"
+            echo "run_id=$id" >> "$GITHUB_OUTPUT"
+          else
+            echo "No successful build of $GITHUB_SHA on main; this run builds it."
+          fi
+
   windows:
+    needs: find-build
+    if: ${{ !cancelled() && needs.find-build.outputs.run_id == '' }}
     runs-on: windows-latest
+    # A cold build is about 15 minutes, a cached one 5; anything past this is a hang, not a build.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -52,9 +76,12 @@ jobs:
           retention-days: 30
 
   linux:
+    needs: find-build
+    if: ${{ !cancelled() && needs.find-build.outputs.run_id == '' }}
     # The oldest supported runner: an AppImage built against a newer glibc will
     # not start on an older distro.
     runs-on: ubuntu-22.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -69,11 +96,17 @@ jobs:
         with:
           workspaces: "src-tauri -> target"
 
+      # From GitHub's cache once a run has fetched them: the runner's Ubuntu mirror can time out every package for
+      # 20 s each (2026-11-11, a 16-minute step). The compiler, curl, wget and file come with the runner image. On a
+      # cache miss, apt gives up on a slow mirror sooner and retries.
+      - name: Set apt timeouts
+        run: printf 'Acquire::Retries "3";\nAcquire::http::Timeout "10";\nAcquire::https::Timeout "10";\n' | sudo tee /etc/apt/apt.conf.d/99ci-timeouts
+
       - name: Install Tauri's Linux prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.3
+        with:
+          packages: libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          version: "1"
 
       - name: Install JS dependencies
         run: npm ci
@@ -93,13 +126,26 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # ── Runs ONLY on a v* tag push, and only once BOTH builds succeeded ──────
+  # ── Runs only on a v* tag push, with both platforms' files from main's run or this one ──────
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows, linux]
+    needs: [find-build, windows, linux]
+    # The builds either ran here and passed, or were skipped because main's run had them.
+    if: >-
+      ${{ !cancelled() && github.ref_type == 'tag' && needs.find-build.result == 'success'
+      && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download main's build
+        if: needs.find-build.outputs.run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          path: built
+          run-id: ${{ needs.find-build.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download this run's build
+        if: needs.find-build.outputs.run_id == ''
+        uses: actions/download-artifact@v4
         with:
           path: built
 

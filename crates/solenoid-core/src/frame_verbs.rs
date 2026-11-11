@@ -2111,6 +2111,152 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     Ok((frame(out_cols), layout))
 }
 
+/// A PIVOTBY card's pivot split by what reads it ([[C127]] pivotView): the totals belong to the Pivot view, never to the
+/// Frame every other card reads.
+pub struct PivotSplit {
+    /// The leaf rows by the leaf value columns, after the row keys.
+    pub plain: FrameValue,
+    /// The view's totals by position on the full layout: each total row's cells across every column, each total column's
+    /// cells down every row (`rows`, `cols`), from which the view puts the full pivot back together.
+    pub totals: Json,
+    /// One row per leaf row: the row keys, then each total column (the grand total and the column subtotals).
+    pub row_totals: FrameValue,
+    /// One row per leaf column item (the column headers turned into rows): its column keys, its value where there are
+    /// several, then each total row (the row subtotals and the grand total) as a column.
+    pub col_totals: FrameValue,
+}
+
+/// `full` and `layout` as `pivot_frame_calc` answers them over `src`, split into the plain Frame, the view's totals and
+/// the two totals Frames.
+pub fn split_pivot_totals(src: &FrameValue, full: &FrameValue, layout: &Json) -> PivotSplit {
+    let empty = Vec::new();
+    let rows = layout["rows"].as_array().unwrap_or(&empty);
+    let cols = layout["cols"].as_array().unwrap_or(&empty);
+    let leaf = |it: &Json| it["kind"].as_str().is_none_or(|k| k == "leaf");
+    let keys = layout["rowFields"].as_array().map_or(0, Vec::len);
+    let leaf_rows: Vec<usize> = (0..rows.len()).filter(|&i| leaf(&rows[i])).collect();
+    let total_rows: Vec<usize> = (0..rows.len()).filter(|&i| !leaf(&rows[i])).collect();
+    let leaf_cols: Vec<usize> = (0..cols.len()).filter(|&j| leaf(&cols[j])).collect();
+    let total_cols: Vec<usize> = (0..cols.len()).filter(|&j| !leaf(&cols[j])).map(|j| keys + j).collect();
+    let at = |c: &FrameColumn, i: usize| c.values.get(i).cloned().unwrap_or(FrameCell::Null);
+    let pick = |c: &FrameColumn, idx: &[usize]| FrameColumn {
+        values: Rc::new(idx.iter().map(|&i| at(c, i)).collect()),
+        ..c.clone()
+    };
+    // The row keys of the leaf rows, typed and formatted as their source columns: a total writes "Total" into a key
+    // column, which turns a date or number field to text in the full pivot, and the leaves have no total among them.
+    let row_fields_src: Vec<&str> =
+        layout["rowFields"].as_array().map_or(Vec::new(), |a| a.iter().filter_map(Json::as_str).collect());
+    let key_columns: Vec<FrameColumn> = (0..keys)
+        .map(|k| {
+            let source = src.columns.iter().find(|c| Some(c.name.as_str()) == row_fields_src.get(k).copied());
+            let cells = leaf_rows
+                .iter()
+                .map(|&i| {
+                    rows[i]["tuple"].as_array().and_then(|t| t.get(k)).map_or(FrameCell::Null, crate::wire::decode_cell)
+                })
+                .collect();
+            let mut col =
+                FrameColumn::new(full.columns[k].name.clone(), source.map_or(full.columns[k].ty, |c| c.ty), cells);
+            col.format = source.and_then(|c| c.format.clone());
+            col
+        })
+        .collect();
+    let key_cols = || key_columns.iter().cloned();
+
+    let plain = FrameValue {
+        columns: key_cols().chain(leaf_cols.iter().map(|&j| pick(&full.columns[keys + j], &leaf_rows))).collect(),
+    };
+    let unit_json = |c: &FrameColumn| c.unit.as_ref().map_or(Json::Null, |u| u.to_json());
+    let totals = json!({
+        "rows": total_rows.iter().map(|&i| json!({
+            "index": i,
+            "cells": full.columns.iter().map(|c| encode_cell(&at(c, i))).collect::<Vec<_>>(),
+        })).collect::<Vec<_>>(),
+        "cols": total_cols.iter().map(|&j| {
+            let c = &full.columns[j];
+            json!({
+                "index": j, "name": c.name, "type": c.ty.as_str(), "unit": unit_json(c),
+                "values": c.values.iter().map(encode_cell).collect::<Vec<_>>(),
+            })
+        }).collect::<Vec<_>>(),
+    });
+    let row_totals = FrameValue {
+        columns: key_cols().chain(total_cols.iter().map(|&j| pick(&full.columns[j], &leaf_rows))).collect(),
+    };
+
+    // Column Totals: the leaf column items as rows. A key column per column field, as its column types it; the value's
+    // name where there are several; then one column per total row, named as the row reads ("East | Total", "Grand Total").
+    let col_fields: Vec<&str> =
+        layout["colFields"].as_array().map_or(Vec::new(), |a| a.iter().filter_map(Json::as_str).collect());
+    let values: Vec<&str> =
+        layout["values"].as_array().map_or(Vec::new(), |a| a.iter().filter_map(Json::as_str).collect());
+    let src_col = |name: &str| src.columns.iter().find(|c| c.name == name);
+    let mut ct: Vec<FrameColumn> = Vec::new();
+    for (q, name) in col_fields.iter().enumerate() {
+        let ty = src_col(name).map_or(FrameColType::String, |c| c.ty);
+        let cells = leaf_cols
+            .iter()
+            .map(|&j| {
+                cols[j]["tuple"].as_array().and_then(|t| t.get(q)).map_or(FrameCell::Null, crate::wire::decode_cell)
+            })
+            .collect();
+        let mut col = FrameColumn::new(*name, ty, cells);
+        col.format = src_col(name).and_then(|c| c.format.clone());
+        ct.push(col);
+    }
+    if values.len() > 1 {
+        let cells = leaf_cols
+            .iter()
+            .map(|&j| {
+                let v = cols[j]["value"].as_u64().unwrap_or(0) as usize;
+                values.get(v).map_or(FrameCell::Null, |n| FrameCell::str(n))
+            })
+            .collect();
+        ct.push(FrameColumn::new("Value", FrameColType::String, cells));
+    }
+    let row_fields: Vec<&str> =
+        layout["rowFields"].as_array().map_or(Vec::new(), |a| a.iter().filter_map(Json::as_str).collect());
+    let mut names: Vec<String> = Vec::new();
+    for &i in &total_rows {
+        let r = &rows[i];
+        let name = if r["kind"].as_str() == Some("grand") {
+            "Grand Total".to_string()
+        } else {
+            let fill = r["fill"].as_u64().unwrap_or(0) as usize;
+            let tuple = r["tuple"].as_array().cloned().unwrap_or_default();
+            let mut parts: Vec<String> = tuple
+                .iter()
+                .take(fill)
+                .enumerate()
+                .map(|(k, x)| {
+                    let cell = crate::wire::decode_cell(x);
+                    match row_fields.get(k).and_then(|n| src_col(n)) {
+                        Some(col) if col.ty == FrameColType::Date && !cell.is_null() => key_text(col, &cell),
+                        _ => js_string(&cell).into_owned(),
+                    }
+                })
+                .collect();
+            parts.push("Total".to_string());
+            parts.join(" | ")
+        };
+        names.push(name);
+    }
+    let names = make_headers(&names, names.len());
+    for (n, &i) in total_rows.iter().enumerate() {
+        let from: Vec<&FrameColumn> = leaf_cols.iter().map(|&j| &full.columns[keys + j]).collect();
+        let ty = if !from.is_empty() && from.iter().all(|c| c.ty == FrameColType::Date) {
+            FrameColType::Date
+        } else if !from.is_empty() && from.iter().all(|c| c.ty == FrameColType::String) {
+            FrameColType::String
+        } else {
+            FrameColType::Number
+        };
+        ct.push(FrameColumn::new(names[n].clone(), ty, from.iter().map(|c| at(c, i)).collect()));
+    }
+    PivotSplit { plain, totals, row_totals, col_totals: FrameValue { columns: ct } }
+}
+
 // ─── Append / bind ──────────────────────────────────────────────────────────────
 
 pub fn append_frames(frames: &[&FrameValue]) -> Res<FrameValue> {

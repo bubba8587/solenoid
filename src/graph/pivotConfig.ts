@@ -93,3 +93,8 @@ export function regroupField(c: PivotConfig, zone: "rows" | "cols", field: strin
   delete exclude[field];
   return { ...c, [zone]: list, exclude };
 }
+
+/** A pivot's calculated fields, by the names its last result captions them with (wired or typed names alike). */
+export function calcFieldNames(layout: { values: readonly string[]; funcs: readonly string[] } | null | undefined): string[] {
+  return layout ? layout.values.filter((_, i) => layout.funcs[i] === "calc") : [];
+}

@@ -2,7 +2,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { pivotEditor } from "../pivotEditorStore";
 import { notifyGraphChanged, processGraph } from "../process";
-import { DATE_GROUPS, dateGroupOf, pivotConfigOf, regroupField, writePivotConfig, type DateGroup, type PivotConfig } from "../pivotConfig";
+import { DATE_GROUPS, calcFieldNames, dateGroupOf, pivotConfigOf, regroupField, writePivotConfig, type DateGroup, type PivotConfig } from "../pivotConfig";
+import { pivotLayoutOf } from "../pivotLayout";
+import { isSolError } from "../errorValue";
 import { caseTwin } from "../frame";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameOps";
@@ -13,6 +15,8 @@ import "./PivotEditorPopup.css";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
 import { TypeIcon } from "./TypeIcon";
 import { PivotFilterList } from "./PivotFilterList";
+import { dropOutputCables } from "./cablePrune";
+import { getOwningView } from "../activeGraph";
 
 // The per-value function list derives from AGG_OP_META; the pivot is the one surface
 // that also offers the pivotOnly ops.
@@ -64,6 +68,9 @@ export function PivotEditorPopup() {
   const node = state.node;
   const close = () => { pivotEditor.close(); state.onClosed?.(); };
   const fields = node.sourceColumns ?? [];
+  // Calculated fields come from the card's wired λ rows and always sit among the values, so they're listed, not dragged.
+  const result = node.cachedResult;
+  const calcNames = calcFieldNames(result && !isSolError(result) ? pivotLayoutOf(result) : null);
   const typeOf = (name: string) => fields.find((f) => f.name === name)?.type ?? "number";
   // A saved field whose column the input lacks right now stays in the layout, marked, and counts again once it's back.
   const isMissing = (name: string) => fields.length > 0 && !fields.some((f) => f.name === name);
@@ -80,6 +87,14 @@ export function PivotEditorPopup() {
     // The field list (a new filter's values) comes back with the compute: draw again once it lands.
     void processGraph(node.id).then(() => setLanded((n) => n + 1));
     setCfg(next);
+  }
+  /** The totals are the Pivot view's; Export totals hands them on as Row Totals and Column Totals outputs. */
+  async function setExportTotals(on: boolean) {
+    if (!on) await dropOutputCables(node.id, ["rowTotals", "colTotals"]);
+    node.setExportTotals(on);
+    await getOwningView(node.id)?.rerenderNode(node.id);
+    notifyGraphChanged();
+    void processGraph(node.id).then(() => setLanded((n) => n + 1));
   }
   const zoneArr = (c: Cfg, z: Zone) => (z === "rows" ? c.rows : z === "cols" ? c.cols : z === "details" ? c.details : c.vals);
   const copyZones = (c: Cfg): Cfg => ({ ...c, rows: [...c.rows], cols: [...c.cols], vals: [...c.vals], details: [...c.details], funcs: { ...c.funcs } });
@@ -297,6 +312,12 @@ export function PivotEditorPopup() {
                 <span className="pivot-chip__name">{f.name}</span>
               </span>
             ))}
+            {calcNames.map((name) => (
+              <span key={`calc:${name}`} className="pivot-chip pivot-chip--calc" title={`${name} · calculated field, from a λ on the card; shown after the values`}>
+                <span className="pivot-chip__glyph">λ</span>
+                <span className="pivot-chip__name">{name}</span>
+              </span>
+            ))}
           </div>
         </div>
 
@@ -333,6 +354,10 @@ export function PivotEditorPopup() {
       </div>
 
       <div className="pivot-editor__footer">
+        <label className="pivot-editor__export" title="Totals show in the Pivot view only. On, the card also outputs them as Row Totals and Column Totals.">
+          <input type="checkbox" checked={node.exportTotals} onChange={(e) => void setExportTotals(e.target.checked)} />
+          Export totals
+        </label>
         <button className="pivot-editor__done" onClick={close}>Done</button>
       </div>
     </PopupShell>

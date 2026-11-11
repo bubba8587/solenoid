@@ -5,7 +5,7 @@ import { pivotFrame } from "./coreVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 import { buildPivotModel, pivotLayoutOf, DEFAULT_PIVOT_VIEW, type PivotViewOptions } from "../../src/graph/pivotLayout";
 import type { PivotConfig } from "../../src/graph/pivotConfig";
-import { pivotKey } from "../../src/graph/pivotConfig";
+import { calcFieldNames, pivotKey } from "../../src/graph/pivotConfig";
 import { keyLabel, pivotMenuSections, type PivotMenuTarget, type PivotValueFormat } from "../../src/graph/components/PivotViewMenu";
 
 const sales: FrameValue = {
@@ -137,5 +137,13 @@ describe("a field header's value list", () => {
     expect(keyLabel("string", "")).toBe("(blank)");
     expect(keyLabel("string", "007")).toBe("007");
     expect(keyLabel("number", "#N/A")).toBe("#N/A");
+  });
+});
+
+describe("Configure Fields lists calculated fields", () => {
+  it("names each calculated value by its caption in the last result, and nothing without one", () => {
+    expect(calcFieldNames({ values: ["Miles", "MPG", "Calculated 2"], funcs: ["sum", "calc", "calc"] })).toEqual(["MPG", "Calculated 2"]);
+    expect(calcFieldNames({ values: ["Miles"], funcs: ["sum"] })).toEqual([]);
+    expect(calcFieldNames(null)).toEqual([]);
   });
 });

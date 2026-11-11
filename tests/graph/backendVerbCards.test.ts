@@ -234,7 +234,9 @@ describe("PIVOTBY beyond the field filter", () => {
     expect(cols(fromRef.frame as FrameValue)).toEqual(cols(held.frame as FrameValue));
     const wide = fromRef.frame as FrameValue;
     expect(wide.columns[wide.columns.length - 1].unit).toEqual(sales.columns[2].unit);
-    expect(pivotLayoutOf(fromRef.frame as FrameValue)?.rows.length).toBe((fromRef.frame as FrameValue).columns[0].values.length);
+    // The layout lays out the view, totals included; the Frame is its leaf rows ([[C127]] pivotView).
+    const laid = pivotLayoutOf(fromRef.frame as FrameValue)!;
+    expect(laid.rows.length - (laid.totals?.rows.length ?? 0)).toBe((fromRef.frame as FrameValue).columns[0].values.length);
     expect(n.sourceColumns.map((c) => c.distinct.length)).toEqual([3, 3, 4]);
   });
 

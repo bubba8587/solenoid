@@ -38,6 +38,7 @@ export const INIT_FIELD_ORDER = [
   "byRowLive", "includeTasks", "includeTables", "includeFields", "includeBacklinks",
   "dateOrder",
   "columnTypes",
+  "exportTotals",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

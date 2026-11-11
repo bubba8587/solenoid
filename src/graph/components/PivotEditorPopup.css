@@ -118,6 +118,9 @@
 /* A clear but legible "used" cue: a configured pivot has most fields used, and 0.55 washed the list out. */
 .pivot-chip--used { opacity: 0.74; }
 /* A saved field the input lacks right now: kept, and set apart until its column comes back. */
+/* A calculated field: wired on the card, always a value, so it's listed but not dragged. */
+.pivot-chip--calc { cursor: default; border-style: dashed; }
+.pivot-chip--calc:active { cursor: default; }
 .pivot-chip--missing { border-style: dashed; border-color: var(--sol-warn); color: var(--text-muted); }
 .pivot-chip__glyph {
   display: inline-flex;
@@ -181,10 +184,19 @@
 .pivot-editor.sol-popup--sized { max-width: none; max-height: none; }
 .pivot-editor.sol-popup--sized .pivot-editor__body { flex: 1 1 auto; min-height: 0; }
 
+.pivot-editor__export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
 .pivot-editor__footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 12px;
   padding: 8px 14px;
   border-top: 1px solid var(--border);
 }
