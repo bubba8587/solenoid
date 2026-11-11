@@ -96,6 +96,8 @@ export interface PivotHost {
   editFields(onClosed: (output: FrameValue | null) => void, accent?: string): void;
   /** The card's function for a value field with none of its own. */
   agg: AggOp;
+  /** An input column's type, by name. */
+  typeOf(field: string): string;
   /** The card's field settings as they stand. */
   config(): PivotConfig;
   /** Writes the settings, recomputes the Pivot and gives its new output. */

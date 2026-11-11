@@ -29,7 +29,7 @@ const base = (): PivotConfig => ({
 function menu(target: PivotMenuTarget, cfg = base(), options: PivotViewOptions = DEFAULT_PIVOT_VIEW, format?: PivotValueFormat) {
   let applied: PivotConfig | null = null;
   let view: PivotViewOptions | null = null;
-  const host = { agg: "sum" as const, config: () => cfg, apply: (n: PivotConfig) => { applied = n; }, keysOf: async () => ({ keys: ["N", "S", ""], total: 3 }) };
+  const host = { agg: "sum" as const, typeOf: () => "string", config: () => cfg, apply: (n: PivotConfig) => { applied = n; }, keysOf: async () => ({ keys: ["N", "S", ""], total: 3 }) };
   const sections = pivotMenuSections({ target, layout, host, options, onOptions: (v) => { view = v; }, copyText: () => {}, format });
   const items = sections.flatMap((s) => s.items);
   const find = (label: string) => {

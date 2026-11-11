@@ -27,6 +27,7 @@ function findPivotHost(hostId: string): PivotHost | null {
       return outputOf(node);
     },
     agg: node.agg,
+    typeOf: (field) => node.sourceColumns.find((c) => c.name === field)?.type ?? "string",
     config: () => pivotConfigOf(node),
     async setConfig(next) {
       writePivotConfig(node, next);

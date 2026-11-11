@@ -1019,6 +1019,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   // The right-click menu writes the card's settings, then the popup reopens on the new output.
   const pivotMenuHost: PivotMenuHost | undefined = host && state.pivot ? {
     agg: host.agg,
+    typeOf: (field) => host.typeOf(field),
     config: () => host.config(),
     apply: (next) => void host.setConfig(next).then(reopenWith),
     keysOf: (field) => host.keysOf(field),

@@ -22,6 +22,8 @@ export type PivotMenuTarget =
 export interface PivotMenuHost {
   /** The card's function for a value field with none of its own. */
   agg: AggOp;
+  /** An input column's type, for a field the layout does not place (a filter alone). */
+  typeOf(field: string): string;
   config(): PivotConfig;
   apply(next: PivotConfig): void;
   keysOf(field: string): Promise<{ keys: string[]; total: number }>;
@@ -205,23 +207,34 @@ export function keyLabel(type: string, key: string, format?: FormatAnnotation | 
  * A field header's ▾: the field's sort and its value checklist, as Excel's header button opens, writing the card's
  * own settings. Over a Compact header naming several fields, a pick of which one.
  */
-export function PivotFieldDropdown({ at, axis, initialField = 0, layout, host, onClose }: {
+/** A field the ▾ panel can show: its name, type and display format. */
+export interface PivotPanelField { name: string; type: string; format?: FormatAnnotation | null }
+
+/** The ▾ panel's fields for one axis of the layout. */
+export function axisFields(layout: PivotLayout, axis: "rows" | "cols"): PivotPanelField[] {
+  const names = axis === "rows" ? layout.rowFields : layout.colFields;
+  const types = axis === "rows" ? layout.rowTypes : layout.colTypes;
+  const formats = axis === "rows" ? layout.rowFormats : layout.colFormats;
+  return names.map((name, i) => ({ name, type: types[i] ?? "string", format: formats?.[i] ?? null }));
+}
+
+export function PivotFieldDropdown({ at, fields, initialField = 0, host, onClose }: {
   at: { x: number; y: number };
-  axis: "rows" | "cols";
+  fields: PivotPanelField[];
   initialField?: number;
-  layout: PivotLayout;
   host: PivotMenuHost;
   onClose: () => void;
 }) {
-  const names = axis === "rows" ? layout.rowFields : layout.colFields;
-  const types = axis === "rows" ? layout.rowTypes : layout.colTypes;
   const [field, setField] = useState(initialField);
-  const name = names[field] ?? "";
-  const type = types[field] ?? "string";
+  const name = fields[field]?.name ?? "";
+  const type = fields[field]?.type ?? "string";
   const [list, setList] = useState<{ name: string; keys: string[]; total: number } | null>(null);
   const [hidden, setHidden] = useState<string[]>(() => host.config().exclude[name] ?? []);
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(at);
+  // The host is rebuilt with each render of the popup; the list is read once per field, never per render.
+  const hostRef = useRef(host);
+  hostRef.current = host;
   useEscapeLayer(true, onClose);
   useOutsideClose(true, ref, onClose);
   useLayoutEffect(() => {
@@ -232,26 +245,27 @@ export function PivotFieldDropdown({ at, axis, initialField = 0, layout, host, o
   }, [at, list]);
   useEffect(() => {
     let live = true;
-    setHidden(host.config().exclude[name] ?? []);
-    void host.keysOf(name).then((r) => { if (live) setList({ name, ...r }); });
+    setHidden(hostRef.current.config().exclude[name] ?? []);
+    void hostRef.current.keysOf(name).then((r) => { if (live) setList({ name, ...r }); });
     return () => { live = false; };
-  }, [name, host]);
+  }, [name]);
 
   const cfg = host.config();
-  const fields = axis === "rows" ? cfg.rows : cfg.cols;
-  const sortAt = fields.indexOf(name) + 1;
-  const sortKey = axis === "rows" ? "rowSort" : "colSort";
+  // A field sorts on the axis it is placed on; a filter-only field has no sort.
+  const axis: "rows" | "cols" | null = cfg.rows.includes(name) ? "rows" : cfg.cols.includes(name) ? "cols" : null;
+  const sortAt = axis ? (axis === "rows" ? cfg.rows : cfg.cols).indexOf(name) + 1 : 0;
+  const sortKey = axis === "cols" ? "colSort" : "rowSort";
   const cur = cfg[sortKey];
   const [up, down] = sortWords(type);
   const write = (change: (c: PivotConfig) => void) => { const next = copyOf(host.config()); change(next); host.apply(next); };
-  const format = (axis === "rows" ? layout.rowFormats : layout.colFormats)?.[field] ?? null;
+  const format = fields[field]?.format ?? null;
   const label = (k: string) => keyLabel(type, k, format);
   return (
     <div ref={ref} className="pivot-field-drop sol-popup-menu__list sol-popup-menu__list--at" role="dialog" aria-label={`${name} sort and filter`}
       style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
-      {names.length > 1 && (
+      {fields.length > 1 && (
         <select className="pivot-field-drop__pick" value={field} onChange={(e) => { setField(Number(e.target.value)); setList(null); }} aria-label="Field">
-          {names.map((n, i) => <option key={n} value={i}>{n}</option>)}
+          {fields.map((f, i) => <option key={f.name} value={i}>{f.name}</option>)}
         </select>
       )}
       {sortAt > 0 && (
