@@ -7,7 +7,7 @@
 /** A Solenoid release: `major.minor`, or `major.minor.patch` for a patch release. */
 export type Release = `${number}.${number}` | `${number}.${number}.${number}`;
 
-export const NEXT_RELEASE: Release = "1.6.1";
+export const NEXT_RELEASE: Release = "1.7";
 
 /** Orders two releases; a missing part is 0, so 1.6 is 1.6.0. */
 export function compareRelease(a: string, b: string): number {

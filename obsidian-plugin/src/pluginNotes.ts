@@ -12,6 +12,15 @@ export interface PluginNotes {
 
 export const PLUGIN_NOTES: PluginNotes[] = [
   {
+    version: "0.1.11",
+    notes: [
+      {
+        title: "Updated theming",
+        body: "",
+      },
+    ],
+  },
+  {
     version: "0.1.10",
     notes: [
       {
