@@ -134,6 +134,8 @@ assets, CRM rows) — a different job (storage + workflow) wearing a spreadsheet
 costume. Fails tests 1, 2 (their automations), and 3.
 **The line:** Solenoid computes; it does not track. No kanban, no calendar views, no
 forms-that-append-rows as a lifestyle.
+Edit Frame (2026-11-10, on the author's word) stays on this side of the line: it keeps hand edits to
+a table the graph computed, each one listed, and never holds rows of its own.
 
 ### 9. ML training platforms — R/SPSS, scikit-learn, DataRobot
 **Stay out because:** training, tuning, and deploying models is its own universe, and

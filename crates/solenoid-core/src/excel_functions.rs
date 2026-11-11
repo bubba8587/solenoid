@@ -483,7 +483,10 @@ pub(crate) fn to_str(v: &V) -> String {
 /// order, `#AMBIGUOUS!` when both could be the month (`3/5/24`), else the one past 12 is the day (`13/5/24`, `5/13`), `5-Mar-24` and `5 Mar 2024`, `Mar 5` (this year; two digits up to 31 are a day),
 /// `Mar 5, 2024`, and `March 2024` (the month's first day). A two-digit year 00 to 29 is 2000 to 2029, else
 /// 1930 to 1999. A time after the date is ignored. None for anything else, which the shared reader then tries.
-fn excel_datevalue(t: &str) -> Option<Result<f64, SolError>> {
+/// With an `order` other than Auto, two or three numbers split by `/`, `-` or `.` take that order instead: MDY and DMY
+/// read the first two as month and day, YMD reads year, month, day, and a month or day out of range is not a date.
+pub(crate) fn excel_datevalue(t: &str, order: crate::excel_criteria::DateOrder) -> Option<Result<f64, SolError>> {
+    use crate::excel_criteria::DateOrder;
     fn month_of(w: &str) -> Option<u32> {
         const NAMES: [&str; 12] = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
         const FULL: [&str; 12] = [
@@ -509,9 +512,10 @@ fn excel_datevalue(t: &str) -> Option<Result<f64, SolError>> {
         M(u32),
     }
     let date_part = t.split_whitespace().take_while(|w| !w.contains(':')).collect::<Vec<_>>().join(" ");
-    let slashed = date_part.contains('/');
+    // An explicit order reads numbers split by dashes or dots as it reads slashes; Auto leaves those to the shared reader.
+    let slashed = date_part.contains('/') || (order != DateOrder::Auto && date_part.contains(['-', '.']));
     let mut toks = Vec::new();
-    for w in date_part.split(['/', '-', ' ', ',']).filter(|w| !w.is_empty()) {
+    for w in date_part.split(['/', '-', ' ', ',', '.']).filter(|w| !w.is_empty()) {
         if w.bytes().all(|b| b.is_ascii_digit()) {
             toks.push(Tok::N(w.parse().ok()?, w.len()));
         } else {
@@ -531,6 +535,11 @@ fn excel_datevalue(t: &str) -> Option<Result<f64, SolError>> {
     // Two numbers that could each be the month are ambiguous, as typed entry reads them ([[C44]] dateSerials);
     // otherwise the one past 12 is the day.
     let day_month = |a: u32, b: u32| -> Option<Result<(u32, u32), SolError>> {
+        match order {
+            DateOrder::Mdy | DateOrder::Ymd => return Some(Ok((a, b))),
+            DateOrder::Dmy => return Some(Ok((b, a))),
+            DateOrder::Auto => {}
+        }
         if a <= 12 && b <= 12 && a != b {
             return Some(Err(sol_error(
                 ErrorCode::Ambiguous,
@@ -541,6 +550,7 @@ fn excel_datevalue(t: &str) -> Option<Result<f64, SolError>> {
     };
     let (y, m, d) = match toks.as_slice() {
         [Tok::N(y, 4), Tok::N(m, _), Tok::N(d, _)] => (i64::from(*y), *m, *d),
+        [Tok::N(y, yd), Tok::N(m, _), Tok::N(d, _)] if slashed && order == DateOrder::Ymd => (year_of(*y, *yd), *m, *d),
         [Tok::N(a, _), Tok::N(b, _), Tok::N(y, yd)] if slashed => match day_month(*a, *b)? {
             Ok((m, d)) => (year_of(*y, *yd), m, d),
             Err(e) => return Some(Err(e)),
@@ -2264,6 +2274,34 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
 
 /// `/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i`: hours, minutes, seconds and whether
 /// a meridiem reads PM.
+/// A clock time (`10:30`, `3:30 pm`, `15:00:00`) as a fraction of a day, as TIMEVALUE reads it: None when the text is
+/// no clock time, `Err` when it is one out of range (`25:00`, `13:00 pm`).
+fn clock_fraction(t: &str) -> Option<Result<f64, ()>> {
+    let (h, m, sec, meridiem) = clock_time(t)?;
+    let hour_ok = match meridiem {
+        Some(_) => (1.0..=12.0).contains(&h),
+        None => h <= 23.0,
+    };
+    if !hour_ok || m > 59.0 || sec >= 60.0 {
+        return Some(Err(()));
+    }
+    let h = match meridiem {
+        Some(pm) => h % 12.0 + if pm { 12.0 } else { 0.0 },
+        None => h,
+    };
+    Some(Ok((h * 3600.0 + m * 60.0 + sec) / 86400.0))
+}
+
+/// The time of day written after a date (`1/2/26 10:30`) through TIMEVALUE's reading: 0 when none is written, None
+/// when what is written is no time.
+pub(crate) fn time_after_date(t: &str) -> Option<f64> {
+    let rest = t.split_whitespace().skip_while(|w| !w.contains(':')).collect::<Vec<_>>().join(" ");
+    if rest.is_empty() {
+        return Some(0.0);
+    }
+    clock_fraction(&rest)?.ok()
+}
+
 fn clock_time(t: &str) -> Option<(f64, f64, f64, Option<bool>)> {
     let b: Vec<char> = t.chars().collect();
     let mut i = 0;
@@ -3239,6 +3277,8 @@ arms! {
     ENCODEBASE64,
     DECODEBASE64,
     UNACCENT,
+    LINKNAME,
+    LINKPATH,
     SPELLNUMBER,
     HASH,
     SLUGIFY,
@@ -4768,30 +4808,28 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let t = trim_space(&raw);
             let bad = |what: &str| V::err(sol_error(ErrorCode::Value, format!("Cannot parse \"{t}\" as a {what}")));
             if arm == F::DATEVALUE {
-                match excel_datevalue(t) {
-                    Some(Ok(d)) => return V::Num(d),
-                    Some(Err(e)) => return V::err(e),
-                    None => {}
-                }
-                return match parse_date(t) {
+                let order = match a.get(1) {
+                    None | Some(V::Undef | V::Null) => crate::excel_criteria::DateOrder::Auto,
+                    Some(o) => match crate::excel_criteria::DateOrder::parse(&to_str(o)) {
+                        Some(order) => order,
+                        None => {
+                            return V::err(sol_error(
+                                ErrorCode::Value,
+                                format!("DATEVALUE's order is \"MDY\", \"DMY\" or \"YMD\", not \"{}\"", to_str(o)),
+                            ))
+                        }
+                    },
+                };
+                return match crate::excel_criteria::datevalue_text(t, order) {
                     DateReading::Serial(d) if !d.is_nan() => V::Num(d.floor()),
                     DateReading::Ambiguous(e) => V::err(e),
                     _ => bad("date"),
                 };
             }
-            if let Some((h, m, sec, meridiem)) = clock_time(t) {
-                let hour_ok = match meridiem {
-                    Some(_) => (1.0..=12.0).contains(&h),
-                    None => h <= 23.0,
-                };
-                if !hour_ok || m > 59.0 || sec >= 60.0 {
-                    return bad("time");
-                }
-                let h = match meridiem {
-                    Some(pm) => h % 12.0 + if pm { 12.0 } else { 0.0 },
-                    None => h,
-                };
-                return V::Num((h * 3600.0 + m * 60.0 + sec) / 86400.0);
+            match clock_fraction(t) {
+                Some(Ok(time)) => return V::Num(time),
+                Some(Err(())) => return bad("time"),
+                None => {}
             }
             // Any failure is NaN, an ambiguous date included.
             match parse_date(t) {
@@ -5324,6 +5362,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         | F::ENCODEBASE64
         | F::DECODEBASE64
         | F::UNACCENT
+        | F::LINKNAME
+        | F::LINKPATH
         | F::SPELLNUMBER
         | F::HASH
         | F::SLUGIFY
@@ -5358,6 +5398,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             }
         }
         F::UNACCENT => V::str(&crate::text_ops::unaccent(&to_str(arg(a, 0)))),
+        F::LINKNAME => V::str(&crate::text_ops::link_name(&to_str(arg(a, 0)))),
+        F::LINKPATH => V::str(&crate::text_ops::link_path(&to_str(arg(a, 0)))),
         F::SLUGIFY => {
             let sep = match arg(a, 1) {
                 V::Null | V::Undef => "-".to_string(),

@@ -42,7 +42,7 @@ import { DistributionsNode } from "./distribution";
 import { ConduitNode } from "./conduit";
 import { FrameFromListsNode } from "./frame";
 import { ScheduleNode } from "./schedule";
-import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
+import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
 import { CubeInputNode, BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
 import { WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, GeocodeNode, WeatherNode, HolidaysNode, FxNode } from "./connection";
 import { DataFeedNode } from "./dataFeed";
@@ -217,6 +217,7 @@ export function explicitKindOf(node: GraphNode): NodeKind | null {
     node instanceof MergeColumnsNode ||
     node instanceof HeadersNode ||
     node instanceof DropBlankRowsNode ||
+    node instanceof EditFrameNode ||
     node instanceof DescribeNode || node instanceof CorrMatrixNode || node instanceof KMeansNode || node instanceof PcaNode || node instanceof LogisticNode || node instanceof WindowNode ||
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
@@ -308,7 +309,8 @@ export function nodeResizable(node: GraphNode): boolean {
   return node instanceof DisplayNode;
 }
 
-/** The widest tier, 340px: cards that draw a chart or a deck of records in the card, where width is the figure's room. */
+/** The widest tier, 340px: cards that draw a chart or a deck of records in the card, where width is the figure's room,
+ *  and Edit Frame, whose list of edits names each row's key and value. */
 export function nodeXWide(node: GraphNode): boolean {
   return node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode ||
     node instanceof HistogramNode || node instanceof SankeyNode || node instanceof ProportionNode ||
@@ -316,7 +318,7 @@ export function nodeXWide(node: GraphNode): boolean {
     node instanceof CalendarHeatmapNode || node instanceof HeatmapNode || node instanceof QuiverNode ||
     node instanceof RecordNode || node instanceof CardsNode || node instanceof TriangleSolverNode || node instanceof UnitCircleNode ||
     node instanceof CircleSolverNode || node instanceof RegularPolygonNode || node instanceof TwoPointsNode ||
-    node instanceof PolygonPointsNode || node instanceof SolidNode || node instanceof ElementNode;
+    node instanceof PolygonPointsNode || node instanceof SolidNode || node instanceof ElementNode || node instanceof EditFrameNode;
 }
 
 export function nodeWide(node: GraphNode): boolean {

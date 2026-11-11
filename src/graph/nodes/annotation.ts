@@ -37,7 +37,7 @@ import {
 } from "../noteFrontmatter";
 
 /** A field's value: a date field's a `SolDate` ([[D114]] dateIsAKind). */
-type EmittedValue = FrontmatterValue | SolDate | (FrontmatterScalar | SolDate)[] | (FrontmatterScalar | SolDate)[][] | FrameValue | CubeValue | SolError;
+export type EmittedValue = FrontmatterValue | SolDate | (FrontmatterScalar | SolDate)[] | (FrontmatterScalar | SolDate)[][] | FrameValue | CubeValue | SolError;
 
 const KNAP_UNQUOTED = 'Knap vars in frontmatter require quoted "{{var}}" syntax';
 
@@ -171,6 +171,9 @@ export class NoteNode extends GraphNode {
 
   protected reservedOutputs(): ReadonlySet<string> { return NOTE_RESERVED; }
 
+  /** Outputs read from the body itself, for a card that offers them (Import Obsidian Note's tasks and tables). */
+  protected bodyFields(_body: string): { key: string; value: EmittedValue; type: FrontmatterFieldType }[] { return []; }
+
   get renderBody(): string { return this._renderBody; }
   fieldKeys(): string[] { return this._fieldKeys; }
   fieldType(key: string): FrontmatterFieldType | undefined {
@@ -205,6 +208,8 @@ export class NoteNode extends GraphNode {
     }
     for (const k of [...this._knapRendered.keys()]) if (!this._knapRaw.has(k)) this._knapRendered.delete(k);
     for (const k of Object.keys(this.fieldTypes)) if (!wanted.has(k)) delete this.fieldTypes[k];
+    // What the body holds as data rides beside the frontmatter's fields, a frontmatter key of the same name first.
+    for (const f of this.bodyFields(parsed.body)) if (!wanted.has(f.key)) wanted.set(f.key, { value: f.value, type: f.type });
 
     const removed: string[] = [];
     const retyped: { key: string; type: FrontmatterFieldType }[] = [];

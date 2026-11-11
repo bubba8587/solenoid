@@ -5,12 +5,15 @@ import {
   type GrandMode, type PivotBodyRow, type PivotEmpty, type PivotForm, type PivotLayout, type PivotTotals, type PivotViewOptions, type SubtotalMode,
 } from "../pivotLayout";
 import { formatFrameCell, type FrameCell } from "../frame";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 import { ChevronDownIcon, ChevronRightIcon, MinusSquareIcon, PlusSquareIcon, SlidersIcon } from "./Icons";
 import { PopupChoice, segmentsWidth, useFitsWidth } from "./PopupChoice";
 import { useEscapeLayer } from "./escapeLayers";
 import { IS_COARSE } from "../coarse";
 import { APP_LOCALE } from "../locale";
 import { ColumnFormatButton } from "./columnHeadControls";
+import { PointerMenu } from "./TableEditMenu";
+import { axisFields, PivotFieldDropdown, pivotMenuSections, type PivotMenuHost, type PivotMenuTarget, type PivotPanelField, type PivotValueFormat } from "./PivotViewMenu";
 import "./PivotTableView.css";
 
 const FORM_OPTIONS: { value: PivotForm; label: string }[] = [
@@ -41,10 +44,10 @@ interface PivotTotalsControl {
   setGrand: (mode: GrandMode) => void;
 }
 
-/** The fields' text in their own type: a date key reads as a date, not its serial. */
-const itemText = (types: readonly string[]) => (field: number, cell: FrameCell): string => {
+/** The fields' text in their own type and format: a date key reads as a date, not its serial, a month as `Jan 2026`. */
+const itemText = (types: readonly string[], formats: readonly (FormatAnnotation | null)[] = []) => (field: number, cell: FrameCell): string => {
   if (cell == null) return "(blank)";
-  const f = formatFrameCell((types[field] ?? "string") as never, cell);
+  const f = formatFrameCell((types[field] ?? "string") as never, cell, formats[field] ?? undefined);
   return f == null ? "(blank)" : String(f);
 };
 
@@ -179,7 +182,7 @@ function PivotDetails({ layout, item, indent }: { layout: PivotLayout; item: num
   );
 }
 
-export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt, query, ribbon }: {
+export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt, query, ribbon, menuHost, copyText, valueFormat }: {
   layout: PivotLayout;
   options: PivotViewOptions;
   onOptions: (next: PivotViewOptions) => void;
@@ -188,10 +191,31 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
   isErrorAt: (r: number, c: number) => boolean;
   query: string;
   ribbon: ReactNode;
+  /** The Pivot card the right-click menu edits; with none (a note's pivot) right-click is the browser's own. */
+  menuHost?: PivotMenuHost;
+  copyText?: (text: string) => void;
+  valueFormat?: PivotValueFormat;
 }) {
+  const [menu, setMenu] = useState<{ at: { x: number; y: number }; target: PivotMenuTarget } | null>(null);
+  const [drop, setDrop] = useState<{ at: { x: number; y: number }; fields: PivotPanelField[]; field: number } | null>(null);
+  const openDrop = (e: React.MouseEvent<HTMLElement>, fields: PivotPanelField[], field: number) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setDrop({ at: { x: r.left, y: r.bottom + 2 }, fields, field });
+  };
+  // The fields hiding values, each with its count: the view says what it is not showing.
+  const cfgNow = menuHost?.config();
+  const filtered = cfgNow ? Object.entries(cfgNow.exclude).filter(([, ks]) => ks.length > 0) : [];
+  const axisFiltered = (axis: "rows" | "cols") => {
+    const names = axis === "rows" ? layout.rowFields : layout.colFields;
+    return filtered.some(([n]) => names.includes(n));
+  };
+  const onMenu = (target: PivotMenuTarget | null) => (menuHost && target ? (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMenu({ at: { x: e.clientX, y: e.clientY }, target });
+  } : undefined);
   // Which groups show their source rows is the popup's own state, never saved.
   const [openDetails, setOpenDetails] = useState<ReadonlySet<string>>(() => new Set());
-  const model = buildPivotModel(layout, options, itemText(layout.rowTypes), itemText(layout.colTypes), liveDetailKeys(layout, openDetails));
+  const model = buildPivotModel(layout, options, itemText(layout.rowTypes, layout.rowFormats), itemText(layout.colTypes, layout.colFormats), liveDetailKeys(layout, openDetails));
   const set = (patch: Partial<PivotViewOptions>) => onOptions({ ...options, ...patch });
   const toggleDetail = (key: string) => setOpenDetails((cur) => {
     const next = new Set(cur);
@@ -226,6 +250,9 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
         scope="row"
         className={`pivot-view__label${label?.total ? " pivot-view__label--total" : ""}${compact && col === 0 ? " pivot-view__label--sticky" : ""}`}
         style={indent ? { paddingLeft: 6 + indent } : undefined}
+        onContextMenu={onMenu(label?.field !== undefined && label.key !== undefined
+          ? { kind: "item", axis: "rows", field: label.field, key: label.key, text: label.total ? label.text.replace(/ Total$/, "") : label.text }
+          : null)}
       >
         <span className="pivot-view__labelin">
           {fold && (
@@ -248,10 +275,37 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
     );
   };
 
+  const headTarget = (h: (typeof model.head)[number][number]): PivotMenuTarget | null => {
+    if ((h.role === "item" || h.role === "total") && h.field !== undefined && h.key !== undefined) {
+      return { kind: "item", axis: "cols", field: h.field, key: h.key, text: h.role === "total" ? h.text.replace(/ Total$/, "") : h.text };
+    }
+    if (h.role === "field") return { kind: "field", axis: "rows", field: h.field ?? 0 };
+    if (h.role === "caption" && layout.colFields.length) return { kind: "field", axis: "cols", field: 0 };
+    if (h.role === "value") return { kind: "value", value: layout.cols[h.col]?.value ?? 0 };
+    if (h.role === "corner" && layout.values.length === 1) return { kind: "value", value: 0 };
+    return null;
+  };
   const empty = emptyText(options.emptyAs);
   return (
     <div className="pivot-view sol-popup__view">
       {ribbon}
+      {filtered.length > 0 && menuHost && (
+        <div className="pivot-view__filters" role="group" aria-label="Filters">
+          {filtered.map(([name, ks]) => {
+            const placed = axisFields(layout, "rows").concat(axisFields(layout, "cols")).find((f) => f.name === name);
+            const field: PivotPanelField = placed ?? { name, type: menuHost.typeOf(name) };
+            return (
+              <span key={name} className="pivot-view__filter">
+                <button type="button" className="pivot-view__filter-name" aria-haspopup="dialog" onClick={(e) => openDrop(e, [field], 0)}>
+                  {name} · {ks.length.toLocaleString(APP_LOCALE)} hidden
+                </button>
+                <button type="button" className="pivot-view__filter-x" aria-label={`Clear filter from ${name}`} title="Clear filter"
+                  onClick={() => { const c = menuHost.config(); menuHost.apply({ ...c, exclude: { ...c.exclude, [name]: [] } }); }}>×</button>
+              </span>
+            );
+          })}
+        </div>
+      )}
       <div className="pivot-view__scroll sol-popup__scroll">
         <table className={`pivot-view__table${options.bandedRows ? " pivot-view__table--band-rows" : ""}${options.bandedCols ? " pivot-view__table--band-cols" : ""}`}>
           <thead>
@@ -264,7 +318,21 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
                     rowSpan={h.rowSpan}
                     scope={h.role === "field" || h.role === "corner" ? undefined : "col"}
                     className={`pivot-view__head pivot-view__head--${h.role}${h.colSpan > 1 ? " pivot-view__head--span" : ""}${h.role === "corner" || h.role === "field" ? (compact ? " pivot-view__label--sticky" : "") : ""}`}
-                  >{h.text}</th>
+                    onContextMenu={onMenu(headTarget(h))}
+                  >
+                    {menuHost && (h.role === "field" || h.role === "caption") && (h.role === "caption" ? layout.colFields.length : layout.rowFields.length) > 0
+                      ? (
+                        <span className="pivot-view__fieldhead">
+                          {h.text}
+                          <button type="button" className={`pivot-view__drop${axisFiltered(h.role === "caption" ? "cols" : "rows") ? " pivot-view__drop--on" : ""}`}
+                            aria-label="Sort and filter" title="Sort and filter" aria-haspopup="dialog"
+                            onClick={(e) => openDrop(e, axisFields(layout, h.role === "caption" ? "cols" : "rows"), h.field ?? 0)}>
+                            <ChevronDownIcon size={11} strokeWidth={2.2} />
+                          </button>
+                        </span>
+                      )
+                      : h.text}
+                  </th>
                 ))}
               </tr>
             ))}
@@ -298,6 +366,7 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
                         <td
                           key={j}
                           className={`pivot-view__value${col.kind !== "leaf" ? " pivot-view__value--total" : ""}${options.bandedCols && j % 2 === 1 ? " pivot-view__value--band" : ""}`}
+                          onContextMenu={onMenu({ kind: "value", value: col.value, text })}
                         >
                           {err ? <span className="sol-error-chip">{text}</span> : text === "" && row.src !== null ? empty : text}
                         </td>
@@ -317,6 +386,13 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
           </tbody>
         </table>
       </div>
+      {drop && menuHost && (
+        <PivotFieldDropdown key={`${drop.fields.map((f) => f.name).join("|")}#${drop.field}`} at={drop.at} fields={drop.fields} initialField={drop.field} host={menuHost} onClose={() => setDrop(null)} />
+      )}
+      {menu && menuHost && (
+        <PointerMenu at={menu.at} label="Pivot table" onClose={() => setMenu(null)}
+          sections={pivotMenuSections({ target: menu.target, layout, host: menuHost, options, onOptions, copyText: copyText ?? (() => {}), format: valueFormat })} />
+      )}
     </div>
   );
 }

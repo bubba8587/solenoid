@@ -4,7 +4,7 @@ import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { NODE_COMPONENTS, componentForNode } from "../../src/graph/nodeRegistry";
 import { extractInit } from "../../src/graph/nodeInit";
-import { MutableSocket, SolenoidSocket, isDateType, isWildcardRung } from "../../src/graph/sockets";
+import { MutableSocket, SolenoidSocket, ValueTypedSocket, isDateType, isWildcardRung } from "../../src/graph/sockets";
 import { getPassthrough } from "../../src/graph/nodes/passthrough";
 
 // HARD version of the dev-only catalogValidator console warnings (v1.0 audit,
@@ -121,7 +121,6 @@ describe("catalog ↔ registry consistency", () => {
     FormatControllerNode: "the FC is the RESOLVER — fcReconcile drives its sockets",
     CompositeNode: "boundary port adoption runs in the composite's own sync pass",
     CompositeInputNode: "a composite boundary marker — typed by the composite's sync pass",
-    UnnestNode: "result rank depends on the input's nesting depth (a Frame at depth 1, a Cube at depth >=2)",
   };
   it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) ([[C10]] socketLattice)", () => {
     const offenders: string[] = [];
@@ -129,8 +128,10 @@ describe("catalog ↔ registry consistency", () => {
     for (const [type, entry] of FLAT_CATALOG.entries()) {
       let inst: object;
       try { inst = entry.create() as object; } catch { continue; }
+      // An output the value types once it has run ([[C136]] typesKnownAfterCalc) is resolved that way, not forever untyped.
       const hasTrueanyOut = Object.values((inst as { outputs?: object }).outputs ?? {})
-        .some((p) => (p as { socket?: { dataType?: string } } | undefined)?.socket?.dataType === "trueany");
+        .map((p) => (p as { socket?: { dataType?: string } } | undefined)?.socket)
+        .some((sock) => sock?.dataType === "trueany" && !(sock instanceof ValueTypedSocket));
       if (!hasTrueanyOut) continue;
       const cls = inst.constructor.name;
       if (cls in TRUEANY_OUT_SANCTIONED) { sanctionedSeen.add(cls); continue; }

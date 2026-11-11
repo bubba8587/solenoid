@@ -90,8 +90,9 @@ pub fn engine_read_bin(handle: &str, column: Option<String>, limit: Option<u32>)
 
 /// Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
 #[wasm_bindgen]
-pub fn engine_csv_frame(text: &str) -> String {
-    let (out, rows) = crate::csv::frame_columnar(text);
+pub fn engine_csv_frame(text: &str, order: &str) -> String {
+    let (out, rows) =
+        crate::csv::frame_columnar(text, crate::excel_criteria::DateOrder::parse(order).unwrap_or_default());
     let schema = serde_json::json!({ "columns": out.schema, "rowCount": rows });
     STAGED.with(|s| *s.borrow_mut() = out);
     reply(Ok(schema))

@@ -1,0 +1,157 @@
+{
+  "v": 2,
+  "order": 112,
+  "label": "Pivot calculated fields: MPG",
+  "group": "Tables",
+  "nodes": [
+    {
+      "id": "Hdr",
+      "type": "NoteNode",
+      "name": "Hdr",
+      "x": 0,
+      "y": -330,
+      "init": {
+        "label": "Calculated fields: MPG by vehicle and month",
+        "color": "blue",
+        "width": 920,
+        "height": 150,
+        "body": "A pivot's **calculated field** is a LAMBDA wired into a Pivot's Calculated fields row. Its parameters name columns, and every cell hands each one that column's values in its own rows, so `SUM(Miles) / SUM(Gallons)` is miles over gallons for each plate and month, and again for each total.\n\nThat is not the same as working out each fill-up's MPG first and averaging it (the bottom pivot): a short top-up of 60 miles on 3 gallons counts as much as a full tank there, so ABC-123's January reads 25 where the car really did 28. Write the aggregate yourself: `SUM`, `AVERAGE`, `MAX`, any of them, and `@` has no row here."
+      }
+    },
+    {
+      "id": "Log",
+      "type": "FrameInputNode",
+      "name": "Log",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Fuel log",
+        "frameText": "[{\"name\": \"Month\", \"type\": \"string\", \"values\": [\"2026-01\", \"2026-01\", \"2026-02\", \"2026-03\", \"2026-03\", \"2026-01\", \"2026-02\", \"2026-02\", \"2026-03\", \"2026-01\", \"2026-02\", \"2026-02\"]}, {\"name\": \"Plate\", \"type\": \"string\", \"values\": [\"ABC-123\", \"ABC-123\", \"ABC-123\", \"ABC-123\", \"ABC-123\", \"XYZ-789\", \"XYZ-789\", \"XYZ-789\", \"XYZ-789\", \"VAN-01\", \"VAN-01\", \"VAN-01\"]}, {\"name\": \"Miles\", \"type\": \"number\", \"values\": [360, 60, 250, 280, 140, 200, 400, 150, 220, 150, 225, 100]}, {\"name\": \"Gallons\", \"type\": \"number\", \"values\": [12, 3, 10, 10, 4, 10, 20, 5, 10, 10, 15, 5]}]"
+      }
+    },
+    {
+      "id": "MPG",
+      "type": "LambdaNode",
+      "name": "MPG",
+      "x": 0,
+      "y": 330,
+      "init": {
+        "label": "MPG",
+        "params": "Miles, Gallons",
+        "expr": "SUM(Miles) / SUM(Gallons)"
+      }
+    },
+    {
+      "id": "PerFill",
+      "type": "ComputedColumnNode",
+      "name": "PerFill",
+      "x": 0,
+      "y": 620,
+      "init": {
+        "label": "MPG of each fill-up",
+        "expr": "@Miles / @Gallons"
+      },
+      "stringLiterals": {
+        "name": "Fill MPG"
+      }
+    },
+    {
+      "id": "ByMonth",
+      "type": "PivotNode",
+      "name": "ByMonth",
+      "x": 480,
+      "y": 0,
+      "init": {
+        "label": "MPG by plate and month",
+        "rowTotalDepth": 1,
+        "colTotalDepth": 1,
+        "valueKeys": [
+          "calcName0",
+          "calcFn0"
+        ]
+      },
+      "stringLiterals": {
+        "rowFields": "Plate",
+        "colFields": "Month",
+        "values": "",
+        "calcName0": "MPG"
+      }
+    },
+    {
+      "id": "Beside",
+      "type": "PivotNode",
+      "name": "Beside",
+      "x": 960,
+      "y": 0,
+      "init": {
+        "label": "Beside the sums",
+        "rowTotalDepth": 1,
+        "valueKeys": [
+          "calcName0",
+          "calcFn0"
+        ]
+      },
+      "stringLiterals": {
+        "rowFields": "Plate",
+        "values": "Miles, Gallons",
+        "calcName0": "MPG"
+      }
+    },
+    {
+      "id": "Wrong",
+      "type": "PivotNode",
+      "name": "Wrong",
+      "x": 480,
+      "y": 590,
+      "init": {
+        "label": "Averaging each fill's MPG",
+        "agg": "avg",
+        "rowTotalDepth": 1,
+        "colTotalDepth": 1
+      },
+      "stringLiterals": {
+        "rowFields": "Plate",
+        "colFields": "Month",
+        "values": "Fill MPG"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "Log",
+      "sourceOutput": "frame",
+      "target": "ByMonth",
+      "targetInput": "frame"
+    },
+    {
+      "source": "MPG",
+      "sourceOutput": "result",
+      "target": "ByMonth",
+      "targetInput": "calcFn0"
+    },
+    {
+      "source": "Log",
+      "sourceOutput": "frame",
+      "target": "Beside",
+      "targetInput": "frame"
+    },
+    {
+      "source": "MPG",
+      "sourceOutput": "result",
+      "target": "Beside",
+      "targetInput": "calcFn0"
+    },
+    {
+      "source": "Log",
+      "sourceOutput": "frame",
+      "target": "PerFill",
+      "targetInput": "frame"
+    },
+    {
+      "source": "PerFill",
+      "sourceOutput": "frame",
+      "target": "Wrong",
+      "targetInput": "frame"
+    }
+  ]
+}

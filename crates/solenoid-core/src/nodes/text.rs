@@ -92,6 +92,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
                 "clean" => "CLEAN",
                 "unaccent" => "UNACCENT",
                 "slugify" => "SLUGIFY",
+                "linkname" => "LINKNAME",
+                "linkpath" => "LINKPATH",
                 _ => "UPPER",
             };
             each_text(c, "cachedText", name)
@@ -675,6 +677,7 @@ fn cast_one(
     format: &V,
     seps: (&str, &str),
     labels: &[(String, String, bool, Option<crate::unit_dims::Dim>)],
+    order: crate::excel_criteria::DateOrder,
 ) -> Result<V, V> {
     if matches!(x, V::Null | V::Undef) {
         return Ok(V::Null);
@@ -707,10 +710,11 @@ fn cast_one(
         "date" => match x {
             V::Num(n) | V::Date(n) => V::Date(*n),
             V::Str(s) => {
-                use crate::excel_criteria::{parse_date, DateReading};
-                match parse_date(s) {
+                use crate::excel_criteria::{read_date_text, DateReading};
+                match read_date_text(s, order) {
                     DateReading::Serial(d) => V::Date(d),
-                    _ => V::Num(f64::NAN),
+                    DateReading::Ambiguous(e) => V::err(e),
+                    DateReading::NotADate => V::Num(f64::NAN),
                 }
             }
             _ => V::Num(f64::NAN),
@@ -769,7 +773,7 @@ pub(crate) fn inline_cast(v: &V, target: &str) -> V {
             x => one(x),
         }
     }
-    let one = |x: &V| match cast_one(x, target, &format, ("", ""), &[]) {
+    let one = |x: &V| match cast_one(x, target, &format, ("", ""), &[], crate::excel_criteria::DateOrder::Auto) {
         Ok(r) if cast_failed(&r) => err(ErrorCode::Value, format!("Could not convert the value to {target}")),
         Ok(r) => r,
         Err(e) => e,
@@ -793,7 +797,8 @@ fn cast(c: &mut Call) -> Answer {
     let labels = unit_labels(c);
     let (decimal, group) = (separator(&decimal), separator(&group));
     let failed = || err(ErrorCode::Value, format!("Could not convert the value to {target}"));
-    let one = |x: &V| cast_one(x, &target, &format, (&decimal, &group), &labels);
+    let order = crate::excel_criteria::DateOrder::parse(c.field_str("dateOrder", "")).unwrap_or_default();
+    let one = |x: &V| cast_one(x, &target, &format, (&decimal, &group), &labels, order);
     if let V::List(items) = &raw {
         let out: Vec<V> = items
             .iter()

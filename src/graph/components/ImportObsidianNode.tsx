@@ -32,6 +32,7 @@ import { chooseFile } from "../chooseFile";
 import { renderNoteMarkdown } from "../noteMarkdown";
 import { useKatexReady } from "./katexLoader";
 import { measureThenWrite } from "./layoutBatch";
+import { isEnter } from "../enterKey";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -254,7 +255,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
                     value={minutes}
                     onChange={(e) => setMinutes(Math.max(0, Math.round(Number(e.target.value) || 0)))}
                     onBlur={() => { if (minutes !== data.refreshMinutes) { data.refreshMinutes = minutes; connectionStore.autoRefresh(data.id, minutes); scheduleAutosave(); } }}
-                    onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                    onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
                   />
                   min
                 </label>

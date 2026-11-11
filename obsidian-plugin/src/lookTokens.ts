@@ -1,5 +1,5 @@
 // [[C107]] obsidianPlugin
-import { paletteStore, PALETTE_NAMES, COLOR_PALETTE, NEUTRAL_WHITE, NEUTRAL_DARK, CHROME_HOME, resolveColor, themeAccent, contrastInk, hexToHsl, hexToOklch, DEFAULT_CHROME, chromeCssVars, type PaletteName } from "../../src/graph/palette";
+import { paletteStore, PALETTE_NAMES, COLOR_PALETTE, NEUTRAL_WHITE, NEUTRAL_DARK, CHROME_HOME, resolveColor, themeAccent, contrastInk, hexToHsl, hexToOklch, liftedToward, DEFAULT_CHROME, chromeCssVars, type PaletteName } from "../../src/graph/palette";
 import { themeVars, type ThemeMode } from "../../src/graph/themeVars";
 
 export const LOOK_CLASS = "solenoid-look";
@@ -35,6 +35,10 @@ function isYellow(hex: string): boolean {
   const hue = ((h % 360) + 360) % 360;
   return c > 0.05 && hue >= 70 && hue <= 125;
 }
+/** Accent as text on a dark ground: a mid-value accent lifted toward this OK lightness, keeping this share of
+ * its distance to it, so it reads beside the ink and the accents stay apart. */
+const DARK_INK_KNEE = 0.8;
+const DARK_INK_KEEP = 0.4;
 const isAdaptive = (name: PaletteName): boolean => CHROME_HOME[name] !== undefined;
 
 export function lookTokens(name: PaletteName, accent: string, mode: ThemeMode): Record<string, string> {
@@ -52,7 +56,7 @@ export function lookTokens(name: PaletteName, accent: string, mode: ThemeMode): 
     out["--accent-h"] = `${Math.round(h)}`;
     out["--accent-s"] = `${Math.round(s * 100)}%`;
     out["--accent-l"] = `${Math.round(l * 100)}%`;
-    out["--sol-ink-accent"] = mode === "dark" ? "var(--sol-accent)" : isYellow(accentHex) ? "var(--sol-text)" : "oklch(from var(--sol-accent) 0.45 c h)";
+    out["--sol-ink-accent"] = mode === "dark" ? liftedToward(accentHex, DARK_INK_KNEE, DARK_INK_KEEP) : isYellow(accentHex) ? "var(--sol-text)" : "oklch(from var(--sol-accent) 0.45 c h)";
     for (const sock of SOCKETS) out[`--sol-${sock}`] = vars[`--sock-${sock}`]!;
     for (const sock of SOCKETS) out[`--sol-ink-on-${sock}`] = contrastInk(out[`--sol-${sock}`]);
     for (const slot of SLOTS) out[`--sol-${slot}`] = themeAccent(resolveColor(slot), mode);

@@ -190,3 +190,43 @@ thead .pivot-view__label--sticky { z-index: 3; }
   .pivot-view__label,
   .pivot-view__value { padding: 2px 6px; }
 }
+
+/* A field header's ▾ (sort and filter), beside its name. */
+.pivot-view__fieldhead { display: inline-flex; align-items: center; gap: 4px; }
+.pivot-view__drop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.pivot-view__drop:hover { color: var(--text); border-color: var(--border-strong, var(--border)); }
+/* A filtered axis: its ▾ wears the accent. */
+.pivot-view__drop--on { color: var(--node-accent, var(--accent)); border-color: var(--node-accent, var(--accent)); }
+
+/* The fields hiding values, over the table: a chip each, its name opening the field's list, its × clearing it. */
+.pivot-view__filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 14px 0; }
+.pivot-view__filter {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--node-accent, var(--accent));
+  border-radius: 999px;
+  font-size: 11px;
+  overflow: hidden;
+}
+.pivot-view__filter-name, .pivot-view__filter-x {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.pivot-view__filter-x { padding: 2px 7px 2px 2px; color: var(--text-dim); }
+.pivot-view__filter-name:hover, .pivot-view__filter-x:hover { color: var(--text); background: color-mix(in srgb, var(--node-accent, var(--accent)) 10%, transparent); }

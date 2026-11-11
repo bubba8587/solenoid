@@ -64,6 +64,8 @@ record the layer whole instead of re-recording as a long pan outruns its painted
 true for a transform with an active animation). In emulation the hitches went away, but on the author's phone it helped only
 zoomed far out, did little in the middle, and made close zoom worse. All of it was reverted (commit `409383f`). Phones stay
 off the layer. Do not retry it without a test on a real device at close zoom.
+2026-11-11: the plain per-press layer on a phone at zoom 0.4 and below only (no holding between strokes) made no difference on the
+author's phone, and was reverted.
 
 ## 3. Every socket subscribed to React Flow's store (shipped)
 

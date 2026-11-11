@@ -74,7 +74,7 @@ The look's rules have one source, `obsidian-plugin/src/look.css`, and it authors
 
 **Color means type.** The accent (`--sol-accent`, and `--sol-ink-accent` as text) belongs to the UI: tabs, the top line, links, the active item, the h1 and rules. A type's hue (`--sol-number` and the rest) means that type and nothing else: a property's icon wears its type's color, a string in code is lime and a number gold. Obsidian's named colors are remapped to the palette, so callouts, canvas cards and graph groups pull from it.
 
-- **Dark.** A hue used as text or as a line icon is itself, on the dark workbench.
+- **Dark.** A hue used as text or as a line icon is itself, on the dark workbench. The accent as text (`--sol-ink-accent`: links, the h1, the active tab and item) is lifted toward OK lightness 0.8, keeping 40% of its distance to it (`liftedToward`, `DARK_INK_KNEE`, `DARK_INK_KEEP` in `lookTokens.ts`), since a mid-value accent (Orchard's, Solarized's) read dull beside the ink; the lift keeps every accent's order in lightness, so accents that differ mostly by lightness (Equinox's grays) stay apart.
 - **Light.** A color is either neutral or the full accent, never a hue greyed toward the ink. No hue reaches 4.5:1 as text on white (lime is 1.6:1) and a dark yellow is brown, so gold and lime text is the ink and their color moves into fills, rules and badges; every other hue darkens along its own hue in OKLCH, which stays a color. The ink on each hue used as a fill (a light-mode property badge) follows the chips' contrast rule (`--sol-ink-on-*`).
 
 **Surfaces and chrome**, after the app's own cards, bars and floating windows:

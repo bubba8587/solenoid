@@ -19,13 +19,16 @@ import { isUnitCell, magnitudeOf, unitError } from "../unitValue";
 import { dimEqual, isDimensionless } from "../dimension";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
-import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
+import { isDesktop, hasFs, readFileText, listLocalFilesMatching, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
-import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type CubeValue } from "../frame";
-import { readParquetFrame, csvToFrame } from "../frameBackend";
+import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, cubeFromColumns, retypeColumns, type FrameValue, type CubeValue, type FrameColType } from "../frame";
+import { readParquetFrame, csvToFrame, isFrameRef, readFrame } from "../frameBackend";
+import { isFilePattern } from "../fileGlob";
+import { AppendNode } from "./frame";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { planFileToPlan, csvPlanToCube } from "../planImport";
+import { isDateOrder, type DateOrder } from "../dateOrder";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
 
@@ -44,12 +47,21 @@ export function jsonToFrame(text: string): FrameValue {
   throw new Error("Unsupported JSON shape");
 }
 
-function remoteTextToFrame(text: string, contentType: string, url: string): FrameValue {
+/** Column type picks as saved: by name, each one of the four types, anything else dropped. */
+function pickedColumnTypes(raw: unknown): Record<string, FrameColType> {
+  const out: Record<string, FrameColType> = {};
+  if (raw && typeof raw === "object") {
+    for (const [name, t] of Object.entries(raw)) if (t === "number" || t === "string" || t === "date" || t === "logical") out[name] = t;
+  }
+  return out;
+}
+
+function remoteTextToFrame(text: string, contentType: string, url: string, order = ""): FrameValue {
   const looksJson =
     /json/i.test(contentType) ||
     /\.json(\?|$)/i.test(url) ||
     /^\s*[[{]/.test(text);
-  return looksJson ? jsonToFrame(text) : csvToFrame(text);
+  return looksJson ? jsonToFrame(text) : csvToFrame(text, order);
 }
 
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
@@ -61,24 +73,32 @@ export class WebSourceNode extends GraphNode {
   label: string;
   url: string;
   refreshMinutes: number;
+  /** The CSV's date order: a column of dates written in numbers alone reads as dates in it. */
+  dateOrder: DateOrder;
+  /** Column types the user picked in the popup, by column name, over the ones the source reads as. */
+  columnTypes: Record<string, FrameColType> = {};
+  /** The types the source read as before `columnTypes`, so picking that type again drops the pick. */
+  readTypes: Record<string, FrameColType> = {};
   cachedResult: FrameValue | null = null;
   width = 260; height = 200;
 
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
 
-  constructor(init?: { label?: string; url?: string; refreshMinutes?: number }) {
+  constructor(init?: { label?: string; url?: string; refreshMinutes?: number; dateOrder?: DateOrder; columnTypes?: Record<string, FrameColType> }) {
     super("WebSource");
     this.label = init?.label ?? "Web Source";
     this.url = init?.url ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
+    this.columnTypes = pickedColumnTypes(init?.columnTypes);
     this.addOutput("frame", frameOut("Frame"));
   }
 
   data(): { frame: FrameValue | null } {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const ref = this.url.trim();
-    const key = connectionStore.key(this.id, ref);
+    const key = connectionStore.key(this.id, `${ref}\u0000${this.dateOrder}\u0000${JSON.stringify(this.columnTypes)}`);
     if (key === this.lastKey) { this.inflightKey = key; return { frame: this.cachedResult }; }
     if (ref !== "" && !requestNetwork(this.id)) return { frame: this.cachedResult };
     if (this.inflightKey !== key) {
@@ -99,7 +119,9 @@ export class WebSourceNode extends GraphNode {
     try {
       const { text: body, contentType } = await fetchText(ref, { from: this.id });
       if (this.inflightKey !== key) return { frame: this.cachedResult };
-      const frame = remoteTextToFrame(body, contentType, ref);
+      const asRead = remoteTextToFrame(body, contentType, ref, this.dateOrder);
+      this.readTypes = Object.fromEntries(asRead.columns.map((c) => [c.name, c.type]));
+      const frame = retypeColumns(asRead, this.columnTypes, this.dateOrder);
       this.cachedResult = frame;
       this.lastKey = key;
       connectionStore.setState(this.id, {
@@ -256,15 +278,62 @@ export class ImportXmlNode extends GraphNode {
   }
 }
 
+/** Every file read and stacked into one table, a first column naming each row's file ([[B11]] maximalMerge):
+ *  columns meet by name as Append's do, and a file that doesn't read is named in `failed` while the rest load.
+ *  Null once `stale` says a newer read took over. */
+async function readFilesAsOne(folder: string, files: string[], stale: () => boolean, order: string, types: Record<string, FrameColType> = {}): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[]; readTypes: Record<string, FrameColType> } | null> {
+  const readTypes: Record<string, FrameColType> = {};
+  const frames: FrameValue[] = [];
+  const read: Array<{ file: string; table: FrameValue }> = [];
+  const failed: string[] = [];
+  for (const rel of files) {
+    try {
+      const asRead = /\.parquet$/i.test(rel) ? await readParquetFrame(folder, rel) : csvToFrame(await readFileText(folder, rel), order);
+      if (!isSolError(asRead)) for (const c of asRead.columns) readTypes[c.name] ??= c.type;
+      // Each file is retyped from its own source text before stacking, which keeps no `raw`.
+      const f = isSolError(asRead) ? asRead : retypeColumns(asRead, types, order);
+      if (isSolError(f)) failed.push(`${rel} (${f.message})`);
+      else {
+        const name = f.columns.some((c) => c.name === "File") ? "Source file" : "File";
+        read.push({ file: rel, table: f });
+        frames.push({ ...f, columns: [{ name, type: "string", values: Array<string>(frameRowCount(f)).fill(rel) }, ...f.columns] });
+      }
+    } catch (e) {
+      failed.push(`${rel} (${e instanceof Error ? e.message : String(e)})`);
+    }
+    if (stale()) return null;
+  }
+  if (frames.length === 0) return { frame: solError("#REF!", `None of the ${files.length} files read: ${failed[0]}`), perFile: null, failed, readTypes };
+  // The same files unstacked, a row each: its name and its table, for a transform that runs once per file.
+  const perFile = cubeFromColumns([
+    { name: "File", cells: read.map((r) => r.file), type: "string" },
+    { name: "Table", cells: read.map((r) => r.table) },
+  ]);
+  if (frames.length === 1) return { frame: frames[0], perFile, failed, readTypes };
+  const stack = new AppendNode({ valueKeys: frames.map((_, i) => `f${i}`) });
+  const out = (await (stack as unknown as { data(inputs: Record<string, unknown[]>): unknown }).data(Object.fromEntries(frames.map((f, i) => [`f${i}`, [f]])))) as { frame: unknown };
+  const frame = isFrameRef(out.frame) ? await readFrame(out.frame) : out.frame;
+  return stale() ? null : { frame: frame as FrameValue | SolError, perFile, failed, readTypes };
+}
+
 // ─── LOCAL FILE (a file in the Settings target folder) ──────────────────────────
 export class LocalFileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file. Empty for a Project XML, GanttProject or Primavera file, which reads as a Plan.",
     plan: "A project plan: Project XML, GanttProject, Primavera XER, or a CSV with Predecessors like 3FS+2d. Tasks nest as the outline. Empty otherwise.",
+    files: "With a pattern, the files one by one: a row per file, its name and its table. A Composite set to By row runs once per file; Unnest stacks them. Empty for a single file.",
   };
   label: string;
   fileName: string;
+  /** The CSV's date order: a column of dates written in numbers alone reads as dates in it. */
+  dateOrder: DateOrder;
+  /** Column types the user picked in the popup, by column name, over the ones the file reads as. */
+  columnTypes: Record<string, FrameColType> = {};
+  /** The types the file read as before `columnTypes`, so picking that type again drops the pick. */
+  readTypes: Record<string, FrameColType> = {};
   cachedPlan: CubeValue | null = null;
+  /** A pattern's files unstacked: a row per file, its name and its table. */
+  cachedFiles: CubeValue | null = null;
   planNotes: string[] = [];
   refreshMinutes: number;
   cachedResult: FrameValue | SolError | null = null;
@@ -274,13 +343,18 @@ export class LocalFileNode extends GraphNode {
   private inflightKey: string | undefined;
   private inflight: Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> | undefined;
 
-  constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number }) {
+  constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number; dateOrder?: DateOrder; columnTypes?: Record<string, FrameColType> }) {
     super("LocalFile");
     this.label = init?.label ?? "Local File";
     this.fileName = init?.fileName ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
+    if (init?.columnTypes && typeof init.columnTypes === "object") {
+      this.columnTypes = pickedColumnTypes(init.columnTypes);
+    }
     this.addOutput("frame", frameOut("Frame"));
     this.addOutput("plan", cubeOut("Plan"));
+    this.addOutput("files", cubeOut("Files"));
   }
 
   private static isParquet(name: string): boolean {
@@ -291,17 +365,18 @@ export class LocalFileNode extends GraphNode {
     return /\.(xml|gan|xer)$/i.test(name);
   }
 
-  async data(): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> {
+  async data(): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null; files: CubeValue | null }> {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const folder = getCsvFolder();
     const name = this.fileName.trim();
-    const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
-    if (key === this.lastKey) return { frame: this.cachedResult, plan: this.cachedPlan };
+    const key = connectionStore.key(this.id, `${folder}\u0000${name}\u0000${this.dateOrder}\u0000${JSON.stringify(this.columnTypes)}`);
+    if (key === this.lastKey) return { frame: this.cachedResult, plan: this.cachedPlan, files: this.cachedFiles };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;
       this.inflight = this.load(folder, name, key);
     }
-    return this.inflight;
+    const out = await this.inflight;
+    return { ...out, files: this.cachedFiles };
   }
 
   private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> {
@@ -309,6 +384,7 @@ export class LocalFileNode extends GraphNode {
     const stale = () => this.inflightKey !== key;
     const superseded = { frame: null, plan: null };
     this.cachedPlan = null;
+    this.cachedFiles = null;
     this.planNotes = [];
     const fail = (message: string, status: "idle" | "error" = "error", err?: SolError) => {
       if (stale()) return superseded;
@@ -318,7 +394,9 @@ export class LocalFileNode extends GraphNode {
       connectionStore.setState(this.id, { status, message });
       return { frame: out, plan: null };
     };
-    if (parquet ? !isDesktop() : (!isDesktop() && !isDemoVaultPath(folder))) {
+    // A CSV reads wherever files do (the desktop app, the demo vault, the headless runner's folder); Parquet needs
+    // the desktop's reader.
+    if (parquet ? !isDesktop() : (!hasFs() && !isDemoVaultPath(folder))) {
       return fail("Desktop app only");
     }
     if (folder === "") return fail("Set a target folder in Settings", "idle");
@@ -326,6 +404,24 @@ export class LocalFileNode extends GraphNode {
     if (!isInsideVault(name)) return fail("The file must be inside the data folder");
     connectionStore.setState(this.id, { status: "loading" });
     try {
+      if (isFilePattern(name)) {
+        const files = await listLocalFilesMatching(folder, name);
+        if (stale()) return superseded;
+        if (files.length === 0) return fail(`No CSV or Parquet file matches ${name}`);
+        const read = await readFilesAsOne(folder, files, stale, this.dateOrder, this.columnTypes);
+        if (!read) return superseded;
+        this.readTypes = read.readTypes;
+        if (isSolError(read.frame)) return fail(read.frame.message, "error", read.frame);
+        this.lastKey = key;
+        this.cachedResult = read.frame;
+        this.cachedFiles = read.perFile;
+        connectionStore.setState(this.id, {
+          status: "ok", rows: frameRowCount(read.frame), cols: read.frame.columns.length, fetchedAt: Date.now(),
+          files: files.length - read.failed.length,
+          ...(read.failed.length ? { message: `${read.failed.length} didn't read: ${read.failed.slice(0, 3).join("; ")}${read.failed.length > 3 ? "; …" : ""}` } : {}),
+        });
+        return { frame: read.frame, plan: null };
+      }
       if (parquet) {
         const frame = await readParquetFrame(folder, name);
         if (isSolError(frame)) return fail(frame.message, "error", frame);
@@ -350,8 +446,10 @@ export class LocalFileNode extends GraphNode {
         });
         return { frame: null, plan: plan.cube };
       }
-      const frame = csvToFrame(await readFileText(folder, name));
+      const asRead = csvToFrame(await readFileText(folder, name), this.dateOrder);
       if (stale()) return superseded;
+      this.readTypes = Object.fromEntries(asRead.columns.map((c) => [c.name, c.type]));
+      const frame = retypeColumns(asRead, this.columnTypes, this.dateOrder);
       this.lastKey = key;
       this.cachedResult = frame;
       this.cachedPlan = csvPlanToCube(frame);
@@ -836,12 +934,18 @@ export class VaultFolderNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     folder: "The vault subfolder to read. Blank reads the whole vault.",
     glob: "A file-name filter such as 2026-*. Blank keeps every note.",
-    cube: "One row per note: the file columns, then every frontmatter key, with lists and nested tables kept in the cells. Notes are never saved into the project file.",
+    cube: "One row per note: the file columns, then every frontmatter key, with lists and nested tables kept in the cells. A note's checklist items, tables and inline fields join them when ticked. Notes are never saved into the project file.",
   };
   label: string;
   folder: string;
   glob: string;
   includeBody: boolean;
+  /** The body as data: a note's checklist items, its pipe tables, and its inline `key:: value` fields. */
+  includeTasks: boolean;
+  includeTables: boolean;
+  includeFields: boolean;
+  /** A `backlinks` column: the notes anywhere in the vault that link to each note. Reads every note in the vault. */
+  includeBacklinks: boolean;
   nameFormat: string;
   refreshMinutes: number;
   width = 260; height = 240;
@@ -850,12 +954,19 @@ export class VaultFolderNode extends GraphNode {
   private _folder = "";
   private _glob = "";
 
-  constructor(init?: { label?: string; folder?: string; glob?: string; includeBody?: boolean; nameFormat?: string; refreshMinutes?: number }) {
+  constructor(init?: {
+    label?: string; folder?: string; glob?: string; includeBody?: boolean; includeTasks?: boolean; includeTables?: boolean;
+    includeFields?: boolean; includeBacklinks?: boolean; nameFormat?: string; refreshMinutes?: number;
+  }) {
     super("VaultFolder");
     this.label = init?.label ?? "Vault Folder";
     this.folder = init?.folder ?? "";
     this.glob = init?.glob ?? "";
     this.includeBody = init?.includeBody ?? false;
+    this.includeTasks = init?.includeTasks ?? false;
+    this.includeTables = init?.includeTables ?? false;
+    this.includeFields = init?.includeFields ?? false;
+    this.includeBacklinks = init?.includeBacklinks ?? false;
     this.nameFormat = init?.nameFormat ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.addInput("folder", strIn("Folder"));
@@ -868,7 +979,7 @@ export class VaultFolderNode extends GraphNode {
     const folder = readTextInput(inputs?.folder, this.folder, "Folder").replace(/^\/+|\/+$/g, "");
     const glob = readTextInput(inputs?.glob, this.glob, "Filter");
     const vault = getVaultRoot();
-    const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
+    const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${[this.includeBody, this.includeTasks, this.includeTables, this.includeFields, this.includeBacklinks].map((on) => (on ? 1 : 0)).join("")}`);
     if (key !== this._lastKey) {
       this._lastKey = key;
       this._folder = folder;
@@ -916,7 +1027,10 @@ export class VaultFolderNode extends GraphNode {
       const { columns, nested } = await this.readColumnPicks(vault);
       const sources: VaultTypeSources = { mdbaseFor: (p) => mdbaseHintFor(collections, folder, p), obsidian, columns, nested };
       const nameFormat = this.nameFormat.trim() || (await this.defaultNameFormat(vault, folder));
-      const cube = notesToCube(notes, sources, { nameFormat, includeBody: this.includeBody });
+      const cube = notesToCube(notes, sources, {
+        nameFormat, includeBody: this.includeBody, includeTasks: this.includeTasks, includeTables: this.includeTables, includeFields: this.includeFields,
+        backlinksFrom: this.includeBacklinks ? await this.wholeVault(vault, folder, notes) : undefined,
+      });
 
       if (!current()) return;
       this.cached = cube;
@@ -926,6 +1040,20 @@ export class VaultFolderNode extends GraphNode {
       this.cached = null;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
+  }
+
+  /** Every note in the vault, for the links they hold: the folder's own notes as already read, the rest read now. */
+  private async wholeVault(vault: string, folder: string, read: readonly VaultNote[]): Promise<{ path: string; text: string }[]> {
+    if (folder === "") return [...read];
+    const have = new Map(read.map((n) => [n.path, n.text]));
+    const out: { path: string; text: string }[] = [];
+    for (const path of (await listVaultMarkdownFiles(vault)).filter((p) => !p.split("/").includes("_types"))) {
+      let text = have.get(path);
+      // A note that left between the listing and its read links to nothing.
+      if (text === undefined) { try { text = await readVaultFile(vault, path); } catch { continue; } }
+      out.push({ path, text });
+    }
+    return out;
   }
 
   private async discoverMdbase(readRoot: string, files: string[]): Promise<Map<string, MdbaseCollection>> {

@@ -9,6 +9,7 @@ import { PaintbrushIcon } from "./PaintbrushIcon";
 import { InfoIcon } from "./Icons";
 import { TypeIcon } from "./TypeIcon";
 import { closeParens } from "../closeParens";
+import { isEnter } from "../enterKey";
 
 export type ColType = "number" | "string" | "date" | "logical";
 export const COLTYPE_ORDER: ColType[] = ["number", "string", "date", "logical"];
@@ -220,10 +221,10 @@ export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRev
             e.preventDefault();
             const n = lambdaOptions.length;
             setSel((s) => stepListSel(s, n, e.key === "ArrowDown" ? 1 : -1));
-          } else if (open && sel >= 0 && (e.key === "Enter" || e.key === "Tab")) {
+          } else if (open && sel >= 0 && (isEnter(e) || e.key === "Tab")) {
             e.preventDefault();
             accept(lambdaOptions[sel]);
-          } else if (e.key === "Enter") {
+          } else if (isEnter(e)) {
             e.currentTarget.blur();
           } else if (e.key === "Escape") {
             // The flag stops the following blur from committing the reverted text.
@@ -289,7 +290,7 @@ export function AutoGrowField({ value, className, cols, placeholder, inputMode, 
       onKeyDown={(e) => {
         onKeyDown?.(e);
         if (e.defaultPrevented) return;
-        if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.blur(); }
+        if (isEnter(e)) { e.preventDefault(); e.currentTarget.blur(); }
       }}
       onChange={(e) => onChange(e.target.value.replace(/[\r\n]+/g, " "))}
     />

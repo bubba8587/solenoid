@@ -2,16 +2,17 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { pivotEditor } from "../pivotEditorStore";
 import { notifyGraphChanged, processGraph } from "../process";
-import { csvList } from "../nodes/frameShapeHook";
-import { listLiteralText } from "../listLiterals";
+import { DATE_GROUPS, dateGroupOf, pivotConfigOf, regroupField, writePivotConfig, type DateGroup, type PivotConfig } from "../pivotConfig";
+import { caseTwin } from "../frame";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameOps";
-import { AGG_OP_META, type PivotNode } from "../nodeClasses";
+import { AGG_OP_META } from "../nodeClasses";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import "./PivotEditorPopup.css";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
 import { TypeIcon } from "./TypeIcon";
+import { PivotFilterList } from "./PivotFilterList";
 
 // The per-value function list derives from AGG_OP_META; the pivot is the one surface
 // that also offers the pivotOnly ops.
@@ -29,43 +30,12 @@ const TYPE_GLYPH = (t: string | undefined): ReactNode =>
   t === "number" || t === "string" || t === "date" || t === "logical" ? <TypeIcon type={t} size={10} /> : "?";
 
 type Zone = "rows" | "cols" | "vals" | "details";
-interface Cfg {
-  rows: string[]; cols: string[]; vals: string[];
-  details: string[];
-  funcs: Record<string, AggOp>;
-  rowTotalDepth: number; colTotalDepth: number; rowSort: number; colSort: number; relativeTo: number;
-  exclude: Record<string, string[]>; // field-value filter: field → hidden value keys
-}
-
-const splitNames = (s: string | undefined) => csvList(s).filter(Boolean);
-
-function cfgFromNode(node: PivotNode): Cfg {
-  return {
-    rows: splitNames(node.stringLiterals?.rowFields),
-    cols: splitNames(node.stringLiterals?.colFields),
-    vals: splitNames(node.stringLiterals?.values),
-    details: [...node.detailFields],
-    funcs: { ...node.funcs },
-    rowTotalDepth: node.rowTotalDepth, colTotalDepth: node.colTotalDepth,
-    rowSort: node.rowSort, colSort: node.colSort, relativeTo: node.relativeTo,
-    exclude: Object.fromEntries(Object.entries(node.filterExclude ?? {}).map(([k, v]) => [k, [...v]])),
-  };
-}
-function writeToNode(node: PivotNode, c: Cfg) {
-  node.stringLiterals.rowFields = listLiteralText(c.rows);
-  node.stringLiterals.colFields = listLiteralText(c.cols);
-  node.stringLiterals.values = listLiteralText(c.vals);
-  node.detailFields = c.details;
-  node.funcs = c.funcs;
-  node.rowTotalDepth = c.rowTotalDepth; node.colTotalDepth = c.colTotalDepth;
-  node.rowSort = c.rowSort; node.colSort = c.colSort; node.relativeTo = c.relativeTo;
-  node.filterExclude = c.exclude;
-}
+type Cfg = PivotConfig;
 
 /** Index is a 1-based offset into [fields…, values…]; negative ⇒ descending. */
 function sortOptions(fields: string[], values: string[]): { value: string; label: string }[] {
   const cand = [...fields, ...values.map((v) => `${v} (value)`)];
-  const out = [{ value: "0", label: "No sort" }];
+  const out = [{ value: "0", label: "Default order" }];
   cand.forEach((label, i) => {
     out.push({ value: String(i + 1), label: `${label} ↑` });
     out.push({ value: String(-(i + 1)), label: `${label} ↓` });
@@ -81,12 +51,13 @@ export function PivotEditorPopup() {
   const drag = useRef<{ from: Zone | "fields"; field: string } | null>(null);
   const [dropZone, setDropZone] = useState<Zone | "filters" | null>(null);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [, setLanded] = useState(0);
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
     if (initedFor.current === state) return;
     initedFor.current = state;
-    setCfg(cfgFromNode(state.node));
+    setCfg(pivotConfigOf(state.node));
   }, [state]);
 
   if (!state) return null;
@@ -96,13 +67,18 @@ export function PivotEditorPopup() {
   const typeOf = (name: string) => fields.find((f) => f.name === name)?.type ?? "number";
   // A saved field whose column the input lacks right now stays in the layout, marked, and counts again once it's back.
   const isMissing = (name: string) => fields.length > 0 && !fields.some((f) => f.name === name);
-  const chipTitle = (field: string) => (isMissing(field) ? `${field} · not in the input now` : `${field} · ${typeOf(field)}`);
+  const missingNote = (field: string) => {
+    const twin = caseTwin(field, fields.map((f) => f.name));
+    return twin ? `Column names are case sensitive: the input has ${twin}` : "not in the input now";
+  };
+  const chipTitle = (field: string) => (isMissing(field) ? `${field} · ${missingNote(field)}` : `${field} · ${typeOf(field)}`);
 
   // Saved and recorded at once, not on the compute's finish, which manual calculation or an early-out pass would skip.
   function commit(next: Cfg) {
-    writeToNode(node, next);
+    writePivotConfig(node, next);
     notifyGraphChanged();
-    void processGraph(node.id);
+    // The field list (a new filter's values) comes back with the compute: draw again once it lands.
+    void processGraph(node.id).then(() => setLanded((n) => n + 1));
     setCfg(next);
   }
   const zoneArr = (c: Cfg, z: Zone) => (z === "rows" ? c.rows : z === "cols" ? c.cols : z === "details" ? c.details : c.vals);
@@ -138,21 +114,25 @@ export function PivotEditorPopup() {
     if (openFilter === field) setOpenFilter(null);
     commit({ ...cfg, exclude: ex });
   }
-  function toggleValue(field: string, key: string) {
-    const cur = new Set(cfg.exclude[field] ?? []);
-    if (cur.has(key)) cur.delete(key); else cur.add(key);
-    commit({ ...cfg, exclude: { ...cfg.exclude, [field]: [...cur] } });
-  }
-  function setAllValues(field: string, hide: boolean) {
-    const keys = fields.find((f) => f.name === field)?.distinct ?? [];
-    commit({ ...cfg, exclude: { ...cfg.exclude, [field]: hide ? [...keys] : [] } });
+  function setHidden(field: string, hidden: string[]) {
+    commit({ ...cfg, exclude: { ...cfg.exclude, [field]: hidden } });
   }
   function valueLabel(field: string, key: string): string {
     if (key === "") return "(blank)";
     // A blank key must not read as serial 0 — `Number("")` is 0 (30-Dec-1899).
-    if (typeOf(field) === "date" && key.trim() !== "") { const n = Number(key); return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : key; }
+    if (typeOf(field) === "date" && key.trim() !== "") {
+      const n = Number(key);
+      return Number.isFinite(n) ? formatDateSerial(n, dateGroupOf(field)?.unit === "Months" ? "MMM YYYY" : DEFAULT_DATE_FORMAT) : key;
+    }
     return key;
   }
+  /** Firefox starts no HTML5 drag without data on it, so the field's name rides along; the drop reads `drag`. */
+  function startChipDrag(e: React.DragEvent, payload: { from: Zone | "fields"; field: string }) {
+    drag.current = payload;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", payload.field);
+  }
+
   function applyDrop(toZone: Zone, insertIdx?: number) {
     const payload = drag.current;
     drag.current = null;
@@ -185,13 +165,20 @@ export function PivotEditorPopup() {
       key={field}
       className={`pivot-chip pivot-chip--${typeOf(field)}${isMissing(field) ? " pivot-chip--missing" : ""}`}
       draggable
-      onDragStart={() => { drag.current = { from: zone, field }; }}
+      onDragStart={(e) => { startChipDrag(e, { from: zone, field }); }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop(zone, zoneArr(cfg, zone).indexOf(field)); }}
       title={chipTitle(field)}
     >
       <span className="pivot-chip__glyph">{TYPE_GLYPH(typeOf(field))}</span>
       <span className="pivot-chip__name">{field}</span>
+      {(zone === "rows" || zone === "cols") && typeOf(dateGroupOf(field)?.from ?? field) === "date" && (
+        <select className="pivot-chip__func" value={dateGroupOf(field)?.unit ?? ""} title="Group by" onPointerDown={(e) => e.stopPropagation()}
+          onChange={(e) => commit(regroupField(cfg, zone, field, (e.target.value || null) as DateGroup | null))}>
+          <option value="">Dates</option>
+          {DATE_GROUPS.map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+      )}
       <button className="pivot-chip__x" onClick={() => removeField(zone, field)} aria-label="Remove" title="Remove">×</button>
     </span>
   );
@@ -214,7 +201,7 @@ export function PivotEditorPopup() {
 
   const valueChip = (field: string) => (
     <span key={field} className={`pivot-chip pivot-chip--${typeOf(field)} pivot-chip--value${isMissing(field) ? " pivot-chip--missing" : ""}`} draggable
-      onDragStart={() => { drag.current = { from: "vals", field }; }}
+      onDragStart={(e) => { startChipDrag(e, { from: "vals", field }); }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop("vals", cfg.vals.indexOf(field)); }}
       title={chipTitle(field)}>
@@ -269,10 +256,11 @@ export function PivotEditorPopup() {
         {filterFields.map((field) => {
           const hidden = cfg.exclude[field]?.length ?? 0;
           const open = openFilter === field;
-          const distinct = fields.find((f) => f.name === field)?.distinct ?? [];
+          const meta = fields.find((f) => f.name === field);
+          const distinct = meta?.distinct ?? [];
           return (
             <div key={field} className="pivot-filter">
-              <span className="pivot-chip pivot-filter__chip" draggable onDragStart={() => { drag.current = { from: "fields", field }; }}>
+              <span className="pivot-chip pivot-filter__chip" draggable onDragStart={(e) => { startChipDrag(e, { from: "fields", field }); }}>
                 <span className="pivot-chip__glyph">{TYPE_GLYPH(typeOf(field))}</span>
                 <button className="pivot-filter__name" onClick={() => setOpenFilter(open ? null : field)} title="Choose which values to keep">
                   {field}{hidden ? ` · ${hidden} hidden` : ""} <span className="pivot-filter__caret">{open ? <ChevronDownIcon size={10} strokeWidth={2} /> : <ChevronRightIcon size={10} strokeWidth={2} />}</span>
@@ -280,18 +268,8 @@ export function PivotEditorPopup() {
                 <button className="pivot-chip__x" onClick={() => removeFilter(field)} aria-label="Remove" title="Remove">×</button>
               </span>
               {open && (
-                <div className="pivot-filter__list" onPointerDown={(e) => e.stopPropagation()}>
-                  <div className="pivot-filter__actions">
-                    <button onClick={() => setAllValues(field, false)}>All</button>
-                    <button onClick={() => setAllValues(field, true)}>None</button>
-                  </div>
-                  {distinct.map((key) => (
-                    <label key={key} className="pivot-filter__opt">
-                      <input type="checkbox" checked={!(cfg.exclude[field] ?? []).includes(key)} onChange={() => toggleValue(field, key)} />
-                      <span>{valueLabel(field, key)}</span>
-                    </label>
-                  ))}
-                </div>
+                <PivotFilterList type={typeOf(field)} keys={distinct} total={meta?.distinctTotal ?? distinct.length}
+                  hidden={cfg.exclude[field] ?? []} label={(k) => valueLabel(field, k)} onChange={(h) => setHidden(field, h)} />
               )}
             </div>
           );
@@ -305,6 +283,7 @@ export function PivotEditorPopup() {
       title={state.title}
       onClose={close}
       cardClassName="pivot-editor"
+      resizable={{ min: { w: 420, h: 320 } }}
       cardStyle={popupCardVars(state)}
     >
       <div className="pivot-editor__body">
@@ -313,7 +292,7 @@ export function PivotEditorPopup() {
           <div className="pivot-fields__list">
             {fields.map((f) => (
               <span key={f.name} className={`pivot-chip pivot-chip--${f.type}${usedSet.has(f.name) ? " pivot-chip--used" : ""}`} draggable
-                onDragStart={() => { drag.current = { from: "fields", field: f.name }; }} title={`${f.name} · ${f.type}`}>
+                onDragStart={(e) => { startChipDrag(e, { from: "fields", field: f.name }); }} title={`${f.name} · ${f.type}`}>
                 <span className="pivot-chip__glyph">{TYPE_GLYPH(f.type)}</span>
                 <span className="pivot-chip__name">{f.name}</span>
               </span>

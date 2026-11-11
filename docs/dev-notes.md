@@ -6,6 +6,172 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-11: HTML-in-Canvas on the shipped API; phone pan layer tried and reverted; cloud session)
+- HTML-in-Canvas follows the API as shipped (Chrome 157 default-on; the 155 changes): the canvas wears `content="drawable"`,
+  each clone wrapper `drawable`, every draw passes `preserveElementGeometry: true`, the canvas is `aria-hidden`, and the
+  presented camera is the renderer's own (`drawElementImage` returns nothing now). Pre-155 builds aren't offered the mode.
+  Unexercised in a browser: the container's Chromium is 153, the old API. Spec: [[html-in-canvas]].
+- The plain pan layer on phones at zoom 0.4 and below made no difference on the author's phone; reverted
+  (`canvas-frame-cost-findings.md` § 2).
+- HIC holds at every zoom (the swap back to the DOM was the zoomed-in phone cost), rasters captures at 2× with the clone
+  still laid out at 1×, and keeps nothing live DOM through a gesture: every cable, ribbon, Conduit lane, standoff and drawn
+  cable is copied from the DOM's own SVG as world-space vectors (`hicVectors.ts`, a MutationObserver per layer), Conduits
+  and portal cards are captured like any card, and cards and vectors draw in the DOM's z order. Gone: the canvas's own
+  cable router, the socket snapshot, the DOM-only set and the holder-to-canvas camera sync. Checked on Chrome 157 (a
+  downloaded Chrome for Testing): canvas-only and DOM-only frames of one page match, and no live DOM shows in any frame
+  of a wheel zoom.
+- HIC capture freshness: a MutationObserver on the cards, a `sol-canvas-drawn` event from canvas figures, and a clone's
+  canvases as images (Chrome draws a nested canvas as a misplaced slice). chart-showcase: 9 of 42 cards were stale (the
+  personal-finance Accounts card was the same bug); now none at load or after a slider moves, and no seed mutates a card
+  at idle. The canvas sits under React Flow and paints the backing itself, so a selected card shows over the groups the
+  canvas draws. A rebuild keeps unchanged cards' bitmaps (drop-then-pan 6.9 s to 1.85 s at 4× throttle). Test harness
+  for all of this: canvas-only against DOM-only frames of one page, per card (scratchpad scripts; not in the repo).
+
+### SESSION DIGEST (2026-11-10: light and dark theming, the tint band, dark links; cloud session)
+- **Orchard light under a non-home accent was a pastel wash**: the rotation carried its cream's chroma (0.022, borders
+  0.040) to blue, pink and violet, two to three times Blueprint's. Fixed by a rule, not a table: an earth band
+  (`CHROME_TINT_BAND`, `bandChroma`) scales the turned ramp's chroma by where its hue lands. Lime and green pass as
+  authored. A per-accent table of hand-picked grounds was tried first and dropped for the rule (author: derivable over
+  tweaks, looks first; grounds may resemble each other, accents must stay distinct).
+- **Blueprint dark under gold, amber or lime was mustard sludge** (its 0.055 dark tint carried to yellow). The same
+  band, renamed the tint band, now covers it (Blueprint dark: center 250, flat 100, fall 60, floor 0.4). A dark sweep
+  of all nine palettes in the app and the plugin found nothing else.
+- **Dawn and Dusk light read lime**: its ground took plasma's yellow end at chroma 0.03. Now plasma's sunrise orange
+  (0.8) at 0.016, a pale apricot. Solarized's cream is its canonical base3 and stays.
+- **Dark-mode links in the plugin were dull**: the accent as text is lifted toward OK L 0.8 keeping 40% of its distance
+  (`liftedToward`), not floored, since a floor merged Equinox's grays and Solarized's blue and sky.
+- **Each palette is drawn in its spec** (`tree/specs/canvas/palettes/*.svg`, from `scripts/palette-diagrams.ts`: each
+  slot's move from Default in OKLab); `paletteDiagrams.test.ts` fails while a checked-in diagram is stale.
+- **Modern Web Guidance 1.0** (Chrome's agent skills, `npx modern-web-guidance`, telemetry off with `DISABLE_TELEMETRY=1`):
+  its `legacy-scan` found 34 Enter handlers that committed mid-IME-composition. Every Enter check now goes through
+  `isEnter` (`enterKey.ts`), sweep-enforced. Its other two findings (`field-sizing: content`, `sibling-index()`) are
+  not Baseline in the desktop and Android webviews yet, so they stand.
+- **A date order** (`DATEVALUE(text, "MDY")`, and an Auto / MDY / DMY / YMD toggle on Cast to Date, Get Column read as
+  Date, the DATEVALUE card and a Frame Input with Date columns): one reader in the core (`read_date_text`). Auto keeps
+  C44's four-digit-year rule; a named order reads two-digit years as DATEVALUE does (author 2026-11-10).
+  Local File has the same Dates toggle, typing every numbers-alone date column of the CSV at once; the Edit Frame
+  popup reads a Frame Input's order too.
+- **Local File's column types** are picked in its output's popup (the header type buttons, `onRetypeColumn`), saved by
+  name in `columnTypes` and re-read from the source text. Pivot field drags work again on Windows' desktop webview
+  (`dragDropEnabled: false`) and in Firefox (drag data on each chip).
+- **PIVOTBY calculated fields**: a Name and a λ per field on the card; the LAMBDA runs per cell over that cell's rows,
+  totals included, so MPG by plate by month is miles over gallons at every level (`pivot_frame_calc`). Explicit
+  aggregates, no `@` (author 2026-11-10). Held by `tests/pivot_calc.rs` (a calc field aggregating one column equals
+  that value field in every cell of random layouts; `PIVOT_SEED`/`PIVOT_CASES` widen it) and `pivotCalcFields.test.ts`
+  (a row-by-row oracle, the targeted cases, the save path, and the `pivot-calculated-fields` seed's hand-worked cells).
+- The rig needs Obsidian at `/opt/Obsidian` (the 1.14.4 Linux tarball from obsidian-releases) and `wasm-bindgen-cli`
+  0.2.130 for `plugin:build`; neither is in the cloud image.
+
+### SESSION DIGEST (2026-11-09c: open-latitude fixes after 1.6, the headless runner for agents; cloud session)
+- **Align, Distribute and a card opening end with the No-Overlap Pass** ([[C112]] noOverlapsEver; `selectionOps.ts`
+  `settle`, `cardsExpanded`), the cards just placed or opened holding still.
+- **A Chart plots a table** (an HSTACK, a matrix) as the frame of its columns, one row as a list; it drew an empty plot
+  (`nodes/visual.rs` `chart`, `chartTable.test.ts`). **List Input keeps a typed gap** (`1,,3`) as a blank item
+  (`list_row_items`). **`+3 days` reads as a relative date** (`is_relative`'s signed count).
+- **SUMX2MY2, SUMX2PY2, SUMXMY2 count a logical in a pair** ([[D108]] aggregatesCountLogicals, which now names them);
+  a pair holding text is still skipped, the author's call (backlog).
+- **`run-graph` for agents and scripts**: it takes shot-graph's short form, `--set name=value` types into an input
+  card, `--out name` prints only that card, `--formula` answers one formula; a card answers to its document name (the
+  text form's `Name:`) or id before its label, and an unlabeled card's output is keyed by that name.
+- **One text file goes from an idea to checked answers and a picture** (the `build-graph` skill): `ai-grounding
+  --list` / `--card <words>` look a card up, `validate-graph` refuses what the app would drop or ignore, `run-graph`
+  prints plain JSON (ISO dates, a table as its rows; `--raw` the engine's values; [[C137]] datesNeverSerials),
+  `validate-graph --json` and `shot-graph` take the text form. The script launcher drains its output before exiting
+  (a pipe cut anything past 64 KB).
+- **Every card setting's choices come off the types** (`scripts/setting-choices.mjs` → `src/graph/settingChoices.json`,
+  214 settings on 169 cards; `../tree/specs/floors/node-classes.md`): the validator refuses a value outside them and the grounding
+  lists them. GROUPBY, Rollup and Group Lists' aggregator is `agg`, which both now say ([[C26]] opArgDistinct); the
+  validator had checked it under `op`, a field those cards never read.
+- **The No-Overlap Pass runs inside a group** (`settleMemberOverlaps`), the box growing over a member pushed past an
+  edge: [[C112]] noOverlapsEver has no Unenforced bullet left.
+- **Get Column answers `#REF!` for a column the table lacks**, naming the columns it has; it answered a blank that a
+  SUM showed as 0.
+- **`CLAUDE.md` opens with what the project is for**, in the author's words of 2026-11-09 and a model's account of
+  what holds.
+- **Local File reads a whole folder** ([[B11]] maximalMerge; `../tree/specs/computation/live-connections.md`
+  § A folder as one table): a name with `*` loads every matching CSV and Parquet file as one table with a File column,
+  a file that doesn't read named under the status line. `run-graph --data <folder>` runs Local File headlessly. Untested
+  in a desktop build.
+- **One standalone `solenoid` command** (`npm run build:cli` → `dist-cli/solenoid.mjs`, Node only): `guide`, `cards`,
+  `validate`, `run`. From inside a vault it reads a folder of notes, filters and groups it in half a second.
+- **A text-form line builds the rows it names** (`withImpliedRows`, `textFormRows.ts`): a filter's `condConfig` alone
+  ran as the default `gt`, since a card read per-row settings only for the rows `valueKeys` named.
+- **By-Row runs live or on Solve** (`byRowLive`, the Composite's By-Row editor; `../tree/specs/computation/composite-nodes.md`
+  § By-Row): the author's answer to many things through one transform. A list of tables through a live By-Row
+  Composite comes out trimmed table by table.
+- **A new leaf is checked against the author's test by a hook** (`.claude/settings.json`: an agent reads `dte.md`
+  § What is a leaf and what is a spec and refuses a description or a restatement of the parent). D126, which only
+  described the folder read and applied [[B11]] maximalMerge, is retired.
+- **A folder's files go through one transform each** (`../tree/specs/computation/live-connections.md` § A folder as one
+  table): Local File's `files` output is a Cube, a row per file with its table; a live By-Row Composite runs once per
+  row; its answer is a Cube with a table per row, which Unnest stacks. `scripts/shot-graphs/folder-each.json` is the
+  whole chain.
+- **One value per pass is typed as what it is** (`seriesTypeOf`, `../tree/specs/computation/composite-nodes.md` § Run
+  modes): By-Row, Scenarios and Data Table outputs are a value's list, a list's table, or a Cube for tables, where the
+  socket kept the inner type.
+- **Unnest keeps every nested table's columns** (it took the first table's and dropped the rest's without a word).
+- **Join takes a Cube and carries its lists and tables** by row number (`join_side`, `with_nested`), and
+  **LINKNAME / LINKPATH** read the note a link names: a vault's tasks join to the project notes they link in one step.
+- **A cloud container can start hundreds of commits behind `develop`** (this one was 352 behind, a shallow clone): `git
+  fetch origin develop` and compare before the first edit, or the first push is refused and the fixtures and wasm are
+  redone on the new base.
+- **A drill-in undo or redo never leaves a marker without a port** (`adoptMarkerPorts`, on the step and on leaving
+  the level; `compositeLeaveLevels.test.ts`).
+- **`run-graph --formula --set` takes a list or a grid** (`--set 'm=[[1,2],[3,4]]'`) and refuses a name the formula
+  never reads.
+- **INDEX's whole column was changed to a column and put back the same day**: the author was holding it. The backlog
+  line has what the try showed (right in a formula, splits the card). `CLAUDE.md` § Reflexes now says a change that
+  moves a saved graph's answer is the author's call.
+- **LET stays out of the formula language, on purpose** (author 2026-11-10): every name in a formula is already a
+  wireable socket, so naming a value is what a cable does. It was added and reverted the same day; the reason now
+  sits in `tree/specs/computation/formula-language.md` § Blocked and wrong-surface names.
+- **The strict validator refuses a setting of the wrong kind** (`ValueInputNode value=3` read as 0 with no word; it
+  now says `write value="3"`), and `validate-graph` reports a missing `---` line where it used to crash.
+- **The card reference lists every input that takes a typed value** (`aiGrounding.ts` asks `literalFieldOf`, as the
+  canvas does): GROUPBY's `keys` and 77 other cards' fields were born empty and went unlisted.
+  `aiGroundingInline.test.ts` holds each listed key to what the validator accepts.
+- **A note's body is data** (`noteBody.ts`, Vault Folder's "From each note" boxes): Tasks gives `note-tasks`, a nested
+  table of every checklist item with its done mark, dates, priority, tags, heading and line; Tables gives
+  `note-tables`, the note's pipe tables stacked and typed as an import is; Fields reads Dataview's `key:: value` as
+  property columns. Backlinks gives `backlinks`, the notes anywhere in the vault that link to each note
+  (`resolveLink` finds a link's note as Obsidian does). All four are off until ticked. The example
+  `vault-note-bodies` runs them on the sample vault.
+- **Write to Obsidian has a Tasks target**: each row ticks or unticks one checklist item by `path`, `line` and `done`,
+  changing the one character between the brackets (`planTaskMark`, `setTaskMarks`); a line that is no longer the item
+  read is refused. A property write leaves out `note-tasks`, `note-tables` and `backlinks` and never copies an inline
+  field into the frontmatter (`resolveKeyOrField`).
+- **Edit Frame changes a computed table's cells by hand** (`tree/specs/computation/edit-frame.md`): its popup
+  takes typing and ticks over the table with its edits applied, rows and columns fixed (`fixedRows`); each changed cell
+  is kept as `{ row, column, value }`, the row found by its Key columns' text (`path, task` for a vault's tasks), so
+  an edit follows its row through a reorder. Stale and ambiguous edits stay listed and change nothing; an edit the
+  table now gives on its own drops (`settled`, `coreWatched`). The edits list as Pipeline's steps, 20 shown and the rest
+  counted; the Edits output is the edits as a table (column, row, previous, new, status).
+- **Replace Values writes NaN for a replacement its column can't read** ([[C58]] tableInputRawText; `coerce_replacement`,
+  `frame_verbs.rs`): it skipped the whole column with no notice. The card never errors over one replacement; the
+  frame holds the truth, and a total over the column says so.
+- **A tiny transformer, a new example** (`seedGraphs/tiny-transformer.json`, Worked examples): one layer and one head
+  in five stages, each a group ending in its picture, built from table cards with no Expressions. XMATCH finds each
+  typed word in the (alphabetical) vocabulary and CHOOSEROWS picks its embedding row, so editing the prompt moves every
+  answer; positions are the paper's sines and cosines from a MAKEARRAY sized by a COUNT of the prompt (scaled by 0.1 to
+  sit under the hand-set embeddings); MMULT, TRANSPOSE, MAP and a MAKEARRAY mask do the rest. Both softmaxes are one
+  Composite: MAP `EXP(value)`, BYROW `1 / SUM(values)`, TOROW, DIAGONAL, MMULT. No identity W_V (the words are mixed
+  directly), a one-unit MLP that switches on for a preposition, INDEX at row Length for the last word's row. Heatmaps show
+  the embedding table (columns named article, noun, verb, preposition, so cat and mat look alike), the attention and the
+  predictions; a bar chart the last word's. Two rows, H on three rotated Conduits. Building it found Frame from Lists
+  failing on a table through TAKE's untyped output, the grounding listing TOROW under TableSelect, and `run-graph` and
+  `seedsCompute.test.ts` never hydrating a Composite (both do now).
+- **A new feature is never a new leaf** (the author, 2026-11-10; `docs/dte.md` § What is a leaf and what is a spec,
+  `CLAUDE.md`, the leaf-check hook): a feature and its design go in its spec; a leaf is added unasked only for a
+  product decision (the author overriding conventional wisdom, or answering a contested, high-stakes question).
+- **Import Obsidian Note mints `note-tasks` and `note-tables` outputs** when the note has a checklist or a table
+  (`bodyFields`), beside the outputs its frontmatter gives.
+- **Unnest's output takes its value's type** ([[C136]] typesKnownAfterCalc): it was the fixed untyped socket, so a
+  cable leaving an Unnest never showed Frame or Cube. It is a `valueTypedOut` now, and
+  `cablesTypedAfterCalc.test.ts` holds every example to the rule that a cable carrying a value is typed at both ends
+  once it has run. `staticTrueAnyOut` is left to NA alone.
+- **Vault Read and TaskNotes have specs** (`tree/specs/integrations/vault-read.md`, `tree/specs/integrations/tasknotes.md`). Writing them
+  found that a note's own `date` or `created` property never reaches Vault Folder's Cube (backlog § VaultBridge).
+
 ### SESSION DIGEST (2026-11-09b: two pre-1.6 safety fixes; cloud session)
 - **The desktop's fetch is `net_fetch`** (`src-tauri/src/net.rs`), the http plugin gone: what someone else wrote stays
   off this computer and the local network by the address a name resolves to, on every redirect, with no proxy between;

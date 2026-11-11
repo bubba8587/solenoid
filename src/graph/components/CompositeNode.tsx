@@ -28,6 +28,7 @@ import { ChartFigure } from "./chartView";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import { nodeDisplayName } from "../catalogUtils";
+import { isEnter } from "../enterKey";
 
 function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} full={false} />;
@@ -175,7 +176,7 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
             defaultValue={valuesToCsv(node.dataTableValues[p.id])}
             placeholder="for example, 1, 2, 3"
             onBlur={(e) => { node.setDataTableValues(p.id, parseCsvValues(e.target.value)); recompute(); }}
-            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            onKeyDown={(e) => { if (isEnter(e)) (e.target as HTMLInputElement).blur(); }}
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             spellCheck={false}
@@ -246,6 +247,11 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
+const BY_ROW_RUN_OPTIONS: ReadonlyArray<{ value: "held" | "live"; label: string; title: string }> = [
+  { value: "held", label: "On Solve", title: "Runs when you press Solve" },
+  { value: "live", label: "Live", title: "Runs again whenever its inputs change" },
+];
+
 function ByRowEditor({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   if (exposed.length === 0) {
@@ -255,9 +261,21 @@ function ByRowEditor({ node }: { node: CompositeNodeType }) {
   return (
     <div className="solenoid-composite__editor">
       <div className="solenoid-node__field-row solenoid-composite__row">
-        <span className="solenoid-node__field-label">For each row of</span>
+        <span className="solenoid-node__field-label">For each</span>
         <ArgSelect value={node.byRowPortId} options={options} onChange={(v) => { node.byRowPortId = v; void processGraph(node.id); }} />
       </div>
+      <SegToggle<"held" | "live">
+        value={node.byRowLive ? "live" : "held"}
+        onChange={(v) => { node.byRowLive = v === "live"; node.edited(); void processGraph(node.id); }}
+        options={BY_ROW_RUN_OPTIONS}
+      />
+      {node.byRowLastRuns && (
+        <div className="solenoid-composite__note">
+          {node.byRowLastRuns.ran < node.byRowLastRuns.of
+            ? `ran the first ${node.byRowLastRuns.ran} of ${node.byRowLastRuns.of}`
+            : `${node.byRowLastRuns.ran} run${node.byRowLastRuns.ran === 1 ? "" : "s"}`}
+        </div>
+      )}
     </div>
   );
 }

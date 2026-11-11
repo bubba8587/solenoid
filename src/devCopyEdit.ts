@@ -1,5 +1,6 @@
 // Dev-only copy-edit freeze (Ctrl+Alt+E): a click edits a string's source form through Vite's `/__copy-edit`. Listeners
 // register once at module load (app boot), so their capture handlers run ahead of every later listener.
+import { isEnter } from "./graph/enterKey";
 
 // `html` is the original rendered markup: restoring textContent instead would flatten markdown marks, and a
 // re-render that sees the same __html would not repaint it.
@@ -146,7 +147,7 @@ function onKeyDown(e: KeyboardEvent): void {
     else toggle();
     return;
   }
-  if (e.key === "Enter" && !e.shiftKey && editing) { e.preventDefault(); endEdit(false); }
+  if (isEnter(e) && !e.shiftKey && editing) { e.preventDefault(); endEdit(false); }
 }
 
 function onKeyPassthrough(e: KeyboardEvent): void {

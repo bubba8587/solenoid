@@ -10,6 +10,7 @@ export function controlledCellText(
   type: "number" | "string" | "date" | "logical",
   ann: FormatAnnotation,
   numberUnit: () => Pick<FormatAnnotation, "unit" | "customUnit">,
+  dateOrder = "",
 ): string {
   if (raw === null || raw === undefined || raw === "") return "";
   if (isSolError(raw)) return raw.code;
@@ -18,7 +19,7 @@ export function controlledCellText(
     return typeof b === "boolean" ? applyLogicalStyle(b, ann.logicalStyle) : b === null ? "" : "NaN";
   }
   const v: Cell = typeof raw === "string" && (type === "number" || type === "date")
-    ? coerceFrameCell(type, raw)
+    ? coerceFrameCell(type, raw, dateOrder)
     : raw;
   if (v === null) return "";
   if (isSolError(v)) return v.code;

@@ -509,7 +509,7 @@ fn decompose(c: &mut Call) -> Answer {
 
 // ─── K-Means, Logistic ──────────────────────────────────────────────────────────
 
-fn frame_in(c: &Call, key: &str) -> Option<Rc<Frame>> {
+pub(crate) fn frame_in(c: &Call, key: &str) -> Option<Rc<Frame>> {
     match card(c, key) {
         Cv::Frame(f) => Some(f),
         _ => None,
@@ -1676,7 +1676,10 @@ fn infer_cube_key_type(cells: &[V]) -> FrameColType {
 /// they show, read once and matched on the core in one call.
 fn cube_lookup_indices(cube: &Cube, in_col: &str, lookups: &[String], mm: &str, sm: &str) -> Result<Vec<i64>, V> {
     let Some(key) = cube.columns.iter().find(|k| k.name == in_col) else {
-        return Err(err(ErrorCode::Ref, format!("column \"{in_col}\" not found")));
+        return Err(err(
+            ErrorCode::Ref,
+            crate::frame::column_not_found(in_col, cube.columns.iter().map(|k| k.name.as_str())),
+        ));
     };
     if lookups.is_empty() {
         return Ok(Vec::new());
@@ -1895,7 +1898,13 @@ fn xlookup(c: &mut Call) -> Answer {
                     None => {
                         let idx = cube_idx;
                         let Some(ret) = src_cube.columns.iter().find(|k| k.name == ret_col) else {
-                            return Err(err(ErrorCode::Ref, format!("column \"{ret_col}\" not found")));
+                            return Err(err(
+                                ErrorCode::Ref,
+                                crate::frame::column_not_found(
+                                    &ret_col,
+                                    src_cube.columns.iter().map(|k| k.name.as_str()),
+                                ),
+                            ));
                         };
                         (idx >= 0).then(|| ret.cells.get(idx as usize).cloned().unwrap_or(Cv::NULL))
                     }
@@ -2178,7 +2187,10 @@ fn inferred(name: &str, cells: &[V], format: Option<Json>, ty: Option<FrameColTy
 /// Each nested row (a list's items, a table's or a Cube's rows) under a copy of its parent row.
 fn unnest_cube(c: &Cube, nested_name: &str) -> Result<Cv, V> {
     let Some(at) = c.columns.iter().position(|col| col.name == nested_name) else {
-        return Err(err(ErrorCode::Ref, format!("column \"{nested_name}\" not found")));
+        return Err(err(
+            ErrorCode::Ref,
+            crate::frame::column_not_found(nested_name, c.columns.iter().map(|col| col.name.as_str())),
+        ));
     };
     let flat: Vec<&CubeColumn> = c.columns.iter().enumerate().filter(|&(j, _)| j != at).map(|(_, col)| col).collect();
     let nested = &c.columns[at];
@@ -2230,11 +2242,16 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<Cv, V> {
         return Ok(frame_v(columns));
     }
     if saw_cube {
-        let schema: Vec<CubeColumn> = nested
-            .cells
-            .iter()
-            .find_map(|v| if let Cv::Cube(k) = v { Some(k.columns.clone()) } else { None })
-            .unwrap_or_default();
+        let mut schema: Vec<CubeColumn> = Vec::new();
+        for cell in &nested.cells {
+            if let Cv::Cube(k) = cell {
+                for col in &k.columns {
+                    if !schema.iter().any(|x| x.name == col.name) {
+                        schema.push(col.clone());
+                    }
+                }
+            }
+        }
         let mut flat_vals: Vec<Vec<Cv>> = vec![Vec::new(); flat.len()];
         let mut child_vals: Vec<Vec<Cv>> = vec![Vec::new(); schema.len()];
         for i in 0..rows {
@@ -2268,11 +2285,18 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<Cv, V> {
         }));
         return Ok(cube_from_columns(cols));
     }
-    let schema: Vec<Column> = nested
-        .cells
-        .iter()
-        .find_map(|v| if let Cv::Frame(f) = v { Some(f.columns.clone()) } else { None })
-        .unwrap_or_default();
+    // Every nested table's columns, each as the first table that has it gives it: a column only a later table holds
+    // is kept, blank in the rows of the tables without it.
+    let mut schema: Vec<Column> = Vec::new();
+    for cell in &nested.cells {
+        if let Cv::Frame(f) = cell {
+            for col in &f.columns {
+                if !schema.iter().any(|x| x.name == col.name) {
+                    schema.push(col.clone());
+                }
+            }
+        }
+    }
     let mut flat_vals: Vec<Vec<V>> = vec![Vec::new(); flat.len()];
     let mut child_vals: Vec<Vec<V>> = vec![Vec::new(); schema.len()];
     for i in 0..rows {

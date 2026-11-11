@@ -3,9 +3,9 @@ import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";
 import type { Schemes, SolenoidConnection } from "../../src/graph/schemes";
-import { CompositeNode, CompositeInputNode } from "../../src/graph/nodes/composite";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";
-import { reconcileLeftPorts } from "../../src/graph/compositeLogic";
+import { reconcileLeftPorts, adoptMarkerPorts } from "../../src/graph/compositeLogic";
 
 describe("reconcileLeftPorts", () => {
   it("drops a port whose marker was deleted inside, with the parent's cables on it, and keeps the rest", async () => {
@@ -24,5 +24,23 @@ describe("reconcileLeftPorts", () => {
     expect(await reconcileLeftPorts(comp, parent)).toEqual({ cables: 1, ports: 1 });
     expect(comp.inputPorts.map((p) => p.id)).toEqual([keptId]);
     expect(parent.getConnections().map((c) => c.targetInput)).toEqual([keptId]);
+  });
+
+  it("gives a port to a marker that has none, as an undo or redo inside can leave one", async () => {
+    const parent = new GraphEditor<Schemes>();
+    const comp = new CompositeNode();
+    await parent.addNode(comp as never);
+    const back = new CompositeInputNode({ label: "Rate" });
+    const out = new CompositeOutputNode({ label: "Total" });
+    await comp.internalEditor.addNode(back as never);
+    await comp.internalEditor.addNode(out as never);
+    expect(adoptMarkerPorts(comp)).toBe(2);
+    expect(comp.inputPorts.map((p) => [p.label, p.internalNodeId])).toEqual([["Rate", back.id]]);
+    expect(comp.outputPorts.map((p) => [p.label, p.internalNodeId])).toEqual([["Total", out.id]]);
+    expect(Object.keys(comp.inputs)).toHaveLength(1);
+    // Nothing more to adopt, and leaving keeps both.
+    expect(adoptMarkerPorts(comp)).toBe(0);
+    expect(await reconcileLeftPorts(comp, parent)).toEqual({ cables: 0, ports: 0 });
+    expect(comp.inputPorts).toHaveLength(1);
   });
 });

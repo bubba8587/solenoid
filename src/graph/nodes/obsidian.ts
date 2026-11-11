@@ -1,9 +1,10 @@
 // [[C101]] onePatchPath, [[B18]] safeToShare
+import { readTasks, tasksCube, readTables, tablesFrame, planTaskMark, setTaskMarks, type TaskMark } from "../noteBody";
 import { GraphNode } from "../graphModel";
 import { documentIn, strIn, strOut, cubeIn, frameOut, readTextInput, strListIn, keysCsv } from "./shared";
 import { formatDateSerial } from "./dateSerial";
 import type { ObsidianWriteMode } from "../obsidianWrite";
-import { NoteNode } from "./annotation";
+import { NoteNode, type EmittedValue } from "./annotation";
 import { type FrontmatterFieldType } from "../noteFrontmatter";
 import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
@@ -12,7 +13,7 @@ import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, r
 import { settingsStore } from "../settingsStore";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { connectionStore, trackInflight, scheduleConnectionRecalc } from "../connectionStore";
-import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, holdsAdd, frontmatterTags, keepDateTime, displayValue, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
+import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveKeyOrField, resolveBody, patchFrontmatter, setBody, writableKeys, holdsAdd, frontmatterTags, keepDateTime, displayValue, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
 import { buildBaseView, baseRelPath } from "../baseView";
 import { nearestMdbaseSchema, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
@@ -25,7 +26,7 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 // obsidianWrite is imported lazily inside run(), because an eager import closes an init cycle through the node barrel.
 
 type ObsidianWriteStatus = "idle" | "writing" | "previewing" | "ok" | "error";
-export type WriteObsidianTarget = "auto" | "note" | "properties";
+export type WriteObsidianTarget = "auto" | "note" | "properties" | "tasks";
 
 export const OBSIDIAN_WRITE_MODE_OPTIONS: ReadonlyArray<{ value: ObsidianWriteMode; label: string; title: string }> = [
   { value: "overwrite", label: "Overwrite", title: "The note becomes the document" },
@@ -37,7 +38,30 @@ export const OBSIDIAN_TARGET_OPTIONS: ReadonlyArray<{ value: WriteObsidianTarget
   { value: "auto",       label: "Auto",       title: "Follow the wired input: a Document writes a note, rows write properties" },
   { value: "note",       label: "Note",       title: "Write the wired Document as one note" },
   { value: "properties", label: "Properties", title: "Write the rows' columns as each note's frontmatter, a note-body column as its body" },
+  { value: "tasks",      label: "Tasks",      title: "Tick or untick each row's checklist item in its note, found by the path and line columns" },
 ];
+
+/** One row of the Tasks target's rows: the note, the item's line, the mark to leave, and the item's text when the rows carry it. */
+type TaskRow = { path: string } & TaskMark;
+
+/** The Tasks target's rows as marks to set: a row needs a `path`, a whole `line` and a `done` that is TRUE or FALSE
+ *  (the columns an Unnest of Vault Folder's `note-tasks` gives); a `task` column, when there, holds each row to the
+ *  item it was read from. A row missing any of the three is left out. */
+function taskRowsOf(cube: CubeValue): TaskRow[] {
+  const col = (name: string) => cube.columns.find((c) => c.name === name)?.cells;
+  const paths = col("path"), lines = col("line"), dones = col("done"), tasks = col("task");
+  if (!paths || !lines || !dones) return [];
+  const out: TaskRow[] = [];
+  for (let i = 0; i < paths.length; i++) {
+    const path = paths[i], line = lines[i], done = dones[i], task = tasks?.[i];
+    if (typeof path !== "string" || path.trim() === "" || typeof line !== "number" || !Number.isInteger(line) || line < 1 || typeof done !== "boolean") continue;
+    out.push({ path, line, done, ...(typeof task === "string" ? { task } : {}) });
+  }
+  return out;
+}
+
+const taskPlanRow = (r: TaskRow): PlanRow =>
+  ({ path: r.path, key: `line ${r.line}`, value: r.done, after: r.done ? "[x]" : "[ ]", before: "", action: "pending" });
 
 function noteNamesOf(cube: CubeValue): Set<string> {
   const names = new Set<string>();
@@ -89,7 +113,7 @@ export class WriteObsidianNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "The Document to write as a note. Only Run writes; the node loads disarmed.",
     path: "The note to write: a vault-relative path, or a bare name without .md. A leading folder overrides the subfolder.",
-    rows: "Rows to write as properties: a path column names each note, a note-body column writes its body, every other column its frontmatter. Only Run writes.",
+    rows: "Rows to write as properties: a path column names each note, a note-body column writes its body, every other column its frontmatter. Set to Tasks, each row ticks or unticks one checklist item by its path, line and done columns. Only Run writes.",
     keys: "The columns to write, by name. Blank writes every column but path; a listed column is added even where it's blank.",
     plan: "One row per note and property: the current value, the value to write, and what Run would do. Empty for a Note.",
   };
@@ -115,6 +139,9 @@ export class WriteObsidianNode extends GraphNode {
   cachedPlan: FrameValue | SolError | null = null;
   private planRows: PlanRow[] = [];
   private plannedKeys = "";
+  private plannedTasks = false;
+  /** The Tasks target's rows, one per plan row and in its order. */
+  private taskRows: TaskRow[] = [];
   private _mdbaseCache = new Map<string, MdbaseCollection | null>();
   status: ObsidianWriteStatus = "idle";
   statusMessage = "";
@@ -134,7 +161,7 @@ export class WriteObsidianNode extends GraphNode {
     this.subfolder = init?.subfolder ?? "";
     this.mode = init?.mode === "append" || init?.mode === "block" ? init.mode : "overwrite";
     this.stamp = init?.stamp === true;
-    this.target = init?.target === "note" || init?.target === "properties" ? init.target : "auto";
+    this.target = init?.target === "note" || init?.target === "properties" || init?.target === "tasks" ? init.target : "auto";
     if (init?.addMissing === false) this.addMissing = false;
     if (init?.writeBase) this.writeBase = true;
     this.addInput("in", documentIn("Document"));
@@ -146,9 +173,11 @@ export class WriteObsidianNode extends GraphNode {
 
   columnPickers(): ColumnPickerSpec[] { return [{ key: "keys", frameInput: "rows" }]; }
 
-  resolveMode(): "note" | "properties" {
+  /** Auto follows the wired input and never picks Tasks: ticking a note's checklist is asked for by name. */
+  resolveMode(): "note" | "properties" | "tasks" {
     if (this.target === "note") return "note";
     if (this.target === "properties") return "properties";
+    if (this.target === "tasks") return "tasks";
     return isCubeValue(this.cachedCube) && !isDocumentValue(this.cachedDoc) ? "properties" : "note";
   }
 
@@ -158,11 +187,15 @@ export class WriteObsidianNode extends GraphNode {
     const raw = inputs.rows?.[0] ?? null;
     const keys = keysCsv(inputs.keys, this.stringLiterals.keys ?? "");
     if (isSolError(keys)) { this.cachedCube = null; this.plannedKeys = ""; this.cachedPlan = keys; this.planRows = []; return { plan: keys }; }
-    if (raw !== this.cachedCube || keys !== this.plannedKeys) { // re-plan only on new rows or keys, because Preview mutates planRows
+    const tasks = this.target === "tasks";
+    if (raw !== this.cachedCube || keys !== this.plannedKeys || tasks !== this.plannedTasks) { // re-plan only on new rows, keys or target, because Preview mutates planRows
       this.cachedCube = raw;
       this.plannedKeys = keys;
+      this.plannedTasks = tasks;
+      this.taskRows = [];
       if (isSolError(raw)) { this.cachedPlan = raw; this.planRows = []; }
       else if (!isCubeValue(raw)) { this.cachedPlan = null; this.planRows = []; }
+      else if (tasks) { this.taskRows = taskRowsOf(raw); this.planRows = this.taskRows.map(taskPlanRow); this.cachedPlan = propertyPlanFrame(this.planRows); }
       else { this.planRows = planPropertyWrites(raw, keys, noteNamesOf(raw)); this.cachedPlan = propertyPlanFrame(this.planRows); }
     }
     return { plan: this.cachedPlan };
@@ -200,6 +233,7 @@ export class WriteObsidianNode extends GraphNode {
     if (!hasFs()) { this.status = "error"; this.statusMessage = "Writing needs the desktop app"; return; }
     if (!vault) { this.status = "error"; this.statusMessage = "Set the vault folder in Settings"; return; }
     if (this.resolveMode() === "properties") { await this.runProperties(vault); return; }
+    if (this.resolveMode() === "tasks") { await this.runTasks(vault); return; }
     await this.runNote(vault);
   }
 
@@ -209,6 +243,7 @@ export class WriteObsidianNode extends GraphNode {
     if (!hasFs() && !isDemoVaultPath(vault)) { this.status = "error"; this.statusMessage = "Preview needs the desktop app"; return; }
     if (!vault) { this.status = "error"; this.statusMessage = "Set the vault folder in Settings"; return; }
     if (this.resolveMode() === "properties") { await this.previewProperties(vault); return; }
+    if (this.resolveMode() === "tasks") { await this.previewTasks(vault); return; }
     await this.previewNote(vault);
   }
 
@@ -345,10 +380,10 @@ export class WriteObsidianNode extends GraphNode {
           if (r.key === NOTE_BODY) { const { action, before } = resolveBody(text, r.value as string); r.before = before; r.action = action; r.reason = undefined; continue; }
           r.value = keepDateTime(text, r.key, r.key === "tags" ? frontmatterTags(text, r.value) : r.value);
           r.after = displayValue(r.value);
-          const { action, before } = resolveKey(text, r.key, r.value);
+          const { action, before, reason } = resolveKeyOrField(text, r.key, r.value);
           r.before = before;
           r.action = action === "add" && holdsAdd(this.addMissing, this.plannedKeys, r.key, r.value) ? "unchanged" : action;
-          r.reason = undefined;
+          r.reason = reason;
         }
         this.validateRows(rows, await this.schemaFor(vault, p));
       }
@@ -382,9 +417,9 @@ export class WriteObsidianNode extends GraphNode {
           if (r.held) continue;
           if (r.key === NOTE_BODY) { if (resolveBody(text, r.value as string).action === "update") { newBody = r.value as string; touched++; } continue; }
           const value = keepDateTime(text, r.key, r.key === "tags" ? frontmatterTags(text, r.value) : r.value);
-          const { action } = resolveKey(text, r.key, value);
+          const { action } = resolveKeyOrField(text, r.key, value);
           if (action === "add" && holdsAdd(this.addMissing, this.plannedKeys, r.key, value)) continue;
-          if (action === "unchanged") continue;
+          if (action === "unchanged" || action === "refused") continue;
           if (sch) {
             if (sch.required.includes(r.key) && value === null) continue;
             const c = sch.constraints[r.key];
@@ -417,6 +452,66 @@ export class WriteObsidianNode extends GraphNode {
       this.status = failed ? "error" : "ok";
       this.statusMessage = `${changed} change${changed === 1 ? "" : "s"} across ${wrote} note${wrote === 1 ? "" : "s"}` +
         `${failed ? `, ${failed} failed — ${failures.join("; ")}` : ""}`;
+    } catch (e) { this.status = "error"; this.statusMessage = e instanceof Error ? e.message : String(e); }
+  }
+
+  // ─── TASKS target ───────────────────────────────────────────────────────────────
+  private static readonly NO_TASK_ROWS = "Nothing to tick. The rows need path, line and done columns.";
+
+  /** Each note's task rows with their place in the plan. */
+  private tasksByPath(): Map<string, { row: TaskRow; plan: PlanRow }[]> {
+    const m = new Map<string, { row: TaskRow; plan: PlanRow }[]>();
+    this.taskRows.forEach((row, i) => { const list = m.get(row.path) ?? []; list.push({ row, plan: this.planRows[i] }); m.set(row.path, list); });
+    return m;
+  }
+
+  private async previewTasks(vault: string): Promise<void> {
+    if (!this.taskRows.length) { this.status = "error"; this.statusMessage = WriteObsidianNode.NO_TASK_ROWS; return; }
+    this.status = "previewing";
+    try {
+      for (const [p, rows] of this.tasksByPath()) {
+        let text: string;
+        try { text = await readVaultFile(vault, p); }
+        catch { for (const { plan } of rows) { plan.action = "unreadable"; plan.before = ""; plan.reason = undefined; } continue; }
+        for (const { row, plan } of rows) {
+          const res = planTaskMark(text, row);
+          plan.before = res.before;
+          plan.after = res.action === "refused" ? plan.after : res.after;
+          plan.action = res.action;
+          plan.reason = res.reason;
+        }
+      }
+      this.cachedPlan = propertyPlanFrame(this.planRows);
+      const n = (a: string) => this.planRows.filter((r) => r.action === a).length;
+      this.status = "idle";
+      this.statusMessage = `Preview: ${n("update")} to change, ${n("unchanged")} unchanged` +
+        `${n("refused") ? `, ${n("refused")} refused` : ""}${n("unreadable") ? `, ${n("unreadable")} unreadable` : ""}`;
+    } catch (e) { this.status = "error"; this.statusMessage = e instanceof Error ? e.message : String(e); }
+  }
+
+  private async runTasks(vault: string): Promise<void> {
+    if (isSolError(this.cachedCube)) { this.status = "error"; this.statusMessage = this.cachedCube.code; return; }
+    if (!this.taskRows.length) { this.status = "error"; this.statusMessage = WriteObsidianNode.NO_TASK_ROWS; return; }
+    this.status = "writing";
+    let wrote = 0, changed = 0, refused = 0, failed = 0;
+    const failures: string[] = [];
+    try {
+      for (const [p, rows] of this.tasksByPath()) {
+        let text: string;
+        try { text = await readVaultFile(vault, p); }
+        catch { failed++; if (failures.length < 3) failures.push(`${p}: unreadable`); continue; }
+        const plans = rows.map(({ row }) => planTaskMark(text, row));
+        refused += plans.filter((r) => r.action === "refused").length;
+        const touched = plans.filter((r) => r.action === "update").length;
+        if (touched === 0) continue;
+        try {
+          await writeTextFilePath(await joinPath(vault, ...p.split("/")), setTaskMarks(text, rows.map(({ row }) => row)));
+          wrote++; changed += touched;
+        } catch (e) { failed++; if (failures.length < 3) failures.push(`${p}: ${e instanceof Error ? e.message : String(e)}`); }
+      }
+      this.status = failed ? "error" : "ok";
+      this.statusMessage = `${changed} item${changed === 1 ? "" : "s"} changed across ${wrote} note${wrote === 1 ? "" : "s"}` +
+        `${refused ? `, ${refused} refused` : ""}${failed ? `, ${failed} failed: ${failures.join("; ")}` : ""}`;
     } catch (e) { this.status = "error"; this.statusMessage = e instanceof Error ? e.message : String(e); }
   }
 
@@ -468,6 +563,17 @@ export class ImportObsidianNode extends NoteNode {
   }
 
   protected reservedOutputs(): ReadonlySet<string> { return IMPORT_RESERVED; }
+
+  /** A note's checklist items and its tables, each an output when the note has any, as Vault Folder's `note-tasks`
+   *  and `note-tables` columns hold them (`tree/specs/integrations/vault-read.md` § The body as data). */
+  protected bodyFields(body: string): { key: string; value: EmittedValue; type: FrontmatterFieldType }[] {
+    const out: { key: string; value: EmittedValue; type: FrontmatterFieldType }[] = [];
+    const tasks = tasksCube(readTasks(body, this.body.split("\n").length - body.split("\n").length));
+    if (tasks) out.push({ key: "note-tasks", value: tasks, type: "cube" });
+    const tables = tablesFrame(readTables(body));
+    if (tables) out.push({ key: "note-tables", value: tables, type: "frame" });
+    return out;
+  }
 
   async loadColumnPicks(vault: string): Promise<void> {
     const { readVaultFile } = await import("../fileBridge");

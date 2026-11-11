@@ -15,7 +15,7 @@ The first part is Solenoid's own differences from Excel, deliberate ones. The re
 Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because consistency across the graph beats matching a quirk:
 
 - `0^0` is 1; Excel answers `#NUM!`.
-- DATE's year is literal: 26 is the year 26, never 1926. Date text needs a four-digit year. One reading of a year everywhere beats matching Excel's two-digit guess ([[C44]] dateSerials).
+- DATE's year is literal: 26 is the year 26, never 1926. Date text needs a four-digit year. One reading of a year everywhere beats matching Excel's two-digit guess ([[C44]] dateSerials). The exceptions read Excel's own date text: DATEVALUE, and any card given a date order (MDY, DMY or YMD), take 00 to 29 as 2000 to 2029 and 30 to 99 as 1930 to 1999 (author 2026-11-10: naming the order is naming the file's convention).
 - DATEDIF's `MD` is never negative; Excel's goes negative across a short month.
 - VALUE does not parse date or time text, and no date function reads it: date text where a date belongs is `#TYPE!` "YEAR needs a date" (`date_values::ready`); DATEVALUE or Cast to Date reads it. Excel reads `YEAR("7/5/2008")` as 2008.
 - MUNIT(0) is the empty matrix, as SEQUENCE's zero rows are an empty list; Excel answers `#VALUE!`. A negative size is `#DOMAIN!`.

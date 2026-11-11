@@ -44,7 +44,6 @@ export const plan: Omit<Plan, "family" | "functions" | "sources"> = {
     "tests/graph/groupPushCore.test.ts": "canvas layout: RIGHT and LEFT are edges, not the functions",
     "tests/graph/tidyArrangeGroups.test.ts": "canvas layout: RIGHT and LEFT are directions, not the functions",
     "tests/graph/layoutTidyIntegration.test.ts": "canvas layout: RIGHT is a direction, not the function",
-    "tests/graph/hicCableGeom.test.ts": "cable geometry: LEFT is a side, not the function",
     "tree/specs/canvas/auto-arrange-tidy.md": "canvas layout: RIGHT and DOWN are directions, not the functions",
     "tests/graph/passBench.test.ts": "a benchmark of card chains; it times, it answers nothing",
     "tests/graph/cardBatchBench.test.ts": "a benchmark of card bodies; it times, it answers nothing",

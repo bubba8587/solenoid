@@ -327,11 +327,12 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let mut columns = Vec::new();
             for p in parse::<Vec<Part>>(args, "parts")? {
                 let f = get(&p.handle)?;
-                let c = f
-                    .columns
-                    .iter()
-                    .find(|c| c.name == p.column)
-                    .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{}\" not found", p.column)))?;
+                let c = f.columns.iter().find(|c| c.name == p.column).ok_or_else(|| {
+                    sol_error(
+                        ErrorCode::Ref,
+                        crate::frame::column_not_found(&p.column, f.columns.iter().map(|c| c.name.as_str())),
+                    )
+                })?;
                 columns.push(FrameColumn {
                     name: p.as_,
                     ty: p.ty,
@@ -393,11 +394,17 @@ fn popup_command(command: &str, args: &Json) -> Result<Option<Json>, SolError> {
             let now = args.get("now").and_then(Json::as_f64).unwrap_or_else(crate::excel_functions::clock_instant);
             Ok(serde_json::json!({ "relative": crate::relative_date::relative_date(&text, now) }))
         }
-        "engine_parse_date" => Ok(match crate::excel_criteria::parse_date(&parse::<String>(args, "text")?) {
-            crate::excel_criteria::DateReading::Serial(d) => Json::from(d),
-            crate::excel_criteria::DateReading::NotADate => Json::Null,
-            crate::excel_criteria::DateReading::Ambiguous(e) => serde_json::json!({ "ambiguous": e.message }),
-        }),
+        "engine_parse_date" => Ok(
+            match crate::excel_criteria::read_date_text(
+                &parse::<String>(args, "text")?,
+                crate::excel_criteria::DateOrder::parse(args.get("order").and_then(Json::as_str).unwrap_or(""))
+                    .unwrap_or_default(),
+            ) {
+                crate::excel_criteria::DateReading::Serial(d) => Json::from(d),
+                crate::excel_criteria::DateReading::NotADate => Json::Null,
+                crate::excel_criteria::DateReading::Ambiguous(e) => serde_json::json!({ "ambiguous": e.message }),
+            },
+        ),
         // The Cards view's plan for a table's columns (or, given `units`, the layout suggested from it), and a Record layout's placements ([[C114]] cardsView), as the
         // Table popup draws them (`card_helpers.rs`).
         "engine_plan_cards" => {

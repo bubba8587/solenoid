@@ -29,6 +29,7 @@ import type {
   MergeColumnsNode as MergeColumnsNodeType,
   HeadersNode as HeadersNodeType,
   DropBlankRowsNode as DropBlankRowsNodeType,
+  EditFrameNode as EditFrameNodeType,
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
   SensitivityMode,
@@ -58,6 +59,8 @@ import { RecordLayoutField } from "./RecordLayoutField";
 import { XLookupNode, type LookupDirection } from "../nodes/frame";
 import { suggestFrameLayout } from "../cardLayout";
 import { CloseIcon } from "./CloseIcon";
+import { ErrorChip } from "./ErrorChip";
+import { openEditFramePopup } from "./editFramePopup";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META, lambdaSocketName } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { isCubeValue } from "../frame";
@@ -110,7 +113,8 @@ import type { AllocateMode } from "../nodes/allocateOps";
 import type { PayoffOrder } from "../nodes/frame";
 import { PAYOFF_ORDER_META } from "../nodes/frame";
 import { previewed } from "../listPreview";
-import { PairHead } from "./PairedExtensibleInputs";
+import { PairHead, PairedExtensibleInputs } from "./PairedExtensibleInputs";
+import { DateOrderToggle } from "./DateOrderToggle";
 
 const ALLOCATE_MODE_OPTIONS: OpOption<AllocateMode>[] =
   (Object.entries(ALLOCATE_MODE_META) as [AllocateMode, { label: string }][]).map(([value, m]) => ({ value, label: m.label }));
@@ -181,14 +185,16 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
           value: isFrameValue(data.cachedResult) ? data.cachedResult : { __frame: true, columns: [] },
           label: nodeDisplayName(data), hostId: data.id, source, onSaveSource, onCommitSource,
           lambdaOptions: data.lambdaKeys.map(lambdaSocketName), formLayout: data.activeLayout, cardLayout: data.activeCardLayout,
+          popupOverrides: { dateOrder: data.dateOrder },
         })}
       />
       <CardSection
         label="Advanced"
         collapsible
-        defaultOpen={data.lambdaKeys.length > 0 || (hasLayout && !layoutHidden) || (hasCardLayout && !cardLayoutHidden)}
+        defaultOpen={data.lambdaKeys.length > 0 || (hasLayout && !layoutHidden) || (hasCardLayout && !cardLayoutHidden) || data.dateOrder !== ""}
         sockets={{ node: data, emit, keys: data.lambdaKeys }}
       >
+        {source.some((c) => c.type === "date") && <DateOrderToggle node={data} />}
         {/* A column formula in the grid editor reaches each λ input by its socket name. */}
         <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
         {!layoutHidden && (hasLayout || showLayout) ? (
@@ -555,6 +561,8 @@ function pivotSummary(data: PivotNodeType): string {
   if (rows.length) parts.push(`Rows: ${rows.join(", ")}`);
   if (cols.length) parts.push(`Cols: ${cols.join(", ")}`);
   if (vals.length) parts.push(`Σ ${vals.map((v) => `${v} (${(data.funcs?.[v] ?? data.agg).toUpperCase()})`).join(", ")}`);
+  const calcs = data.valuePairKeys().map(([name], i) => data.stringLiterals?.[name]?.trim() || `Calculated ${i + 1}`);
+  if (calcs.length) parts.push(`λ ${calcs.join(", ")}`);
   return parts.join(" · ");
 }
 
@@ -576,6 +584,9 @@ export function PivotComponent({ data, emit }: NodeProps<PivotNodeType>) {
         Configure fields…
       </button>
       <div className="solenoid-node__pivot-summary" title={pivotSummary(data)}>{pivotSummary(data)}</div>
+      <CardSection label="Calculated fields" collapsible defaultOpen={data.valuePairKeys().length > 0} sockets={{ node: data, emit, keys: data.valuePairKeys().flat() }}>
+        <PairedExtensibleInputs node={data} emit={emit} rowNoun="calculated field" minRows={0} />
+      </CardSection>
       <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -1041,6 +1052,7 @@ export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>)
         options={GET_COLUMN_READ_OPTIONS}
         onChange={(next) => { setReadAs(next); void applyGetColumnReadAs(data, next); }}
       />
+      {readAs === "date" && <DateOrderToggle node={data} />}
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );
@@ -1295,6 +1307,74 @@ export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
       <ArgSelect value={agg} onChange={setAgg} options={WINDOW_FN_OPTIONS} />
       <InlineInputs node={data} emit={emit} />
       <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+    </NodeShell>
+  );
+}
+
+// ─── EDIT FRAME ────────────────────────────────────────────────────────────────
+
+/** How many edits the card lists; the rest are counted under them. */
+const EDIT_LIST_CAP = 20;
+
+const EDIT_STATUS_TITLE: Record<string, string> = {
+  stale: "No row has this key now, or the column is gone, so this edit changes nothing.",
+  ambiguous: "Two or more rows have this key, so this edit changes none of them. Add a column to Key that tells them apart.",
+};
+
+export function EditFrameComponent({ data, emit }: NodeProps<EditFrameNodeType>) {
+  const [, bump] = useState(0);
+  const edits = data.cellEdits;
+  const shown = edits.slice(0, EDIT_LIST_CAP);
+  const frame = isFrameValue(data.cachedResult) ? data.cachedResult : null;
+  const remove = (i: number) => {
+    data.removeCellEdit(i);
+    bump((n) => n + 1);
+    data.edited();
+    void processGraph(data.id);
+  };
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <CardOpenButton label="Edit Cells" onOpen={(el) => openEditFramePopup(data, el)} />
+      <InlineInputs node={data} emit={emit} />
+      <MeasuredSocketRow side="output" socketKey="edits" nodeId={data.id} emit={emit} payload={data.outputs.edits!.socket} hero>
+        <div className="solenoid-pipeline solenoid-edit-frame__edits">
+          {edits.length === 0
+            ? <div className="solenoid-node__text-empty">no edits</div>
+            : (
+              <div className="solenoid-pipeline__list nowheel">
+                {shown.map((e, i) => {
+                  const status = data.editStatus[i];
+                  const off = status === "stale" || status === "ambiguous";
+                  return (
+                    <div key={`${e.column}\u001f${e.row}`} className={`solenoid-pipeline__step solenoid-edit-frame__edit${off ? " solenoid-edit-frame__edit--off" : ""}`} title={off ? EDIT_STATUS_TITLE[status] : `${e.row}: ${e.column} is ${e.value === "" ? "blank" : e.value}`}>
+                      <span className="solenoid-pipeline__num">{i + 1}</span>
+                      <span className="solenoid-pipeline__name">{e.row}</span>
+                      <span className="solenoid-edit-frame__value">{off ? status : `${e.column} = ${e.value === "" ? "blank" : e.value}`}</span>
+                      <button
+                        type="button"
+                        className="solenoid-edit-frame__remove"
+                        title="Take this edit back"
+                        aria-label="Take this edit back"
+                        onPointerDown={stopDragStart}
+                        onMouseDown={stopDragStart}
+                        onClick={(ev) => { ev.stopPropagation(); remove(i); }}
+                      >
+                        <CloseIcon size={10} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {edits.length > EDIT_LIST_CAP && <div className="solenoid-edit-frame__more">+{edits.length - EDIT_LIST_CAP} more…</div>}
+              </div>
+            )}
+        </div>
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={data.outputs.frame!.socket}>
+        <span className="solenoid-node__io-label">Frame</span>
+        <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
+          {frame ? <FrameChip value={frame} label={nodeDisplayName(data)} size="sm" /> : isSolError(data.cachedResult) ? <ErrorChip err={data.cachedResult} /> : "—"}
+        </span>
+      </MeasuredSocketRow>
     </NodeShell>
   );
 }

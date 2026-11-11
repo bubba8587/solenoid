@@ -917,12 +917,12 @@ pub(crate) fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
         .collect()
 }
 
-/// Each column's cells read as its type, the text kept as typed.
-pub(crate) fn derive_column(s: &SourceColumn) -> Column {
+/// Each column's cells read as its type, a date under `order`, the text kept as typed.
+pub(crate) fn derive_column(s: &SourceColumn, order: crate::excel_criteria::DateOrder) -> Column {
     Column {
         name: s.name.clone(),
         ty: s.ty,
-        values: s.cells.iter().map(|cell| super::list::frame_cell_of(s.ty.as_str(), cell)).collect(),
+        values: s.cells.iter().map(|cell| super::list::frame_cell_ordered(s.ty.as_str(), cell, order)).collect(),
         unit: if s.ty == FrameColType::Number {
             s.unit.as_deref().and_then(super::frames::column_unit_from_spec)
         } else {
@@ -992,7 +992,7 @@ fn option_word<'a>(opts: &str, key: &str, values: &[&'a str]) -> Option<&'a str>
 }
 
 /// A cell as a Record shows it: an error as its code, a logical as TRUE or FALSE, a date as its text.
-fn frame_cell_text(col: &Column, v: &V) -> V {
+pub(crate) fn frame_cell_text(col: &Column, v: &V) -> V {
     match v {
         V::Err(e) => V::str(e.code.as_str()),
         V::Bool(b) => V::str(if *b { "TRUE" } else { "FALSE" }),
@@ -1463,7 +1463,9 @@ fn keys_of(c: &Call, field: &str) -> Vec<String> {
 
 fn frame_input_columns(c: &mut Call) -> Answer {
     let source = parse_frame_source(c.field_str("frameText", "A, B\n1, 2\n3, 4"));
-    let base: Vec<Column> = source.iter().map(derive_column).collect();
+    // The card's order for dates written in numbers alone, over every Date column.
+    let order = crate::excel_criteria::DateOrder::parse(c.field_str("dateOrder", "")).unwrap_or_default();
+    let base: Vec<Column> = source.iter().map(|s| derive_column(s, order)).collect();
     if source.iter().all(|s| s.expr.is_none()) {
         return Ok(vec![("frame".into(), super::frames::frame_v(base))]);
     }

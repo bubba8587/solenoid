@@ -31,7 +31,7 @@ export function themeVars(accentSlot: string, mode: ThemeMode): Record<string, s
 
   const home = paletteStore.chromeHomeHex();
   const ramp = paletteStore.chrome()[mode];
-  const chrome = chromeCssVars(home ? adaptChrome(ramp, home, hex) : ramp, mode);
+  const chrome = chromeCssVars(home ? adaptChrome(ramp, home, hex, paletteStore.chromeBand(mode)) : ramp, mode);
   for (const name of ALL_CHROME_VARS) vars[name] = chrome[name] || null;
   return vars;
 }

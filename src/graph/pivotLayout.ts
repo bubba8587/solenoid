@@ -24,10 +24,14 @@ interface PivotDetailColumn { name: string; type: FrameColType; values: readonly
 export interface PivotLayout {
   rowFields: string[];
   rowTypes: FrameColType[];
+  /** Each row field's display format, where its column carries one (a month field's `MMM YYYY`). */
+  rowFormats?: (FormatAnnotation | null)[];
   colFields: string[];
   colTypes: FrameColType[];
+  colFormats?: (FormatAnnotation | null)[];
   values: string[];
-  funcs: AggOp[];
+  /** Each value's function; `calc` for a calculated field, which a cell's LAMBDA answers. */
+  funcs: (AggOp | "calc")[];
   rows: PivotAxisItem[];
   cols: (PivotAxisItem & { value: number })[];
   details?: PivotDetailColumn[];
@@ -87,7 +91,7 @@ export function savedPivotView(v: PivotViewOptions): Partial<PivotViewOptions> |
   return Object.keys(out).length ? (out) : undefined;
 }
 
-const FUNC_CAPTION: Record<AggOp, string> = {
+export const FUNC_CAPTION: Record<AggOp, string> = {
   sum: "Sum", avg: "Average", min: "Min", max: "Max", count: "Count", product: "Product",
   median: "Median", mode: "Mode", stdev: "StdDev", stdevp: "StdDevp", var: "Var", varp: "Varp",
   percentof: "Share",
@@ -95,7 +99,10 @@ const FUNC_CAPTION: Record<AggOp, string> = {
 
 /** Excel's value field caption: "Sum of Revenue". */
 export function valueCaption(layout: PivotLayout, v: number): string {
-  return `${FUNC_CAPTION[layout.funcs[v]] ?? "Sum"} of ${layout.values[v]}`;
+  const func = layout.funcs[v];
+  // A calculated field is captioned by its own name: it is no function of one column.
+  if (func === "calc") return layout.values[v];
+  return `${FUNC_CAPTION[func] ?? "Sum"} of ${layout.values[v]}`;
 }
 
 /** The key a group is folded under: its prefix of the row tuple. */
@@ -103,7 +110,8 @@ export function groupKey(prefix: readonly FrameCell[]): string {
   return JSON.stringify(prefix.map((c) => (isSolError(c) ? { e: c.code } : c)));
 }
 
-interface PivotLabel { text: string; total?: boolean }
+/** A label, with the row field it names and that field's value there, for the view's menu. */
+interface PivotLabel { text: string; total?: boolean; field?: number; key?: FrameCell }
 
 export interface PivotBodyRow {
   kind: "header" | "leaf" | "sub" | "grand" | "blank" | "detail";
@@ -130,6 +138,9 @@ interface PivotHeadCell {
   /** The body column the cell starts at, or -1 for the label corner. */
   col: number;
   role: "corner" | "field" | "item" | "total" | "value" | "caption";
+  /** An item or subtotal cell's column field and its value there; a field cell's row field. */
+  field?: number;
+  key?: FrameCell;
 }
 
 interface PivotModel {
@@ -208,8 +219,8 @@ export function buildPivotModel(layout: PivotLayout, opts: PivotViewOptions, row
         enterTop(it.tuple);
       } else if (top) return; // Compact and Outline draw it on the group's own row.
       const labels = labelCells();
-      if (opts.repeatLabels && !compact) for (let l = 0; l < p - 1; l++) labels[l] = { text: rowText(l, it.tuple[l] ?? null) };
-      put(labels, p - 1, { text: `${rowText(p - 1, it.tuple[p - 1] ?? null)} Total`, total: true });
+      if (opts.repeatLabels && !compact) for (let l = 0; l < p - 1; l++) labels[l] = { text: rowText(l, it.tuple[l] ?? null), field: l, key: it.tuple[l] ?? null };
+      put(labels, p - 1, { text: `${rowText(p - 1, it.tuple[p - 1] ?? null)} Total`, total: true, field: p - 1, key: it.tuple[p - 1] ?? null });
       body.push({ kind: "sub", level: p - 1, labels, src: i, path: pathOf(it.tuple, p) });
       return;
     }
@@ -228,9 +239,9 @@ export function buildPivotModel(layout: PivotLayout, opts: PivotViewOptions, row
       if (compact || opts.form === "outline" || folded) {
         const labels = labelCells();
         if (!compact && (opts.repeatLabels || opts.form === "tabular")) {
-          for (let l = 0; l < level; l++) labels[l] = { text: rowText(l, t[l] ?? null) };
+          for (let l = 0; l < level; l++) labels[l] = { text: rowText(l, t[l] ?? null), field: l, key: t[l] ?? null };
         }
-        put(labels, level, { text: rowText(level, t[level] ?? null) });
+        put(labels, level, { text: rowText(level, t[level] ?? null), field: level, key: t[level] ?? null });
         body.push({
           kind: "header", level, labels,
           src: sub && (sub.top || folded) ? sub.row : null,
@@ -244,11 +255,11 @@ export function buildPivotModel(layout: PivotLayout, opts: PivotViewOptions, row
     if (foldedAbove(t, n - 1) >= 0) return;
     const labels = labelCells();
     if (labelCols) {
-      if (compact) labels[0] = { text: n ? rowText(n - 1, t[n - 1] ?? null) : "" };
+      if (compact) labels[0] = n ? { text: rowText(n - 1, t[n - 1] ?? null), field: n - 1, key: t[n - 1] ?? null } : { text: "" };
       else {
         for (let l = 0; l < n; l++) {
           const shown = l === n - 1 || opts.repeatLabels || (opts.form === "tabular" && l >= d && !isFolded(groupKey(t.slice(0, l + 1))));
-          if (shown) labels[l] = { text: rowText(l, t[l] ?? null) };
+          if (shown) labels[l] = { text: rowText(l, t[l] ?? null), field: l, key: t[l] ?? null };
         }
       }
     }
@@ -285,7 +296,7 @@ function buildHead(layout: PivotLayout, opts: PivotViewOptions, labelCols: numbe
     if (opts.form === "compact") {
       last.push({ text: opts.fieldHeaders ? layout.rowFields.join(" / ") : "", colSpan: 1, rowSpan: 1, col: -1, role: "field" });
     } else {
-      layout.rowFields.forEach((f) => last.push({ text: opts.fieldHeaders ? f : "", colSpan: 1, rowSpan: 1, col: -1, role: "field" }));
+      layout.rowFields.forEach((f, l) => last.push({ text: opts.fieldHeaders ? f : "", colSpan: 1, rowSpan: 1, col: -1, role: "field", field: l }));
     }
   }
   if (caption) head[0].push({ text: layout.colFields.join(" / "), colSpan: cols.length, rowSpan: 1, col: 0, role: "caption" });
@@ -312,7 +323,8 @@ function buildHead(layout: PivotLayout, opts: PivotViewOptions, labelCols: numbe
       };
       let k = j + 1;
       while (k < cols.length && pathAt(k) === path) k++;
-      row.push({ text, colSpan: k - j, rowSpan: isTotal ? levelRows - lvl : 1, col: j, role: isTotal ? "total" : "item" });
+      const at = it.kind === "grand" ? {} : isTotal ? { field: lvl - 1, key: it.tuple[lvl - 1] ?? null } : { field: lvl, key: it.tuple[lvl] ?? null };
+      row.push({ text, colSpan: k - j, rowSpan: isTotal ? levelRows - lvl : 1, col: j, role: isTotal ? "total" : "item", ...at });
       j = k;
     }
   }

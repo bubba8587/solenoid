@@ -248,7 +248,7 @@ export function empty_field(_class: string, op: string, key: string): string;
 /**
  * Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
  */
-export function engine_csv_frame(text: string): string;
+export function engine_csv_frame(text: string, order: string): string;
 
 /**
  * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
@@ -500,7 +500,7 @@ export interface InitOutput {
     readonly directBodies: (a: number) => void;
     readonly display_settings: (a: number, b: number, c: number, d: number) => void;
     readonly empty_field: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
-    readonly engine_csv_frame: (a: number, b: number, c: number) => void;
+    readonly engine_csv_frame: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly engine_infer_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -593,8 +593,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_4868: (a: number, b: number, c: number, d: unknown) => void;
-    readonly __wasm_bindgen_func_elem_4885: (a: number, b: number, c: unknown, d: unknown) => void;
+    readonly __wasm_bindgen_func_elem_8607: (a: number, b: number, c: number, d: unknown) => void;
+    readonly __wasm_bindgen_func_elem_8609: (a: number, b: number, c: unknown, d: unknown) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

@@ -7,15 +7,15 @@ import { GraphConnection, GraphNode, GraphOutput, type GraphSocket } from "../..
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { processGraph, setEditorRefs } from "../../src/graph/process";
-import { dateSocket, numberSocket, stringSocket, frameSocket } from "../../src/graph/sockets";
+import { dateSocket, numberSocket, stringSocket, frameSocket, cubeSocket } from "../../src/graph/sockets";
 import { nodeOutputElemFamily } from "../../src/graph/components/valueDisplayFormat";
 import { IfNode, IFErrorNode } from "../../src/graph/nodes/logic";
-import { XLookupNode } from "../../src/graph/nodes/frame";
+import { XLookupNode, UnnestNode } from "../../src/graph/nodes/frame";
 import { ListIndexNode } from "../../src/graph/nodes/list";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { CompositeNode } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";
-import type { FrameValue } from "../../src/graph/frame";
+import { cubeFromColumns, type FrameValue } from "../../src/graph/frame";
 
 
 
@@ -51,6 +51,28 @@ async function graph() {
 
 describe("[[C136]] once a calculation has run, an output's type is the type of what it carried", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
+
+  it("Unnest, whose answer is a Frame or a Cube by what the column holds, shows which once it has run", async () => {
+    const { add, wire } = await graph();
+    const typeOf = (sock: GraphSocket) => (sock as unknown as { dataType: string }).dataType;
+    const inner: FrameValue = { __frame: true, columns: [{ name: "n", type: "number", values: [1, 2] }] };
+    const src = await add(new Src(cubeFromColumns([{ name: "id", cells: ["a"] }, { name: "rows", cells: [inner] }]), cubeSocket));
+    const un = await add(new UnnestNode());
+    un.stringLiterals = { column: "rows" };
+    const show = await add(new DisplayNode());
+    expect(typeOf(un.outputs.frame!.socket)).toBe("trueany");
+    await wire(src, "out", un, "cube");
+    await wire(un, "frame", show, "in");
+    await processGraph();
+    // Nested Frames flatten to a Frame, and the cable's far end follows.
+    expect(typeOf(un.outputs.frame!.socket)).toBe("frame");
+    expect(typeOf(show.inputs.in!.socket)).toBe("frame");
+    // Nested lists leave a Cube.
+    src.set(cubeFromColumns([{ name: "id", cells: ["a"] }, { name: "rows", cells: [cubeFromColumns([{ name: "n", cells: [1] }, { name: "tags", cells: [["x", "y"]] }])] }]));
+    await processGraph();
+    expect(typeOf(un.outputs.frame!.socket)).toBe("cube");
+    expect(typeOf(show.inputs.in!.socket)).toBe("cube");
+  });
 
   it("XLOOKUP whose Return column comes on a cable types its output by the column the run picked", async () => {
     const { add, wire } = await graph();

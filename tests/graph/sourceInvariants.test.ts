@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[B18]] safeToShare, [[D79]], [[B11]], [[D22]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull
+// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[B18]] safeToShare, [[D79]], [[B11]], [[D22]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull, [[components#The rules]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -1064,5 +1064,19 @@ describe("heroLast: nothing that acts on the answer sits under a card's result b
       });
     }
     expect(offenders, "move it above the result box (heroLast)").toEqual([]);
+  });
+});
+
+describe("[[B19]] spreadsheetHabits — Enter is read through isEnter, so an input method's confirming Enter never commits", () => {
+  const plugin = path.resolve(SRC, "../../obsidian-plugin/src");
+  const files = [...walk(SRC), ...walk(plugin), path.resolve(SRC, "../devCopyEdit.ts")].filter((f) => !f.endsWith("enterKey.ts"));
+  it("no source file compares a key to \"Enter\" directly", () => {
+    const offenders: string[] = [];
+    for (const file of files) {
+      codeLines(file).forEach((line, i) => {
+        if (/\.key\s*[!=]==?\s*["']Enter["']/.test(line)) offenders.push(`${path.relative(SRC, file).replace(/\\/g, "/")}:${i + 1}`);
+      });
+    }
+    expect(offenders, "use isEnter(e) from src/graph/enterKey.ts").toEqual([]);
   });
 });

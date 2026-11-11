@@ -30,6 +30,7 @@ import { dropInputCables } from "./cablePrune";
 import { IANA_ZONES } from "../timeZone";
 import { previewed } from "../listPreview";
 import { CollapsedCell, useCollapsed } from "./CollapsedCell";
+import { DateOrderToggle } from "./DateOrderToggle";
 
 // Date nodes never format their own serials: ValueDisplay does it for any date-typed output socket.
 
@@ -93,6 +94,7 @@ export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNo
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={(o) => void pickOp(o)} options={DATE_TIME_VALUE_OPS} />
+      {op === "date" && <DateOrderToggle node={data} />}
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

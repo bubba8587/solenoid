@@ -32,6 +32,7 @@ import "./Markdown.css";
 import "./ReportOverlay.css";
 import { renderNoteMarkdown } from "../noteMarkdown";
 import { useKatexReady } from "./katexLoader";
+import { isEnter } from "../enterKey";
 
 const NO_VARS: Record<string, unknown> = {};
 
@@ -406,7 +407,7 @@ export function ReportOverlay() {
                     spellCheck={false}
                     onChange={(e) => setPageName(e.target.value)}
                     onBlur={() => void commitPageName()}
-                    onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                    onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
                   />
                 </label>
               </div>

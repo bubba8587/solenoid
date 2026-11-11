@@ -18,6 +18,7 @@ import { CellKindMenu } from "./CellKindMenu";
 import { ColumnExprField, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
 import { TypeIcon } from "./TypeIcon";
 import "./colType.css";
+import { isEnter } from "../enterKey";
 
 
 const rowsAt = (records: CubeRecord[], path: CubePath): CubeRecord[] => {
@@ -83,7 +84,7 @@ function InlineCell({ value, shown, onCommit }: { value: unknown; shown?: string
       onFocus={() => setFocused(true)}
       onBlur={() => { setFocused(false); if (draft !== cellTextOf(value)) onCommit(draft); }}
       onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
+        if (isEnter(e)) e.currentTarget.blur();
         if (e.key === "Escape") { setDraft(cellTextOf(value)); e.currentTarget.blur(); e.stopPropagation(); }
       }}
       onPointerDown={stopDragStart}
@@ -299,7 +300,7 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
       onMouseDown={(e) => e.stopPropagation()}
       onBlur={(e) => { if (!rename(e.currentTarget.value)) e.currentTarget.value = column; }}
       onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
+        if (isEnter(e)) e.currentTarget.blur();
         if (e.key === "Escape") { e.currentTarget.value = column; e.currentTarget.blur(); e.stopPropagation(); }
       }}
     />

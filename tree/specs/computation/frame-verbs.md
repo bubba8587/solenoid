@@ -79,7 +79,7 @@ Tests:
 
 - **`makeHeaders(names, ncols)`** is the one naming rule, used by every builder and every verb that emits new names. It returns exactly `ncols` names. Each given name is trimmed; a blank becomes `Col{i+1}` (1-based position); a repeat takes the smallest free integer suffix starting at 2 (`Date, Name, Date` becomes `Date, Name, Date2`). Names are processed left to right, so the later of two colliding columns is the one renamed. The Rust engine's `make_headers` is the same algorithm.
 - **Strict lookup.** Column lookup is exact and case-sensitive everywhere a verb needs a column (`require_column`); a missing name is `#REF!` with the message `column "<name>" not found`.
-- **Loose lookup.** `getColumn` (used by Get Column and the `column` backend call) trims the name, matches exactly and case-sensitively, and otherwise accepts a bare integer string as a 1-based column index; a blank name, a miss or an index out of range is `null`. The engine's `engine_column` follows the same rule.
+- **Loose lookup.** `getColumn` (used by Get Column and the `column` backend call) trims the name, matches exactly and case-sensitively, and otherwise accepts a bare integer string as a 1-based column index; a blank name, a miss or an index out of range is `null`. The engine's `engine_column` follows the same rule. The Get Column card answers a blank name with a blank, and a name the table has no column for with `#REF!` naming the columns it has, as the verbs do for a missing column (`no_such_column`, `nodes/verbs.rs`): a blank there fed a SUM that showed 0.
 - **`addColumn(f, name, values, type = "number")`** appends a column, or replaces the column already holding that name in place. A `Name (unit)` suffix is split off first and tags a number column with the unit; an appended name is de-duplicated with `makeHeaders`, and a replaced column drops its `raw`. The Add Column node pads a values list shorter than the frame with blanks to the row count.
 
 Tests: `frame.test.ts`: `makeHeaders`, `getColumn` by name and by index, `addColumn`, and Add Column padding a short list.
@@ -188,7 +188,7 @@ A `0x`, `0b` or `0o` radix prefix and `Infinity` are text, as in Excel. A column
 - Blank is null.
 - Any other text (`yes`, `maybe`, `0x1`) is NaN ([[C58]] tableInputRawText, [[B17]] typedValueModel): a cell holds and shows `NaN`, and a computation turns it into `#TYPE!` naming the value (`logicalOrTypeError`, the core's `logical_or_type_error`). A NaN cell in a logical column matches no filter.
 
-**Dates.** An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates; Get Column's read-as converts those explicitly. One cell that isn't an unambiguous ISO date keeps the whole column as text: declining to guess is always safe, and a wrong date never is ([[C44]] dateSerials).
+**Dates.** An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates. Reading text as a date (Get Column read as Date, Cast to Date, a Frame Input Date column) goes through `read_date_text`: in Auto, the shared reader, so a slash date needs a four-digit year (`1/2/26` is NaN, `1/2/2026` `#AMBIGUOUS!`, `3/15/2026` a date); under the card's date order (`dateOrder`: MDY, DMY or YMD; a Frame Input's applies to all its Date columns), a date of numbers alone takes that order with a two-digit year read as DATEVALUE reads it (`1/2/26` as MDY is 2 January 2026), and one that doesn't fit it (`13/2/26` as MDY) is NaN. Each card offers the order beside its Date choice (`DateOrderToggle`). One cell that isn't an unambiguous ISO date keeps the whole column as text: declining to guess is always safe, and a wrong date never is ([[C44]] dateSerials).
 
 Tests:
 
@@ -778,11 +778,11 @@ Tests: `frameVerbs.test.ts`: the id column's unit and a shared value unit.
 - `filter`, when present, keeps only source rows whose mask entry is `true`.
 - `details` names columns for the Pivot view only ([[C127]] pivotView): the output is the same with or without it, and with row fields the layout kept beside the output records each row leaf's source rows and those columns' values ([[table-popup#The Pivot view]]); an unknown name is `#REF!`.
 
-**Axes.** Each axis (rows, columns) has leaf groups: the distinct field tuples among the kept rows. Leaves are ordered hierarchically: each field level ranks its values by first appearance across the whole axis, and tuples sort by those ranks level by level, so each outer group stays contiguous. An axis with no fields has one anonymous leaf.
+**Axes.** Each axis (rows, columns) has leaf groups: the distinct field tuples among the kept rows. Leaves are ordered hierarchically: each field level ranks its values ascending by the column type's comparator (text by character code, [[C59]] byteStringOrder; numbers and dates by value; blanks and errors last), as Excel's PIVOTBY lists them (author 2026-11-11, replacing first-appearance order, which no reader could follow), and tuples sort by those ranks level by level, so each outer group stays contiguous. GROUPBY's totals run here too, so its groups follow the same order. An axis with no fields has one anonymous leaf.
 
 **Sorting.** `rowSort` and `colSort` are signed 1-based indices into `[fields…, values…]`; negative means descending.
 
-- A field index re-ranks that level by value (the column type's comparator, blanks and errors last), and descending reverses that level's whole order, which puts blanks first.
+- A field index sorts that level the default way, and descending reverses that level's whole order, which puts blanks first.
 - A value index reorders the leaves flatly by that value's aggregate over the whole axis (a `percentof` scores by sum; a text `min` or `max` scores by code unit, [[C24]] arraySemantics). A blank, `NaN` or error score sorts last, and the reorder happens only when the axis has more than one leaf.
 
 **Totals.** `rowTotalDepth`/`colTotalDepth`:
@@ -806,20 +806,32 @@ Tests: `frameVerbs.test.ts`: the id column's unit and a shared value unit.
 - **Body types:** number, except a `min` or `max` over a text value column, which is a string column ([[C24]] arraySemantics).
 - **Units and formats:** each body column carries the unit its value field's aggregate takes (as groupBy's, above) and no format; the key columns carry neither. The layout's Details columns take their source columns' formats ([[C127]] pivotView).
 
+**Calculated fields** (author 2026-11-10: explicit formulas, through LAMBDA slots). A calculated value field is a LAMBDA whose parameters name columns ([[C50]] lambdaBindsByName), such as `LAMBDA(Miles, Gallons, SUM(Miles) / SUM(Gallons))`. It runs for every cell, leaves, subtotals and grand totals alike, over that cell's own source rows: each parameter is the list of its column's values in those rows (a Date column's as dates), so a ratio of sums is right at every level, where a ratio computed first and then aggregated would average ratios (`pivot_frame_calc`, `PivotCalc` in `frame_verbs.rs`, `calc_fields` and `calc_cell` in `nodes/backend_verbs.rs`).
+
+- **Explicit, not Excel's.** The formula says its own aggregation. Excel's calculated field applies SUM to every field it names and can take no other function; here AVERAGE, MAX, SUMPRODUCT, COUNTIFS and the rest all work, and a field with no aggregate answers a list, `#SHAPE!`. A cell with one source row hands one-item lists, which read as their item, so such a formula shows a number there: the `#SHAPE!` in the other cells shows the mistake.
+- **No row.** `@` reads the current row, and a pivot cell is many rows, so `@x` is `#REF!` (the evaluator's own message); a parameter naming no column is `#NAME?`.
+- **Its column.** It follows the spec's values, headed as a value is (its name, `<column> | <name>` under column fields), Date when every answer is a date, Text when every answer is text, else Number. The layout's `funcs` carries `calc` for it, and the Pivot view captions it by its name ([[table-popup#The Pivot view]]). It is not sortable by value and carries no unit.
+- **On the card.** A Calculated fields section holds a Name and a λ socket per field (`calcName{id}`, `calcFn{id}`, `PairedExtensibleInputs`, saved through `valueKeys`), none by default; a blank name is `Calculated N`, a row with no LAMBDA wired is skipped, and the summary lists the fields after `λ`. With a calculated field the card declares no output shape ahead of its compute. A lazy input also reads the columns the LAMBDAs name.
+
 **The PIVOTBY card.**
 
 - **No value fields:** it forwards its input unchanged.
 - **Missing fields:** it skips a saved field whose column the input lacks, keeping it saved so it counts again when the column comes back (Configure Fields marks it).
 - **The layout** rides on the frame it answers (the Pivot view reads it).
 - **Field lists:** its Rows, Columns and Values are list literals written by `listLiteralText` beside the list-literal reader (`listLiterals.ts`) and read by `csvList`, so a field name holding a comma or a quote survives. Configure Fields signals the graph changed on every edit (`notifyGraphChanged`), saving it whether or not a pass runs.
+- **Dragging fields** in Configure Fields (`PivotEditorPopup.tsx`) is HTML5 drag and drop: each chip's `dragstart` puts the field's name on the drag (Firefox starts none without data), and the desktop window turns Tauri's native drop handler off (`dragDropEnabled: false`, `tauri.conf.json`), without which Windows' webview delivers no HTML5 drag events. Solenoid reads no dropped file paths, so the handler had no use.
 - **Value exclusions:** its per-field exclusions (keys formed by `pivot_cell_key` in `nodes/backend_verbs.rs`: blank as `""`, an error as its code, a logical as `TRUE`/`FALSE`, anything else `String()`) are combined with the wired logical mask into `filter`, so excluded rows drop before the pivot aggregates.
 - **A lazy input:** it reads the schema through a zero-row preview and fetches only the columns the pivot, the filter editor and its Details columns (`detailFields`, pruned with the fields) use. That read is a pass as a verb card's is (`beginPass`): if a newer pass started while it awaited, it writes nothing and returns `null`.
-- **Source columns:** each compute stashes `sourceColumns` (every column's name, type and up to 200 first-seen distinct keys), so the editor popup lists fields without fetching; with a lazy input only the fetched columns get distinct keys, and the rest keep an empty key list.
+- **Grouped date fields** (Excel's Group): a field named `Years (When)`, `Quarters (When)`, `Months (When)`, `Weeks (When)` or `Days (When)` is the date column `When` bucketed (`date_group_of`, `with_date_groups` in `nodes/backend_verbs.rs`), derived before the pivot from each name in its rows, columns, values and filters. Years is the year's number; Quarters is text `2026 Q1`, which sorts as text in time order; Months is the month's first day, a date carrying `MMM YYYY`, so it reads `Jan 2026` and sorts by value; Weeks is the Monday that starts the week; Days is the day without its time. A blank date stays blank and an error stays itself. Buckets are periods in time, so Jan 2025 and Jan 2026 are two months (Excel's month-of-year grouping is not offered). A real column of that name wins, a source that is no date column groups nothing (the field is then missing, as any is), and on a lazy input the date column is the one read. Several groupings of one column place at several levels (Years › Months). Configure Fields groups a date chip in Rows or Columns with its select (`regroupField`, `pivotConfig.ts`, which renames the entry in place and drops a filter on the old grouping), and the Pivot view's menu offers the same Group By. The key columns still carry no format (below), so the Grid shows a month as its first day; a date key with a custom pattern heads its column in that pattern (`key_text`), so a month across the columns heads `Jan 2026`, and the layout carries each field's format (`rowFormats`, `colFormats`), so the Pivot view reads `Jan 2026` too.
+- **Source columns:** each compute stashes `sourceColumns` (every column's name, type, distinct keys and `distinctTotal`), so the editor popup lists fields without fetching. A field with an exclusion list (a Filters field) lists all its keys, numbers and dates by value, text by character code ([[C59]] byteStringOrder), the blank last, capped at 10,000 as Excel's filter list is, with `distinctTotal` counting them all; any other field lists its first 200 first-seen keys and stops reading there. With a lazy input only the fetched columns get keys, and the rest keep an empty list. The exclusion mask looks each row's key up in a set, so hiding thousands of values costs a row one lookup per filtering field.
+- **The filter list** (`PivotFilterList.tsx`): a search over the values' shown text; All and None act on what the search matches; Only on a line hides every listed value but it (values past the cap keep their state); a date field lists as year › month › day, a year or month checked, unchecked or mixed over the days beneath it, and flat while searching; only the lines in view are drawn, and the list's bottom edge drags it taller. A capped list says so (`first 10,000 of 25,310 values`). Configure Fields itself resizes from its corner.
 
 Tests:
 
 - `frameVerbs.test.ts`: re-aggregating grand totals and subtotals, totals at the top, per-value functions, a grand total column, value and field sorts, the mask, `percentof`, the extra functions, and composite headers.
 - `pivotNodeFilter.test.ts`: field names with commas and quotes, and a missing field kept saved.
+- `pivotDateGroups.test.ts`: each grouping's buckets and headers, Years › Months, a grouped filter field, a non-date source and a real column of the name, the lazy input, and regrouping a placed field.
+- `pivotFilterValues.test.ts`: a filtering field's keys sorted with the blank last, the 10,000 cap with its total, and 5,000 hidden keys filtering 12,000 rows.
 - `pivotLayout.test.ts`: the layout beside the frame and Details ([[table-popup#The Pivot view]]).
 - `lazyChain.test.ts`: on a lazy upstream the card reads only its field columns.
 
@@ -878,17 +890,17 @@ Tests:
   - a logical's `TRUE`/`FALSE` equals `find` in upper case, so `1` and `0` never match a logical;
   - a string equals `find` (exactly under `matchCase`, else ignoring case).
   Blank and error cells never match.
-- **The replacement** is coerced to the column type:
+- **The replacement** is read into the column's type ([[C58]] tableInputRawText):
   - blank text becomes `null`;
-  - a number or date column needs a finite number, and otherwise that column is left unchanged;
-  - a logical takes `true`/`1` or `false`/`0` (any case), anything else `null`;
+  - a number column takes a finite number, a date column a date (`date_text_serial`), a logical `true`/`1` or `false`/`0` (any case);
+  - text the column's type can't read is written as `NaN` in each matched cell, as a Frame Input cell reads it, never skipped and never a blank: replacing 5 with `apple` in a number column leaves a NaN where the 5 was, so a total over the column answers `#DOMAIN!` instead of quietly keeping the 5. An upstream type pick that makes the column text lets the same card write `apple` itself;
   - a string column takes the text verbatim.
-  So Replace Values never writes a `NaN` into a number column, since a `NaN` cell is neither a value, a blank nor an error that anything downstream could read.
+  The card never errors over a replacement: the answer is the frame, each matched cell holding what was written. The text itself isn't kept beside the NaN, since a rewritten column carries no `raw` (above).
 - **The card:** Find and Replace take a wired value of any type, read as text by `filter_value` (`nodes/verbs.rs`), as Filter reads its values; typed, they are text kept exactly as typed.
 
 Tests:
 
-- `frameVerbs.test.ts`: the cell match rule, a text replacement leaving a number column alone, and `raw` dropped from a rewritten column.
+- `frameVerbs.test.ts`: the cell match rule, text a number, date or logical column can't read written as NaN, and `raw` dropped from a rewritten column.
 - `frameNodeBackend.test.ts`: a wired number or Boolean matches, and the typed Find and Replace stay as typed.
 
 ### formats
@@ -902,6 +914,8 @@ Tests: `frameBackend.test.ts`: format picks ride as one more op of the plan.
 ### join
 
 `join_frames(left, right, { leftKey, rightKey, how, asofDirection?, asofTolerance?, rightKeyScale?, rightKeyOffset? })`.
+
+**A Cube on either side** (a vault folder's notes): the join runs on the Cube's plain columns, and its columns holding lists or tables ride along. Each such side gets a row-number column before the join (`join_side`, `nodes/backend_verbs.rs`), and after it the answer is a Cube whose carried columns are read back by those numbers (`with_nested`), blank on a row the join gave no partner; the row-number columns are dropped. Two Frames, or Cubes with nothing nested, join as Frames and answer one. The card's Left and Right take a Frame or a Cube, and its output adopts what it carries. Tests: `linkTarget.test.ts`.
 
 **Keys.**
 
@@ -1014,8 +1028,8 @@ Tests: `cubeRowVerbs.test.ts`: sort, distinct, head and filter on a Cube against
 | Path | Result |
 |---|---|
 | List | A Frame. Each parent row repeats once per item, and the item sits under the same column name (so a Predecessors list round-trips into the Schedule Links input). An empty or missing list keeps its row once with a blank, so a task with no predecessors survives. Every column is re-inferred; parent columns keep their format. |
-| Table | A Frame. Each parent row repeats once per child row, with the child's columns appended (their schema from the first Frame cell; a child lacking one is blank there). A row with no child rows, an empty list beside the tables included, is dropped. Parent columns are re-inferred and keep their format, child columns keep their type, unit and format, and names go through `makeHeaders`. |
-| Cube | A Cube one level shallower. As the table path, with the schema from the first Cube cell, carried types and formats kept, and each child's own nested columns left nested. So a depth-2 Cube unnests to depth 1, and a second Unnest recovers the flat rows. |
+| Table | A Frame. Each parent row repeats once per child row, with the children's columns appended: every column any child has, in the order first met, each typed as the first child holding it types it, and blank in the rows of a child without it. A column only a later child holds is kept (the first child's columns alone once dropped it without a word, a file with one more column than the first among a folder's). A row with no child rows, an empty list beside the tables included, is dropped. Parent columns are re-inferred and keep their format, child columns keep their type, unit and format, and names go through `makeHeaders`. |
+| Cube | A Cube one level shallower. As the table path, the columns gathered the same way over every Cube cell, carried types and formats kept, and each child's own nested columns left nested. So a depth-2 Cube unnests to depth 1, and a second Unnest recovers the flat rows. |
 
 Tests: `frameVerbs.test.ts`: nest and unnest as inverses, the key's type, units and formats kept, a missing column, peeling a depth-2 Cube, the list path, the mixed-kind `#TYPE!`, and an empty list beside tables.
 

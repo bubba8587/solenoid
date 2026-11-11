@@ -9,6 +9,7 @@ import { cardShapeOnCore, type Shape } from "../frameShape";
 import type { FormatCarrySpec } from "./formatCarry";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
+import { isDateOrder, type DateOrder } from "../dateOrder";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, readDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
@@ -103,13 +104,16 @@ export class DateTimeValueNode extends GraphNode {
 
   label: string;
   op: DateTimeValueOp;
+  /** DATEVALUE's order for dates written in numbers alone. */
+  dateOrder: DateOrder;
   cachedResult: number | SolError | null = null;
   stringLiterals: Record<string, string> = { text: "" };
   width = 180; height = 170;
 
-  constructor(init?: { label?: string; op?: DateTimeValueOp }) {
+  constructor(init?: { label?: string; op?: DateTimeValueOp; dateOrder?: DateOrder }) {
     super("DateTimeValue");
     this.op    = init?.op    ?? "date";
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     this.label = init?.label ?? "";
     this.addInput("text", strIn("Text"));
     this.addOutput("result", this.op === "date" ? dateOut("Date") : numOut("Time fraction"));

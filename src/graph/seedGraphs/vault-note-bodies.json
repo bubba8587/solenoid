@@ -1,0 +1,315 @@
+{
+ "v": 2,
+ "order": 53,
+ "label": "Tasks, tables and backlinks from notes",
+ "group": "Obsidian",
+ "nodes": [
+  {
+   "id": "noteIntro",
+   "type": "NoteNode",
+   "x": 0,
+   "y": -130,
+   "init": {
+    "label": "What's written in the notes",
+    "color": "amber",
+    "collapsed": false,
+    "width": 700,
+    "height": 380,
+    "body": "# What's written in the notes\n\nA note's properties are not the only data in it. Under **From each note**, a Vault Folder reads the body too.\n\n**Tasks** gives every checklist item a row: its text, whether it is ticked, its due date and tags, and the heading it sits under. **Unnest** lays them out across the folder, each beside its own note's properties, so the open items of every meeting are one table.\n\n**Tables** reads a table typed or pasted into a note. The Q3 review note keeps twelve divisions in its `q3` property and four more in a table someone emailed. **Append** stacks the two into one list of sales by division, and no one retypes the table.\n\n**Backlinks** lists, for each note, the notes anywhere in the vault that link to it. Counting them ranks the projects by how much is written about each.\n\nWith no vault folder set in Settings, the readers use the bundled sample vault.",
+    "fieldTypes": {}
+   }
+  },
+  {
+   "id": "notes",
+   "type": "VaultFolderNode",
+   "x": 0,
+   "y": 330,
+   "init": {
+    "label": "Meeting notes",
+    "folder": "Notes",
+    "includeTasks": true
+   }
+  },
+  {
+   "id": "each",
+   "type": "UnnestNode",
+   "x": 470,
+   "y": 330,
+   "init": {
+    "label": "One row per task"
+   },
+   "stringLiterals": {
+    "column": "note-tasks"
+   }
+  },
+  {
+   "id": "open",
+   "type": "FilterFrameNode",
+   "x": 940,
+   "y": 330,
+   "init": {
+    "label": "Still open",
+    "condConfig": {
+     "0": {
+      "op": "eq"
+     }
+    },
+    "valueKeys": [
+     "frame",
+     "column0",
+     "value0"
+    ]
+   },
+   "stringLiterals": {
+    "column0": "done",
+    "value0": "FALSE"
+   }
+  },
+  {
+   "id": "todo",
+   "type": "ColumnsNode",
+   "x": 1410,
+   "y": 330,
+   "init": {
+    "label": "To do",
+    "op": "keep"
+   },
+   "stringLiterals": {
+    "columns": "name, task, type"
+   }
+  },
+  {
+   "id": "perNote",
+   "type": "GroupByFrameNode",
+   "x": 940,
+   "y": 700,
+   "init": {
+    "label": "Tasks per note",
+    "agg": "count"
+   },
+   "stringLiterals": {
+    "keys": "name",
+    "column": "task"
+   }
+  },
+  {
+   "id": "sales",
+   "type": "VaultFolderNode",
+   "x": 0,
+   "y": 1100,
+   "init": {
+    "label": "Sales notes",
+    "folder": "Sales",
+    "includeTables": true
+   }
+  },
+  {
+   "id": "west",
+   "type": "UnnestNode",
+   "x": 470,
+   "y": 1100,
+   "init": {
+    "label": "The table in the note"
+   },
+   "stringLiterals": {
+    "column": "note-tables"
+   }
+  },
+  {
+   "id": "westCols",
+   "type": "ColumnsNode",
+   "x": 940,
+   "y": 1100,
+   "init": {
+    "label": "West",
+    "op": "keep"
+   },
+   "stringLiterals": {
+    "columns": "Division, Sales"
+   }
+  },
+  {
+   "id": "east",
+   "type": "UnnestNode",
+   "x": 470,
+   "y": 1480,
+   "init": {
+    "label": "The q3 property"
+   },
+   "stringLiterals": {
+    "column": "q3"
+   }
+  },
+  {
+   "id": "eastCols",
+   "type": "GroupByFrameNode",
+   "x": 940,
+   "y": 1480,
+   "init": {
+    "label": "East, Central, South",
+    "agg": "sum"
+   },
+   "stringLiterals": {
+    "keys": "Division",
+    "column": "Sales"
+   }
+  },
+  {
+   "id": "all",
+   "type": "AppendNode",
+   "x": 1410,
+   "y": 1280,
+   "init": {
+    "label": "Every division"
+   }
+  },
+  {
+   "id": "plot",
+   "type": "ChartNode",
+   "x": 1880,
+   "y": 1280,
+   "init": {
+    "label": "Sales by division",
+    "op": "bar"
+   }
+  },
+  {
+   "id": "projects",
+   "type": "VaultFolderNode",
+   "x": 0,
+   "y": 1900,
+   "init": {
+    "label": "Projects",
+    "folder": "Projects",
+    "includeBacklinks": true
+   }
+  },
+  {
+   "id": "mentions",
+   "type": "ComputedColumnNode",
+   "x": 470,
+   "y": 1900,
+   "init": {
+    "label": "How many notes link here",
+    "expr": "COUNTA(@backlinks)",
+    "addAs": "number"
+   },
+   "stringLiterals": {
+    "name": "mentions"
+   }
+  },
+  {
+   "id": "ranked",
+   "type": "ColumnsNode",
+   "x": 940,
+   "y": 1900,
+   "init": {
+    "label": "Most linked",
+    "op": "keep"
+   },
+   "stringLiterals": {
+    "columns": "name, status, mentions"
+   }
+  },
+  {
+   "id": "sorted",
+   "type": "SortFrameNode",
+   "x": 1410,
+   "y": 1900,
+   "init": {
+    "label": "Most linked first",
+    "dir": "desc"
+   },
+   "stringLiterals": {
+    "column": "mentions"
+   }
+  }
+ ],
+ "connections": [
+  {
+   "source": "notes",
+   "sourceOutput": "cube",
+   "target": "each",
+   "targetInput": "cube"
+  },
+  {
+   "source": "each",
+   "sourceOutput": "frame",
+   "target": "open",
+   "targetInput": "frame"
+  },
+  {
+   "source": "open",
+   "sourceOutput": "frame",
+   "target": "todo",
+   "targetInput": "frame"
+  },
+  {
+   "source": "each",
+   "sourceOutput": "frame",
+   "target": "perNote",
+   "targetInput": "frame"
+  },
+  {
+   "source": "sales",
+   "sourceOutput": "cube",
+   "target": "west",
+   "targetInput": "cube"
+  },
+  {
+   "source": "west",
+   "sourceOutput": "frame",
+   "target": "westCols",
+   "targetInput": "frame"
+  },
+  {
+   "source": "sales",
+   "sourceOutput": "cube",
+   "target": "east",
+   "targetInput": "cube"
+  },
+  {
+   "source": "east",
+   "sourceOutput": "frame",
+   "target": "eastCols",
+   "targetInput": "frame"
+  },
+  {
+   "source": "eastCols",
+   "sourceOutput": "frame",
+   "target": "all",
+   "targetInput": "f0"
+  },
+  {
+   "source": "westCols",
+   "sourceOutput": "frame",
+   "target": "all",
+   "targetInput": "f1"
+  },
+  {
+   "source": "all",
+   "sourceOutput": "frame",
+   "target": "plot",
+   "targetInput": "values"
+  },
+  {
+   "source": "projects",
+   "sourceOutput": "cube",
+   "target": "mentions",
+   "targetInput": "frame"
+  },
+  {
+   "source": "mentions",
+   "sourceOutput": "frame",
+   "target": "ranked",
+   "targetInput": "frame"
+  },
+  {
+   "source": "ranked",
+   "sourceOutput": "frame",
+   "target": "sorted",
+   "targetInput": "frame"
+  }
+ ],
+ "standoffs": []
+}

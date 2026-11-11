@@ -4,6 +4,7 @@ import { recentDocsStore, recentDocs } from "../recentDocsStore";
 import { navigatorFiles } from "../outlineStore";
 import { SEEDS, useSeedGroups } from "../seeds";
 import "./documentTitle.css";
+import { isEnter } from "../enterKey";
 
 export function DocumentTitle() {
   useSyncExternalStore(documentStore.subscribe, documentStore.version);
@@ -80,7 +81,7 @@ export function DocumentTitle() {
           autoFocus
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); commitRename(); }
+            if (isEnter(e)) { e.preventDefault(); commitRename(); }
             if (e.key === "Escape") { e.preventDefault(); setRenaming(false); }
           }}
           onBlur={commitRename}
@@ -130,7 +131,7 @@ export function DocumentTitle() {
                     autoFocus
                     onChange={(e) => setRowDraft(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); commitRowRename(d.id, d.name); }
+                      if (isEnter(e)) { e.preventDefault(); commitRowRename(d.id, d.name); }
                       if (e.key === "Escape") { e.preventDefault(); setRenamingId(null); }
                     }}
                     onBlur={() => commitRowRename(d.id, d.name)}

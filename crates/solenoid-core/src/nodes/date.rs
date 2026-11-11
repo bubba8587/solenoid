@@ -96,6 +96,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
                     };
                     if text.is_empty() {
                         V::Null
+                    } else if name == "DATEVALUE" {
+                        core_call(name, &[V::str(&text), V::str(c.field_str("dateOrder", ""))])
                     } else {
                         core_call(name, &[V::str(&text)])
                     }

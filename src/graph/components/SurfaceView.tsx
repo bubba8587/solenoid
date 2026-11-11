@@ -7,6 +7,7 @@ import type { ChartOptions } from "../nodes/chartOptions";
 import type { SurfacePayload } from "../chartValue";
 import { iterMin, iterMax } from "../nodes/mathUtils";
 import { canvasFont, useAppFaces } from "./chartCore";
+import { canvasDrawn } from "../canvasDrawn";
 
 
 type V3 = [number, number, number];
@@ -139,7 +140,7 @@ export function SurfaceView({ payload, options, width, height }: { payload: Surf
   const faces = useAppFaces();
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => {
-    if (faces && ref.current) drawSurface(ref.current, payload, options, width, height);
+    if (faces && ref.current) { drawSurface(ref.current, payload, options, width, height); canvasDrawn(ref.current); }
   });
   const empty = payload.xs.length < 2 || payload.ys.length < 2 || !payload.z.some((r) => r.some((v) => v != null && Number.isFinite(v)));
   if (empty) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;

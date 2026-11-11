@@ -37,6 +37,7 @@ import { useDismissOnOutside } from "./useDismissOnOutside";
 import "./Markdown.css";
 import "./ReportOverlay.css";
 import "./DashboardOverlay.css";
+import { isEnter } from "../enterKey";
 
 const GAP = 12;
 
@@ -457,7 +458,7 @@ export function DashboardOverlay() {
                       spellCheck={false}
                       aria-label="Box name"
                       onFocus={(e) => e.currentTarget.select()}
-                      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                      onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
                       onBlur={(e) => { if (renaming === p.name) void renameBox(p.name, e.currentTarget.value); }}
                     />
                   ) : <span className="dashboard-box__name">{p.name}</span>}

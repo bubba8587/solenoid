@@ -108,7 +108,7 @@ Tests:
 
 ## LayoutFx
 
-A **LayoutFx** is a process that moves cards the user didn't move: Tidy, Cleanup, the group Expand Push, the Collapse Restore and Autofit ("Fx" names a process, keeping it apart from the graph's items). Every LayoutFx ends the same way:
+A **LayoutFx** is a process that moves cards the user didn't move: Tidy, Cleanup, Align, Distribute, the group Expand Push, the Collapse Restore, Autofit and a card opening ("Fx" names a process, keeping it apart from the graph's items). Every LayoutFx ends the same way:
 
 1. a `forceLock` Standoff Solve of what it moved ([[standoffs]]);
 2. the No-Overlap Pass ([[C112]] noOverlapsEver).
@@ -117,17 +117,17 @@ None moves a position-locked group ([[auto-arrange-tidy#Position-locked groups]]
 
 ```mermaid
 flowchart LR
-    fx["a LayoutFx: Tidy, Cleanup,<br>Expand Push, Collapse Restore,<br>Autofit"] --> own["its own moves"]
+    fx["a LayoutFx: Tidy, Cleanup, Align,<br>Distribute, Expand Push, Collapse Restore,<br>Autofit, a card opening"] --> own["its own moves"]
     own --> solve["a forceLock Standoff Solve<br>of what it moved"]
     solve --> ov["the No-Overlap Pass"]
-    user["the user's moves: a drag,<br>Align, paste"] --> stay["stay where they're put"]
+    user["the user's moves: a drag,<br>a nudge, paste"] --> stay["stay where they're put"]
 ```
 
 What is not a LayoutFx, and what is:
 
 - **A drag** is the user's own move: it puts cards where the user put them, and no No-Overlap Pass follows it ([[C112]] noOverlapsEver).
 - **A paste** is an explicit exception under the same leaf: it lands at the pointer plus a small offset and may cover a card.
-- **Align, and a card whose body chevron expands,** are LayoutFx and end with the No-Overlap Pass; neither does yet (`docs/backlog.md` § Leaves the code breaks).
+- **Align, Distribute, and a card whose body chevron expands,** are LayoutFx and end with the No-Overlap Pass, the cards just placed or opened holding still where they can (`selectionOps.ts`: `settle`, `cardsExpanded`). Inside an open group that holds one of those cards the same pass runs over its members first (`settleMemberOverlaps`, `groupLogic.ts`), and the group's box grows over a member pushed past an edge, keeping the edges nothing passed; the top-level pass then separates the grown group from its neighbors (`groupMemberOverlaps.test.ts`).
 - **A card that grows with its live content** (a Display showing a longer value, a list that gains rows) pushes nothing, since that can happen on any recalculation. It can cover a neighbor until the next LayoutFx's No-Overlap Pass separates them, which measures the grown card.
 - **Content that overflows a constant-size body** ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box.
 

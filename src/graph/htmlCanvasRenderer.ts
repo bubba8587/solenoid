@@ -1,40 +1,43 @@
 // [[C42]] htmlInCanvasRenderer, [[A1]] visualGraphCalculator
 
 import { Camera } from "./hicCamera";
-import { cablePolyline } from "./hicCableGeom";
-import type { SnapCable } from "./hicGraphSnapshot";
-import type { CableShape } from "./cableShape";
+import { styleKey, type VShape } from "./hicVectors";
 import { packAtlas, type AtlasPlacement } from "./rasterAtlas";
-import { camFromDrawMatrix, plausibleNativeCam, type CamXform } from "./domSync";
 import { IS_COARSE } from "./coarse";
+import { DOT_SPACING } from "./gridSnapStore";
 
 // An imperative engine, so HMR must invalidate or a stale instance stays alive.
 if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot?.invalidate());
 
 // ── WICG HTML-in-Canvas typing (not in lib.dom yet) ──────────────────────────────
-interface ElementImageLike { width: number; height: number; close?: () => void }
+interface ElementImageLike { close(): void }
+interface DrawElementImageOptions { preserveElementGeometry?: boolean }
 type Ctx2D = CanvasRenderingContext2D & {
-  drawElementImage?: (el: Element | ElementImageLike, dx: number, dy: number, dw?: number, dh?: number) => DOMMatrix | undefined;
-  getElementTransform?: (el: Element | ElementImageLike, drawTransform: DOMMatrix) => DOMMatrix;
+  drawElementImage?: (el: Element | ElementImageLike, dx: number, dy: number, dw: number, dh: number, opts?: DrawElementImageOptions) => void;
   reset?: () => void;
 };
 type LayoutCanvas = HTMLCanvasElement & {
-  layoutSubtree?: boolean;
+  content?: string;
   requestPaint?: () => void;
-  onpaint?: ((e: Event) => void) | null;
   captureElementImage?: (el: Element) => ElementImageLike;
-  getElementTransform?: (el: Element, drawTransform: DOMMatrix) => DOMMatrix;
+  getElementImageDefaultSize?: (el: Element | ElementImageLike) => { width: number; height: number };
 };
+/** The clones are pictures, never targets: a draw that synced their geometry would make them hit-testable where they land. */
+const DRAW_OPTS: DrawElementImageOptions = { preserveElementGeometry: true };
 
 const REF: number = 1;
+/** Texture px per natural px a raster draws at: the clone lays out at REF, and drawElementImage re-rasters its paint at this size. */
+const RASTER = 2.5;
 const MIP_MIN_PX = 6;
 const DEFAULT_QUALITY = 1.0;
 
-function computeIdealMipLevel(scale: number, quality: number = DEFAULT_QUALITY, dpr: number = 1): number {
-  const target = quality * scale * dpr;
-  return Math.max(0, Math.floor(Math.log2(REF / Math.max(target, 1e-4))));
+/** The pyramid level for a top bitmap of `top` texture px per natural px; each level halves. */
+function mipLevel(top: number, target: number): number {
+  return Math.max(0, Math.floor(Math.log2(top / Math.max(target, 1e-4))));
 }
 const PAD = 10;
+/** Where a dot sits in its tile: a pixel's center. */
+const DOT_C = (T: number) => Math.floor(T / 2) + 0.5;
 
 export interface EngineNodeSpec {
   id: string;
@@ -42,6 +45,8 @@ export interface EngineNodeSpec {
   x: number; y: number;
   w: number; h: number;
   isGroup: boolean;
+  /** The card's stacking order on the DOM canvas (its RF wrapper's z-index); cards and vector layers draw in this order. */
+  z: number;
 }
 
 interface PyramidLevel { scale: number; bmp: ImageBitmap }
@@ -53,15 +58,12 @@ interface EngineNode {
   pyramid: PyramidLevel[];
   mipFailed?: boolean;
   needsPaintRaster?: boolean;
+  /** The clone's images are still decoding, so a raster now would cache them blank. */
+  decoding?: boolean;
   rasterAttempts?: number;
   x: number; y: number; w: number; h: number;
   isGroup: boolean;
-}
-interface CableGeom { pts: { x: number; y: number }[]; minX: number; minY: number; maxX: number; maxY: number }
-interface CableSpec {
-  sourceId: string; srcOffX: number; srcOffY: number; srcAbsX: number; srcAbsY: number; sourceAngleDeg: number | null; sourceFlipped: boolean;
-  targetId: string; tgtOffX: number; tgtOffY: number; tgtAbsX: number; tgtAbsY: number; targetAngleDeg: number | null; targetFlipped: boolean;
-  color: string;
+  z: number;
 }
 
 interface RendererStats {
@@ -80,9 +82,9 @@ export class HtmlCanvasRenderer {
 
   private nodes: EngineNode[] = [];
   private readonly nodeById = new Map<string, EngineNode>();
-  private cables: CableSpec[] = [];
-  private cableGeoms: (CableGeom | null)[] = [];
-  private cableShape: CableShape = "diagonal";
+  /** Vector layers by key (a cable, the standoff svg…), each at its z; `order` breaks a z tie as the DOM does: edges, then cards, then overlays. */
+  private readonly vectorLayers = new Map<object, { z: number; order: number; shapes: VShape[] }>();
+  private vectorBuckets: Array<{ z: number; order: number; s: VShape }> | null = null;
   private quality = DEFAULT_QUALITY;
   private dpr = 1;
   private bsx = 1;
@@ -95,7 +97,6 @@ export class HtmlCanvasRenderer {
   private builtCount = 0;
   private disposed = false;
   private transformSource: (() => { k: number; x: number; y: number }) | null = null;
-  private presented: CamXform | null = null;
 
   private lastDrawTs = 0;
   private fpsEMA = 0;
@@ -107,14 +108,17 @@ export class HtmlCanvasRenderer {
   private selected = new Set<string>();
   private domLive = new Set<string>();
   private selectBox: { x: number; y: number; w: number; h: number } | null = null;
+  private backing: { color: string; dot: string | null } | null = null;
+  private dotTile: { key: string; pattern: CanvasPattern } | null = null;
   private active = false;
   private live = false;
 
   constructor(host: HTMLElement) {
     this.host = host;
     this.canvas = document.createElement("canvas") as LayoutCanvas;
-    this.canvas.setAttribute("layoutsubtree", "");
-    this.canvas.layoutSubtree = true;
+    this.canvas.setAttribute("content", "drawable");
+    // The clones duplicate the real cards, which the accessibility tree already has.
+    this.canvas.setAttribute("aria-hidden", "true");
     this.canvas.style.display = "block";
     this.canvas.style.width = "100%";
     this.canvas.style.height = "100%";
@@ -122,7 +126,7 @@ export class HtmlCanvasRenderer {
     this.ctx = this.canvas.getContext("2d") as Ctx2D;
 
     this.scratch = document.createElement("canvas") as LayoutCanvas;
-    this.scratch.setAttribute("layoutsubtree", "");
+    this.scratch.setAttribute("content", "drawable");
     this.sctx = this.scratch.getContext("2d") as Ctx2D | null;
 
     this.resize();
@@ -136,9 +140,6 @@ export class HtmlCanvasRenderer {
     this.transformSource = fn;
   }
 
-  getPresented(): CamXform | null {
-    return this.presented;
-  }
 
   setTransform(scale: number, tx: number, ty: number): void {
     if (this.cam.scale === scale && this.cam.tx === tx && this.cam.ty === ty) return;
@@ -155,8 +156,12 @@ export class HtmlCanvasRenderer {
     this.dirty = true;
   }
 
-  setDebug(on: boolean): void {
-    this.canvas.style.opacity = on ? "0.5" : "";
+  /** The canvas color and dot color the DOM backing wears; the canvas paints them itself, since it sits under React Flow. */
+  setBacking(color: string, dot: string | null): void {
+    if (this.backing?.color === color && this.backing.dot === dot) return;
+    this.backing = { color, dot };
+    this.dotTile = null;
+    this.dirty = true;
   }
 
   setLive(on: boolean): void { if (this.live !== on) { this.live = on; this.dirty = true; } }
@@ -187,13 +192,30 @@ export class HtmlCanvasRenderer {
     return out;
   }
 
-  setNodes(specs: EngineNodeSpec[]): void {
-    this.releaseNodes();
-    this.nodes = specs.map((s) => ({ id: s.id, refEl: this.cloneFor(s.el, s.w, s.h), srcEl: s.el, refImg: null, pyramid: [], x: s.x, y: s.y, w: s.w, h: s.h, isGroup: s.isGroup }));
+  /** `keep` reuses a card whose element and size are unchanged, with its bitmaps, and only moves or restacks it: a card's own
+   *  changes reach a re-capture another way ([[html-in-canvas#Keeping the capture fresh]]). Without it every card is re-cloned. */
+  setNodes(specs: EngineNodeSpec[], keep = false): void {
+    const kept = new Set<EngineNode>();
+    let fresh = 0;
+    const next = specs.map((s) => {
+      const o = keep ? this.nodeById.get(s.id) : undefined;
+      if (o && o.srcEl === s.el && o.w === s.w && o.h === s.h) {
+        o.x = s.x; o.y = s.y; o.z = s.z; o.isGroup = s.isGroup;
+        kept.add(o);
+        return o;
+      }
+      fresh++;
+      const n: EngineNode = { id: s.id, refEl: this.cloneFor(s.el, s.w, s.h), srcEl: s.el, refImg: null, pyramid: [], x: s.x, y: s.y, w: s.w, h: s.h, isGroup: s.isGroup, z: s.z };
+      this.trackDecode(n, this.lastDecode);
+      return n;
+    });
+    for (const n of this.nodes) if (!kept.has(n)) this.releaseNode(n);
+    this.nodes = next;
+    this.sortNodes();
     this.nodeById.clear();
     for (const n of this.nodes) this.nodeById.set(n.id, n);
-    this.captured = false;
-    this.builtCount = 0;
+    if (fresh) this.captured = false;
+    this.builtCount = this.nodes.filter((n) => n.pyramid.length).length;
     this.dirty = true;
     if (this.canvas.requestPaint) this.canvas.requestPaint();
   }
@@ -203,7 +225,7 @@ export class HtmlCanvasRenderer {
     for (const s of specs) {
       const n = this.nodeById.get(s.id);
       if (!n) continue;
-      n.x = s.x; n.y = s.y; n.w = s.w; n.h = s.h;
+      n.x = s.x; n.y = s.y; n.w = s.w; n.h = s.h; n.z = s.z;
       n.refImg?.close?.(); n.refImg = null;
       for (const p of n.pyramid) p.bmp?.close?.();
       n.pyramid = [];
@@ -212,18 +234,25 @@ export class HtmlCanvasRenderer {
       n.rasterAttempts = 0;
       n.refEl.remove();
       n.refEl = this.cloneFor(s.el, s.w, s.h);
+      this.trackDecode(n, this.lastDecode);
       n.srcEl = s.el;
       changed = true;
     }
     if (!changed) return;
+    this.sortNodes();
     this.captured = false;
     this.builtCount = Math.max(0, this.nodes.filter((n) => n.pyramid.length).length);
     this.dirty = true;
     if (this.canvas.requestPaint) this.canvas.requestPaint();
   }
 
+  /** The decode `cloneFor`'s last clone is waiting on, read by its caller right after. */
+  private lastDecode: Promise<unknown> | null = null;
+
   private cloneFor(el: HTMLElement, w: number, h: number): HTMLElement {
     const wrap = document.createElement("div");
+    // drawElementImage and captureElementImage throw on an element without it.
+    wrap.setAttribute("drawable", "");
     wrap.style.position = "absolute";
     wrap.style.left = "0"; wrap.style.top = "0"; wrap.style.margin = "0";
     wrap.style.boxSizing = "content-box";
@@ -244,7 +273,7 @@ export class HtmlCanvasRenderer {
     card.style.margin = "0";
     card.style.pointerEvents = "none";
     HtmlCanvasRenderer.syncFormState(el, card);
-    HtmlCanvasRenderer.syncCanvasState(el, card);
+    this.lastDecode = HtmlCanvasRenderer.syncCanvasState(el, card);
     HtmlCanvasRenderer.uniquifyIds(card);
     rel.appendChild(card);
     wrap.appendChild(rel);
@@ -276,16 +305,39 @@ export class HtmlCanvasRenderer {
     }
   }
 
-  private static syncCanvasState(orig: HTMLElement, clone: HTMLElement): void {
+  /** A figure's `<canvas>` becomes an `<img>` of its pixels in the clone: drawElementImage draws a canvas nested in a
+   *  drawable subtree as a misplaced slice of itself (Chrome 157), and an image as it is. Resolves once every image has
+   *  decoded, since a raster before that caches the figure blank; null when the card has no canvas. */
+  private static syncCanvasState(orig: HTMLElement, clone: HTMLElement): Promise<unknown> | null {
     const src = orig.querySelectorAll<HTMLCanvasElement>("canvas");
     const dst = clone.querySelectorAll<HTMLCanvasElement>("canvas");
-    if (src.length !== dst.length) return;
+    if (!src.length || src.length !== dst.length) return null;
+    const decodes: Promise<unknown>[] = [];
     for (let i = 0; i < src.length; i++) {
       const s = src[i], d = dst[i];
       if (!s.width || !s.height) continue;
-      d.width = s.width; d.height = s.height;
-      try { d.getContext("2d")?.drawImage(s, 0, 0); } catch { /* tainted/GPU-lost canvas — leave blank */ }
+      let url: string;
+      try { url = s.toDataURL(); } catch { continue; } // A tainted canvas can't be read; it captures blank.
+      const img = document.createElement("img");
+      for (const a of d.getAttributeNames()) if (a !== "width" && a !== "height") img.setAttribute(a, d.getAttribute(a)!);
+      img.src = url;
+      d.replaceWith(img);
+      decodes.push(img.decode().catch(() => undefined));
     }
+    return decodes.length ? Promise.all(decodes) : null;
+  }
+
+  /** Holds a card's raster until its clone's images have decoded. */
+  private trackDecode(n: EngineNode, pending: Promise<unknown> | null): void {
+    if (!pending) { n.decoding = false; return; }
+    n.decoding = true;
+    const el = n.refEl;
+    void pending.then(() => {
+      if (n.refEl !== el || this.disposed) return;
+      n.decoding = false;
+      this.dirty = true;
+      if (this.canvas.requestPaint) this.canvas.requestPaint();
+    });
   }
 
   private static idSeq = 0;
@@ -327,46 +379,38 @@ export class HtmlCanvasRenderer {
     return false;
   }
 
-  setCables(cables: SnapCable[], shape: CableShape): void {
-    this.cableShape = shape;
-    this.cables = cables.map((cb) => {
-      const s = this.nodeById.get(cb.source), t = this.nodeById.get(cb.target);
-      return {
-        sourceId: cb.source, srcOffX: s ? cb.sx - s.x : 0, srcOffY: s ? cb.sy - s.y : 0, srcAbsX: cb.sx, srcAbsY: cb.sy, sourceAngleDeg: cb.sourceAngleDeg, sourceFlipped: cb.sourceFlipped,
-        targetId: cb.target, tgtOffX: t ? cb.ex - t.x : 0, tgtOffY: t ? cb.ey - t.y : 0, tgtAbsX: cb.ex, tgtAbsY: cb.ey, targetAngleDeg: cb.targetAngleDeg, targetFlipped: cb.targetFlipped,
-        color: HtmlCanvasRenderer.hexColor(cb.color),
-      };
-    });
-    this.cableGeoms = new Array(this.cables.length).fill(null);
-    this.relayoutCables();
-  }
-
-  /** `moved` limits routing to cables touching those ids; omit it to route all. */
-  relayoutCables(moved?: Set<string>): void {
-    for (let i = 0; i < this.cables.length; i++) {
-      const c = this.cables[i];
-      if (moved && !moved.has(c.sourceId) && !moved.has(c.targetId)) continue;
-      const s = this.nodeById.get(c.sourceId), t = this.nodeById.get(c.targetId);
-      const sx = s ? s.x + c.srcOffX : c.srcAbsX, sy = s ? s.y + c.srcOffY : c.srcAbsY;
-      const ex = t ? t.x + c.tgtOffX : c.tgtAbsX, ey = t ? t.y + c.tgtOffY : c.tgtAbsY;
-      const pts = cablePolyline(this.cableShape, { sx, sy, ex, ey, sourceAngleDeg: c.sourceAngleDeg, targetAngleDeg: c.targetAngleDeg, sourceFlipped: c.sourceFlipped, targetFlipped: c.targetFlipped });
-      this.cableGeoms[i] = HtmlCanvasRenderer.geomOf(pts);
-    }
+  /** Replaces one vector layer's shapes; an empty list removes it. */
+  setVectorLayer(key: object, z: number, order: number, shapes: VShape[]): void {
+    if (shapes.length) this.vectorLayers.set(key, { z, order, shapes });
+    else if (!this.vectorLayers.delete(key)) return;
+    this.vectorBuckets = null;
     this.dirty = true;
   }
 
-  private static hexColor(n: number): string {
-    return "#" + (n & 0xffffff).toString(16).padStart(6, "0");
+  clearVectorLayers(): void {
+    this.vectorLayers.clear();
+    this.vectorBuckets = null;
+    this.dirty = true;
   }
 
-  private static geomOf(pts: { x: number; y: number }[]): CableGeom | null {
-    if (pts.length < 2) return null;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const p of pts) {
-      if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y;
-      if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
+  /** Shapes that share a z, an order and a style merge into one path, so a frame strokes a handful of paths, not one per cable. */
+  private buckets(): Array<{ z: number; order: number; s: VShape }> {
+    if (this.vectorBuckets) return this.vectorBuckets;
+    const byKey = new Map<string, { z: number; order: number; s: VShape }>();
+    for (const { z, order, shapes } of this.vectorLayers.values()) {
+      for (const sh of shapes) {
+        const key = `${z}|${order}|${styleKey(sh)}`;
+        let b = byKey.get(key);
+        if (!b) { b = { z, order, s: { ...sh, path: new Path2D() } }; byKey.set(key, b); }
+        b.s.path.addPath(sh.path);
+      }
     }
-    return { pts, minX, minY, maxX, maxY };
+    this.vectorBuckets = [...byKey.values()].sort((a, b) => a.z - b.z || a.order - b.order);
+    return this.vectorBuckets;
+  }
+
+  private sortNodes(): void {
+    this.nodes.sort((a, b) => a.z - b.z);
   }
 
   hitTest(sx: number, sy: number): string | null {
@@ -408,19 +452,11 @@ export class HtmlCanvasRenderer {
         "| drawElementImage(main):", typeof this.ctx.drawElementImage,
         "| drawElementImage(scratch):", typeof this.sctx?.drawElementImage,
         "| node:", n.id, `${n.w}×${n.h}`, "refImg:", !!n.refImg);
-    const get = this.nativeGetElementTransform();
-    log("getElementTransform:", get ? (typeof this.ctx.getElementTransform === "function" ? "on ctx" : "on canvas") : "unavailable");
-    if (get && typeof DOMMatrix === "function") {
-      try {
-        const m = get(n.refEl, new DOMMatrix());
-        log("getElementTransform(identity) →", m ? `a=${m.a} d=${m.d} e=${m.e} f=${m.f}` : String(m));
-      } catch (e) { log("getElementTransform THREW:", String(e)); }
-    }
     let img: ElementImageLike | null = null;
     if (typeof this.canvas.captureElementImage === "function") {
       try {
         img = this.canvas.captureElementImage(n.refEl);
-        log("capture OK:", img && { w: img.width, h: img.height, ctor: (img as object).constructor?.name });
+        log("capture OK:", img && { ...this.canvas.getElementImageDefaultSize?.(img), ctor: (img as object).constructor?.name });
       } catch (e) { log("capture THREW:", String(e)); }
     }
     const src = img ?? n.refImg;
@@ -432,17 +468,17 @@ export class HtmlCanvasRenderer {
       if (this.sctx && typeof this.sctx.drawElementImage === "function") {
         this.scratch.width = 64; this.scratch.height = 64;
         if (src) {
-          try { this.sctx.drawElementImage(src, 0, 0, 64, 64); log("scratch.draw(capture) OK"); }
+          try { this.sctx.drawElementImage(src, 0, 0, 64, 64, DRAW_OPTS); log("scratch.draw(capture) OK"); }
           catch (e) { log("scratch.draw(capture) THREW:", String(e)); }
         }
-        try { this.sctx.drawElementImage(n.refEl, 0, 0, 64, 64); log("scratch.draw(element) OK"); }
+        try { this.sctx.drawElementImage(n.refEl, 0, 0, 64, 64, DRAW_OPTS); log("scratch.draw(element) OK"); }
         catch (e) { log("scratch.draw(element) THREW:", String(e)); }
         try { const b = await createImageBitmap(this.scratch); log("createImageBitmap(scratch) OK:", b.width, b.height); b.close(); }
         catch (e) { log("createImageBitmap(scratch) THREW:", String(e)); }
       }
       try {
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.ctx.drawElementImage!(n.refEl, 0, 0, 64, 64);
+        this.ctx.drawElementImage!(n.refEl, 0, 0, 64, 64, DRAW_OPTS);
         const b = await createImageBitmap(this.canvas, 0, 0, 64, 64);
         const pc = document.createElement("canvas"); pc.width = 64; pc.height = 64;
         const pctx = pc.getContext("2d")!;
@@ -466,12 +502,14 @@ export class HtmlCanvasRenderer {
   }
 
   // ── internals ──────────────────────────────────────────────────────────────────
+  private releaseNode(n: EngineNode): void {
+    n.refImg?.close?.();
+    for (const p of n.pyramid) p.bmp?.close?.();
+    n.refEl.remove();
+  }
+
   private releaseNodes(): void {
-    for (const n of this.nodes) {
-      n.refImg?.close?.();
-      for (const p of n.pyramid) p.bmp?.close?.();
-      n.refEl.remove();
-    }
+    for (const n of this.nodes) this.releaseNode(n);
     this.nodes = [];
     this.nodeById.clear();
   }
@@ -500,7 +538,7 @@ export class HtmlCanvasRenderer {
         const clone = (n.refEl.firstElementChild?.firstElementChild ?? n.refEl.firstElementChild) as HTMLElement | null;
         console.log("[hc-diag]", {
           id: n.id, w: n.w, h: n.h, PAD, dpr: this.dpr,
-          imgW: n.refImg.width, imgH: n.refImg.height,
+          img: this.canvas.getElementImageDefaultSize?.(n.refImg),
           cloneOffsetW: clone?.offsetWidth, cloneOffsetH: clone?.offsetHeight,
         });
         const origCard = n.srcEl;
@@ -559,10 +597,10 @@ export class HtmlCanvasRenderer {
       }
       if (!top && this.sctx && typeof this.sctx.drawElementImage === "function") {
         try {
-          const refW = Math.max(1, Math.round(pw * REF)), refH = Math.max(1, Math.round(ph * REF));
+          const refW = Math.max(1, Math.round(pw * RASTER)), refH = Math.max(1, Math.round(ph * RASTER));
           this.scratch.width = refW; this.scratch.height = refH;
           this.sctx.clearRect(0, 0, refW, refH);
-          this.sctx.drawElementImage(n.refImg ?? n.refEl, 0, 0, refW, refH);
+          this.sctx.drawElementImage(n.refImg ?? n.refEl, 0, 0, refW, refH, DRAW_OPTS);
           top = await createImageBitmap(this.scratch, 0, 0, refW, refH);
         } catch (e) { top = null; HtmlCanvasRenderer.logPathOnce(`scratch raster rejected (${String(e)})`); }
       }
@@ -571,7 +609,7 @@ export class HtmlCanvasRenderer {
         HtmlCanvasRenderer.logPathOnce("bitmap paths unavailable — building mips via paint-event raster + region snapshot");
         continue;
       }
-      n.pyramid = await this.downscaleChain(top, pw, ph, REF);
+      n.pyramid = await this.downscaleChain(top, pw, ph, top.width / pw);
       this.builtCount++;
       this.dirty = true;
     }
@@ -607,14 +645,14 @@ export class HtmlCanvasRenderer {
     const pending: EngineNode[] = [];
     for (const n of this.nodes) {
       if (pending.length >= HtmlCanvasRenderer.RASTER_BATCH) break;
-      if (!n.needsPaintRaster || n.pyramid.length || n.mipFailed) continue;
+      if (!n.needsPaintRaster || n.pyramid.length || n.mipFailed || n.decoding) continue;
       pending.push(n);
     }
     if (pending.length) {
       const items = pending.map((n) => ({
         id: n.id,
-        w: Math.max(1, Math.round((n.w + 2 * PAD) * REF)),
-        h: Math.max(1, Math.round((n.h + 2 * PAD) * REF)),
+        w: Math.max(1, Math.round((n.w + 2 * PAD) * RASTER)),
+        h: Math.max(1, Math.round((n.h + 2 * PAD) * RASTER)),
       }));
       const layout = packAtlas(items, canvas.width, canvas.height);
       const byId = new Map(pending.map((n) => [n.id, n]));
@@ -626,7 +664,7 @@ export class HtmlCanvasRenderer {
           const n = byId.get(p.id);
           if (!n) continue;
           try {
-            ctx.drawElementImage!(n.refEl, p.x, p.y, p.w, p.h);
+            ctx.drawElementImage!(n.refEl, p.x, p.y, p.w, p.h, DRAW_OPTS);
             n.needsPaintRaster = false; // In flight, so later paints skip it until the snapshot resolves; a failure re-arms it.
             drawnJobs.push({ n, p });
           } catch (e) {
@@ -683,7 +721,7 @@ export class HtmlCanvasRenderer {
         let top: ImageBitmap;
         try { top = await createImageBitmap(atlas, p.x, p.y, p.w, p.h); }
         catch (e) { this.noteRasterFailure(n, e); continue; }
-        n.pyramid = await this.downscaleChain(top, pw, ph, REF * p.scale);
+        n.pyramid = await this.downscaleChain(top, pw, ph, RASTER * p.scale);
         n.needsPaintRaster = false;
         this.builtCount++;
         this.dirty = true;
@@ -693,28 +731,53 @@ export class HtmlCanvasRenderer {
     }
   }
 
-  private drawCables(vp: { minX: number; minY: number; maxX: number; maxY: number }): void {
-    const { ctx, cam, bsx, bsy } = this;
-    ctx.setTransform(bsx, 0, 0, bsy, 0, 0);
-    ctx.lineWidth = 1.8 * cam.scale;
-    ctx.lineJoin = "round";
-    const byColor = new Map<string, Path2D>();
-    for (let i = 0; i < this.cableGeoms.length; i++) {
-      const g = this.cableGeoms[i];
-      if (!g || g.maxX < vp.minX || g.minX > vp.maxX || g.maxY < vp.minY || g.minY > vp.maxY) continue;
-      const color = this.cables[i]?.color ?? "#7a8296";
-      let path = byColor.get(color);
-      if (!path) { path = new Path2D(); byColor.set(color, path); }
-      const s0 = cam.toScreen(g.pts[0].x, g.pts[0].y);
-      path.moveTo(s0.sx, s0.sy);
-      for (let j = 1; j < g.pts.length; j++) {
-        const s = cam.toScreen(g.pts[j].x, g.pts[j].y);
-        path.lineTo(s.sx, s.sy);
-      }
+  /** The backing's color, and its dots as one pattern fill: a dot of radius `zoom` at every multiple of DOT_SPACING, as
+   *  CanvasBacking draws them. The tile is a whole number of pixels and the pattern is scaled back to the exact spacing. */
+  private drawBacking(): void {
+    const { ctx, canvas, cam, bsx, bsy, backing } = this;
+    if (!backing) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = backing.color;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!backing.dot || document.documentElement.classList.contains("perf-no-grid-dots")) return;
+    const spacing = DOT_SPACING * cam.scale * bsx;
+    if (spacing < 2) return;
+    const T = Math.max(2, Math.round(spacing));
+    const r = cam.scale * bsx * (T / spacing);
+    const key = `${T}|${r.toFixed(3)}|${backing.dot}`;
+    if (this.dotTile?.key !== key) {
+      const tile = document.createElement("canvas");
+      tile.width = T; tile.height = T;
+      const tctx = tile.getContext("2d")!;
+      tctx.fillStyle = backing.dot;
+      // On a pixel's center: on a corner, a sub-pixel dot spreads over four pixels and all but vanishes.
+      tctx.beginPath(); tctx.arc(DOT_C(T), DOT_C(T), r, 0, Math.PI * 2); tctx.fill();
+      const pattern = ctx.createPattern(tile, "repeat");
+      if (!pattern) return;
+      this.dotTile = { key, pattern };
     }
-    // Must match cableOpacity's non-hover default, or the gesture swap visibly pops.
-    ctx.globalAlpha = 0.72;
-    for (const [color, path] of byColor) { ctx.strokeStyle = color; ctx.stroke(path); }
+    const k = spacing / T, c = DOT_C(T) * k;
+    this.dotTile.pattern.setTransform(new DOMMatrix([k, 0, 0, k * (bsy / bsx), cam.tx * bsx - c, cam.ty * bsy - c * (bsy / bsx)]));
+    ctx.fillStyle = this.dotTile.pattern;
+    // Unsmoothed: the scale is within half a pixel of 1, and resampling would blur a one-pixel dot away.
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = true;
+  }
+
+  /** Under the camera transform, so a stroke's world width scales with the zoom as the DOM's does. */
+  private drawVector(v: VShape): void {
+    const { ctx } = this;
+    ctx.globalAlpha = v.alpha;
+    if (v.fill) { ctx.fillStyle = v.fill; ctx.fill(v.path); }
+    if (v.stroke && v.width > 0) {
+      ctx.strokeStyle = v.stroke;
+      ctx.lineWidth = v.width;
+      ctx.lineCap = v.cap;
+      ctx.lineJoin = v.join;
+      ctx.setLineDash(v.dash ?? []);
+      ctx.stroke(v.path);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -742,12 +805,13 @@ export class HtmlCanvasRenderer {
     this.slowDraws = 0;
     if (typeof ctx.reset === "function") ctx.reset(); else ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!this.active) { this.presented = null; this.lastFrameMs = performance.now() - t0; return; }
+    if (!this.active) { this.lastFrameMs = performance.now() - t0; return; }
     const { bsx, bsy } = this;
+    this.drawBacking();
     const camCTM = () => ctx.setTransform(bsx * cam.scale, 0, 0, bsy * cam.scale, bsx * cam.tx, bsy * cam.ty);
 
-    const idealI = computeIdealMipLevel(cam.scale, this.quality, dpr);
-    this.curMip = useCached ? REF / Math.pow(2, idealI) : 0;
+    const target = this.quality * cam.scale * dpr;
+    this.curMip = useCached ? RASTER / Math.pow(2, mipLevel(RASTER, target)) : 0;
 
     const m = 40;
     const tl = cam.toWorld(-m, -m);
@@ -755,52 +819,33 @@ export class HtmlCanvasRenderer {
     const vp = { minX: tl.wx, minY: tl.wy, maxX: br.wx, maxY: br.wy };
     const inView = (n: EngineNode): boolean => n.x + n.w >= vp.minX && n.x <= vp.maxX && n.y + n.h >= vp.minY && n.y <= vp.maxY;
 
-    let syncM: DOMMatrix | undefined;
-    let syncAnchor: { x: number; y: number } | null = null;
-
     const drawOne = (n: EngineNode): boolean => {
       const dx = n.x - PAD, dy = n.y - PAD, dw = n.w + 2 * PAD, dh = n.h + 2 * PAD;
-      const keepSync = (m: DOMMatrix | undefined) => { if (m && !syncM) { syncM = m; syncAnchor = { x: dx, y: dy }; } };
       if (useCached) {
-        if (n.pyramid.length) { ctx.drawImage(n.pyramid[Math.min(idealI, n.pyramid.length - 1)].bmp, dx, dy, dw, dh); return true; }
-        if (n.refImg) { try { keepSync(ctx.drawElementImage!(n.refImg, dx, dy, dw, dh)); this.slowDraws++; return true; } catch { return false; } }
-        try { keepSync(ctx.drawElementImage!(n.refEl, dx, dy, dw, dh)); this.slowDraws++; return true; } catch { return false; }
+        if (n.pyramid.length) { ctx.drawImage(n.pyramid[Math.min(mipLevel(n.pyramid[0].scale, target), n.pyramid.length - 1)].bmp, dx, dy, dw, dh); return true; }
+        if (n.refImg) { try { ctx.drawElementImage!(n.refImg, dx, dy, dw, dh, DRAW_OPTS); this.slowDraws++; return true; } catch { return false; } }
+        try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh, DRAW_OPTS); this.slowDraws++; return true; } catch { return false; }
       }
-      try { keepSync(ctx.drawElementImage!(n.refEl, dx, dy, dw, dh)); return true; } catch { return false; }
+      try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh, DRAW_OPTS); return true; } catch { return false; }
     };
 
+    // Cards and vector layers in the DOM's stacking order: by z, and at a tie edges, then cards, then overlays (order 0, 1, 2).
     let drawn = 0;
     camCTM();
     const skip = this.domLive;
-    for (const n of this.nodes) { if (n.isGroup && !skip.has(n.id) && inView(n) && drawOne(n)) drawn++; }
-    this.drawCables(vp);
-    camCTM();
-    for (const n of this.nodes) { if (!n.isGroup && !skip.has(n.id) && inView(n) && drawOne(n)) drawn++; }
+    const buckets = this.buckets();
+    let bi = 0;
+    const drawBucketsBefore = (z: number, order: number) => {
+      while (bi < buckets.length && (buckets[bi].z < z || (buckets[bi].z === z && buckets[bi].order < order))) this.drawVector(buckets[bi++].s);
+    };
+    for (const n of this.nodes) {
+      drawBucketsBefore(n.z, 1);
+      if (!skip.has(n.id) && inView(n) && drawOne(n)) drawn++;
+    }
+    drawBucketsBefore(Infinity, 0);
     this.nVisible = drawn;
     this.drawSelection();
 
-    // ── Presented camera, for the DOM-only sync (domSync.ts) ─────────────────────
-    const book: CamXform = { k: cam.scale, x: cam.tx, y: cam.ty };
-    if (!syncM && drawn > 0 && typeof DOMMatrix === "function") {
-      const get = this.nativeGetElementTransform();
-      if (get) {
-        const first = this.nodes.find((n) => inView(n));
-        if (first) {
-          const fx = first.x - PAD, fy = first.y - PAD;
-          try {
-            const dm = new DOMMatrix([cam.scale, 0, 0, cam.scale, cam.scale * fx + cam.tx, cam.scale * fy + cam.ty]);
-            const m = get(first.refEl, dm);
-            if (m) { syncM = m; syncAnchor = { x: fx, y: fy }; }
-          } catch { /* experimental surface — the bookkeeping camera covers it */ }
-        }
-      }
-    }
-    let presented = book;
-    if (syncM && syncAnchor) {
-      const nat = camFromDrawMatrix(syncM, syncAnchor.x, syncAnchor.y);
-      if (nat && plausibleNativeCam(nat, book)) presented = nat;
-    }
-    this.presented = presented;
 
     const t1 = performance.now();
     const dt = this.lastDrawTs ? t1 - this.lastDrawTs : 16;
@@ -808,14 +853,6 @@ export class HtmlCanvasRenderer {
     const inst = 1000 / Math.max(1, dt);
     this.fpsEMA = this.fpsEMA ? this.fpsEMA * 0.8 + inst * 0.2 : inst;
     this.lastFrameMs = t1 - t0;
-  }
-
-  private nativeGetElementTransform(): ((el: Element, m: DOMMatrix) => DOMMatrix | undefined) | null {
-    const c = this.ctx.getElementTransform;
-    if (typeof c === "function") return c.bind(this.ctx);
-    const k = this.canvas.getElementTransform;
-    if (typeof k === "function") return k.bind(this.canvas);
-    return null;
   }
 
   private hasUnbuiltVisible(): boolean {

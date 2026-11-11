@@ -517,15 +517,20 @@ describe("unnestCube: an empty [] beside tables", () => {
   });
 });
 
-describe("replaceValues: a non-numeric replacement never writes NaN", () => {
-  it("leaves a number column alone when the replacement is text; the string column still replaces", () => {
+describe("replaceValues: a replacement the column can't read is written as NaN, never skipped", () => {
+  it("writes NaN into a number, date or logical column for text it can't read; the string column takes the text", () => {
     const f: FrameValue = { __frame: true, columns: [
       { name: "s", type: "string", values: ["1", "1.0", "a"] },
       { name: "n", type: "number", values: [1, 1.5, 2] },
+      { name: "b", type: "logical", values: [true, false, true] },
     ] };
     const out = replaceValues(f, "", "1", "Z", "cell");
     expect(out.columns[0].values).toEqual(["Z", "1.0", "a"]);
-    expect(out.columns[1].values).toEqual([1, 1.5, 2]);
+    expect(out.columns[1].values).toEqual([NaN, 1.5, 2]);
+    expect(out.columns[2].values).toEqual([true, false, true]);
+    expect(replaceValues(f, "b", "TRUE", "maybe", "cell").columns[2].values).toEqual([NaN, false, NaN]);
+    const d: FrameValue = { __frame: true, columns: [{ name: "d", type: "date", values: [46086, 46087] }] };
+    expect(replaceValues(d, "d", "05-Mar-2026", "someday", "cell").columns[0].values).toEqual([NaN, 46087]);
   });
 });
 

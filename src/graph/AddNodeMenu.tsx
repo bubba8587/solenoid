@@ -15,6 +15,8 @@ import { SOCKET_COLORS, type SocketDataType } from "./sockets";
 const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kind], appThemeStore.getMode());
 import { ChevronRightIcon, ChevronLeftIcon, BookIcon } from "./components/Icons";
 import { frStore } from "./frStore";
+import { isEnter } from "./enterKey";
+import type { Release } from "./release";
 
 function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
   // One type tints the row like a kind accent, in that type's socket color; several make the flag.
@@ -58,14 +60,12 @@ export type NodeCatalogEntry = {
   places?: string;
   /** Cards placed with this one and cabled into it, such as a preset's physical constants ([[C76]] formulaPackDefault). */
   companions?: () => Companion[];
-  /** The release that brought the card; none is 1.5 or earlier (`addedIn`). */
+  /** The release that brought the card; none is 1.5 or earlier (`addedIn`). A card new on `develop` says `NEXT_RELEASE` (release.ts). */
   added?: Release;
-  /** The latest release that reworked it in a way worth telling a user. */
+  /** The latest release that reworked it in a way worth telling a user; `NEXT_RELEASE` while that release is unreleased. */
   updated?: Release;
 };
 
-/** A Solenoid release, as `major.minor`. */
-export type Release = "1.5" | "1.6";
 export const addedIn = (e: Pick<NodeCatalogEntry, "added">): Release => e.added ?? "1.5";
 
 /** A card placed beside another and cabled from its `output` into the other's `input`. */
@@ -503,7 +503,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     if (searching) {
       if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
-      else if (e.key === "Enter" && results[activeIndex]) { select(results[activeIndex]); }
+      else if (isEnter(e) && results[activeIndex]) { select(results[activeIndex]); }
       else if (e.key === "Escape") { e.stopPropagation(); setQuery(""); }
       return;
     }
@@ -536,7 +536,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       const isDescend = openLeft ? !goRight : goRight;
       if (isDescend) { if (active?.kind === "category") setTreePath([...treePath, 0]); }
       else if (treePath.length > 1) setTreePath(treePath.slice(0, -1));
-    } else if (e.key === "Enter") {
+    } else if (isEnter(e)) {
       if (active?.kind === "category") setTreePath([...treePath, 0]);
       else if (active?.kind === "leaf") select(active.entry);
     }

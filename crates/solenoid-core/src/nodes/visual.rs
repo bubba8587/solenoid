@@ -833,6 +833,15 @@ fn chart(c: &mut Call) -> Answer {
     let raw = match first(c, "values") {
         Cv::Cube(cube) => Cv::Frame(Rc::new(flat_cube(&cube))),
         Cv::V(V::Err(_)) => Cv::NULL,
+        // A table plots as the frame of its columns; one row is a list.
+        Cv::V(V::List(rows)) if matches!(rows.first(), Some(V::List(_))) => {
+            let rows: Vec<Vec<V>> =
+                rows.iter().map(|r| if let V::List(r) = r { r.to_vec() } else { vec![r.clone()] }).collect();
+            match <[Vec<V>; 1]>::try_from(rows) {
+                Ok([row]) => Cv::V(list(row)),
+                Err(rows) => Cv::Frame(Rc::new(super::frames::frame_from_rows(&rows))),
+            }
+        }
         v => v,
     };
     let refs = read_chart_refs(&first(c, "references"));

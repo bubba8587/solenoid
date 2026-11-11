@@ -1,6 +1,7 @@
 // [[B12]] losslessSaves, [[B16]] oneFormulaSurface
 // The text form a save passes through (`crates/solenoid-graph/src/text_form.rs`): the core writes and reads it; the
 // node names and the init field order are the app's.
+import { withImpliedRows } from "./textFormRows";
 import type { SavedGraph, SavedNode } from "./persistence";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./nodeInit";
@@ -82,8 +83,9 @@ export function keepCardTrust(current: SavedGraph, next: SavedGraph): SavedGraph
 }
 
 /** The save a text holds, read on the core (`text_form.rs`). */
+/** The graph a text form holds; a row a line names without `valueKeys` is built (`textFormRows.ts`). */
 export function readTextForm(text: string): SavedGraph {
-  return JSON.parse(fromCore(textFormRead(text, CURRENT_SAVE_VERSION))) as SavedGraph;
+  return withImpliedRows(JSON.parse(fromCore(textFormRead(text, CURRENT_SAVE_VERSION))) as SavedGraph);
 }
 
 /** One node line, read on the core. */

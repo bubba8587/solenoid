@@ -198,7 +198,7 @@ flowchart LR
 
 Every run mode but Simulation is some number of these passes: one for Single and Manual, one per scenario, Data Table combination, Monte Carlo draw or By-Row row, and one per value Goal Seek tries plus one at its solution. Simulation runs its loop round by round instead (§ Loops).
 
-`collectMultiple(inputs, overridesList)` runs one pass per overrides entry and returns, per output port, the array of that port's values in run order.
+`collectMultiple(inputs, overridesList)` runs one pass per overrides entry and returns, per output port, that port's values in run order: their list, or, where the passes answered tables (Frames or Cubes), a Cube of one column named for the port with a table in each row (`seriesValue`), which Unnest stacks. The output's socket says what it carries (`seriesTypeOf`, adopted in `adoptBoundaryTypes` while `answersSeries()` holds): a value's list, a list's table, a Cube for tables, and the inner type again in a single run. `data()` re-adopts whenever the answer switches between one value and one per pass, whichever control made the switch.
 
 `runActiveMode(inputs)` dispatches:
 
@@ -249,9 +249,9 @@ Config: `dataTableValues: Record<portId, unknown[]>`. `setDataTableValues(port, 
 
 ### By-Row
 
-Config: `byRowPortId` (`""` = unset).
+Config: `byRowPortId` (`""` = unset), `byRowLive` (false).
 
-- Heavy when `byRowPortId` names an existing input port.
+- Heavy when `byRowPortId` names an existing input port and `byRowLive` is off. The editor's `On Solve` / `Live` toggle sets `byRowLive`: Live runs the passes again whenever the card recomputes, as Single does, so a list of tables fed to it (each file of a folder, say) comes out transformed with no Solve press; the cap below is what bounds it. `runsMany()` says a run is many passes whether it holds or not, so the cards inside compute once after the passes either way.
 - The iterated value is the port's normal value (wired, else seed, else default; a hidden port skips wired). `byRowValues(v)` splits it:
 
 | Value | Rows |
@@ -264,7 +264,8 @@ Config: `byRowPortId` (`""` = unset).
 
 - No rows, or an unknown port, runs one plain pass. Otherwise one pass per row with that row as the port's override; each output is an array, one entry per row.
 - Cap: `BY_ROW_MAX_ROWS = 500`. By-Row is the one heavy mode whose pass count comes from the data rather than a typed number, and every pass recomputes the whole inside, so a huge wired Frame would freeze the Solve; the cut-short series still looks plausible, so the cap warns loudly rather than dropping rows silently. Rows past it are dropped from the tail. When the total exceeds the cap, the composite fires a warning alert (Alerts HUD and toast) "`<name>`: By-Row ran the first 500 of `<total>` rows (the rest were skipped)", where name is the trimmed label or `Composite`. It fires only when the total differs from the last capped total (`lastByRowCapTotal`, transient) and never while a graph rebuild is open ([[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud]]). A run under the cap resets the edge.
-- The editor is a "For each row of" picker over the exposed inputs, with `— none`; with none exposed it reads `— expose an input to iterate`.
+- Under the toggle the card says what the last run made: `3 runs`, or `ran the first 500 of 812` where the cap cut it short (`byRowLastRuns`).
+- The editor is a "For each" picker over the exposed inputs, with `— none`; with none exposed it reads `— expose an input to iterate`.
 
 ### Goal Seek
 
@@ -488,6 +489,7 @@ flowchart TD
 - **Config** on the card or in the drill-in's run controls calls `processGraph(node.id)`, retargeted the same way when the composite is nested.
 - **Ports.** + Input and + Output in the drill-in strip (on a phone, I and O beside the bottom bar's ➕) add a marker at the left or right edge of the view, labeled `Input N` or `Output N`, plus an exposed basic port or an output port, re-render the outer card when the parent is the main canvas, recompute and autosave.
 - **Leaving a level** reconciles ports whose marker is gone (removing their parent cables, with a notice), then `syncPortLabels()`, so a marker renamed inside renames the card's socket ([[composite-drill-in-mount-lifecycle]] § Leaving a level).
+- **Undo and redo inside** restore nodes and cables, not the port lists. A port whose marker an undo took away stays until the level is left (so a redo finds it again); a marker a step brings back with no port gets one, on the step and again on leaving (`adoptMarkerPorts`), so no marker is ever cut off from the card.
 
 Because every internal pass fully resets the internal engine, the subgraph is recomputed whenever the card's `data()` computes, and a held heavy card recomputes nothing.
 
@@ -497,7 +499,7 @@ Tests:
 
 - `composite.test.ts`: every card inside computes, in Single at two depths, after Scenarios and in Monte Carlo's no-number case; a drill-in edit to the subgraph flags a held composite stale.
 - `closedCompositePrune.test.ts`: a node inside a closed composite resolves to its internal editor, nested too, so its prune reaches its cables.
-- `compositeLeaveLevels.test.ts`: a port whose marker was deleted inside is dropped with the parent's cables on it.
+- `compositeLeaveLevels.test.ts`: a port whose marker was deleted inside is dropped with the parent's cables on it. A marker with no port gets one.
 - `compositeFcSettle.test.ts`: a `data()`-time prune in a closed composite re-types the FC.
 
 ## Packs

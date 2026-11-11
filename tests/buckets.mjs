@@ -14,7 +14,7 @@ export const TIERS = {
 /** Ordered: the first match wins, so a narrow rule sits above a broad one. Patterns match the path from the repo root. */
 export const RULES = [
   // ── meta: the repository's own rules, docs, site and build ──
-  ["meta", /(^|\/)(rules|docsPointers|sourceInvariants|sourceHygiene|specDiagrams|uiCopy|wasmStamp|rustTestPaths|settingsAudit|socketReference|functionReferenceLibs|cardReference|catalogTags|catalogReleases|siteMeta|siteThumbs|landingBuildQueue|landingCompute|androidPrep|androidShell|desktopCsp|cssSyntax|cssTokens|finePrintContract|helpSection|docMeta|surfaceReviewPins|reviewPins|auditFixes|testBuckets|chunkReloadGuard|imageAssets|externalLinks)\.test\./],
+  ["meta", /(^|\/)(rules|docsPointers|sourceInvariants|sourceHygiene|specDiagrams|uiCopy|wasmStamp|rustTestPaths|settingsAudit|socketReference|functionReferenceLibs|cardReference|catalogTags|catalogReleases|whatsNewDeck|siteMeta|siteThumbs|landingBuildQueue|landingCompute|androidPrep|androidShell|desktopCsp|cssSyntax|cssTokens|finePrintContract|helpSection|docMeta|surfaceReviewPins|reviewPins|auditFixes|testBuckets|chunkReloadGuard|imageAssets|externalLinks)\.test\./],
   ["meta", /^tests\/graph\/landing\//],
   ["meta", /^scripts\//],
 
@@ -24,18 +24,18 @@ export const RULES = [
 
   // ── figures: charts, the Gantt and the scheduler, records ──
   ["figures", /^packages\/gantt-layout\//],
-  ["figures", /(^|\/)(chart\w*|heatmap|sparklineFormula|gantt\w*|scheduleCpm|recordViews|recordNav|recordCardsFromPopup|displayPeekCoverage|displayPopupCoverage|fcLambdaChart|reportExport|svgLayer|rasterAtlas|vectorOrient|valueDisplayAnnotation|chipStyle|categoryColor|palette|cssColor)\.test\./],
+  ["figures", /(^|\/)(chart\w*|heatmap|sparklineFormula|gantt\w*|scheduleCpm|recordViews|recordNav|recordCardsFromPopup|displayPeekCoverage|displayPopupCoverage|fcLambdaChart|reportExport|svgLayer|rasterAtlas|vectorOrient|valueDisplayAnnotation|chipStyle|categoryColor|palette|paletteDiagrams|cssColor)\.test\./],
 
   // ── integrations: Obsidian, files, the network, scripts, AI ──
   ["integrations", /^tests\/obsidian-plugin\//],
-  ["integrations", /(^|\/)(obsidian\w*|note\w*|knap\w*|vault\w*|taskNotes\w*|demoVault|frontmatterPatch|importNoteRepick|importObsidianGone|localFileRace|filePickerModel|chooseFile|fileBridgeDispatch|webUrl|httpBridge|ipcBridge|script\w*|ai\w*|apiKeyStore|mailMergeSeed|planImport|pluginColumnTypes|managedBlock|csvSafety|svgSanitize|polyformIntegration)\.test\./],
+  ["integrations", /(^|\/)(webSourceDates|localFolder|obsidian\w*|note\w*|knap\w*|vault\w*|taskNotes\w*|demoVault|frontmatterPatch|importNoteRepick|importObsidianGone|localFileRace|filePickerModel|chooseFile|fileBridgeDispatch|webUrl|httpBridge|ipcBridge|script\w*|ai\w*|apiKeyStore|mailMergeSeed|planImport|pluginColumnTypes|managedBlock|csvSafety|svgSanitize|polyformIntegration)\.test\./],
 
   // ── documents: saves, the text form, seeds, the workspace ──
   ["documents", /(^|\/)(persistence\w*|textForm\w*|coreTextForm|seeds\w*|packSeeds|documentExamples|desktopDocs|\w+Seed|seedsCompute|pfSeedCheck|document\w*|saveTimeStore|fileSession|historyDigest|copyPasteSnapshot|foreignPaste|recentDocs|workspace\w*|relocationKeepsStores|filterPersistence|activeGraph|graphStub|sketchExport|textDiff|draftFlush)\.test\./],
 
   // ── named exceptions, above the broad rules below that would claim them by prefix ──
   ["ui", /(^|\/)(tableEdit|tableSortFilter|tablePopupSuggest)\.test\./],
-  ["canvas", /(^|\/)(baseView|domSync|renderMode|liveCardUnmounted|isolate\w*|drillStackGate|cablePendingReconnect|deleteSelectionScope|presentSocketStore|socketFlip|fcDockReload|pushWorldDockedFc|tidyDisplayFcWidth|fcChainDelete)\.test\./],
+  ["canvas", /(^|\/)(baseView|renderMode|liveCardUnmounted|isolate\w*|drillStackGate|cablePendingReconnect|deleteSelectionScope|presentSocketStore|socketFlip|fcDockReload|pushWorldDockedFc|tidyDisplayFcWidth|fcChainDelete)\.test\./],
 
   // ── frames: tables, cubes and their verbs ──
   ["frames", /(^|\/)(frame\w*|cube\w*|pivot\w*|csv|coreCsv|coreInferColumn|corePlanReaders|reconcile|joinUnits|computedColumn\w*|table\w*|columnSort|columnPicker|describeProfile|backendVerbCards|lazyVerbBodies|lazyFrameReads|lazyChain|cellErrorScan|listSortOrder|listPreview|tableFooterStats|frameHint|indexPosition|conduitFilterTypes)\.test\./],
@@ -51,7 +51,7 @@ export const RULES = [
 
   // ── canvas: layout, cables, gestures, the React Flow view ──
   ["canvas", /^tests\/graph\/(flow|components)\//],
-  ["canvas", /(^|\/)(cable\w*|canvas\w*|group\w*|tidy\w*|layout\w*|standoff\w*|collapseStore|conduit\w*|hic\w*|zoomSettle|touch\w*|pointerGesture|drawnCablePath|pathPoints|selectionOps|lockedContextMenus|landscapePhoneScale|viewPresets|nodeSizeStore|flowPreview|gridKeyboard|modalGuard|fireMenuKey|selectChevron)\.test\./],
+  ["canvas", /(^|\/)(cable\w*|canvas\w*|group\w*|tidy\w*|layout\w*|standoff\w*|collapseStore|conduit\w*|hic\w*|zoomSettle|touch\w*|pointerGesture|drawnCablePath|selectionOps|lockedContextMenus|landscapePhoneScale|viewPresets|nodeSizeStore|flowPreview|gridKeyboard|enterKey|modalGuard|fireMenuKey|selectChevron)\.test\./],
 
   // ── ui: stores, menus, search, popups, settings ──
   ["ui", /(^|\/)(\w+Store|catalogSearch|searchSamples|nameSurfaces|commentStore|problemsStore|pinStore|inspectorStore|settingsStore)\.test\./],

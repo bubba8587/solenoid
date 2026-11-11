@@ -852,6 +852,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       className={`sol-rf-appcanvas${hooks.className ? ` ${hooks.className}` : ""}${locked ? " solenoid-canvas--locked" : ""}${cabling ? " solenoid-canvas--cabling" : ""}`}
       onPointerMove={onPointerMove}
     >
+      {/* Before React Flow, at the same z, so RF stacks above it: [[html-in-canvas#The lifecycle]]. */}
+      <HtmlCanvasLayer editor={s.editor} view={s.view as unknown as View} />
       <ReactFlow<SolFlowNode, SolFlowEdge>
         id={hooks.rfId}
         nodes={nodes}
@@ -932,7 +934,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           nodeStrokeWidth={1}
         />}
       </ReactFlow>
-      <HtmlCanvasLayer editor={s.editor} view={s.view as unknown as View} />
       {menu && (
         <AddNodeMenu
           screenX={menu.screenX}

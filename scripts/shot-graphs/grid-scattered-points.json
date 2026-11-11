@@ -2,32 +2,47 @@
  "nodes": [
   {
    "id": "x",
-   "type": "TableInputNode",
+   "type": "ListInputNode",
    "x": 0,
    "y": 0,
    "init": {
     "label": "Xs",
-    "tableText": "1, 9, 5, 2, 8, 5, 1, 9"
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "1, 9, 5, 2, 8, 5, 1, 9"
    }
   },
   {
    "id": "y",
-   "type": "TableInputNode",
+   "type": "ListInputNode",
    "x": 0,
    "y": 300,
    "init": {
     "label": "Ys",
-    "tableText": "1, 1, 5, 8, 8, 2, 5, 5"
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "1, 1, 5, 8, 8, 2, 5, 5"
    }
   },
   {
    "id": "z",
-   "type": "TableInputNode",
+   "type": "ListInputNode",
    "x": 0,
    "y": 600,
    "init": {
     "label": "Heights",
-    "tableText": "3, 1, 8, 2, 6, 4, 2, 5"
+    "valueKeys": [
+     "v0"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "3, 1, 8, 2, 6, 4, 2, 5"
    }
   },
   {
@@ -81,12 +96,12 @@
   }
  ],
  "cables": [
-  "x.table -> i1.xs",
-  "y.table -> i1.ys",
-  "z.table -> i1.zs",
-  "x.table -> i2.xs",
-  "y.table -> i2.ys",
-  "z.table -> i2.zs",
+  "x.list -> i1.xs",
+  "y.list -> i1.ys",
+  "z.list -> i1.zs",
+  "x.list -> i2.xs",
+  "y.list -> i2.ys",
+  "z.list -> i2.zs",
   "i1.result -> p1.z",
   "i2.result -> p2.z"
  ]

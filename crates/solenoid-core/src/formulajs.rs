@@ -456,9 +456,14 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 )));
             }
             let mut result = 0.0;
-            // A pair counts when both sides are numbers.
+            // A pair counts when both sides are numbers, a logical reading as 1 or 0 ([[D108]] aggregatesCountLogicals).
+            let cell = |v: &V| match v {
+                V::Num(n) => Some(*n),
+                V::Bool(b) => Some(f64::from(u8::from(*b))),
+                _ => None,
+            };
             for (x, y) in xs.iter().zip(&ys) {
-                let (V::Num(x), V::Num(y)) = (x, y) else { continue };
+                let (Some(x), Some(y)) = (cell(x), cell(y)) else { continue };
                 result += match name {
                     "SUMX2MY2" => x * x - y * y,
                     "SUMX2PY2" => x * x + y * y,

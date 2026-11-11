@@ -9,6 +9,7 @@ import { fcUnitToUnit } from "../dimension";
 import { fcUnitAnnotations } from "../formatAnnotationStore";
 import type { Dim } from "../dimension";
 import { nodeOnCore } from "../nodeOnCore";
+import { isDateOrder, type DateOrder } from "../dateOrder";
 
 export type CastOp = "number" | "text" | "date" | "complex" | "logical";
 
@@ -55,15 +56,18 @@ export class CastNode extends GraphNode {
   unitAware = true;
   label: string;
   op: CastOp;
+  /** To Date's order for dates written in numbers alone. */
+  dateOrder: DateOrder;
   // Unset so the card shows each default as a placeholder.
   stringLiterals: Record<string, string> = {};
   cachedResult: number | (number | null | SolError)[] | string | (string | null)[] | boolean | (boolean | null | SolError)[] | SolError | null = null;
   width = 180; height = 190;
 
-  constructor(init?: { label?: string; op?: CastOp }) {
+  constructor(init?: { label?: string; op?: CastOp; dateOrder?: DateOrder }) {
     super("Cast");
     this.label = init?.label ?? "Cast";
     this.op = init?.op ?? "text";
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     this.addInput("value",  trueAnyIn("Value"));
     for (const { key, label } of CAST_OP_INPUTS[this.op]) this.addInput(key, strIn(label));
     this.addOutput("result", castOutput(this.op));

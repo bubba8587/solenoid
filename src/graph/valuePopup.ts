@@ -93,6 +93,7 @@ interface PopupStyle {
 export async function openFramePopup(
   value: FrameValue,
   { label, hostId, accent, groupColor, groupColorDark }: PopupStyle,
+  overrides?: Partial<TablePopupState>,
 ): Promise<void> {
   let resolved = value;
   if (value.__totalRows != null && value.__ref) {
@@ -114,6 +115,7 @@ export async function openFramePopup(
     groupColor,
     groupColorDark,
     pinNodeId: hostId ?? undefined,
+    ...overrides,
   });
 }
 

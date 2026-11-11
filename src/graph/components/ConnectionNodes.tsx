@@ -1,4 +1,5 @@
 // [[B19]] spreadsheetHabits, [[B11]] maximalMerge, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
+import { CardSection } from "./CardSection";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { collapseStore } from "../collapseStore";
 import type React from "react";
@@ -39,6 +40,7 @@ import { RefreshIcon } from "./RefreshIcon";
 import { SkyIcon } from "./CardArt";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
+import { isFilePattern } from "../fileGlob";
 import { nodeDisplayName } from "../catalogUtils";
 import { pickGeocodeMatch } from "../geocodeProvider";
 import { NAGER_COUNTRIES } from "../holidaysProvider";
@@ -50,12 +52,17 @@ import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { getOwningView } from "../activeGraph";
 import { FX_MODE_META, type FxMode } from "../nodeClasses";
 import { previewed } from "../listPreview";
+import { isEnter } from "../enterKey";
+import { DateOrderToggle } from "./DateOrderToggle";
+import { tablePopup } from "../tablePopupStore";
+import { openFramePopup } from "../valuePopup";
+import { isFrameValue, type FrameColType } from "../frame";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
     case "loading": return "Loading…";
     case "error":   return s.message || "Failed";
-    case "ok":      return `${s.rows ?? 0}×${s.cols ?? 0}${s.fetchedAt ? ` · ${new Date(s.fetchedAt).toLocaleTimeString()}` : ""}`;
+    case "ok":      return `${s.files ? `${s.files} file${s.files === 1 ? "" : "s"} · ` : ""}${s.rows ?? 0}×${s.cols ?? 0}${s.fetchedAt ? ` · ${new Date(s.fetchedAt).toLocaleTimeString()}` : ""}`;
     case "gated":   return "Waiting for permission";
     default:        return "Not connected";
   }
@@ -83,7 +90,7 @@ function RefreshIntervalField({ node }: { node: { id: string; refreshMinutes: nu
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
         onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}
       />
@@ -95,6 +102,7 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
   const s = connectionStore.getState(nodeId);
   return (
+    <>
     <div className="sol-conn__status">
       <span
         className={`sol-conn__dot sol-conn__dot--${s.status}`}
@@ -115,10 +123,44 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
         <RefreshIcon />
       </button>
     </div>
+    {/* What a read that landed left out: files that didn't read, what a plan file couldn't carry over. */}
+    {s.status === "ok" && s.message && <div className="sol-conn__note">{s.message}</div>}
+    </>
   );
 }
 
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
+
+/** A card that reads a file's text into a table: what its popup's type buttons change. */
+interface RetypableSource {
+  id: string;
+  cachedResult: unknown;
+  columnTypes: Record<string, FrameColType>;
+  readTypes: Record<string, FrameColType>;
+  edited(): void;
+}
+
+/** A type picked in the popup's header: the column reads again as it, and picking the type the source read it as
+ *  drops the pick. The popup reopens on the new output. */
+async function retypeAndReopen(data: RetypableSource, c: number, type: FrameColType): Promise<void> {
+  const before = data.cachedResult;
+  const name = isFrameValue(before) ? before.columns[c]?.name : undefined;
+  if (!name) return;
+  const next = { ...data.columnTypes };
+  if (data.readTypes[name] === type) delete next[name];
+  else next[name] = type;
+  data.columnTypes = next;
+  // A popup edit fires no canvas event, so the save is scheduled by hand, as a Frame Input's popup save does.
+  scheduleAutosave();
+  data.edited();
+  await processGraph();
+  const shown = tablePopup.get();
+  const after = data.cachedResult;
+  if (!shown || !isFrameValue(after)) return;
+  void openFramePopup(after, {
+    label: shown.title, hostId: data.id, accent: shown.accent, groupColor: shown.groupColor, groupColorDark: shown.groupColorDark,
+  }, { onRetypeColumn: (col, t) => void retypeAndReopen(data, col, t) });
+}
 
 export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>) {
   const [url, setUrl] = useState(data.url);
@@ -140,13 +182,18 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           spellCheck={false}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
+        <div className="sol-conn__field" title="How the source writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
+          Dates
+          <DateOrderToggle node={data} />
+        </div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField node={data} />
-        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)}
+          popupOverrides={{ onRetypeColumn: (col, t) => void retypeAndReopen(data, col, t) }} />
       </div>
     </NodeShell>
   );
@@ -180,7 +227,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
           spellCheck={false}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
@@ -193,7 +240,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
             value={idx}
             onChange={(e) => setIdx(e.target.value)}
             onBlur={commit}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           />
@@ -233,7 +280,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           spellCheck={false}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
@@ -245,7 +292,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           spellCheck={false}
           onChange={(e) => setQuery(e.target.value)}
           onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
@@ -270,6 +317,8 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
   const folder = useSyncExternalStore(settingsStore.subscribe, getCsvFolder);
   const [files, setFiles] = useState<string[]>([]);
   const [name, setName] = useState(data.fileName);
+  // A name with a wildcard reads every file it matches as one table ([[B11]] maximalMerge).
+  const [pattern, setPattern] = useState(isFilePattern(data.fileName) ? data.fileName : "");
   const desktop = isDesktop();
 
   useEffect(() => {
@@ -278,7 +327,15 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
     return () => { alive = false; };
   }, [folder]);
 
-  useEffect(() => { setName(data.fileName); }, [data.fileName]);
+  useEffect(() => { setName(data.fileName); setPattern(isFilePattern(data.fileName) ? data.fileName : ""); }, [data.fileName]);
+
+  function commitPattern(typed: string) {
+    const next = typed.trim();
+    setPattern(next);
+    // Clearing the pattern clears only a pattern: a picked file stays picked.
+    if (next === data.fileName || (next === "" && !isFilePattern(data.fileName))) return;
+    pick(next);
+  }
 
   function pick(next: string) {
     setName(next);
@@ -291,8 +348,11 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
     void refreshConnection(data.id);
   }
 
+  const retypeColumn = (c: number, type: FrameColType) => retypeAndReopen(data, c, type);
+
   const frameOut = data.outputs.frame;
   const planRows = data.cachedPlan ? cubeRowCount(data.cachedPlan) : 0;
+  const fileRows = data.cachedFiles ? cubeRowCount(data.cachedFiles) : 0;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div className="sol-conn">
@@ -305,7 +365,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
             value={name}
             placeholder="Pick a file…"
             example
-            missing={name !== "" && !files.includes(name)}
+            missing={name !== "" && !isFilePattern(name) && !files.includes(name)}
             title={name ? `${name}: choose another file` : "Choose a CSV or Parquet file in the data folder"}
             onPick={(from) => void chooseFile({
                 from,
@@ -321,6 +381,25 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
             }).then((rel) => { if (rel) pick(rel); })}
           />
         )}
+        {folder && (desktop || isDemoVaultPath(folder)) && (
+          <label className="sol-conn__field" title="Reads every file whose name matches, stacked as one table with a File column. * stands for anything, **/ for any subfolder.">
+            All matching
+            <input
+              className="sol-conn__url sol-placeholder-example" style={FIELD_INPUT} type="text" value={pattern}
+              placeholder="monthly/*.csv" spellCheck={false}
+              onChange={(e) => setPattern(e.target.value)}
+              onBlur={(e) => commitPattern(e.target.value)}
+              onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
+              onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+            />
+          </label>
+        )}
+        {folder && (desktop || isDemoVaultPath(folder)) && (
+          <div className="sol-conn__field" title="How the file writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
+            Dates
+            <DateOrderToggle node={data} />
+          </div>
+        )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {desktop && folder && (
           <RefreshIntervalField node={data} />
@@ -329,14 +408,21 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>
-            <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+            <FrameDisplay
+              frame={previewed(() => data.cachedResult)}
+              label={nodeDisplayName(data)}
+              popupOverrides={{ onRetypeColumn: (col, t) => void retypeColumn(col, t) }}
+            />
           </div>
         </MeasuredSocketRow>
       )}
       <InlineOutputRows
         node={data}
         emit={emit}
-        rows={[{ key: "plan", label: "Plan", value: planRows > 0 ? `${planRows} task${planRows === 1 ? "" : "s"}` : null }]}
+        rows={[
+          { key: "plan", label: "Plan", value: planRows > 0 ? `${planRows} task${planRows === 1 ? "" : "s"}` : null },
+          { key: "files", label: "Files", value: fileRows > 0 ? `${fileRows} file${fileRows === 1 ? "" : "s"}` : null },
+        ]}
       />
     </NodeShell>
   );
@@ -401,7 +487,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
           spellCheck={false}
           onChange={(e) => setInput(e.target.value)}
           onBlur={(e) => commitInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           {...stopDrag}
         />
         {preset.frequencies && (
@@ -490,7 +576,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
       <input
         className="sol-conn__num" type="number" value={val}
         onChange={(e) => set(e.target.value)} onBlur={commit}
-        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
         onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
       />
     </label>
@@ -575,7 +661,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
           <input
             className="sol-conn__num" type="number" value={year} placeholder="[this year]"
             onChange={(e) => setYear(e.target.value)} onBlur={commitYear}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
             onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
           />
         </label>
@@ -583,7 +669,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
           className="sol-conn__url sol-placeholder-example" type="text" value={region} placeholder="Region, for example US-CA (optional)"
           spellCheck={false}
           onChange={(e) => setRegion(e.target.value)} onBlur={commitRegion}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
         />
         <div className="sol-conn__note">Nager.Date public holidays.</div>
@@ -662,7 +748,7 @@ function FxDateRow({ data, emit, socketKey, label }: {
         <input
           className="sol-conn__num" type="date" value={val}
           onChange={(e) => setVal(e.target.value)} onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
         />
       )}
@@ -746,6 +832,15 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
 // An Obsidian folder → one cube; the vault resolves per [[D62]] demoVaultResolution.
 const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
 const FIELD_INPUT = { flex: 1, width: "auto", minWidth: 0 } as const;
+
+/** What a Vault Folder reads for each note beside its properties: out of its body, and the notes that link to it. */
+const VAULT_BODY_READS: { key: "includeBody" | "includeTasks" | "includeTables" | "includeFields" | "includeBacklinks"; label: string; title: string }[] = [
+  { key: "includeBody", label: "Body", title: "A note-body column with each note's markdown" },
+  { key: "includeTasks", label: "Tasks", title: "A note-tasks column with each note's checklist items as a table" },
+  { key: "includeTables", label: "Tables", title: "A note-tables column with each note's tables as one table" },
+  { key: "includeFields", label: "Fields", title: "A column for each inline field, written key:: value" },
+  { key: "includeBacklinks", label: "Backlinks", title: "A backlinks column with the notes that link to each note, from the whole vault" },
+];
 
 export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the preview when a read lands
@@ -836,7 +931,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 spellCheck={false} disabled={connected.has("glob")}
                 onChange={(e) => setGlob(e.target.value)}
                 onBlur={(e) => commitField(e.target.value, data.glob, setGlob, (v) => { data.glob = v; })}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               />
             </label>
@@ -846,18 +941,24 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="[auto]" spellCheck={false}
                 onChange={(e) => setNameFormat(e.target.value)}
                 onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               />
             </label>
-            <label className="sol-conn__field" title="Add a body column with each note's markdown">
-              <input
-                type="checkbox" checked={data.includeBody}
-                onChange={(e) => { data.includeBody = e.target.checked; data.edited(); void processGraph(); }}
-                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-              />
-              Include body
-            </label>
+            <CardSection label="From each note">
+              <div className="sol-conn__checks">
+                {VAULT_BODY_READS.map(({ key, label, title }) => (
+                  <label key={key} className="sol-conn__field" title={title}>
+                    <input
+                      type="checkbox" checked={data[key]}
+                      onChange={(e) => { data[key] = e.target.checked; data.edited(); void processGraph(); }}
+                      onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </CardSection>
             <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
             <RefreshIntervalField node={data} />
             {cols.length > 0 && (
@@ -931,7 +1032,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
           autoComplete="off"
           onChange={(e) => setToken(e.target.value)}
           onBlur={commitToken}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />

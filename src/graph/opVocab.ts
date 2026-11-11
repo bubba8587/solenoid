@@ -7,6 +7,12 @@ import { FLAT_CATALOG } from "./catalogUtils";
 import { AGG_OP_META } from "./nodes/frame";
 import { GROUP_BY_OP_META } from "./nodes/list";
 
+/** The init field a class's vocabulary is typed into: `op`, or `agg` on the cards whose aggregator is an argument of
+ *  their one function ([[C26]] opArgDistinct); null for a class with neither. */
+export function vocabFieldOf(inst: object): "op" | "agg" | null {
+  return "op" in inst ? "op" : "agg" in inst ? "agg" : null;
+}
+
 let _vocab: Map<string, Map<string, string>> | null = null;
 
 /** Built lazily and cached; the catalog is static. */

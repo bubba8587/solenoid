@@ -29,6 +29,8 @@ export function wallClockSerial(now: Date = new Date(), dateOnly = false): numbe
 interface ParseDateOptions {
   relative?: boolean;
   now?: Date;
+  /** Which number is the month in a date of numbers alone; blank is Auto (`DateOrder`). */
+  order?: string;
 }
 
 type CoreDate = number | null | { ambiguous: string } | { relative: number | null };
@@ -41,6 +43,7 @@ export function readDate(s: string, opts?: ParseDateOptions): { value: number | 
   const r = wasmInvokeSync<CoreDate>("engine_parse_date", {
     text: t,
     ...(opts?.relative ? { relative: true, now: (opts.now ?? new Date()).getTime() } : {}),
+    ...(opts?.order ? { order: opts.order } : {}),
   });
   if (r !== null && typeof r === "object" && "relative" in r) {
     return { value: typeof r.relative === "number" ? r.relative : NaN, relative: true };

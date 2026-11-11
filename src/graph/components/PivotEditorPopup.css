@@ -40,10 +40,11 @@
 }
 .pivot-zone-wrap { display: flex; flex-direction: column; gap: 6px; }
 
+/* Every zone is a recess the chips sit in, as Filters always was; the dashed edge still marks a drop target. */
 .pivot-zone {
   border: 1px dashed var(--border);
   border-radius: 6px;
-  background: var(--surface);
+  background: var(--surface-sunken);
   padding: 7px 8px;
   min-height: 84px;
   display: flex;
@@ -56,7 +57,7 @@
   border-style: solid;
   background: color-mix(in srgb, var(--node-accent, var(--accent)) 8%, var(--surface));
 }
-.pivot-zone--filters { background: var(--surface-sunken); border-style: solid; }
+.pivot-zone--filters { border-style: solid; }
 .pivot-zone--details { grid-column: 1 / -1; min-height: 0; }
 .pivot-zone__hint { font-size: 11px; color: var(--text-muted); align-self: center; }
 
@@ -75,7 +76,7 @@
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  background: var(--surface-sunken) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 6px center / 9px 5px;
+  background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 6px center / 9px 5px;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -176,30 +177,9 @@
   white-space: nowrap;
 }
 .pivot-filter__caret { color: var(--text-dim); display: inline-flex; vertical-align: middle; }
-.pivot-filter__list {
-  max-height: 168px;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface-sunken);
-  padding: 4px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.pivot-filter__actions { display: flex; gap: 6px; margin-bottom: 2px; }
-.pivot-filter__actions button {
-  font-size: 10px;
-  padding: 1px 7px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-}
-.pivot-filter__opt { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); cursor: pointer; }
-.pivot-filter__opt input { margin: 0; }
-.pivot-filter__opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Resized by its grip, the editor's body takes the height and the zones stretch into it. */
+.pivot-editor.sol-popup--sized { max-width: none; max-height: none; }
+.pivot-editor.sol-popup--sized .pivot-editor__body { flex: 1 1 auto; min-height: 0; }
 
 .pivot-editor__footer {
   display: flex;
@@ -230,6 +210,5 @@
   .pivot-chip__x { width: 24px; height: 24px; font-size: 16px; }
   .pivot-ctl,
   .pivot-zone__add { font-size: 12px; padding: 5px 20px 5px 6px; }
-  .pivot-filter__actions button { font-size: 12px; padding: 4px 9px; }
   .pivot-editor__done { font-size: 13px; padding: 9px 16px; }
 }

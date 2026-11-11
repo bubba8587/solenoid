@@ -51,9 +51,11 @@ import { PivotTableView, PivotRibbon, PivotSheetButton, type PivotRibbonProps } 
 import { FittingChoice } from "./PopupChoice";
 import { DEFAULT_PIVOT_VIEW, livePivotFolds, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
 import { framePopupData } from "../valuePopup";
+import type { PivotMenuHost, PivotValueFormat } from "./PivotViewMenu";
 import type { FrameValue } from "../frame";
 import { TableEditMenus, TableContextMenu, useEditShortcuts, type EditAxis } from "./TableEditMenu";
 import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex, type AxisSelection } from "../tableEdit";
+import { isEnter } from "../enterKey";
 
 type CellType = "number" | "string" | "date" | "logical";
 type PopupView = "dashboard" | "pivot" | "grid" | "cards" | "form" | "csv";
@@ -324,7 +326,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     if (literalSource && mode === "formatted") {
       return row.map((raw, c) => {
         const type = colTypeAt(c);
-        const f = formatFrameCell(type, coerceFrameCell(type, raw ?? ""));
+        const f = formatFrameCell(type, coerceFrameCell(type, raw ?? "", state.dateOrder ?? ""));
         return f == null ? "" : String(f);
       });
     }
@@ -474,7 +476,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   }
   function controlledCell(raw: CellValue, c: number): string {
     const ann = annFor(c);
-    return controlledCellText(raw, colTypeAt(c), ann, () => cellUnit(c, ann));
+    return controlledCellText(raw, colTypeAt(c), ann, () => cellUnit(c, ann), state?.dateOrder ?? "");
   }
 
   const vertical = !!state.list && listVertical;
@@ -851,7 +853,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
 
-  const editsRows = editable && (view === "grid" || view === "form");
+  const editsRows = editable && !state.fixedRows && (view === "grid" || view === "form");
   const rowAxis: EditAxis | undefined = editsRows ? {
     noun: view === "form" ? "Record" : "Row",
     sides: view === "form" ? ["before", "after"] : ["above", "below"],
@@ -1014,6 +1016,28 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     );
   } : undefined;
 
+  // The right-click menu writes the card's settings, then the popup reopens on the new output.
+  const pivotMenuHost: PivotMenuHost | undefined = host && state.pivot ? {
+    agg: host.agg,
+    typeOf: (field) => host.typeOf(field),
+    config: () => host.config(),
+    apply: (next) => void host.setConfig(next).then(reopenWith),
+    keysOf: (field) => host.keysOf(field),
+  } : undefined;
+
+  /** The paintbrush's per-value pick, for the menu: a number value's columns, written together. */
+  const pivotValueCols = (v: number) => {
+    const keyCols = state.pivot!.rowFields.length;
+    return state.pivot!.cols.flatMap((it, j) => (it.value === v ? [keyCols + j] : []));
+  };
+  const pivotFormatPick: PivotValueFormat | undefined = state.pivot && state.formatControls === "columns" ? {
+    get: (v) => { const c = pivotValueCols(v); return c.length && colTypeAt(c[0]) === "number" ? fmtRow(c[0]).value : null; },
+    set: (v, f) => {
+      for (const c of pivotValueCols(v)) { if (f) persistColFmt(c, { format: f }, false); else clearColFmt(c, false); }
+      if (state.pinNodeId) void processGraph(state.pinNodeId);
+    },
+  } : undefined;
+
   const pivotRibbonProps: PivotRibbonProps | null = state.pivot ? {
     layout: state.pivot,
     options: pivotOpts,
@@ -1092,6 +1116,9 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
           isErrorAt={(r, c) => isSolError(state.data[r]?.[c])}
           query={query}
           ribbon={pivotRibbonProps && <PivotRibbon {...pivotRibbonProps} />}
+          menuHost={pivotMenuHost}
+          valueFormat={pivotFormatPick}
+          copyText={(t) => void copyText(t)}
         />
       ) : view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
@@ -1160,6 +1187,23 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                             </span>
                           );
                         })()}
+                        {colFmtControls && fmtButton(c)}
+                      </div>
+                    ) : state.onRetypeColumn && !vertical ? (
+                      <div className="table-popup__colhead-edit">
+                        <button
+                          type="button"
+                          className="sol-coltype"
+                          title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean; the source reads the column again as it.`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const i = COLTYPE_ORDER.indexOf(colTypeAt(c));
+                            state.onRetypeColumn?.(c, COLTYPE_ORDER[(i + 1) % COLTYPE_ORDER.length]);
+                          }}
+                        >
+                          <TypeIcon type={colTypeAt(c)} size={12} />
+                        </button>
+                        <span className="table-popup__colhead-label">{colHeaderLabel(c)}</span>
                         {colFmtControls && fmtButton(c)}
                       </div>
                     ) : colFmtControls ? (
@@ -1461,7 +1505,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
                         onKeyDown={(e) => {
                           if (e.nativeEvent.isComposing) return;
                           if (suggestRef.current?.onKey(e)) return;
-                          if (e.key === "Enter") e.currentTarget.blur();
+                          if (isEnter(e)) e.currentTarget.blur();
                         }}
                       />
                       )}
@@ -1521,7 +1565,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
         <CsvEditor
           value={csvText}
           onChange={onCsvChange}
-          readOnly={!editable}
+          readOnly={!editable || !!state.fixedRows}
           markedCols={computedColSet}
           firstBodyRow={hasHeaderLine ? 1 : 0}
           error={csvError}

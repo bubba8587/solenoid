@@ -122,6 +122,31 @@ Tests:
 - `chooseFile.test.ts`: a path is read relative to its root (the root itself as empty, nothing outside it), Windows paths with either slash and in any case; off the desktop the app's picker opens and answers, null when closed, and a second ask cancels the first.
 - `filePickerModel.test.ts`: a folder lists its folders first, then its files, numbers in order; a search ranks a name match first and marks it; 100,000 paths answer fast, at most the cap, counting the rest; a cut head drops its partial last line; a listing is kept for the session.
 
+## Dates and column types of a file
+
+**A CSV's date order.** Local File's Dates toggle (`dateOrder`: Auto, MDY, DMY, YMD) is the order its CSV writes dates of numbers alone in (`csvToFrame(text, order)`, `frame_columnar`, `infer_text_column_ordered` in `csv.rs`). In Auto a column types Date only when its dates are ISO ([[C44]] dateSerials, [[frame-verbs#Type inference]]); under an order, a column whose cells read as dates in it (`1/2/26` as MDY) types Date too, with the same tolerance for stray cells as a number column, so one setting converts every such column of the file. A column that doesn't read in the order (`3/15/26` under DMY) stays text, never half-converted. The order is part of the read's key, so changing it re-reads the file, every file of a pattern included. Web Source and the file preview read in Auto.
+
+**Column types from the popup.** Local File's output opens in the Table popup with each column header's type button live (`onRetypeColumn`, the same button and cycle Number / Text / Date / Boolean the Frame Input editor has; [[table-popup]]). A press saves the type by column name in the card's `columnTypes`, re-reads the file and reopens the popup on the new output (`retypeColumn`, `ConnectionNodes.tsx`). The column is read again from its source text (`retypeColumns`, `frame.ts`, from the frame's `raw`), so Text gives back `02134` where Number read `2134`, and Date reads in the card's Dates order. Picking the type the file read the column as drops the entry (`readTypes`), so a column with no pick follows the file. A pick is kept by name, so a re-exported file with its columns moved keeps it; with a pattern, each file is retyped before stacking. The picks are part of the read's key.
+
+**Web Source does the same** (2026-11-11): its Dates toggle orders a fetched CSV's dates (JSON reads as before), and its popup's type buttons save `columnTypes` against the `readTypes` the source read, so a refetch reads the picks again. Both cards share the retype (`retypeAndReopen`, `ConnectionNodes.tsx`) and the saved picks' reading (`pickedColumnTypes`). Tests: `webSourceDates.test.ts`.
+
+## A folder as one table
+
+Reading one file and reading a folder of them are one job, so they are one card ([[B11]] maximalMerge). Local File's `fileName` is a file's name or a pattern over many: a name holding `*` or `?` is a pattern (`isFilePattern`, `fileGlob.ts`).
+
+- **Matching** (`matchFiles`): the pattern is split at `/`; `*` is any run of characters inside one folder, `?` one character, and a `**` part stands for the folder itself and every folder under it, `GLOB_MAX_DEPTH` deep, hidden folders left out. Case is ignored. Only CSV and Parquet files count (`listLocalFilesMatching`), at most `GLOB_MAX_FILES` of them, read in name order with digits by value (`2026-2` before `2026-10`).
+- **Stacking** (`readFilesAsOne`, `nodes/connection.ts`): each file is read as Local File reads one, gains a first column `File` holding its path under the data folder (`Source file` where the file has a `File` column of its own), and the files are stacked by the Append card's own body, so columns meet by name and a file lacking one leaves blanks.
+- **A file that doesn't read** is left out and named in the status note under the count ("1 didn't read: name (reason)", the first three named); the others load. No file matching, or none reading, is the card's error.
+- **Status**: a read that took several files says how many (`files` on the connection state: "3 files · 8×5 · time"). A file added to the folder is picked up by Refresh or the refresh interval, as any other change is.
+- **The card** shows the pattern in an `All matching` field under the file pick. Typing one replaces the picked file, picking a file replaces the pattern, and clearing the field clears only a pattern.
+- **Where it runs**: wherever a CSV reads, which is the desktop app, the demo vault and the headless runner (`run-graph --data <folder>`); a Parquet file needs the desktop's reader.
+
+- **The files one by one**: the `files` output is a Cube with a row per file read, its `File` and its `Table` (the file's own frame), empty for a single file. It is what a transform that runs once per file takes: a Composite set to By row, Live ([[composite-nodes#By-Row]]) gets one row a pass, unnests `Table` inside, and answers a Cube with a transformed table in each row, which Unnest stacks ([[frame-verbs#Nest and Unnest]]). Unnest on the `files` Cube itself stacks the files as they are.
+
+A pattern never yields a Plan: a folder of plan files has no one schedule.
+
+Tests: `localFolder.test.ts`: the matcher over a fake tree, the stacked table, a file that fails, nothing matching, and the files through a live By-Row Composite and Unnest.
+
 ## HTTP
 
 `fetchText` and `fetchJson` in `httpBridge.ts` do the requests.

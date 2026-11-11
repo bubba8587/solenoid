@@ -163,6 +163,17 @@
   color: var(--text-dim);
   cursor: default;
 }
+.sol-popup-menu__group { display: flex; flex-direction: column; }
+/* A menu at the pointer taller than the window scrolls rather than running off it. */
+.sol-popup-menu__list--at { max-height: calc(100vh - 8px); max-height: calc(100dvh - 8px); overflow-y: auto; }
+/* A pick among a group's lines: a check before the chosen one, and room for it before the rest. */
+.sol-popup-menu__item[role="menuitemradio"] { padding-left: 24px; position: relative; }
+.sol-popup-menu__item--checked::before {
+  content: "✓";
+  position: absolute;
+  left: 9px;
+  color: var(--node-accent, var(--accent));
+}
 /* ── Group membership ───────────────────────────────────────────────────────── */
 .sol-popup--grouped::after {
   border-width: 2px;

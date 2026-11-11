@@ -79,6 +79,12 @@
   font-size: 11px;
   color: var(--text-dim);
 }
+/* A run of checkboxes, two to a row. */
+.sol-conn__checks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+}
 .sol-conn__num {
   width: 60px;
   box-sizing: border-box;

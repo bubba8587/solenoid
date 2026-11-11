@@ -12,6 +12,7 @@ import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { OpToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
 import { collapseStore } from "../collapseStore";
+import { DateOrderToggle } from "./DateOrderToggle";
 
 const SEPARATOR_KEYS = ["decimal_sep", "group_sep"];
 
@@ -55,6 +56,7 @@ export function CastComponent({ data, emit }: NodeProps<CastNodeType>) {
         options={CAST_OP_OPTIONS}
         onChange={(next) => { setOp(next); void applyCastOp(data, next); }}
       />
+      {op === "date" && !collapsed && <DateOrderToggle node={data} />}
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

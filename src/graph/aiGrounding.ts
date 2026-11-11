@@ -1,5 +1,6 @@
 // [[B13]] aiInScope
 
+import { literalFieldOf, type LiteralFieldHost } from "./literalFields";
 import { GraphNode } from "./graphModel";
 import { buildCatalog } from "./catalogUtils";
 import type { CatalogEntry, NodeCatalogEntry, CatalogCategory } from "./AddNodeMenu";
@@ -7,6 +8,7 @@ import { SolenoidSocket, SOCKET_TYPE_LABELS, elementFamilyOf, latticeRank, type 
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER, extractInit } from "./nodeInit";
 import { NODE_OPS } from "./nodeOps";
 import { opVocabByCtor } from "./opVocab";
+import settingChoices from "./settingChoices.json";
 import type { FilterOp } from "./frameOps";
 import type { FrameColType } from "./frame";
 
@@ -74,14 +76,24 @@ export function buildGroundingSpec(): string {
           const hasStrs = typeof anyInst.stringLiterals === "object" && anyInst.stringLiterals !== null;
           const lits = hasLits ? Object.keys(anyInst.literals as object) : [];
           const strs = hasStrs ? Object.keys(anyInst.stringLiterals as object) : [];
+          // A map born empty on a card that grows rows takes each row's key as well as the ones found below.
+          const grows = typeof anyInst.addValueInput === "function" || typeof anyInst.addValuePair === "function";
+          const [litsBorn, strsBorn] = [lits.length, strs.length];
+          // An input whose field starts empty is in neither map yet (GROUPBY's `keys`), so each input is asked which
+          // field it shows, as the canvas and the loader ask.
+          for (const k of Object.keys((anyInst.inputs as object) ?? {})) {
+            const field = literalFieldOf(inst as unknown as LiteralFieldHost, k);
+            if (hasLits && (field === "number" || field === "logical") && !lits.includes(k)) lits.push(k);
+            if (hasStrs && (field === "text" || field === "csv" || field === "keyed") && !strs.includes(k)) strs.push(k);
+          }
           info = {
             ctorName,
             path,
             variants: [],
             litKeys: lits,
             strKeys: strs,
-            litOpen: hasLits && lits.length === 0,
-            strOpen: hasStrs && strs.length === 0,
+            litOpen: hasLits && (lits.length === 0 || (grows && litsBorn === 0)),
+            strOpen: hasStrs && (strs.length === 0 || (grows && strsBorn === 0)),
             initKeys: roundTrip.filter((k) => !lits.includes(k) && !strs.includes(k)),
             hidden: leaf.hidden === true,
           };
@@ -146,7 +158,8 @@ export function buildGroundingSpec(): string {
   w("```");
   w();
   w(`Validate before applying or running: \`npm run validate-graph <file>\`;`);
-  w(`run headlessly: \`npm run run-graph <file>\`.`);
+  w(`run headlessly: \`npm run run-graph <file>\`, which prints every card's outputs as plain JSON`);
+  w(`(\`--out Name\` only that card's, \`--set Name=value\` types into an input card first).`);
   w();
   w(`## Socket types`);
   w();
@@ -193,6 +206,9 @@ export function buildGroundingSpec(): string {
   w(`  \`{"0": "desc"}\`; row 0 is the \`key0\` socket. \`byCol\` (List Sort, UNIQUE) sorts or dedupes columns.`);
   w(`- Row inputs like \`v0\`, \`value1\` on list-building nodes take comma-separated`);
   w(`  values per row (\`str:v0="1, 2, 3"\`); every row concatenates into one list.`);
+  w(`- A card with addable rows (\`v0\`, \`v1\`…; \`column0\`/\`value0\`, \`column1\`/\`value1\`…) has a row`);
+  w(`  as soon as the line names it, in a cable, an inline value or a per-row setting; \`valueKeys\` is the`);
+  w(`  saved list of those rows and can be left out.`);
   w();
   w(`## Node classes`);
   w();
@@ -220,15 +236,21 @@ export function buildGroundingSpec(): string {
       w(`- out: ${first.outputs || "—"}`);
     }
     if (info.initKeys.length > 0) w(`- init: ${info.initKeys.join(", ")}`);
+    // The settings that take one of a fixed set of words; `op` and an aggregator are listed with their labels below.
+    const choices = (settingChoices as Record<string, Record<string, string[]>>)[ctorName] ?? {};
+    for (const k of info.initKeys) {
+      if (choices[k] && k !== "op" && !(k === "agg" && opVocabByCtor().has(ctorName))) w(`- ${k}: ${choices[k].map((v) => `\`${v}\``).join(" | ")}`);
+    }
     const inline: string[] = [];
-    if (info.litKeys.length > 0) inline.push(`lit: ${info.litKeys.join(", ")}`);
-    else if (info.litOpen) inline.push(`lit: (input-row keys)`);
-    if (info.strKeys.length > 0) inline.push(`str: ${info.strKeys.join(", ")}`);
-    else if (info.strOpen) inline.push(`str: (input-row keys)`);
+    const keysOf = (keys: string[], open: boolean) => [...keys, ...(open ? ["(input-row keys)"] : [])].join(", ");
+    if (info.litKeys.length > 0 || info.litOpen) inline.push(`lit: ${keysOf(info.litKeys, info.litOpen)}`);
+    if (info.strKeys.length > 0 || info.strOpen) inline.push(`str: ${keysOf(info.strKeys, info.strOpen)}`);
     if (inline.length > 0) w(`- inline: ${inline.join(" · ")}`);
+    // The field the vocabulary is typed into: `op`, or `agg` where the aggregator is an argument ([[C26]] opArgDistinct).
+    const vocabField = info.initKeys.includes("op") || !info.initKeys.includes("agg") ? "ops" : "agg";
     const registryOps = opsByCtor.get(ctorName);
     if (registryOps && allSameSockets) {
-      w(`- ops: ${registryOps.map((o) => `\`${o.op}\` (${o.label})`).join(", ")}`);
+      w(`- ${vocabField}: ${registryOps.map((o) => `\`${o.op}\` (${o.label})`).join(", ")}`);
     } else if (info.variants.length > 1) {
       for (const v of info.variants) {
         const opPart = v.op !== null ? `op=${JSON.stringify(v.op)} — ` : "";
@@ -238,7 +260,7 @@ export function buildGroundingSpec(): string {
     } else {
       const vocab = opVocabByCtor().get(ctorName);
       if (vocab && vocab.size >= 2) {
-        w(`- ops: ${[...vocab].map(([op, label]) => `\`${op}\` (${label})`).join(", ")}`);
+        w(`- ${vocabField}: ${[...vocab].map(([op, label]) => `\`${op}\` (${label})`).join(", ")}`);
       }
     }
     const hidden = info.variants.flatMap((v) => v.leaf.hiddenOps ?? []);

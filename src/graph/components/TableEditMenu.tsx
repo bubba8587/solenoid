@@ -86,7 +86,7 @@ export function editMenuItems(row?: EditAxis, col?: EditAxis): { insert: MenuIte
   };
 }
 
-function useOutsideClose(open: boolean, ref: React.RefObject<HTMLElement | null>, close: () => void) {
+export function useOutsideClose(open: boolean, ref: React.RefObject<HTMLElement | null>, close: () => void) {
   const cb = useRef(close);
   cb.current = close;
   useEffect(() => {
@@ -160,7 +160,12 @@ export function TableEditMenus({ row, col }: { row?: EditAxis; col?: EditAxis })
 }
 
 /** Both menus' items at the pointer, from a right click. */
-export function TableContextMenu({ at, row, col, onClose }: { at: { x: number; y: number }; row?: EditAxis; col?: EditAxis; onClose: () => void }) {
+/** One line of a menu at the pointer; `checked` marks the pick a group of lines chooses between. */
+export interface PointerMenuItem { label: string; onClick: () => void; disabled?: boolean; shortcut?: string; checked?: boolean }
+export interface PointerMenuSection { heading?: string; items: PointerMenuItem[] }
+
+/** A menu opened at the pointer (a right-click), kept on screen, closed by Escape, a click outside or a pick. */
+export function PointerMenu({ at, sections, onClose, label }: { at: { x: number; y: number }; sections: PointerMenuSection[]; onClose: () => void; label?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(at);
   useEscapeLayer(true, onClose);
@@ -171,17 +176,29 @@ export function TableContextMenu({ at, row, col, onClose }: { at: { x: number; y
     const r = el.getBoundingClientRect();
     setPos({ x: Math.max(4, Math.min(at.x, window.innerWidth - r.width - 4)), y: Math.max(4, Math.min(at.y, window.innerHeight - r.height - 4)) });
   }, [at]);
-  const { insert, remove } = editMenuItems(row, col);
-  const wrap = (it: MenuItem): MenuItem => ({ ...it, onClick: () => { onClose(); it.onClick(); } });
+  const shown = sections.filter((sec) => sec.items.length > 0);
   return (
-    <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at" role="menu" focusgroup="menu block" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
-      <div className="sol-popup-menu__heading">Insert</div>
-      {insert.map((it, i) => <button key={`i${i}`} type="button" role="menuitem" className="sol-popup-menu__item" onClick={wrap(it).onClick}>{it.label}{it.shortcut && <span className="sol-popup-menu__shortcut">{it.shortcut}</span>}</button>)}
-      <div className="sol-popup-menu__sep" />
-      <div className="sol-popup-menu__heading">Delete</div>
-      {remove.map((it, i) => <button key={`d${i}`} type="button" role="menuitem" className="sol-popup-menu__item" disabled={it.disabled} onClick={wrap(it).onClick}>{it.label}{it.shortcut && <span className="sol-popup-menu__shortcut">{it.shortcut}</span>}</button>)}
+    <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at" role="menu" aria-label={label} focusgroup="menu block" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
+      {shown.map((sec, k) => (
+        <div key={k} className="sol-popup-menu__group" role="group" aria-label={sec.heading}>
+          {k > 0 && <div className="sol-popup-menu__sep" />}
+          {sec.heading && <div className="sol-popup-menu__heading">{sec.heading}</div>}
+          {sec.items.map((it, i) => (
+            <button key={i} type="button" role={it.checked === undefined ? "menuitem" : "menuitemradio"} aria-checked={it.checked}
+              className={`sol-popup-menu__item${it.checked ? " sol-popup-menu__item--checked" : ""}`} disabled={it.disabled}
+              onClick={() => { onClose(); it.onClick(); }}>
+              {it.label}{it.shortcut && <span className="sol-popup-menu__shortcut">{it.shortcut}</span>}
+            </button>
+          ))}
+        </div>
+      ))}
     </div>
   );
+}
+
+export function TableContextMenu({ at, row, col, onClose }: { at: { x: number; y: number }; row?: EditAxis; col?: EditAxis; onClose: () => void }) {
+  const { insert, remove } = editMenuItems(row, col);
+  return <PointerMenu at={at} onClose={onClose} sections={[{ heading: "Insert", items: insert }, { heading: "Delete", items: remove }]} />;
 }
 
 /**

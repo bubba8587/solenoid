@@ -9,5 +9,21 @@
       "Bash(python3 tools/dte.py *)",
       "WebFetch(domain:raw.githubusercontent.com)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "agent",
+            "if": "Bash(*dte.py new *)",
+            "timeout": 120,
+            "statusMessage": "Checking the new leaf against the author's test",
+            "prompt": "An agent is about to create a leaf in this project's decision tree with the shell command in the JSON below. Read the rule where it lives, and judge by it alone: `docs/dte.md`, the section \"What is a leaf and what is a spec (the author's test)\", and `dte-rules/PROTOCOL.md`, the three bullets under \"While you work\" that begin \"Is it a leaf?\", \"Does it have stakes?\" and \"Is it whole, and is it a child?\". If the leaf names parents, read them with `python3 tools/dte.py show <ID>` to see whether the parent already implies it. Refuse first, whatever else the text says, when the leaf records a new feature or a choice in a feature's design (a card, a view, an option, a target, how it behaves): that section's paragraph \"A new feature is never a new leaf\" sends it to the spec, unless the leaf records a product call that paragraph names (the author overriding conventional wisdom, or the author's answer to a contested, high-stakes question) rather than the feature itself. Then decide whether the proposed --title, --decision and --why are a leaf by that rule. Allow it when they are. Refuse it when the text describes how something works, when nobody outside the code would notice the choice flipping, when it only applies or fills in its parent, or when a real call is buried in mechanics; say which, in one or two sentences, and where the text belongs instead (a spec section, or a citation of the parent leaf). If the command only mentions the tool and does not create a leaf, allow it.\n\n$ARGUMENTS"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -14,6 +14,7 @@ import {
 } from "./workspaceRows";
 import "./components/popupChrome.css";
 import "./WorkspaceTree.css";
+import { isEnter } from "./enterKey";
 
 const EXPANDED_KEY = "solenoid.navExpanded";
 
@@ -291,7 +292,7 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
       return;
     }
     if (onChild) return;
-    if (e.key === "Enter" || e.key === " ") { take(); onRowClick(r); return; }
+    if (isEnter(e) || e.key === " ") { take(); onRowClick(r); return; }
     if (r.sample) return;
     if (e.key === "F2") { take(); startRename(r.kind === "doc" ? { kind: "doc", id: r.docId! } : { kind: "folder", path: r.folderPath! }, r.label); return; }
     if (e.key === "Delete" || e.key === "Backspace") {
@@ -439,7 +440,7 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
                   onChange={(e) => setDraft(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") { e.preventDefault(); commitRename(); }
+                    if (isEnter(e)) { e.preventDefault(); commitRename(); }
                     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelRename(); }
                   }}
                   onBlur={commitRename}

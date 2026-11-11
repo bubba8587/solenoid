@@ -16,6 +16,7 @@ import { docMetaStore } from "./docMetaStore";
 import { alignSelection, distributeSelection, collapseSelection } from "./selectionOps";
 import { buildMenus, fireMenuKey, type MenuItem } from "./menuModel";
 import "./CommandPalette.css";
+import { isEnter } from "./enterKey";
 
 // Lucide "sparkle"; the viewBox shifts +0.7/-1 to center its ink, which sits upper-right of the box.
 function SparkleIcon() {
@@ -176,7 +177,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (aiMode) {
-      if (e.key === "Enter") {
+      if (isEnter(e)) {
         e.preventDefault();
         void submitAiPrompt();
         return;
@@ -190,7 +191,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     }
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter") { e.preventDefault(); if (activeIndex >= 0 && results[activeIndex]) run(results[activeIndex]); }
+    else if (isEnter(e)) { e.preventDefault(); if (activeIndex >= 0 && results[activeIndex]) run(results[activeIndex]); }
     else if (e.key === "Escape") { e.preventDefault(); if (persistent) { setQuery(""); inputRef.current?.blur(); } else onClose(); }
   }
 

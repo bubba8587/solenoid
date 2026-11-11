@@ -55,9 +55,9 @@ is parked there.
   is `archive/1.4-plan.md` E3 (Materials & Mechanical content) + `2.0-plan.md` Arc 7 (the
   composite pack shape + distribution).
 - **`release-notes-features.md`** — the curated selling list / What's-New source for
-  the release in progress (1.6), with the bar for what earns a spot.
-- **`release-notes-1.6.md`** — the full draft GitHub release notes for 1.6, in 1.5's shape,
-  for the author's copy edit; it archives when 1.6 ships.
+  1.6 and its patch releases (1.6.1 on top), with the bar for what earns a spot.
+- **`release-notes-1.6.md`** — the GitHub release notes for 1.6, in 1.5's shape.
+- **`release-notes-1.6.1.md`** — the GitHub release notes for 1.6.1, in 1.6's shape.
 - **`android.md`** — the Android app: what is prepared, the first build on the author's
   machine, and what to check then.
 - **`out-of-scope.md`** — the standing NO list.
@@ -125,7 +125,7 @@ results get retried and settled rulings relapse.
 | `emptySlots.ts`, `crates/solenoid-core/data/call_traits.json` (`blanks`) | `../tree/specs/values/input-roles.md` § Empty slots, § Placeholders; [[D96]] emptySlotShowsItsValue |
 | `nodes/equation.ts`, `crates/solenoid-core/src/nodes/formula.rs` (Equation) | [[C47]] equationNode; `../tree/specs/computation/equation-solver.md` |
 | `semanticZoomStore.ts` | [[A1]] visualGraphCalculator; `../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom |
-| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[A1]] visualGraphCalculator |
+| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[A1]] visualGraphCalculator |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; `../tree/specs/canvas/pointer-gestures.md` |
 | `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | [[B3]] sameNodeEverywhere; `../tree/specs/canvas/react-flow-surface-contract.md`; [[A1]] visualGraphCalculator |
 | `graphCompute.ts`, `process.ts`, `passSession.ts`, `calcModeStore.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs`, `session.rs`, `pass.rs` (the pass and the input boundary) | `../tree/specs/computation/compute-pass.md`; [[C23]] calcModes; `../tree/specs/values/error-values.md` |
@@ -137,7 +137,7 @@ results get retried and settled rulings relapse.
 | `excel_functions.rs`, `fns_*.rs` (an answer that differs from Excel) | `../tree/specs/computation/excel-divergences.md` (why each one differs) |
 | `excel_formula.rs` `apply_op` scalar operators | `../tree/specs/computation/formula-language.md` § Scalar operators |
 | `nodes/matrix.ts` Table Input parse, `TablePopup.tsx`, `TableCards.tsx`, `cardLayout.ts` | [[C58]] tableInputRawText (raw text is the stored truth); `../tree/specs/documents/table-popup.md` |
-| `palette.ts`, `appTheme.ts`, `themeVars.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
+| `palette.ts`, `appTheme.ts`, `themeVars.ts`, `scripts/palette-diagrams.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
 | `CommandPalette.tsx` | `../tree/specs/canvas/command-palette.md` |
 | `OutlinePanel.tsx` | `../tree/specs/canvas/outline-panel.md` |
 | `WorkspaceTree.tsx`, `workspacePreview.ts` | [[C132]] workspaceTree; `../tree/specs/documents/workspace-tree.md` |
@@ -174,6 +174,7 @@ results get retried and settled rulings relapse.
 | `crates/solenoid-graph/`, `graphEditor.ts`, `graphModel.ts`, `dataflowEngine.ts` | `../tree/specs/computation/graph-core.md`; [[C130]] rustCore |
 | `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `heldValues.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[C130]] rustCore |
 | `crates/solenoid-core/`, `engineWasm.ts`, `engineWasm/`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D99]] rustIsSpec |
+| `nodes/edit_frame.rs`, `EditFrameNode` and `EditFrameComponent` (`nodes/frame.ts`, `FrameNodes.tsx`), `editFramePopup.ts` | `../tree/specs/computation/edit-frame.md` (a row's key, applying an edit, stale and settled edits, the Edits table, the edit list, the popup) |
 | `frameOps.ts`, `frameBackend.ts`, `binaryCells.ts`, `frame.ts`, `frameShape.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `crates/solenoid-core/src/frame_verbs.rs`, `frame_backend.rs`, `binary.rs`, `crates/solenoid-parquet` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
 | `csv.ts` (and the core's `csv` module) | `../tree/specs/computation/frame-verbs.md` § Reading CSV text; [[C103]] untrustedContentSeams |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |
@@ -182,7 +183,9 @@ results get retried and settled rulings relapse.
 | any bar/overlay position or z-index | `tree/specs/canvas/layout-chrome.md` |
 | `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `tree/specs/canvas/layout-chrome.md` § Desktop window frame |
 | `isAndroidApp`, `src-tauri/capabilities/android.json`, `scripts/android-prep.mjs` | `android.md` |
-| `vaultCube.ts`, `obsidianWrite.ts`, `frontmatterPatch.ts`, `taskNotesApi.ts`, `obsidianTypes.ts`, `pluginColumnTypes.ts` | `../tree/specs/integrations/vault-bridge.md` (VaultBridge Nodes and VaultBridgeFx: which spec governs each), under [[B1]] obsidianBet |
+| `obsidianWrite.ts`, `frontmatterPatch.ts`, `obsidianTypes.ts`, `pluginColumnTypes.ts` | `../tree/specs/integrations/vault-bridge.md` (VaultBridge Nodes and VaultBridgeFx: which spec governs each), under [[B1]] obsidianBet |
+| `vaultCube.ts`, `noteBody.ts`, `dailyNotesConfig.ts`, the Vault Folder node in `nodes/connection.ts` | `../tree/specs/integrations/vault-read.md` (which notes are read, the file columns, how a property column gets its shape and type, and the body as data: tasks, tables and inline fields), under [[B1]] obsidianBet |
+| `taskNotesApi.ts`, `nodes/taskNotes.ts` | `../tree/specs/integrations/tasknotes.md` (the TaskNotes node's three reads and their columns, Write Tasks' plan, Preview and Run), under [[B1]] obsidianBet |
 | `obsidian-plugin/**` | `../tree/specs/integrations/obsidian-plugin.md` (what it has, how it is built, every divergence from the app), under [[C107]] obsidianPlugin |
 | `ConduitComponent.tsx`, conduit faces/lanes | [[C10]] socketLattice; `../tree/specs/canvas/conduit-lane-faces.md` |
 

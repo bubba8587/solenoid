@@ -18,7 +18,7 @@ import { ctorRegistry } from "../nodeCtorRegistry";
 import { deleteSelection as deleteSelectionIn } from "../canvasActions";
 import { isolateStore } from "../isolateStore";
 import { pushNotice } from "../noticeStore";
-import { reconcileLeftPorts } from "../compositeLogic";
+import { reconcileLeftPorts, adoptMarkerPorts } from "../compositeLogic";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
 import { rebuildGroupMembership } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
@@ -217,6 +217,8 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       } finally {
         s.rebuilding = false;
       }
+      // A marker the step brought back keeps, or gets again, a port on the card.
+      if (adoptMarkerPorts(comp) > 0 && parentEditor === getEditor()) void getView()?.rerenderNode(comp.id);
       s.handlers.syncTopology();
       void processGraph(recomputeTarget());
       scheduleAutosave();

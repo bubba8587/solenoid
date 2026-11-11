@@ -7,7 +7,7 @@ use super::frames::{
     matrix_cells_from_list, select_cube_rows, str_input, tag_cell_unit, thrown, to_core, to_json, trimmed,
     widen_to_frame, UnitTag,
 };
-use super::list::{frame_cell_of, infer_column, present};
+use super::list::{frame_cell_ordered, infer_column, present};
 use super::refs;
 use super::scalar::{read_role, Role};
 use super::Cv;
@@ -365,7 +365,10 @@ pub(crate) fn flat_cube_frame(k: &Cube, only: Option<&[String]>) -> Result<Frame
             let mut cols: Vec<&CubeColumn> = Vec::new();
             for name in names {
                 let Some(col) = k.columns.iter().find(|cc| &cc.name == name) else {
-                    return Err(err(ErrorCode::Ref, format!("column \"{name}\" not found")));
+                    return Err(err(
+                        ErrorCode::Ref,
+                        crate::frame::column_not_found(name, k.columns.iter().map(|cc| cc.name.as_str())),
+                    ));
                 };
                 if !cols.iter().any(|x| std::ptr::eq(*x, col)) {
                     cols.push(col);
@@ -646,6 +649,19 @@ pub(crate) fn column_named<'a>(columns: &'a [Column], name: &str) -> Option<&'a 
     (1..=columns.len()).contains(&idx).then(|| &columns[idx - 1])
 }
 
+/// A name the table has no column for: `#REF!`, as the verbs answer, with the columns it does have.
+fn no_such_column<'a>(c: &mut Call, name: &str, has: impl Iterator<Item = &'a str>) -> Answer {
+    let has: Vec<&str> = has.collect();
+    let e = match crate::frame::case_twin(name, has.iter().copied()) {
+        Some(_) => err(ErrorCode::Ref, crate::frame::column_not_found(name, has.iter().copied())),
+        None => {
+            let shown: Vec<&str> = has.iter().copied().take(12).collect();
+            err(ErrorCode::Ref, format!("column \"{name}\" not found; the table has {}", shown.join(", ")))
+        }
+    };
+    values_answer(c, V::Null, e)
+}
+
 /// Get Column's answer, beside what the card shows.
 fn values_answer(c: &mut Call, shown: V, values: V) -> Answer {
     c.show("cachedResult", shown);
@@ -673,6 +689,7 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
         );
         return values_answer(c, e.clone(), e);
     }
+    let order = crate::excel_criteria::DateOrder::parse(c.field_str("dateOrder", "")).unwrap_or_default();
     let out: Vec<V> = match read_as.as_str() {
         "text" => col
             .values
@@ -710,10 +727,12 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
                     V::Num(_) => tag(v.clone()),
                     V::Bool(b) => V::Num(if *b { 1.0 } else { 0.0 }),
                     V::Err(_) => v.clone(),
-                    V::Str(s) => match frame_cell_of(if read_as == "date" { "date" } else { "number" }, s) {
-                        n @ (V::Null | V::Err(_)) => n,
-                        n => tag(n),
-                    },
+                    V::Str(s) => {
+                        match frame_cell_ordered(if read_as == "date" { "date" } else { "number" }, s, order) {
+                            n @ (V::Null | V::Err(_)) => n,
+                            n => tag(n),
+                        }
+                    }
                     _ => V::Num(f64::NAN),
                 })
                 .collect()
@@ -733,7 +752,7 @@ fn get_column(c: &mut Call) -> Answer {
     match &f {
         Cv::Cube(k) => {
             let Some(cc) = k.columns.iter().find(|col| *col.name == *name) else {
-                return values_answer(c, V::Null, V::Null);
+                return no_such_column(c, &name, k.columns.iter().map(|col| &*col.name));
             };
             if cc.cells.iter().any(|v| matches!(v, Cv::V(V::List(_)) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_))) {
                 let e = err(
@@ -751,20 +770,23 @@ fn get_column(c: &mut Call) -> Answer {
         }
         Cv::Ref(r) => match refs::column(r, &name) {
             Ok(Some(col)) => read_column(c, &col),
-            Ok(None) => values_answer(c, V::Null, V::Null),
+            Ok(None) => match refs::schema(r) {
+                Ok(has) => no_such_column(c, &name, has.columns.iter().map(|col| &*col.name)),
+                Err(e) => values_answer(c, V::Null, e),
+            },
             Err(e) => values_answer(c, V::Null, e),
         },
         Cv::Json(_) => values_answer(c, V::Null, V::Null),
         Cv::Frame(fr) => match column_named(&fr.columns, &name) {
             Some(col) => read_column(c, &col.clone()),
-            None => values_answer(c, V::Null, V::Null),
+            None => no_such_column(c, &name, fr.columns.iter().map(|col| &*col.name)),
         },
         Cv::Cells(_) => values_answer(c, V::Null, V::Null),
         Cv::V(other) => {
             let fr = widen_to_frame(other);
             match column_named(&fr.columns, &name) {
                 Some(col) => read_column(c, &col.clone()),
-                None => values_answer(c, V::Null, V::Null),
+                None => no_such_column(c, &name, fr.columns.iter().map(|col| &*col.name)),
             }
         }
     }
@@ -793,7 +815,7 @@ fn row_value(c: &Call, key: &str, ty: FrameColType) -> V {
                 v
             }
         }
-        FrameColType::Date => match crate::excel_criteria::parse_date(t) {
+        FrameColType::Date => match crate::excel_criteria::read_date_text(t, crate::excel_criteria::DateOrder::Auto) {
             crate::excel_criteria::DateReading::Serial(d) if d.is_finite() => V::Date(d),
             crate::excel_criteria::DateReading::Ambiguous(e) => V::err(e),
             _ => v,
@@ -1039,7 +1061,10 @@ const CUBE_ROW: &str = "\u{0}row";
 /// A Cube's column read as a frame reads it, its unit beside it, refused where it nests.
 fn scalar_column(cube: &Cube, name: &str) -> Result<(FrameColumn, Option<Json>), SolError> {
     let Some(col) = cube.columns.iter().find(|c| c.name == name) else {
-        return Err(sol_error(ErrorCode::Ref, format!("column \"{name}\" not found")));
+        return Err(sol_error(
+            ErrorCode::Ref,
+            crate::frame::column_not_found(name, cube.columns.iter().map(|c| c.name.as_str())),
+        ));
     };
     if col.cells.iter().any(|v| matches!(v, Cv::V(V::List(_)) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_))) {
         return Err(sol_error(
@@ -1194,11 +1219,12 @@ fn select_cube_columns(cube: &Cube, names: &[String], drop: bool) -> Result<Cv, 
     let cols = names
         .iter()
         .map(|n| {
-            cube.columns
-                .iter()
-                .find(|c| &c.name == n)
-                .cloned()
-                .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{n}\" not found")))
+            cube.columns.iter().find(|c| &c.name == n).cloned().ok_or_else(|| {
+                sol_error(
+                    ErrorCode::Ref,
+                    crate::frame::column_not_found(n, cube.columns.iter().map(|c| c.name.as_str())),
+                )
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(cube_from_columns(cols))
@@ -1292,7 +1318,10 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
     for (d, value) in conds.iter().zip(&values) {
         if LIST_OPS.contains(&d.op.as_str()) {
             let Some(raw) = cube.columns.iter().find(|c| c.name == d.column) else {
-                return Err(sol_error(ErrorCode::Ref, format!("column \"{}\" not found", d.column)));
+                return Err(sol_error(
+                    ErrorCode::Ref,
+                    crate::frame::column_not_found(&d.column, cube.columns.iter().map(|c| c.name.as_str())),
+                ));
             };
             let text = crate::jsnum::js_string(&d.value).into_owned();
             tests.push(Test::List(&raw.cells, ListCond::new(&d.op, &text, d.match_case)));

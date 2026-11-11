@@ -3,12 +3,12 @@ import { GraphEditor } from "../graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
-import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "../sockets";
+import { AdoptiveSocket, MutableSocket, SolenoidSocket, latticeRank, typeAtRank, type SocketDataType } from "../sockets";
 import { resolveTrigModes } from "../trigMode";
 import { resolveSwitchNames } from "../sourceNames";
 import { reconcileFcTypes, reconcileTypesAfterEdit } from "../fcReconcile";
 import { readTypeKeys } from "../settleFacts";
-import { getOwningView } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "../savedNodeBody";
 import { forgetNodeDeep } from "../nodeStoreRegistry";
 import { isSolError, solError, type SolError } from "../errorValue";
@@ -17,7 +17,8 @@ import {
   mulberry32, sampleUncertain, summarizeSamples, parseCorrelations, correlationCholesky, sampleCorrelated,
   DEFAULT_MC_SAMPLES, DEFAULT_MC_SEED, type DistributionKind,
 } from "../monteCarlo";
-import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, cubeFromColumns } from "../frame";
+import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, cubeFromColumns, type CubeCell } from "../frame";
+import { isFrameRef, readFrame } from "../frameBackend";
 import { isGraphRebuilding } from "../process";
 import { session } from "../passSession";
 import { fireAlert } from "../alertStore";
@@ -90,6 +91,22 @@ export type CompositeStopOp = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
 
 /** Where a Pipeline's chain breaks ([[C53]] pipelineIsCompositePreset). */
 export type PipelineFault = { kind: "unwired" | "dead-end" | "branch" | "cycle" | "off-chain"; node: GraphNode };
+
+/** The type of one value per pass: a value's list, a list's table, and for tables a Cube holding one in each row. */
+export function seriesTypeOf(t: SocketDataType): SocketDataType {
+  if (t === "frame" || t === "cube") return "cube";
+  const rank = latticeRank(t);
+  return (rank === 0 || rank === 1 ? typeAtRank(t, (rank + 1) as 1 | 2) : null) ?? "trueany";
+}
+
+/** One value per pass as the value a socket carries: the list of them, or, where the passes answered tables, a Cube
+ *  of one column named for the output with a table in each row, which Unnest stacks. */
+async function seriesValue(series: unknown[], label: string): Promise<unknown> {
+  const tables = await Promise.all(series.map((v) => (isFrameRef(v) ? readFrame(v) : v)));
+  const some = tables.some((v) => isFrameValue(v) || isCubeValue(v));
+  if (!some || !tables.every((v) => v === null || v === undefined || isFrameValue(v) || isCubeValue(v))) return series;
+  return cubeFromColumns([{ name: label.trim() || "Table", cells: tables.map((v) => (v ?? null) as CubeCell) }]);
+}
 
 export function byRowValues(v: unknown): unknown[] {
   if (v === null || v === undefined) return [];
@@ -228,7 +245,13 @@ export class CompositeNode extends GraphNode {
   stopWhenOp: CompositeStopOp;
   stopWhenValue: number;
   byRowPortId: string;
+  /** By-Row runs as its inputs change, in place of holding until Solve. */
+  byRowLive: boolean;
+  /** Whether the output types were last adopted for one value per pass. */
+  private adoptedSeries: boolean | undefined;
   private lastByRowCapTotal: number | null = null;
+  /** How many passes the last By-Row run made, and of how many items where the cap cut it short. */
+  byRowLastRuns: { ran: number; of: number } | null = null;
   goalSeek: CompositeGoalSeek | null;
   monteCarlo: CompositeMonteCarlo | null;
   goalSeekResult: number | SolError | null = null;
@@ -272,6 +295,7 @@ export class CompositeNode extends GraphNode {
     stopWhenOp?: CompositeStopOp;
     stopWhenValue?: number;
     byRowPortId?: string;
+    byRowLive?: boolean;
     goalSeek?: CompositeGoalSeek;
     monteCarlo?: CompositeMonteCarlo;
   }) {
@@ -291,6 +315,7 @@ export class CompositeNode extends GraphNode {
     this.stopWhenOp = init?.stopWhenOp ?? "eq";
     this.stopWhenValue = init?.stopWhenValue ?? 1;
     this.byRowPortId = init?.byRowPortId ?? "";
+    this.byRowLive = init?.byRowLive === true;
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
     this.internalEditor = new GraphEditor<Schemes>();
@@ -652,12 +677,22 @@ export class CompositeNode extends GraphNode {
     for (const overrides of overridesList) rows.push(await this.runPass(inputs, overrides));
     const outputs: Record<string, unknown> = {};
     for (const port of this.outputPorts) {
-      const series = rows.map((r) => r[port.id]);
+      const series = await seriesValue(rows.map((r) => r[port.id]), port.label);
       outputs[port.id] = series;
       const marker = this.internalEditor.getNode(port.internalNodeId);
       if (marker instanceof CompositeOutputNode) marker.cachedResult = series;
     }
     return outputs;
+  }
+
+  /** Whether the outputs are one value per pass (`collectMultiple`): a configured Scenarios, Data Table or By-Row. */
+  private answersSeries(): boolean {
+    if (this.runMode === "by-row") return this.byRowConfigured();
+    if (this.runMode === "scenarios") return this.scenarios.length > 0;
+    if (this.runMode === "data-table") {
+      return this.inputPorts.some((p) => p.exposure === "exposed" && (this.dataTableValues[p.id]?.length ?? 0) > 0);
+    }
+    return false;
   }
 
   private async runSimulation(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
@@ -777,6 +812,15 @@ export class CompositeNode extends GraphNode {
     this.runSeq++;
     this.syncPortLabels();
     this.syncMarkerSocketTypes();
+    // A switch between one answer and one per pass retypes the outputs, whichever control made it.
+    const series = this.answersSeries();
+    if (series !== this.adoptedSeries) {
+      this.adoptedSeries = series;
+      if (this.adoptBoundaryTypes()) {
+        const editor = getOwningEditor(this.id);
+        if (editor) queueMicrotask(() => reconcileTypesAfterEdit(editor, getOwningView(this.id)));
+      }
+    }
     const gsDriverId = this.runMode === "goal-seek" ? this.goalSeek?.inputPortId : undefined;
     for (const port of this.inputPorts) {
       const m = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
@@ -886,13 +930,23 @@ export class CompositeNode extends GraphNode {
     return this.runMode === "manual" || this.runMode === "pipeline";
   }
 
+  private byRowConfigured(): boolean {
+    return this.inputPorts.some((p) => p.id === this.byRowPortId);
+  }
+
+  /** Whether a run is many passes of the inside: every held multi-run, and By-Row set to run live. */
+  private runsMany(): boolean {
+    if (this.runMode === "by-row") return this.byRowConfigured();
+    return this.isHeavyMode() && !this.refreshes();
+  }
+
   isHeavyMode(): boolean {
     if (this.refreshes()) return true;
     if (this.runMode === "simulation") return true;
     if (this.runMode === "scenarios") return this.scenarios.length > 0;
     if (this.runMode === "goal-seek") return !!this.goalSeek;
     if (this.runMode === "montecarlo") return this.uncertainInputPorts().length > 0;
-    if (this.runMode === "by-row") return this.inputPorts.some((p) => p.id === this.byRowPortId);
+    if (this.runMode === "by-row") return !this.byRowLive && this.byRowConfigured();
     if (this.runMode === "data-table") {
       return this.inputPorts.some(
         (p) => p.exposure === "exposed" && (this.dataTableValues[p.id]?.length ?? 0) > 0,
@@ -950,7 +1004,7 @@ export class CompositeNode extends GraphNode {
         const feed = conns.find((c) => c.target === marker.id && c.targetInput === "value");
         const src = feed ? this.internalEditor.getNode(feed.source) : undefined;
         const s = feed ? src?.outputs?.[feed.sourceOutput]?.socket : undefined;
-        if (s instanceof SolenoidSocket) want = s.dataType;
+        if (s instanceof SolenoidSocket) want = this.answersSeries() ? seriesTypeOf(s.dataType) : s.dataType;
       }
       if (outSock.dataType !== want) { outSock.setType(want); changed = true; }
     }
@@ -1007,7 +1061,7 @@ export class CompositeNode extends GraphNode {
 
   private async runActiveMode(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     // A configured multi-run (every heavy mode but Manual refresh, which is one pass) runs its inside many times.
-    const multi = this.isHeavyMode() && !this.refreshes();
+    const multi = this.runsMany();
     const outputs = multi
       ? await this.withInner("aroundMultiRun", () => this.runModePasses(inputs))
       : await this.runModePasses(inputs);
@@ -1064,6 +1118,7 @@ export class CompositeNode extends GraphNode {
     const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
     const source = portSource(port, marker, inputs);
     let rows = byRowValues(source);
+    this.byRowLastRuns = rows.length === 0 ? null : { ran: Math.min(rows.length, BY_ROW_MAX_ROWS), of: rows.length };
     if (rows.length === 0) return this.runPass(inputs);
     if (rows.length > BY_ROW_MAX_ROWS) {
       const total = rows.length;

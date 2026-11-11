@@ -160,6 +160,9 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    rowKeys: "Edit Frame's row keys as its body last read them, for its popup; the body reads them again from the table each run",
+    editStatus: "Edit Frame's status of each edit on the last run, for its list; the body works it out again each run",
+    settled: "Edit Frame's edits its body found the table now gives, which its coreWatched drops from cellEdits",
     pairPlaceholders: "class-constant muted text for an empty pair field; never a value",
     cleanSource: "The SVG Picker's memo of the last scrubbed markup; stringLiterals.source holds the persisted text ([[C103]])",
     columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[C107]])",
@@ -170,6 +173,9 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     lastWritten: "Write to Obsidian's last written note path, for Open in Obsidian; a load has written nothing",
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",
     plannedKeys: "Write to Obsidian's Keys text as of its last plan, so a Keys edit re-plans; re-read from the literal on every compute",
+    plannedTasks: "Whether Write to Obsidian's last plan was for its Tasks target, so a change of target re-plans; follows the saved target",
+    taskRows: "Write to Obsidian's Tasks rows as last planned from the wired rows; rebuilt on every compute",
+    readTypes: "Local File's column types as the file read them, so picking one again drops the pick; re-read with the file",
     planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
     held: "Delayed Pass's value from the last recalculation; a reopened document starts from Start ([[D118]])",
     stepCount: "Delayed Pass's count of recalculations since it was added, opened or reset, for the card",
@@ -220,6 +226,8 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)",
     aroundSolving: "solve context from the composite around (during a pass)", aroundMultiRun: "multi-run context from the composite around (during a pass)", unsettled: "last Solve outran its fetches (session)",
     lastByRowCapTotal: "By-Row cap-warning edge-detect state (session)",
+    byRowLastRuns: "how many passes the last By-Row run made, for the card's note; found again on the next run",
+    adoptedSeries: "whether the Composite's output types were last adopted for one value per pass; found again on the first pass",
     lastRelativeText: "the relative phrase a date Value Input's body last read, read back for its shift alert (session)",
     lastRelativeSerial: "the day that phrase last landed on (session)",
     stale: "recomputed staleness", internalEditor: "the live internal editor and engine",

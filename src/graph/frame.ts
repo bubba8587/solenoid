@@ -173,15 +173,31 @@ export interface FrameSourceColumn {
 }
 export type FrameSource = FrameSourceColumn[];
 
-export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
+/** `order` reads a date of numbers alone (`1/2/26`), as a card's date order does; blank is Auto. */
+export function coerceFrameCell(type: FrameColType, raw: string, order = ""): FrameCell {
   if (type === "string") return raw === "" ? null : raw;
   const s = raw.trim();
   if (s === "") return null;
   if (type === "logical") return coerceLogical(s);
   const n = cellToNumber(s);
   if (n !== null) return n;
-  if (type === "date") { const r = parseDate(s); if (isSolError(r)) return r; return Number.isFinite(r) ? r : NaN; }
+  if (type === "date") { const r = parseDate(s, { order }); if (isSolError(r)) return r; return Number.isFinite(r) ? r : NaN; }
   return NaN;
+}
+
+/** The frame with each named column read again from its source text as the type `types` gives it (a Local File's
+ *  overrides): a column with no source text reads its values' text. `raw` stays, so Text gives back `02134`. */
+export function retypeColumns(frame: FrameValue, types: Record<string, FrameColType>, order = ""): FrameValue {
+  if (!Object.keys(types).length) return frame;
+  return {
+    ...frame,
+    columns: frame.columns.map((c) => {
+      const type = types[c.name];
+      if (!type || type === c.type) return c;
+      const raw = c.raw ?? c.values.map((v) => (v == null ? "" : textOf(v)));
+      return { ...c, type, values: raw.map((t) => coerceFrameCell(type, t, order)), raw, unit: type === "number" ? c.unit : undefined };
+    }),
+  };
 }
 
 /** A list item read as a type. Text reads as a Frame cell does, so what the type can't read is NaN ([[C58]] tableInputRawText). Converts, never filters; the caller passes null and per-cell errors through. */
@@ -502,6 +518,18 @@ export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: Cube
   return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells, ...(cols[j].type ? { type: cols[j].type } : {}), ...(cols[j].format ? { format: cols[j].format } : {}) })));
 }
 
+/** The column whose name differs from `name` only in letter case, the likely meant one where `name` finds none. */
+export function caseTwin(name: string, has: readonly string[]): string | undefined {
+  const want = name.toLowerCase();
+  return has.find((h) => h !== name && h.toLowerCase() === want);
+}
+
+/** `column "Date" not found`, with a word on case where a column differs from it only in that (as the core says it). */
+export function columnNotFound(name: string, has: readonly string[]): string {
+  const twin = caseTwin(name, has);
+  return twin ? `column "${name}" not found. Column names are case sensitive: the table has "${twin}"` : `column "${name}" not found`;
+}
+
 export function flatCubeToFrame(c: CubeValue, only?: readonly string[] | "scalar"): FrameValue | SolError {
   const nested = (col: CubeColumn) => col.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v));
   let cols: CubeColumn[];
@@ -510,7 +538,7 @@ export function flatCubeToFrame(c: CubeValue, only?: readonly string[] | "scalar
     cols = [];
     for (const name of only) {
       const col = c.columns.find((cc) => cc.name === name);
-      if (!col) return solError("#REF!", `column "${name}" not found`);
+      if (!col) return solError("#REF!", columnNotFound(name, c.columns.map((cc) => cc.name)));
       if (!cols.includes(col)) cols.push(col);
     }
   } else cols = c.columns;

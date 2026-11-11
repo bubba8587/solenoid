@@ -37,6 +37,7 @@ for (let i = 0; i < argv.length; i++) {
   if (a === "--out") opt.out = argv[++i];
   else if (a === "--click") opt.steps.push({ click: argv[++i] });
   else if (a === "--click-edge") opt.steps.push({ click: argv[++i], edge: true });
+  else if (a === "--rclick") opt.steps.push({ click: argv[++i], right: true });
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
   else if (a === "--drag" || a === "--drag-hold") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]), hold: a === "--drag-hold" });
@@ -54,7 +55,11 @@ for (let i = 0; i < argv.length; i++) {
 }
 if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--insets top,bottom] [--scale N]"); process.exit(2); }
 
-const graph = expand(JSON.parse(readFileSync(opt.file, "utf8")));
+// A text-form file (the AI grounding's format) is validated and read by the app's own reader first.
+const source = readFileSync(opt.file, "utf8");
+const asJson = source.trimStart().startsWith("{") ? source
+  : execFileSync(process.execPath, ["scripts/vite-run.mjs", "scripts/validate-graph.ts", opt.file, "--json"], { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+const graph = expand(JSON.parse(asJson));
 execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.meta.url))], { stdio: "inherit" });
 
 const browser = await puppeteer.launch({ executablePath: browserPath(), headless: true, args: ["--no-sandbox", "--window-size=1600,1000"] });
@@ -134,7 +139,7 @@ try {
       const b = await el.boundingBox();
       await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     }
-    else if (step.click) await page.click(step.click, step.edge ? { offset: { x: 5, y: 5 } } : undefined);
+    else if (step.click) await page.click(step.click, { ...(step.edge ? { offset: { x: 5, y: 5 } } : {}), ...(step.right ? { button: "right" } : {}) });
     else if (step.type) {
       await page.click(step.type);
       await page.keyboard.down("Control");

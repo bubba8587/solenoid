@@ -351,10 +351,9 @@ fn frame(columns: Vec<FrameColumn>) -> FrameValue {
 }
 
 fn require_column<'a>(f: &'a FrameValue, name: &str) -> Res<&'a FrameColumn> {
-    f.columns
-        .iter()
-        .find(|c| c.name == name)
-        .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{name}\" not found")))
+    f.columns.iter().find(|c| c.name == name).ok_or_else(|| {
+        sol_error(ErrorCode::Ref, crate::frame::column_not_found(name, f.columns.iter().map(|c| c.name.as_str())))
+    })
 }
 
 pub fn reorder_rows(f: &FrameValue, indices: &[usize]) -> FrameValue {
@@ -1552,29 +1551,27 @@ fn order_leaves(rows: &[usize], cols: &[&FrameColumn], sort_field: isize, desc: 
             }
         }
     }
-    let mut sorted_rank: Option<FxHashMap<CellKey, usize>> = None;
-    if sort_field >= 0 && (sort_field as usize) < cols.len() {
-        let sf = sort_field as usize;
-        let cmp = comparator_for(cols[sf].ty);
-        let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
-        let mut ordered = cell_by_enc[sf].clone();
-        stable_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
-            (true, true) => Ordering::Equal,
-            (true, false) => Ordering::Greater,
-            (false, true) => Ordering::Less,
-            _ => cmp(a, b),
-        });
-        if desc {
-            ordered.reverse();
-        }
-        sorted_rank = Some(ordered.iter().enumerate().map(|(idx, (vk, _))| (*vk, idx)).collect());
-    }
-    let rank_at = |lvl: usize, vk: &CellKey| -> usize {
-        match &sorted_rank {
-            Some(r) if lvl as isize == sort_field => r[vk],
-            _ => level_rank[lvl][vk],
-        }
-    };
+    // Every level's items sort ascending by their own type (text by character code, numbers and dates by value, a
+    // blank or an error last), as Excel's PIVOTBY lists them; the sort field's level runs descending when asked
+    // (author 2026-11-11: the order the data first shows them in was no order a reader could follow).
+    let sorted_rank: Vec<FxHashMap<CellKey, usize>> = (0..cols.len())
+        .map(|lvl| {
+            let cmp = comparator_for(cols[lvl].ty);
+            let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
+            let mut ordered = cell_by_enc[lvl].clone();
+            stable_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
+                (true, true) => Ordering::Equal,
+                (true, false) => Ordering::Greater,
+                (false, true) => Ordering::Less,
+                _ => cmp(a, b),
+            });
+            if desc && lvl as isize == sort_field {
+                ordered.reverse();
+            }
+            ordered.iter().enumerate().map(|(idx, (vk, _))| (*vk, idx)).collect()
+        })
+        .collect();
+    let rank_at = |lvl: usize, vk: &CellKey| -> usize { sorted_rank[lvl][vk] };
     let ranks: Vec<Vec<usize>> =
         first_seen.iter().map(|t| t.iter().enumerate().map(|(lvl, c)| rank_at(lvl, &cell_key(c))).collect()).collect();
     let mut order: Vec<usize> = (0..first_seen.len()).collect();
@@ -1690,6 +1687,20 @@ pub(crate) fn format_frame_cell(ty: FrameColType, v: &FrameCell) -> String {
     }
 }
 
+/// A pivot key's text in its column's own date pattern where it has one (a month field's `Jan 2026`), else as
+/// `format_frame_cell` writes it.
+fn key_text(col: &FrameColumn, v: &FrameCell) -> String {
+    let pattern = col
+        .format
+        .as_ref()
+        .filter(|f| f.get("format").and_then(Json::as_str) == Some("date_custom"))
+        .and_then(|f| f.get("customPattern").and_then(Json::as_str));
+    match (col.ty, v, pattern) {
+        (FrameColType::Date, FrameCell::Num(n), Some(p)) if n.is_finite() => format_date_serial(*n, p),
+        _ => format_frame_cell(col.ty, v),
+    }
+}
+
 enum Score {
     Null,
     N(f64),
@@ -1699,13 +1710,27 @@ enum Score {
 /// How the pivot laid its frame out, `PivotLayout` in `pivotLayout.ts`, as wire JSON.
 pub type PivotLayoutJson = Json;
 
+/// A calculated value field: its name, and its answer over a cell's source rows (indices into the input), with
+/// whether that answer is a date. Every cell asks it, totals included, so a ratio of sums is right at every level.
+pub struct PivotCalc<'a> {
+    pub name: String,
+    pub eval: CalcEval<'a>,
+}
+/// A calculated field's answer over a cell's source rows, and whether it is a date.
+pub type CalcEval<'a> = Box<dyn Fn(&[usize]) -> (FrameCell, bool) + 'a>;
+
 pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLayoutJson)> {
+    pivot_frame_calc(f, spec, &[])
+}
+
+/// `pivot_frame` with calculated value fields after the spec's values.
+pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -> Res<(FrameValue, PivotLayoutJson)> {
     let keep =
         |names: &[String]| -> Vec<String> { names.iter().filter(|s| !trim_space(s).is_empty()).cloned().collect() };
     let row_fields = keep(&spec.row_fields);
     let col_fields = keep(&spec.col_fields);
     let value_names = keep(&spec.values);
-    if value_names.is_empty() {
+    if value_names.is_empty() && calcs.is_empty() {
         return Err(sol_error(ErrorCode::Value, "PIVOTBY needs at least one value field"));
     }
     let row_cols: Vec<&FrameColumn> = row_fields.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
@@ -1734,6 +1759,8 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let (r_n, c_n, v_n) = (row_leaves.len(), col_leaves.len(), val_cols.len());
 
     let mut cells: Vec<Vec<Vec<Vec<FrameCell>>>> = vec![vec![vec![Vec::new(); c_n]; r_n]; v_n];
+    // Each leaf pair's source rows, for the calculated fields; permuted with `cells` by a value sort.
+    let mut srcs: Vec<Vec<Vec<usize>>> = vec![vec![Vec::new(); c_n]; if calcs.is_empty() { 0 } else { r_n }];
     {
         let row_index: FxHashMap<Vec<CellKey>, usize> =
             row_leaves.iter().enumerate().map(|(i, t)| (tuple_key(t), i)).collect();
@@ -1745,6 +1772,9 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
             if let (Some(&r), Some(&c)) = (r, c) {
                 for (v, vc) in val_cols.iter().enumerate() {
                     cells[v][r][c].push(vc.cell_at(i).clone());
+                }
+                if !calcs.is_empty() {
+                    srcs[r][c].push(i);
                 }
             }
         }
@@ -1798,6 +1828,9 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         for plane in cells.iter_mut() {
             *plane = perm.iter().map(|&r| std::mem::take(&mut plane[r])).collect();
         }
+        if !srcs.is_empty() {
+            srcs = perm.iter().map(|&r| std::mem::take(&mut srcs[r])).collect();
+        }
     }
     let col_val_sort = cs.abs() - 1.0 - col_cols.len() as f64;
     if col_val_sort >= 0.0 && col_val_sort < v_n as f64 && col_val_sort.fract() == 0.0 && c_n > 1 {
@@ -1811,6 +1844,9 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
             for row in plane.iter_mut() {
                 *row = perm.iter().map(|&c| std::mem::take(&mut row[c])).collect();
             }
+        }
+        for row in srcs.iter_mut() {
+            *row = perm.iter().map(|&c| std::mem::take(&mut row[c])).collect();
         }
     }
 
@@ -1930,7 +1966,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         if marked && c.ty != FrameColType::String {
             let values = values
                 .iter()
-                .map(|v| if v.is_null() { FrameCell::Null } else { FrameCell::str(&format_frame_cell(c.ty, v)) })
+                .map(|v| if v.is_null() { FrameCell::Null } else { FrameCell::str(&key_text(c, v)) })
                 .collect();
             out_cols.push(FrameColumn::new(key_names[k].clone(), FrameColType::String, values));
         } else {
@@ -1938,14 +1974,17 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         }
     }
 
-    let multi_val = v_n > 1;
+    // The calculated fields follow the spec's values: their names head their columns as a value's does.
+    let all_values: Vec<String> = value_names.iter().cloned().chain(calcs.iter().map(|k| k.name.clone())).collect();
+    let value_names = &all_values;
+    let multi_val = all_values.len() > 1;
     let col_header = |co: &AxisOut, v: usize| -> String {
         // Each key as its column shows it, so a date field heads its columns with dates, never serials ([[C137]]).
         let join = |t: &[FrameCell]| {
             t.iter()
                 .enumerate()
                 .map(|(k, x)| match col_cols.get(k) {
-                    Some(col) if col.ty == FrameColType::Date && !x.is_null() => format_frame_cell(col.ty, x),
+                    Some(col) if col.ty == FrameColType::Date && !x.is_null() => key_text(col, x),
                     _ => js_string(x).into_owned(),
                 })
                 .collect::<Vec<_>>()
@@ -1971,7 +2010,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let mut raw_headers = Vec::new();
     let mut body_specs: Vec<(&AxisOut, usize)> = Vec::new();
     for co in &col_out {
-        for v in 0..v_n {
+        for v in 0..all_values.len() {
             raw_headers.push(col_header(co, v));
             body_specs.push((co, v));
         }
@@ -1980,6 +2019,42 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let plans: Vec<ReadingPlan> =
         (0..v_n).map(|v| agg_unit_plan(funcs[v], val_cols[v].unit.as_deref(), Some(val_cols[v].ty))).collect();
     for (bi, (co, v)) in body_specs.iter().enumerate() {
+        if *v >= v_n {
+            let calc = &calcs[*v - v_n];
+            let srcs = &srcs;
+            let mut dates = true;
+            let mut texts = true;
+            let values: Vec<FrameCell> = row_out
+                .iter()
+                .map(|ro| {
+                    let mut at: Vec<usize> = ro
+                        .span
+                        .iter()
+                        .flat_map(|&r| co.span.iter().flat_map(move |&c| srcs[r][c].iter().copied()))
+                        .collect();
+                    if at.is_empty() {
+                        return FrameCell::Null;
+                    }
+                    at.sort_unstable();
+                    let (cell, date) = (calc.eval)(&at);
+                    if !cell.is_null() && !matches!(cell, FrameCell::Err(_)) {
+                        dates &= date;
+                        texts &= matches!(cell, FrameCell::Str(_));
+                    }
+                    cell
+                })
+                .collect();
+            let any = values.iter().any(|x| !x.is_null() && !matches!(x, FrameCell::Err(_)));
+            let ty = if any && dates {
+                FrameColType::Date
+            } else if any && texts {
+                FrameColType::String
+            } else {
+                FrameColType::Number
+            };
+            out_cols.push(FrameColumn::new(body_names[bi].clone(), ty, values));
+            continue;
+        }
         let ty = if val_cols[*v].ty == FrameColType::String && matches!(funcs[*v], AggOp::Min | AggOp::Max) {
             FrameColType::String
         } else if val_cols[*v].ty == FrameColType::Date && funcs[*v].keeps_dates() {
@@ -2012,10 +2087,12 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let mut layout = json!({
         "rowFields": row_fields,
         "rowTypes": row_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
+        "rowFormats": row_cols.iter().map(|c| c.format.as_deref().cloned().unwrap_or(Json::Null)).collect::<Vec<_>>(),
         "colFields": col_fields,
         "colTypes": col_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
+        "colFormats": col_cols.iter().map(|c| c.format.as_deref().cloned().unwrap_or(Json::Null)).collect::<Vec<_>>(),
         "values": value_names,
-        "funcs": funcs,
+        "funcs": funcs.iter().map(|f| serde_json::to_value(f).unwrap_or(Json::Null)).chain(calcs.iter().map(|_| json!("calc"))).collect::<Vec<_>>(),
         "rows": row_out
             .iter()
             .map(|ro| {
@@ -2199,26 +2276,25 @@ fn date_text_serial(s: &str) -> Option<f64> {
     }
 }
 
-fn coerce_replacement(t: FrameColType, text: &str) -> Option<FrameCell> {
+/// The replacement as a cell of the column's type; text the type can't read is written as NaN, as Frame Input reads it
+/// ([[C58]] tableInputRawText), never skipped.
+fn coerce_replacement(t: FrameColType, text: &str) -> FrameCell {
     let s = trim_space(text);
     if s.is_empty() {
-        return Some(FrameCell::Null);
+        return FrameCell::Null;
     }
     match t {
         FrameColType::Number => {
             let n = decimal_from_text(s);
-            n.is_finite().then_some(FrameCell::Num(n))
+            FrameCell::Num(if n.is_finite() { n } else { f64::NAN })
         }
-        FrameColType::Date => date_text_serial(s).map(FrameCell::Num),
-        FrameColType::Logical => {
-            let l = s.to_lowercase();
-            Some(match l.as_str() {
-                "true" | "1" => FrameCell::Bool(true),
-                "false" | "0" => FrameCell::Bool(false),
-                _ => FrameCell::Null,
-            })
-        }
-        FrameColType::String => Some(FrameCell::str(text)),
+        FrameColType::Date => FrameCell::Num(date_text_serial(s).unwrap_or(f64::NAN)),
+        FrameColType::Logical => match s.to_lowercase().as_str() {
+            "true" | "1" => FrameCell::Bool(true),
+            "false" | "0" => FrameCell::Bool(false),
+            _ => FrameCell::Num(f64::NAN),
+        },
+        FrameColType::String => FrameCell::str(text),
     }
 }
 
@@ -2271,9 +2347,7 @@ pub fn replace_values(
                     .collect();
                 return col.with_values(values);
             }
-            let Some(replacement) = coerce_replacement(col.ty, replace_with) else {
-                return col.clone();
-            };
+            let replacement = coerce_replacement(col.ty, replace_with);
             let values = col
                 .values
                 .iter()

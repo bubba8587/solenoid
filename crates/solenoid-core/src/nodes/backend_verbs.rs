@@ -8,15 +8,16 @@ use super::refs;
 use super::stats::first_raw;
 use super::verbs::{column_list, drop_nothing, flat_column, nullish, pass, plan, shown};
 use super::Cv;
-use super::{kit, list, Answer, Call, Column, Cube, Frame};
+use super::{kit, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{value_text, V};
-use crate::frame::{FrameCell, FrameValue};
+use crate::frame::{case_twin, column_not_found, FrameCell, FrameColType, FrameValue};
 use crate::frame_ref::FrameRef;
 use crate::frame_verbs::{
-    append_frames, bind_columns, compile_filter, join_frames, pivot_frame, FilterOp, JoinOpts, PivotSpec,
+    append_frames, bind_columns, compile_filter, join_frames, pivot_frame_calc, FilterOp, JoinOpts, PivotCalc,
+    PivotSpec,
 };
-use crate::jsnum::number_to_string;
+use crate::jsnum::{number_to_string, trim_space};
 use crate::string_order::compare_strings;
 use serde_json::{json, Map, Value as Json};
 use std::collections::HashSet;
@@ -57,6 +58,70 @@ fn whole(v: &Cv) -> Result<Rc<FrameValue>, V> {
     }
 }
 
+/// The columns a join adds to carry each side's row number, so a Cube's lists and tables find their rows again.
+const ROW_LEFT: &str = "\u{1}left row";
+const ROW_RIGHT: &str = "\u{1}right row";
+
+/// A join's input as the verb reads it: its flat rows, and, for a Cube (a vault folder's notes, say), the columns
+/// holding lists or tables, which ride along by a row-number column added under `tag`.
+fn join_side(v: &Cv, tag: &str) -> Result<(Rc<FrameValue>, Vec<CubeColumn>), V> {
+    let Cv::Cube(k) = v else { return Ok((whole(v)?, Vec::new())) };
+    let mut flat = flat_cube(k);
+    let nested: Vec<CubeColumn> =
+        k.columns.iter().filter(|col| !flat.columns.iter().any(|f| f.name == col.name)).cloned().collect();
+    if !nested.is_empty() {
+        let rows = k.columns.iter().map(|col| col.cells.len()).max().unwrap_or(0);
+        flat.columns.push(Column {
+            name: tag.to_string(),
+            ty: FrameColType::Number,
+            values: (0..rows).map(|i| V::Num(i as f64)).collect(),
+            unit: None,
+            format: None,
+            raw: None,
+        });
+    }
+    Ok((Rc::new(to_core(&flat)), nested))
+}
+
+/// The joined rows as a Cube with each side's lists and tables beside them, read back by the row-number columns; a
+/// row the join gave no partner is blank there.
+fn with_nested(joined: &Frame, left: &[CubeColumn], right: &[CubeColumn]) -> Cv {
+    let carried = |name: &str| name == ROW_LEFT || name == ROW_RIGHT;
+    let mut cols: Vec<CubeColumn> = joined
+        .columns
+        .iter()
+        .filter(|col| !carried(&col.name))
+        .map(|col| CubeColumn {
+            name: col.name.clone(),
+            cells: col
+                .values
+                .iter()
+                .map(|v| match &col.unit {
+                    Some(u) => Cv::V(super::frames::tag_cell_unit(v, u)),
+                    None => Cv::V(v.clone()),
+                })
+                .collect(),
+            ty: Some(col.ty),
+            format: col.format.clone(),
+        })
+        .collect();
+    for (tag, nested) in [(ROW_LEFT, left), (ROW_RIGHT, right)] {
+        let Some(at) = joined.columns.iter().find(|col| col.name == tag) else { continue };
+        for n in nested {
+            let cells = at
+                .values
+                .iter()
+                .map(|v| match v {
+                    V::Num(i) => n.cells.get(*i as usize).cloned().unwrap_or(Cv::NULL),
+                    _ => Cv::NULL,
+                })
+                .collect();
+            cols.push(CubeColumn { cells, ..n.clone() });
+        }
+    }
+    super::frames::cube_from_columns(cols)
+}
+
 /// A verb's frame as a ref planning nothing yet; its error as the answer.
 fn answered(r: Result<FrameValue, crate::error_value::SolError>) -> Cv {
     match r {
@@ -92,10 +157,14 @@ fn join(c: &mut Call) -> Answer {
         v => opts["asofTolerance"] = super::frames::to_json(v),
     }
     let out = (|| {
-        let (l, r) = (whole(&left)?, whole(&right)?);
+        let ((l, l_nested), (r, r_nested)) = (join_side(&left, ROW_LEFT)?, join_side(&right, ROW_RIGHT)?);
         let opts: JoinOpts = serde_json::from_value(opts)
             .map_err(|e| V::err(sol_error(ErrorCode::Error, format!("bad argument \"opts\": {e}"))))?;
-        Ok(answered(join_frames(&l, &r, &opts)))
+        if l_nested.is_empty() && r_nested.is_empty() {
+            return Ok(answered(join_frames(&l, &r, &opts)));
+        }
+        let joined = join_frames(&l, &r, &opts).map_err(V::err)?;
+        Ok(with_nested(&from_core(&joined), &l_nested, &r_nested))
     })();
     one("frame", out.unwrap_or_else(Cv::V))
 }
@@ -325,24 +394,51 @@ fn pivot_cell_key(v: &V) -> String {
     }
 }
 
-/// A column's first 200 distinct keys, for the editor's checklist.
-fn distinct_keys(values: &[V]) -> Vec<String> {
+/// How many of a filter field's values the editor lists, as Excel's filter list does.
+const FILTER_LIST_MAX: usize = 10_000;
+/// How many values a field not yet filtering lists: enough to start, read no further than it needs.
+const FIELD_PEEK: usize = 200;
+
+/// A field's distinct keys for the editor's checklist: a filtering field's all of them, sorted (numbers and dates by
+/// value, text by character code, the blank last) and capped at `FILTER_LIST_MAX`, with how many there are; any
+/// other field's first `FIELD_PEEK`, as found.
+fn distinct_keys(values: &[V], filtering: bool) -> (Vec<String>, usize) {
     let mut seen = HashSet::new();
-    let mut out = Vec::new();
+    let mut out: Vec<(&V, String)> = Vec::new();
     for v in values {
         let k = pivot_cell_key(v);
         if seen.insert(k.clone()) {
-            out.push(k);
-            if out.len() >= 200 {
+            out.push((v, k));
+            if !filtering && out.len() >= FIELD_PEEK {
                 break;
             }
         }
     }
-    out
+    let total = out.len();
+    if filtering {
+        let rank = |v: &V| match v {
+            V::Num(_) | V::Date(_) => 0,
+            V::Null | V::Undef => 3,
+            V::Err(_) => 2,
+            _ => 1,
+        };
+        let num = |v: &V| match v {
+            V::Num(n) | V::Date(n) => *n,
+            _ => 0.0,
+        };
+        out.sort_by(|(a, ka), (b, kb)| {
+            rank(a).cmp(&rank(b)).then_with(|| match rank(a) {
+                0 => num(a).total_cmp(&num(b)),
+                _ => compare_strings(ka, kb),
+            })
+        });
+        out.truncate(FILTER_LIST_MAX);
+    }
+    (out.into_iter().map(|(_, k)| k).collect(), total)
 }
 
-fn source_column(k: &Column, distinct: Vec<String>) -> Json {
-    json!({ "name": k.name, "type": k.ty.as_str(), "distinct": distinct })
+fn source_column(k: &Column, (distinct, total): (Vec<String>, usize)) -> Json {
+    json!({ "name": k.name, "type": k.ty.as_str(), "distinct": distinct, "distinctTotal": total })
 }
 
 /// The editor's field list, which crosses as a list where it is empty.
@@ -391,9 +487,11 @@ fn kept(c: &Call, valid: &HashSet<String>) -> Fields {
 
 /// The hidden value keys as a row mask, ANDed with the wired one.
 fn combine_filter(f: &Frame, exclude: &Map<String, Json>, wired: &V) -> Option<Vec<Option<bool>>> {
-    let active: Vec<(Vec<String>, Option<&Column>)> = exclude
+    let active: Vec<(HashSet<String>, Option<&Column>)> = exclude
         .iter()
-        .map(|(name, ks)| (names_of(Some(ks)), f.columns.iter().find(|k| &k.name == name)))
+        .map(|(name, ks)| {
+            (names_of(Some(ks)).into_iter().collect::<HashSet<_>>(), f.columns.iter().find(|k| &k.name == name))
+        })
         .filter(|(ks, _)| !ks.is_empty())
         .collect();
     let wired = match wired {
@@ -431,8 +529,131 @@ fn flat_cube(k: &Cube) -> Frame {
     Frame { columns, total_rows: None, approx: None, source: None, layout: None }
 }
 
+/// The card's calculated value fields, in socket order: each a name (blank is `Calculated N`) and the LAMBDA wired
+/// to its λ, whose parameters name the columns it reads ([[C50]] lambdaBindsByName). A row with no LAMBDA is skipped.
+fn calc_fields(c: &Call) -> Vec<(String, Rc<crate::eval::LambdaV>)> {
+    let ids: Vec<String> = c.sockets.iter().filter_map(|s| s.key.strip_prefix("calcFn").map(String::from)).collect();
+    let mut out = Vec::new();
+    for (n, id) in ids.iter().enumerate() {
+        let V::Lambda(lam) = super::stats::first(c, &format!("calcFn{id}")) else { continue };
+        let name = match str_input(c, &format!("calcName{id}"), "") {
+            V::Str(s) if !trim_space(&s).is_empty() => trim_space(&s).to_string(),
+            _ => format!("Calculated {}", n + 1),
+        };
+        out.push((name, lam));
+    }
+    out
+}
+
+/// A calculated field's answer over a cell's rows: each parameter is its column's values in those rows, a date
+/// column's as dates. `@` names this row, and a pivot cell is many rows, so the LAMBDA reads whole lists.
+fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCell, bool) {
+    let mut args = Vec::with_capacity(lam.params.len());
+    for p in &lam.params {
+        let Some(col) = f.columns.iter().find(|k| &k.name == p) else {
+            let mut msg = format!("The calculated field reads {p}, which is no column of the table");
+            if let Some(h) = case_twin(p, f.columns.iter().map(|k| k.name.as_str())) {
+                msg.push_str(&format!(". Column names are case sensitive: the table has \"{h}\""));
+            }
+            let e = sol_error(ErrorCode::Name, msg);
+            return (FrameCell::Err(Rc::new(e)), false);
+        };
+        let items =
+            V::List(rows.iter().map(|&i| col.values.get(i).cloned().unwrap_or(V::Null)).collect::<Vec<_>>().into());
+        args.push(if col.ty == FrameColType::Date { crate::date_values::wrap(&items) } else { items });
+    }
+    let v = crate::eval::Eval::default().call_lambda(lam, &args);
+    match v {
+        V::List(_) => {
+            let e = sol_error(
+                ErrorCode::Shape,
+                "A calculated field answers one value for each cell, not a list: aggregate it, as SUM(Miles) does",
+            );
+            (FrameCell::Err(Rc::new(e)), false)
+        }
+        V::Date(_) => (core_cell(&v), true),
+        other => (core_cell(&other), false),
+    }
+}
+
+/// Excel's grouped date fields: `Months (When)` is the date column `When` by month, and so for the others.
+const DATE_GROUPS: [&str; 5] = ["Years", "Quarters", "Months", "Weeks", "Days"];
+
+/// A grouped date field's grouping and source column: `Months (When)` is `("Months", "When")`.
+fn date_group_of(name: &str) -> Option<(&str, &str)> {
+    let open = name.find(" (")?;
+    let unit = &name[..open];
+    (DATE_GROUPS.contains(&unit) && name.ends_with(')') && name.len() > open + 3)
+        .then(|| (unit, &name[open + 2..name.len() - 1]))
+}
+
+/// A date column grouped: Years as the year's number, Quarters as `2026 Q1` (which sorts as text in time order),
+/// Months as the month's first day shown `Jan 2026`, Weeks as their Monday, Days as the day without its time. A
+/// blank stays blank and an error stays itself.
+fn date_group_column(unit: &str, src: &Column, name: &str) -> Column {
+    use crate::date_serial::{days_from_civil, serial_to_utc_parts};
+    let values = src
+        .values
+        .iter()
+        .map(|v| {
+            let serial = match v {
+                V::Num(n) | V::Date(n) => *n,
+                V::Err(_) => return v.clone(),
+                _ => return V::Null,
+            };
+            let Some(p) = serial_to_utc_parts(serial) else { return V::Null };
+            match unit {
+                "Years" => V::Num(p.year as f64),
+                "Quarters" => V::str(&format!("{} Q{}", p.year, (p.month - 1) / 3 + 1)),
+                "Months" => V::Num(days_from_civil(p.year, p.month, 1) as f64 + 25569.0),
+                "Weeks" => V::Num(serial.floor() - ((p.weekday + 6) % 7) as f64),
+                _ => V::Num(serial.floor()),
+            }
+        })
+        .collect();
+    let (ty, format) = match unit {
+        "Years" => (FrameColType::Number, None),
+        "Quarters" => (FrameColType::String, None),
+        "Months" => {
+            (FrameColType::Date, Some(json!({ "format": "date_custom", "customPattern": "MMM YYYY", "unit": "none" })))
+        }
+        _ => (FrameColType::Date, None),
+    };
+    Column { name: name.to_string(), ty, values, unit: None, format, raw: None }
+}
+
+/// The grouped date fields the pivot names (its rows, columns, values and filters), each added to the frame from its
+/// date column; a real column of the same name stays, and a source that is no date column groups nothing.
+fn with_date_groups(f: &Frame, names: &[String]) -> Frame {
+    let mut out = f.clone();
+    for n in names {
+        if out.columns.iter().any(|k| &k.name == n) {
+            continue;
+        }
+        let Some((unit, from)) = date_group_of(n) else { continue };
+        let Some(src) = f.columns.iter().find(|k| k.name == from && k.ty == FrameColType::Date) else { continue };
+        out.columns.push(date_group_column(unit, src, n));
+    }
+    out
+}
+
+/// Every field name the pivot reads: its rows, columns and values and its filters.
+fn named_fields(c: &Call) -> Result<Vec<String>, V> {
+    let mut names = Vec::new();
+    for key in AXES {
+        names.extend(column_list(c, key)?.unwrap_or_default());
+    }
+    if let Some(m) = c.field("filterExclude").and_then(Json::as_object) {
+        names.extend(m.keys().cloned());
+    }
+    Ok(names)
+}
+
 fn pivot(c: &mut Call) -> Answer {
     let raw = first(c, "frame");
+    let filters: HashSet<String> =
+        c.field("filterExclude").and_then(Json::as_object).map(|m| m.keys().cloned().collect()).unwrap_or_default();
+    let filtering = |name: &str| filters.contains(name);
     if let Cv::Ref(r) = &raw {
         let schema = match refs::schema(r) {
             Ok(s) => s,
@@ -446,6 +667,11 @@ fn pivot(c: &mut Call) -> Answer {
             let have: HashSet<&str> = schema.columns.iter().map(|k| k.name.as_str()).collect();
             let mut wanted: Vec<String> = Vec::new();
             let mut want = |n: String| {
+                // A grouped date field reads its date column.
+                let n = match date_group_of(&n) {
+                    Some((_, from)) if !have.contains(n.as_str()) => from.to_string(),
+                    _ => n,
+                };
                 if have.contains(n.as_str()) && !wanted.contains(&n) {
                     wanted.push(n);
                 }
@@ -471,6 +697,11 @@ fn pivot(c: &mut Call) -> Answer {
             for n in names_of(c.field("detailFields")) {
                 want(n);
             }
+            for (_, lam) in calc_fields(c) {
+                for p in &lam.params {
+                    want(p.clone());
+                }
+            }
             wanted
         };
         let mut columns = Vec::new();
@@ -486,10 +717,19 @@ fn pivot(c: &mut Call) -> Answer {
         }
         let read = Frame { columns, ..Frame::default() };
         let by_name = |name: &str| read.columns.iter().rev().find(|k| k.name == name);
+        let grouped = with_date_groups(&read, &named_fields(c)?);
+        let derived = &grouped.columns[read.columns.len()..];
         let sources = schema
             .columns
             .iter()
-            .map(|k| source_column(k, by_name(&k.name).map(|r| distinct_keys(&r.values)).unwrap_or_default()))
+            .chain(derived)
+            .map(|k| {
+                let keys = by_name(&k.name)
+                    .or_else(|| derived.iter().find(|d| d.name == k.name))
+                    .map(|r| distinct_keys(&r.values, filtering(&k.name)))
+                    .unwrap_or_default();
+                source_column(k, keys)
+            })
             .collect();
         show_sources(c, sources);
         let columns = schema
@@ -506,6 +746,8 @@ fn pivot(c: &mut Call) -> Answer {
                 })
             })
             .collect();
+        let mut columns: Vec<Column> = columns;
+        columns.extend(derived.iter().cloned());
         let slice = Rc::new(Frame { columns, ..Frame::default() });
         return pivot_over(c, Cv::Frame(slice), Some(&raw));
     }
@@ -519,7 +761,14 @@ fn pivot(c: &mut Call) -> Answer {
         }
     };
     let Cv::Frame(fr) = &f else { unreachable!() };
-    let sources = fr.columns.iter().map(|k| source_column(k, distinct_keys(&k.values))).collect();
+    let names = named_fields(c)?;
+    let f = if names.iter().any(|n| date_group_of(n).is_some()) {
+        Cv::Frame(Rc::new(with_date_groups(fr, &names)))
+    } else {
+        f
+    };
+    let Cv::Frame(fr) = &f else { unreachable!() };
+    let sources = fr.columns.iter().map(|k| source_column(k, distinct_keys(&k.values, filtering(&k.name)))).collect();
     show_sources(c, sources);
     pivot_over(c, f, None)
 }
@@ -534,12 +783,23 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
         }
     }
     let valid: HashSet<String> = names.iter().cloned().collect();
+    let names_all: Vec<&str> = names.iter().map(String::as_str).collect();
     let fields = kept(c, &valid);
     let answer = |frame: Cv| -> Answer { Ok(vec![("frame".into(), frame)]) };
     let mut lists = Vec::new();
     for key in AXES {
         match column_list(c, key)? {
-            Some(names) => lists.push(names.into_iter().filter(|n| valid.contains(n)).collect::<Vec<_>>()),
+            Some(names) => {
+                // A field kept while its column is away stays quiet; one only letter case keeps from its column is a slip.
+                if let Some(n) =
+                    names.iter().find(|n| !valid.contains(*n) && case_twin(n, names_all.iter().copied()).is_some())
+                {
+                    let e = V::err(sol_error(ErrorCode::Ref, column_not_found(n, names_all.iter().copied())));
+                    c.show("cachedResult", e.clone());
+                    return answer(Cv::V(e));
+                }
+                lists.push(names.into_iter().filter(|n| valid.contains(n)).collect::<Vec<_>>())
+            }
             None => {
                 c.show("cachedResult", V::Null);
                 return answer(Cv::NULL);
@@ -547,7 +807,8 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
         }
     }
     let [row_fields, col_fields, values] = <[Vec<String>; 3]>::try_from(lists).unwrap_or_default();
-    if values.is_empty() {
+    let calcs = calc_fields(c);
+    if values.is_empty() && calcs.is_empty() {
         if let Some(r) = source {
             return answer(plan(r, drop_nothing()));
         }
@@ -572,7 +833,14 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
         Ok(s) => s,
         Err(e) => return Err(super::frames::thrown(&e.to_string())),
     };
-    let (out, layout) = match pivot_frame(&to_core(f), &spec) {
+    let calcs: Vec<PivotCalc> = calcs
+        .iter()
+        .map(|(name, lam)| PivotCalc {
+            name: name.clone(),
+            eval: Box::new(move |rows: &[usize]| calc_cell(f, lam, rows)),
+        })
+        .collect();
+    let (out, layout) = match pivot_frame_calc(&to_core(f), &spec, &calcs) {
         Ok(r) => r,
         Err(e) => {
             let e = V::err(e);

@@ -24,9 +24,11 @@ title first) and saves a PNG cropped to the nodes. One run takes about 6 seconds
 - **Other nodes:** a node's `init` is what its constructor takes. When unsure, read the class, or copy
   a node from a seed or `tests/fixtures/*.json`. `literals` / `stringLiterals` go beside `init`.
 - **A saved graph works as is,** including the author's live canvas, `.dev/current-graph.json`.
+- **A text-form file works too** (`Name: Type key=… input<-Other.output`, the `build-graph` skill's format): it is validated
+  first, and an issue stops the run with its line.
 - **Steps run in the order given**, and every node's text prints again after them:
   `--popup [N]` opens the Nth frame chip's table and shoots only the popup (all rows, not the
-  3-row preview); `--click <css>` clicks; `--type <css> <text>` replaces a field's text;
+  3-row preview); `--click <css>` clicks, `--rclick <css>` right-clicks (a context menu); `--type <css> <text>` replaces a field's text;
   `--press <key>` presses Enter, Escape, Tab and so on, or a combo such as `Control+Shift+Equal`. `--size 390x844` runs as a phone (mobile UA, coarse pointer, touch: `--click` taps and `--drag` uses a finger), so a grip or tap can be checked under the mobile selection gating. `--drag <css> <dx> <dy>` presses the first match's center, moves by that many screen px and releases, printing every card's box before and after (a grip test: the card should grow, not move). `--drag-hold` does the same but never lets go, so the shot shows the gesture mid-way. `--full` keeps the whole viewport. `--scale 2` shoots at twice the pixel density, for an image to share.
 - **Editing a card's formula:** `--click .solenoid-expr__rendered --type .fx-editor__input '<formula>' --press Escape`
   (the popup commits on close). An Fx column: `--popup --type .table-popup__exprinput '<formula>' --press Enter`.
@@ -35,5 +37,10 @@ title first) and saves a PNG cropped to the nodes. One run takes about 6 seconds
 - **`--setting key=value`** opens with an app setting (its `settingsStore` key, a JSON value), e.g. `--setting wasmEngine=false`
   for the JavaScript engine. A button by its text: `--click "button::-p-text(Refresh)"`.
 - Read the printed text before the PNG: it often answers the question without an image.
+- **Only need the values?** `npm run -s run-graph -- <graph.json> --out <card name>` runs the same short graph with no
+  browser and prints that card's outputs as plain JSON, whole lists and tables included (`--raw` for the engine's own values) (`--set <input card>=<value>` types
+  into an input first; `-- --formula '<formula>' --set x=3` answers one formula).
+- `scripts/shot-graphs/folder-each.json` (with `--setting useDemoVault=true`) is a folder of files, each through a live
+  By-Row Composite, then stacked: the model for a Composite written by hand.
 - Save a graph worth reusing into `scripts/shot-graphs/`; keep scratch graphs and PNGs in the
   scratchpad.

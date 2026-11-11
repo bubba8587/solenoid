@@ -91,6 +91,35 @@ describe("validateGraph — semantics", () => {
     expect(issue?.message).toContain("Cast");
   });
 
+  it("names the card a guessed type meant: its words in another order, or with a word left out", () => {
+    const { issues } = validateText(`A: FrameFilterNode\nB: GroupByNode\nC: ValueInput\nD: ArithmeticNod\n---\n{}`);
+    const hint = (n: string) => issues.find((i) => i.node === n)?.message ?? "";
+    expect(hint("A")).toContain("nearest: `FilterFrameNode`");
+    expect(hint("B")).toContain("nearest: `GroupByFrameNode`");
+    expect(hint("C")).toContain("nearest: `ValueInputNode`");
+    expect(hint("D")).toContain("`ArithmeticNode`");
+  });
+
+  it("refuses an inline key that names no input, and says to cable an input that has no field", () => {
+    const { issues } = validateText(`F: FrameInputNode frameText="a,b\\n1,2"\nG: GetColumnNode str:column="a" frame<-F.frame\nT: TvmNode lit:fv=0\n---\n{}`);
+    expect(issues.find((i) => i.node === "G")?.message).toContain('GetColumnNode has no input or field named "column"');
+    expect(issues.find((i) => i.node === "G")?.message).toContain("Inputs: frame, name");
+    expect(issues.find((i) => i.node === "T")?.message).toContain("cable a Value Input into it (`fv<-Name.value`)");
+  });
+
+  it("refuses a setting written as the wrong kind of value, with the form that works", () => {
+    const { issues } = validateText(`A: ValueInputNode value=3\nS: SliderInputNode value="2"\n---\n{}`);
+    expect(issues.find((i) => i.node === "A")?.message).toContain('value on ValueInputNode is text, so write value="3"');
+    expect(issues.find((i) => i.node === "S")?.message).toContain("value on SliderInputNode is a number, so write value=2");
+    expect(hardIssues(issues)).toHaveLength(2);
+    expect(validateText(`A: ValueInputNode value="3"\nS: SliderInputNode value=2\n---\n{}`).issues).toEqual([]);
+  });
+
+  it("says how a setting is written when it was typed as an inline literal", () => {
+    const { issues } = validateText(`A: ValueInputNode lit:value=3\n---\n{}`);
+    expect(issues[0]?.message).toContain('`value` is a setting on this card: write `value="3"`');
+  });
+
   it("flags an inline literal on a class that declares no map", () => {
     const { issues } = validateText(`A: ValueInputNode value="1" lit:x=5\n---\n{}`);
     const issue = issues.find((i) => i.message.includes("lit:x"));
@@ -146,10 +175,32 @@ describe("validateGraph — semantics", () => {
     expect(issue?.message).toContain("`sum`");
   });
 
-  it("flags a bad aggregate op on GROUPBY (dropdown-only vocabulary)", () => {
-    const { issues } = validateText(`G: GroupByFrameNode op="average"\n---\n{}`);
-    const issue = issues.find((i) => i.message.includes('unknown op "average"'));
-    expect(issue?.message).toContain("Ops: sum, avg");
+  it("checks GROUPBY's aggregator in agg, the field it reads, and refuses an op it would ignore ([[C26]] opArgDistinct)", () => {
+    const bad = validateText(`G: GroupByFrameNode agg="average"\n---\n{}`).issues.find((i) => i.message.includes('unknown agg "average"'));
+    expect(bad?.message).toContain("Values: sum, avg");
+    const ignored = validateText(`G: GroupByFrameNode op="avg"\n---\n{}`).issues.find((i) => i.message.includes("has no op"));
+    expect(ignored?.message).toContain('write agg="avg"');
+    expect(validateText(`G: GroupByFrameNode agg="avg"\n---\n{}`).issues).toEqual([]);
+  });
+
+  it("builds the rows a line names without valueKeys, and reads their per-row settings", () => {
+    const { issues, graph } = validateText([
+      `F: FilterFrameNode condConfig={"0":{"op":"neq"},"1":{"op":"lt"}} str:column0="s" str:value0="done" str:column1="n" str:value1="4"`,
+      `L: ListInputNode str:v0="1,2" str:v2="4,5"`,
+      `S: SwitchNode`,
+      `---`, `{}`,
+    ].join("\n"));
+    expect(issues).toEqual([]);
+    const init = (name: string) => graph!.nodes.find((n) => n.name === name)!.init as { valueKeys?: string[] };
+    expect(init("F").valueKeys).toEqual(["frame", "column0", "value0", "column1", "value1"]);
+    expect(init("L").valueKeys).toEqual(["v0", "v2"]);
+    // A card that names nothing past its starting rows is left as written.
+    expect(init("S").valueKeys).toBeUndefined();
+  });
+
+  it("says how to wire a table into a formula", () => {
+    const { issues } = validateText(`T: FrameInputNode\nE: ExpressionNode expr="x + 1" x<-T.frame\n---\n{}`);
+    expect(issues.find((i) => i.message.includes("can't feed"))?.message).toContain("GetColumnNode");
   });
 
   it("recurses into a composite's internal subgraph", () => {

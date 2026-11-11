@@ -3,7 +3,7 @@
   { "id": "s", "type": "MathFXNode", "x": 380, "y": -120, "init": { "label": "SIN", "op": "sin" } },
   { "id": "c", "type": "MathFXNode", "x": 380, "y": 160, "init": { "label": "COS", "op": "cos" } },
   { "id": "o", "type": "TableOuterNode", "x": 760, "y": 0, "init": { "label": "Wave" } },
-  { "id": "tc", "type": "TableReshapeNode", "x": 1140, "y": 0, "init": { "label": "Wave as a list", "op": "tocol" } },
+  { "id": "tc", "type": "TableReshapeNode", "x": 1140, "y": 0, "init": { "label": "Wave as a list", "op": "torow" } },
   { "id": "r", "type": "RandArrayNode", "x": 0, "y": 480, "init": { "label": "Draws" }, "literals": { "count": 900, "min": 0, "max": 1.05 } },
   { "id": "i", "type": "MathFXNode", "x": 380, "y": 480, "init": { "label": "INT: 1 in 20 is a spike", "op": "int" } },
   { "id": "m3", "type": "ArithmeticNode", "x": 760, "y": 480, "init": { "label": "Spike height", "op": "mul" }, "literals": { "b": 3 } },

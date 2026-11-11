@@ -2,6 +2,7 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 import { confirmStore, answerConfirm } from "../confirmStore";
 import { useFocusTrap } from "./useFocusTrap";
 import "./confirmDialog.css";
+import { isEnter } from "../enterKey";
 
 /** Mounted once near the canvas root; Enter confirms, Escape / overlay-click cancels. */
 export function ConfirmDialog() {
@@ -14,7 +15,7 @@ export function ConfirmDialog() {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") { e.preventDefault(); answerConfirm(false); }
       // A focused button answers for itself, so Enter on Cancel cancels.
-      if (e.key === "Enter" && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); answerConfirm(true); }
+      if (isEnter(e) && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); answerConfirm(true); }
     }
     // Capture so it wins over the canvas's global shortcut handler.
     window.addEventListener("keydown", onKey, true);

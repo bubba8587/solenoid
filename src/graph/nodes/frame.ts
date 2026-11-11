@@ -3,7 +3,7 @@ import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { chartOut, adoptiveListOut } from "./shared";
 import type { ChartValue } from "../chartValue";
-import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, trueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, valueTypedOut, trueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { dropInputCables } from "../components/cablePrune";
@@ -37,6 +37,7 @@ import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 import { setDescribeTiles, type DescribeTile } from "../describeProfile";
+import { isDateOrder, type DateOrder } from "../dateOrder";
 
 /** A frame computation's shape: the core answers it over no rows. */
 /** Sample inputs for a card whose columns don't depend on its input's: options to score, and people who paid. */
@@ -68,13 +69,16 @@ export class FrameInputNode extends GraphNode {
   /** The same for `cardLayout`: read `activeCardLayout`. */
   cardLayoutHidden: boolean;
   lambdaKeys: string[] = [];
+  /** The order its Date columns read dates written in numbers alone by. */
+  dateOrder: DateOrder;
   // Reserves the full default card (header, both add rows, the capped preview) so Tidy never stacks a neighbor into it.
   width = 240; height = 280;
 
-  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean; cardLayoutHidden?: boolean }) {
+  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean; cardLayoutHidden?: boolean; dateOrder?: DateOrder }) {
     super("FrameInput");
     this.label = init?.label ?? "Frame Input";
     this.frameText = init?.frameText ?? "A, B\n1, 2\n3, 4";
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     this.layoutHidden = init?.layoutHidden ?? false;
     this.cardLayoutHidden = init?.cardLayoutHidden ?? false;
     if (Array.isArray(init?.lambdaKeys)) this.lambdaKeys = init.lambdaKeys.filter((k) => typeof k === "string");
@@ -319,12 +323,12 @@ export class JoinNode extends GraphNode {
     this.label = init?.label ?? "Join";
     this.how = init?.how ?? "inner";
     this.asofDirection = init?.asofDirection ?? "backward";
-    this.addInput("left", frameIn("Left"));
-    this.addInput("right", frameIn("Right"));
+    this.addInput("left", cubeAdoptIn("Left"));
+    this.addInput("right", cubeAdoptIn("Right"));
     this.addInput("leftKey", strIn("Left key"));
     this.addInput("rightKey", strIn("Right key"));
     this.addInput("tolerance", numIn("Tolerance"));
-    this.addOutput("frame", frameOut("Joined"));
+    this.addOutput("frame", tableAdoptOut("Joined"));
   }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
@@ -454,6 +458,7 @@ export class GroupByFrameNode extends GraphNode {
 export class PivotNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     filter: "One cell per source row, in order. Only rows where the mask is TRUE feed the pivot.",
+    calcFn: "A LAMBDA whose parameters name columns, such as LAMBDA(Miles, Gallons, SUM(Miles) / SUM(Gallons)). Each cell, totals included, gives each parameter that column's values in its own rows, so a ratio of sums is right at every level. @ has no row here.",
   };
 
   label: string;
@@ -472,7 +477,12 @@ export class PivotNode extends GraphNode {
   detailFields: string[] = [];
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
-  sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
+  /** The editor's field list: a filtering field's values sorted and capped at 10,000 (`distinctTotal` counts them all). */
+  sourceColumns: { name: string; type: FrameColType; distinct: string[]; distinctTotal?: number }[] = [];
+  /** Calculated value fields: a name and a LAMBDA per row (`calcName{id}`, `calcFn{id}`). */
+  nextPairId = 0;
+  readonly pairLabels: [string, string] = ["Name", "λ"];
+  readonly pairPlaceholders = ["MPG", undefined] as const;
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
   width = 220; height = 300;
 
@@ -482,6 +492,7 @@ export class PivotNode extends GraphNode {
     filterExclude?: Record<string, string[]>;
     pivotView?: Partial<PivotViewOptions>;
     detailFields?: string[];
+    valueKeys?: string[];
   }) {
     super("Pivot");
     this.pivotView = readPivotView(init?.pivotView);
@@ -500,12 +511,39 @@ export class PivotNode extends GraphNode {
     this.addInput("colFields", strListIn("Columns"));
     this.addInput("values", strListIn("Values"));
     this.addInput("filter", logicalListIn("Filter"));
+    for (const id of pairIdsFromKeys(init?.valueKeys, "calcName")) this.addPairWithId(id);
     this.addOutput("frame", frameOut("Wide"));
+  }
+
+  private addPairWithId(id: number): void {
+    this.addInput(`calcName${id}`, strIn(`Name ${id + 1}`));
+    this.addInput(`calcFn${id}`, lambdaIn(`λ ${id + 1}`));
+    this.nextPairId = Math.max(this.nextPairId, id + 1);
+  }
+
+  valuePairKeys(): Array<[string, string]> {
+    return Object.keys(this.inputs)
+      .filter((k) => k.startsWith("calcName"))
+      .map((k) => { const id = k.slice(8); return [`calcName${id}`, `calcFn${id}`] as [string, string]; });
+  }
+
+  addValuePair(): void {
+    this.addPairWithId(this.nextPairId);
+  }
+
+  removeValuePair(aKey: string): void {
+    const id = aKey.slice(8);
+    for (const k of [`calcName${id}`, `calcFn${id}`]) {
+      this.removeInput(k);
+      delete this.stringLiterals[k];
+    }
   }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
     if (!input || ctx.wired("rowFields") || ctx.wired("colFields") || ctx.wired("values")) return null;
+    // A calculated field's column is known only once it computes.
+    if (this.valuePairKeys().length) return null;
     const valid = new Set(input.columns.map((c) => c.name));
     const rowFields = csvList(this.stringLiterals.rowFields).filter((f) => valid.has(f));
     const colFields = csvList(this.stringLiterals.colFields).filter((f) => valid.has(f));
@@ -585,7 +623,8 @@ export class UnnestNode extends GraphNode {
     this.label = init?.label ?? "Unnest";
     this.addInput("cube", cubeIn("Cube"));
     this.addInput("column", strIn("Nested column"));
-    this.addOutput("frame", staticTrueAnyOut("Flat"));
+    // A Frame where the nested cells are Frames, a Cube where they nest further: known once it has run.
+    this.addOutput("frame", valueTypedOut("Flat"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | CubeValue | SolError | null } {
@@ -971,6 +1010,78 @@ export class DropBlankRowsNode extends GraphNode {
 
   data(inputs: Inputs) {
     return nodeOnCore(this, inputs) as { frame: FrameOut };
+  }
+}
+
+// ─── EDIT FRAME ────────────────────────────────────────────────────────────────
+
+/** One cell changed by hand: the key of its row (`rowKeys`), its column's name and the text typed. */
+export interface CellEdit { row: string; column: string; value: string }
+/** What an edit did on the last run (`tree/specs/computation/edit-frame.md`). */
+export type CellEditStatus = "applied" | "settled" | "stale" | "ambiguous";
+
+export class EditFrameNode extends GraphNode {
+  label: string;
+  cellEdits: CellEdit[];
+  stringLiterals: Record<string, string> = { key: "" };
+  cachedResult: FrameValue | SolError | null = null;
+  cachedEdits: FrameValue | null = null;
+  /** Each row's key, in the table's order, as the body read it. */
+  rowKeys: string[] = [];
+  /** Each saved edit's status, in `cellEdits`' order. */
+  editStatus: CellEditStatus[] = [];
+  /** The edits the table now gives on its own, as `column` and `row` joined by U+001F: they drop (`coreWatched`). */
+  settled: string[] | null = null;
+  width = 340; height = 200;
+
+  constructor(init?: { label?: string; cellEdits?: CellEdit[] }) {
+    super("EditFrame");
+    this.label = init?.label ?? "Edit Frame";
+    this.cellEdits = Array.isArray(init?.cellEdits)
+      ? init.cellEdits
+        .filter((e) => e && typeof e.row === "string" && typeof e.column === "string" && typeof e.value === "string")
+        .map((e) => ({ row: e.row, column: e.column, value: e.value }))
+      : [];
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("key", strIn("Key"));
+    this.addOutput("frame", frameOut("Frame"));
+    this.addOutput("edits", frameOut("Edits"));
+  }
+
+  frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
+    return outKey === "frame" ? ctx.inputShape("frame") : null;
+  }
+
+  /** Sets each change on the cell its row key and column name find: a new edit or a changed one. */
+  setCellEdits(changes: readonly CellEdit[]): void {
+    const next = [...this.cellEdits];
+    for (const ch of changes) {
+      const at = next.findIndex((e) => e.row === ch.row && e.column === ch.column);
+      if (at >= 0) next[at] = { ...ch };
+      else next.push({ ...ch });
+    }
+    this.cellEdits = next;
+  }
+
+  removeCellEdit(index: number): void {
+    this.cellEdits = this.cellEdits.filter((_, i) => i !== index);
+  }
+
+  static coreWatch = "settled";
+  coreWatched(): void {
+    const drop = new Set(this.settled ?? []);
+    if (drop.size === 0) return;
+    const kept = this.cellEdits.filter((e) => !drop.has(`${e.column}\u001f${e.row}`));
+    if (kept.length === this.cellEdits.length) return;
+    this.cellEdits = kept;
+    queueMicrotask(() => {
+      this.edited();
+      void getOwningView(this.id)?.rerenderNode(this.id);
+    });
+  }
+
+  data(inputs: Inputs) {
+    return nodeOnCore(this, inputs) as { frame: FrameOut; edits: FrameOut };
   }
 }
 
@@ -1518,14 +1629,17 @@ export class GetColumnNode extends GraphNode {
 
   label: string;
   readAs: GetColumnReadAs;
+  /** Read as Date's order for dates written in numbers alone. */
+  dateOrder: DateOrder;
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
   width = 200; height = 205;
 
-  constructor(init?: { label?: string; readAs?: GetColumnReadAs }) {
+  constructor(init?: { label?: string; readAs?: GetColumnReadAs; dateOrder?: DateOrder }) {
     super("GetColumn");
     this.label = init?.label ?? "Get Column";
+    this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     // Auto reads a column as its own type, so a date column comes out as dates ([[C137]] datesNeverSerials).
     this.readAs = init?.readAs ?? "auto";
     this.addInput("frame", cubeAdoptIn("Table / Cube"));

@@ -42,7 +42,7 @@ Tests: `computedColumn.test.ts` ("wired λ"): a λ's parameters bind to columns 
 
 ## List Input is not one of them
 
-This is [[C28]] literalsIffEditable. List Input's rows are typed on the card and are its only editor, and every row's values concatenate into one flat list. The card hosts no chip of its own: the value box draws the list, and its chip opens the ordinary list value popup view-only. The popup has no save callback, but it keeps the shell's resize grip, the Row / Column switcher and copy, and its Source view shows the typed items, the one thing the card hands it ([[C58]] tableInputRawText).
+This is [[C28]] literalsIffEditable. List Input's rows are typed on the card and are its only editor, and every row's values concatenate into one flat list. A gap between commas in a row (`1,,3`) is a blank item that holds its place, as a wired blank does ([[C24]] arraySemantics); a trailing comma adds nothing, and a row of only commas is empty (`list_row_items`). The card hosts no chip of its own: the value box draws the list, and its chip opens the ordinary list value popup view-only. The popup has no save callback, but it keeps the shell's resize grip, the Row / Column switcher and copy, and its Source view shows the typed items, the one thing the card hands it ([[C58]] tableInputRawText).
 
 **Reopen if:** the popup gains a save callback for it.
 

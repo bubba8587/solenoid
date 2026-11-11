@@ -3,7 +3,8 @@
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 import { readTextForm, parseNodeLine } from "./textForm";
 import { ctorRegistry } from "./nodeCtorRegistry";
-import { opVocabByCtor } from "./opVocab";
+import { opVocabByCtor, vocabFieldOf } from "./opVocab";
+import settingChoices from "./settingChoices.json";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./nodeInit";
 import { NAME_RE } from "./nodeNaming";
 import { literalFieldOf, restoreLiterals, type LiteralFieldHost } from "./literalFields";
@@ -54,6 +55,25 @@ function nearest(key: string, candidates: Iterable<string>): string {
   return best.length > 0 ? ` — nearest: ${best.join(", ")}` : "";
 }
 
+/** A class name's words, without the closing "Node": `GroupByFrameNode` is group, by, frame. */
+const typeWords = (name: string): string[] =>
+  name.split(/(?=[A-Z])/).map((w) => w.toLowerCase()).filter((w) => w !== "" && w !== "node");
+
+/** The nearest class names to a guessed one: first the classes that hold every word of the guess in any order
+ *  (`FrameFilterNode` is `FilterFrameNode`, `ValueInput` is `ValueInputNode`, `GroupByNode` is `GroupByFrameNode`),
+ *  the ones with the fewest words to spare first, then the nearest spellings. */
+function nearestType(key: string, types: Iterable<string>): string {
+  const all = [...types];
+  const want = typeWords(key);
+  const byWords = want.length === 0 ? [] : all
+    .map((c) => ({ c, words: typeWords(c) }))
+    .filter(({ words }) => want.every((w) => words.includes(w)))
+    .sort((a, b) => a.words.length - b.words.length)
+    .map(({ c }) => c);
+  if (byWords.length === 0) return nearest(key, all);
+  return ` — nearest: ${byWords.slice(0, 2).map((c) => `\`${c}\``).join(", ")}`;
+}
+
 function keyList(keys: string[]): string {
   const shown = keys.slice(0, 10);
   return shown.join(", ") + (keys.length > shown.length ? ", …" : "");
@@ -82,11 +102,25 @@ function refusalReason(outT: SocketDataType, inT: SocketDataType): string {
   if (or !== null && ir !== null && or > ir) {
     return `a wider value never narrows into a smaller input — reshape explicitly (Get Column / a list op) first`;
   }
+  if ((outT === "frame" || outT === "cube") && inT !== "frame" && inT !== "cube") {
+    return `a whole table never enters a value input: pull one column out with a GetColumnNode (out: a list), or aggregate it first`;
+  }
   return `the socket lattice refuses it (canConnect)`;
 }
 
 
 const INIT_KEY_SET = new Set<string>([...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER]);
+
+/** A card of each type as it is born, to read what kind of value each setting holds. */
+const FRESH = new Map<string, Record<string, unknown> | null>();
+function freshOf(type: string, Ctor: new () => unknown): Record<string, unknown> | null {
+  if (!FRESH.has(type)) {
+    let inst: Record<string, unknown> | null = null;
+    try { inst = new Ctor() as Record<string, unknown>; } catch { inst = null; }
+    FRESH.set(type, inst);
+  }
+  return FRESH.get(type) ?? null;
+}
 
 export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number | null): GraphIssue[] {
   const issues: GraphIssue[] = [];
@@ -112,7 +146,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
 
     const Ctor = registry.get(sn.type);
     if (!Ctor) {
-      issues.push({ line: at(name), node: name, message: `unknown node type "${sn.type}"${nearest(sn.type, registry.keys())}: the permissive loader would keep it only as a Placeholder. Types are class names (\`npm run ai-grounding\` lists them all).` });
+      issues.push({ line: at(name), node: name, message: `unknown node type "${sn.type}"${nearestType(sn.type, registry.keys())}: the permissive loader would keep it only as a Placeholder. Types are class names (\`npm run ai-grounding\` lists them all).` });
       instances.set(sn.id, null);
       continue;
     }
@@ -141,12 +175,36 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       }
     }
 
-    const opValue = sn.init?.op;
-    if (typeof opValue === "string") {
-      const vocab = opVocabByCtor().get(sn.type);
-      if (vocab && vocab.size >= 2 && !vocab.has(opValue)) {
-        issues.push({ line: at(name), node: name, message: `unknown op "${opValue}" for ${sn.type}${nearest(opValue, vocab.keys())}. Ops: ${keyList([...vocab.keys()])}.` });
-      }
+    const vocabField = vocabFieldOf(inst) ?? "op";
+    const vocab = opVocabByCtor().get(sn.type);
+    if (sn.init && "op" in sn.init && vocabField !== "op" && vocab) {
+      issues.push({ line: at(name), node: name, message: `${sn.type} has no op: write ${vocabField}=${JSON.stringify(sn.init.op)}, or this value would be silently ignored.` });
+    }
+    const opValue = sn.init?.[vocabField];
+    if (typeof opValue === "string" && vocab && vocab.size >= 2 && !vocab.has(opValue)) {
+      const what = vocabField === "op" ? "Ops" : "Values";
+      issues.push({ line: at(name), node: name, message: `unknown ${vocabField} "${opValue}" for ${sn.type}${nearest(opValue, vocab.keys())}. ${what}: ${keyList([...vocab.keys()])}.` });
+    }
+
+    // A setting typed as a fixed set of words takes only those (`scripts/setting-choices.mjs` reads them off the types).
+    const choices = (settingChoices as Record<string, Record<string, string[]>>)[sn.type] ?? {};
+    for (const [k, allowed] of Object.entries(choices)) {
+      const v = sn.init?.[k];
+      if (k === vocabField || typeof v !== "string" || allowed.includes(v)) continue;
+      issues.push({ line: at(name), node: name, message: `unknown ${k} "${v}" for ${sn.type}${nearest(v, allowed)}. Values: ${keyList(allowed)}.` });
+    }
+
+    // A setting written as the wrong kind of value (`value=3` where the card keeps text) is kept as written and then
+    // read as nothing, so it is refused here with the form that works.
+    const fresh = freshOf(sn.type, Ctor);
+    for (const [k, v] of Object.entries(sn.init ?? {})) {
+      const d = fresh?.[k];
+      const fix =
+        typeof d === "string" && (typeof v === "number" || typeof v === "boolean") ? `text, so write ${k}=${JSON.stringify(String(v))}`
+        : typeof d === "number" && typeof v === "string" ? `a number, so write ${k}=${Number.isFinite(Number(v)) && v.trim() !== "" ? Number(v) : "<number>"}`
+        : typeof d === "boolean" && (typeof v === "number" || typeof v === "string") ? `true or false, so write ${k}=true or ${k}=false`
+        : null;
+      if (fix) issues.push({ line: at(name), node: name, message: `${k}=${JSON.stringify(v)}: ${k} on ${sn.type} is ${fix}. As written it would be read as blank or 0.` });
     }
 
     const internal = sn.init?.internal as { nodes?: unknown; connections?: unknown } | undefined;
@@ -174,22 +232,46 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     const unread = (k: string, map: "lit" | "str"): void =>
       void issues.push({ line: at(name), node: name, message: `${map}:${k}: no field on ${sn.type} reads this value (its input's field is ${literalFieldOf(anyInst as unknown as LiteralFieldHost, k)}), so the loader would drop it.` });
 
+    // A value typed as `lit:` or `str:` that is one of the card's own settings: say how a setting is written, in the
+    // kind of value the card keeps it as.
+    const asSetting = (k: string, v: unknown): string => {
+      if (!([...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER] as readonly string[]).includes(k) || !(k in (anyInst as object))) return "";
+      const d = fresh?.[k];
+      const kept = typeof d === "string" ? String(v) : typeof d === "number" && Number.isFinite(Number(v)) ? Number(v) : v;
+      return ` \`${k}\` is a setting on this card: write \`${k}=${JSON.stringify(kept)}\`.`;
+    };
+    // An input with no field takes its value from a cable alone.
+    const asCable = (k: string): string =>
+      inputKeys.includes(k) ? ` \`${k}\` is an input with no field to type in: cable a Value Input into it (\`${k}<-Name.value\`).` : "";
+    // A key that names no input, and that the card isn't born holding, is read by nothing: the loader keeps it in
+    // the map (a card's own keys live there too, and a card with no inputs keeps only its own), so a misspelled input (`str:column` for Get Column's `name`) would
+    // load, compute from a blank and say nothing.
+    const strayKey = (k: string, map: "literals" | "stringLiterals"): boolean =>
+      inputKeys.length > 0 && !inputKeys.includes(k) && !(k in ((fresh?.[map] as object | undefined) ?? {})) && fresh !== null;
+    const stray = (k: string, map: "lit" | "str"): void => {
+      const own = Object.keys((fresh?.[map === "lit" ? "literals" : "stringLiterals"] as object | undefined) ?? {});
+      issues.push({ line: at(name), node: name, message: `${map}:${k}: ${sn.type} has no input or field named "${k}"${nearest(k, new Set([...inputKeys, ...own]))}, so this value would be silently ignored. Inputs: ${keyList(inputKeys)}.` });
+    };
     for (const k of Object.keys(sn.literals ?? {})) {
       if (!info.hasLiterals) {
-        issues.push({ line: at(name), node: name, message: `lit:${k}: ${sn.type} takes no inline numeric literals (it declares no \`literals\` map), so the loader would silently drop this value.` });
+        issues.push({ line: at(name), node: name, message: `lit:${k}: ${sn.type} takes no inline numeric literals (it declares no \`literals\` map), so the loader would silently drop this value.${asSetting(k, sn.literals![k]) || asCable(k)}` });
       } else if (typeof sn.literals![k] !== "number") {
         issues.push({ line: at(name), node: name, message: `lit:${k} must be a number (got ${JSON.stringify(sn.literals![k])}). Non-numeric inline values use str:.` });
       } else if (!(k in kept.lit)) {
         unread(k, "lit");
+      } else if (strayKey(k, "literals")) {
+        stray(k, "lit");
       }
     }
     for (const k of Object.keys(sn.stringLiterals ?? {})) {
       if (!info.hasStringLiterals) {
-        issues.push({ line: at(name), node: name, message: `str:${k}: ${sn.type} takes no inline text literals (it declares no \`stringLiterals\` map), so the loader would silently drop this value.` });
+        issues.push({ line: at(name), node: name, message: `str:${k}: ${sn.type} takes no inline text literals (it declares no \`stringLiterals\` map), so the loader would silently drop this value.${asSetting(k, sn.stringLiterals![k]) || asCable(k)}` });
       } else if (typeof sn.stringLiterals![k] !== "string") {
         issues.push({ line: at(name), node: name, message: `str:${k} must be a string (got ${JSON.stringify(sn.stringLiterals![k])}).` });
       } else if (!(k in kept.str)) {
         unread(k, "str");
+      } else if (strayKey(k, "stringLiterals")) {
+        stray(k, "str");
       }
     }
   }

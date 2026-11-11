@@ -23,6 +23,9 @@ fn the_leafs_worked_table() {
     assert_eq!(num("MIN(x > 5)"), 0.0);
     assert_eq!(num("MAX(x > 5)"), 1.0);
     assert_eq!(num("SUMPRODUCT(x > 5, x)"), 13.0);
+    assert_eq!(num("SUMX2PY2(x > 5, x)"), 1.0 + 36.0 + 1.0 + 49.0 + 1.0);
+    assert_eq!(num("SUMX2MY2(x, x > 5)"), 1.0 + 36.0 + 49.0 - 2.0);
+    assert_eq!(num("SUMXMY2(x, x > 5)"), 1.0 + 25.0 + 36.0);
 }
 
 #[test]

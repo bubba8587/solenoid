@@ -27,6 +27,7 @@ import { WHATS_NEW_VERSION } from "../../src/graph/helpDialogStore";
 import { WhatsNewPage } from "./WhatsNewPage";
 import { PLUGIN_NOTES } from "./pluginNotes";
 import { readSeenWhatsNew, whatsNewDue, type SeenWhatsNew } from "./whatsNew";
+import { isEnter } from "../../src/graph/enterKey";
 
 interface WidgetContext {
   app: App;
@@ -361,7 +362,7 @@ function scalarField(el: HTMLElement, kind: PropertyKind, value: unknown, ctx: W
   };
   input.addEventListener("blur", commit);
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") input.blur();
+    if (isEnter(e)) input.blur();
     if (e.key === "Escape") { input.value = settled; input.removeClass("is-invalid"); input.blur(); }
   });
   return { focus: () => input.focus() };

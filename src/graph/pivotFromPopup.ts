@@ -5,6 +5,7 @@ import { isFrameValue, type FrameValue } from "./frame";
 import { notifyGraphChanged, processGraph } from "./process";
 import { PivotNode } from "./nodeClasses";
 import { pivotEditor } from "./pivotEditorStore";
+import { pivotConfigOf, writePivotConfig } from "./pivotConfig";
 import { nodeDisplayName } from "./catalogUtils";
 import { setPivotHostAction, type PivotHost } from "./tablePopupStore";
 
@@ -24,6 +25,31 @@ function findPivotHost(hostId: string): PivotHost | null {
       notifyGraphChanged();
       await processGraph(node.id);
       return outputOf(node);
+    },
+    agg: node.agg,
+    typeOf: (field) => node.sourceColumns.find((c) => c.name === field)?.type ?? "string",
+    config: () => pivotConfigOf(node),
+    async setConfig(next) {
+      writePivotConfig(node, next);
+      notifyGraphChanged();
+      await processGraph(node.id);
+      return outputOf(node);
+    },
+    async keysOf(field) {
+      // A field lists all its values only while it filters: make it one for a pass, read them, and put it back, so a
+      // look at the list leaves no empty filter behind.
+      const added = !(field in node.filterExclude);
+      if (added) {
+        node.filterExclude = { ...node.filterExclude, [field]: [] };
+        await processGraph(node.id);
+      }
+      const col = node.sourceColumns.find((c) => c.name === field);
+      const out = { keys: col?.distinct ?? [], total: col?.distinctTotal ?? col?.distinct.length ?? 0 };
+      if (added && (node.filterExclude[field]?.length ?? 0) === 0) {
+        const { [field]: _gone, ...rest } = node.filterExclude;
+        node.filterExclude = rest;
+      }
+      return out;
     },
     editFields(onClosed, accent) {
       pivotEditor.open({ node, nodeId: node.id, title: nodeDisplayName(node), accent, onClosed: () => void processGraph(node.id).then(() => onClosed(outputOf(node))) });

@@ -1,4 +1,6 @@
 // [[C58]] tableInputRawText, [[C107]] obsidianPlugin
+import type { PivotConfig } from "./pivotConfig";
+import type { AggOp } from "./frameOps";
 import type { ComponentType } from "react";
 import { createValueStore } from "./storeKit";
 import type { SolError } from "./errorValue";
@@ -31,6 +33,11 @@ export interface TablePopupState {
   headers?: string[];
   editableHeaders?: boolean;
   columnTypes?: ("number" | "string" | "date" | "logical")[];
+  /** A read-only frame whose host can retype a column (Local File): its headers carry the type button, and a press
+   *  hands the column and the next type to the host, which recomputes and reopens the popup. */
+  onRetypeColumn?: (col: number, type: "number" | "string" | "date" | "logical") => void;
+  /** The source's date order, read where the popup turns a Date column's text into dates (a Frame Input's). */
+  dateOrder?: string;
   /** `null` where a column has no source text (a computed column). */
   sourceCells?: (string | null)[][];
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
@@ -41,6 +48,8 @@ export interface TablePopupState {
   groupColorDark?: string;
   list?: boolean;
   fixedCols?: boolean;
+  /** Cells take edits, but no row is added or removed, and the CSV view only reads (Edit Frame). */
+  fixedRows?: boolean;
   formatControls?: "columns" | "matrix";
   columnUnits?: (ColumnUnit | undefined)[];
   columnFormats?: (FormatAnnotation | undefined)[];
@@ -85,6 +94,16 @@ export interface PivotHost {
   setTotals(totals: PivotTotals): Promise<FrameValue | null>;
   /** Opens Configure Fields; `onClosed` gets the output as it then stands. */
   editFields(onClosed: (output: FrameValue | null) => void, accent?: string): void;
+  /** The card's function for a value field with none of its own. */
+  agg: AggOp;
+  /** An input column's type, by name. */
+  typeOf(field: string): string;
+  /** The card's field settings as they stand. */
+  config(): PivotConfig;
+  /** Writes the settings, recomputes the Pivot and gives its new output. */
+  setConfig(next: PivotConfig): Promise<FrameValue | null>;
+  /** Every value a field takes, sorted and up to 10,000, and how many there are, for Keep Only and the field's list. */
+  keysOf(field: string): Promise<{ keys: string[]; total: number }>;
 }
 /** Finds the Pivot node behind a host. Installed by the app; the Obsidian plugin has no graph, so its pivot views keep their options for the session. */
 interface PivotHostAction { find(hostId: string): PivotHost | null }

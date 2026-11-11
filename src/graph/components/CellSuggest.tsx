@@ -2,6 +2,7 @@ import { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type R
 import { createPortal } from "react-dom";
 import { stepListSel } from "./gridKeyboard";
 import { useHangUnder } from "./columnHeadControls";
+import { isEnter } from "../enterKey";
 
 /** What the host input's keydown asks first: true = the list took the key. */
 export interface CellSuggestHandle { onKey: (e: { key: string; preventDefault: () => void }) => boolean }
@@ -62,7 +63,7 @@ export function CellSuggest({ options, draft, onPick, handle, detail, opener = {
         setSel((s) => stepListSel(s, n, e.key === "ArrowDown" ? 1 : -1));
         return true;
       }
-      if ((e.key === "Enter" || e.key === "Tab") && sel >= 0) { e.preventDefault(); pick(items[sel]); return true; }
+      if ((isEnter(e) || e.key === "Tab") && sel >= 0) { e.preventDefault(); pick(items[sel]); return true; }
       return false;
     },
   }));

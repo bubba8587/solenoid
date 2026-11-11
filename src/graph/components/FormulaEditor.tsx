@@ -4,6 +4,7 @@ import { signatureFor, signatureParams } from "../formulaSignatures";
 import { FORMULA_INDENT, indentAt, indentFormula } from "../formulaLayout";
 import { FieldResizeGrip } from "./FieldResizeGrip";
 import "./FormulaEditor.css";
+import { isEnter } from "../enterKey";
 
 interface FormulaEditorProps {
   value: string;
@@ -173,7 +174,7 @@ export function FormulaEditor({
     if (menu) {
       if (e.key === "ArrowDown") { e.preventDefault(); setMenu({ ...menu, sel: (menu.sel + 1) % menu.items.length }); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setMenu({ ...menu, sel: (menu.sel - 1 + menu.items.length) % menu.items.length }); }
-      else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); accept(menu.items[menu.sel]); }
+      else if (isEnter(e) || e.key === "Tab") { e.preventDefault(); accept(menu.items[menu.sel]); }
       else if (e.key === "Escape") { setMenu(null); /* popup's own Esc still closes it */ }
       return;
     }
@@ -188,7 +189,7 @@ export function FormulaEditor({
     }
     // The browser's own line break is a <div> or a <br>; the text's is a newline. A new line takes the indent of the
     // brackets open before it, and Enter between brackets puts the closer on a line of its own.
-    if (e.key === "Enter") {
+    if (isEnter(e)) {
       e.preventDefault();
       const box = boxRef.current;
       const text = drawn.current ?? value;

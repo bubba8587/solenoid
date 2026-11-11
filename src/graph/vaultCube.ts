@@ -9,6 +9,7 @@ import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
 import type { PluginColumnTypes, PluginNestedTables, ColumnPicks } from "./pluginColumnTypes";
 import type { NestedTables } from "./cubeTypes";
 import { fencedLines } from "./managedBlock";
+import { readTasks, tasksCube, readTables, tablesFrame, readInlineFields } from "./noteBody";
 
 export interface VaultNote {
   path: string;
@@ -29,6 +30,14 @@ export interface VaultTypeSources {
 interface VaultCubeOptions {
   nameFormat?: string;
   includeBody?: boolean;
+  /** A `note-tasks` column: each note's checklist items as a nested table. */
+  includeTasks?: boolean;
+  /** A `note-tables` column: each note's pipe tables, stacked, as a nested table. */
+  includeTables?: boolean;
+  /** Each note's inline `key:: value` fields as property columns, beside its frontmatter's. */
+  includeFields?: boolean;
+  /** A `backlinks` column: the notes that link to each note, out of these (the whole vault's). */
+  backlinksFrom?: readonly Pick<VaultNote, "path" | "text">[];
 }
 
 const MS_PER_DAY = 86400000;
@@ -81,6 +90,40 @@ export function extractInlineTags(body: string): string[] {
   const prose = lines.filter((_, i) => !fenced[i]).join("\n").replace(/(`+)[^`]*?\1/g, " ");
   const out: string[] = [];
   for (const m of prose.matchAll(INLINE_TAG)) if (isTagBody(m[1])) out.push(m[1]);
+  return out;
+}
+
+const withoutExt = (path: string): string => path.replace(/\.md$/i, "").toLowerCase();
+
+/** The note a link's target names, as Obsidian resolves it: the note at that path, else the notes of that name or
+ *  ending in that path, the one nearest the vault root first. Null for a link to no note. */
+export function resolveLink(target: string, paths: readonly string[]): string | null {
+  const want = withoutExt(target.trim().replace(/^\/+/, ""));
+  if (want === "") return null;
+  let best: string | null = null;
+  for (const p of paths) {
+    const have = withoutExt(p);
+    if (have === want) return p;
+    if (!have.endsWith(`/${want}`)) continue;
+    const depth = (x: string) => x.split("/").length;
+    if (best === null || depth(p) < depth(best) || (depth(p) === depth(best) && p.localeCompare(best) < 0)) best = p;
+  }
+  return best;
+}
+
+/** For each of `paths`, the notes among `sources` that link to it, in path order, a note never listing itself. */
+export function backlinksOf(paths: readonly string[], sources: readonly Pick<VaultNote, "path" | "text">[]): Map<string, string[]> {
+  const all = sources.map((n) => n.path);
+  const wanted = new Set(paths);
+  const out = new Map<string, string[]>(paths.map((p) => [p, []]));
+  for (const src of [...sources].sort((a, b) => a.path.localeCompare(b.path))) {
+    const hit = new Set<string>();
+    for (const target of extractLinks(src.text)) {
+      const to = resolveLink(target, all);
+      if (to !== null && to !== src.path && wanted.has(to)) hit.add(to);
+    }
+    for (const to of hit) out.get(to)!.push(src.path);
+  }
   return out;
 }
 
@@ -172,12 +215,17 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
     const pf = parseNoteFrontmatter(n.text);
     const fields = new Map<string, { value: FrontmatterValueLoose; guessed: string }>();
     for (const f of pf.fields) fields.set(f.key, { value: f.value, guessed: f.guessed });
+    // A key the frontmatter already holds keeps the frontmatter's value.
+    if (opts.includeFields) for (const f of readInlineFields(pf.body)) if (!fields.has(f.key)) fields.set(f.key, { value: f.value, guessed: f.guessed });
     return { path: n.path, fields, body: pf.body };
   });
 
   const noteByPath = new Map(notes.map((n) => [n.path, n]));
   const builtinCells: Record<string, CubeCell[]> = Object.fromEntries(BUILTINS.map((b) => [b, []]));
   if (opts.includeBody) builtinCells.body = [];
+  const backlinks = opts.backlinksFrom ? backlinksOf(notes.map((n) => n.path), opts.backlinksFrom) : null;
+  const taskCells: CubeCell[] = [];
+  const tableCells: CubeCell[] = [];
   for (const p of parsed) {
     const note = noteByPath.get(p.path)!;
     const fmTags = p.fields.get("tags");
@@ -197,9 +245,11 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
     builtinCells.embeds.push(extractEmbeds(note.text));
     builtinCells.date.push(opts.nameFormat ? dateFromName(baseName(p.path), opts.nameFormat) : null);
     if (opts.includeBody) builtinCells.body.push(p.body);
+    if (opts.includeTasks) taskCells.push(tasksCube(readTasks(p.body, note.text.split("\n").length - p.body.split("\n").length)));
+    if (opts.includeTables) tableCells.push(tablesFrame(readTables(p.body)));
   }
 
-  const builtinNames = new Set<string>([...BUILTINS, "note-body"]);
+  const builtinNames = new Set<string>([...BUILTINS, "note-body", "note-tasks", "note-tables", "backlinks"]);
   const fmKeys: string[] = [];
   const seen = new Set<string>();
   for (const p of parsed) {
@@ -213,6 +263,9 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
   const columns: { name: string; cells: CubeCell[]; type?: FrameColType }[] = [];
   for (const b of BUILTINS) columns.push({ name: b, cells: builtinCells[b], type: colType(b) });
   if (opts.includeBody) columns.push({ name: "note-body", cells: builtinCells.body, type: "string" });
+  if (opts.includeTasks) columns.push({ name: "note-tasks", cells: taskCells });
+  if (opts.includeTables) columns.push({ name: "note-tables", cells: tableCells });
+  if (backlinks) columns.push({ name: "backlinks", cells: notes.map((n) => backlinks.get(n.path) ?? []), type: "string" });
 
   for (const key of fmKeys) {
     const hint = resolveHint(key, parsed, sources);

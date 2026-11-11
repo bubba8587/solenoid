@@ -14,6 +14,7 @@ import { stopDragStart } from "../coarse";
 import { scriptGate, allowScripts } from "../scriptGate";
 import "./ExpressionNode.css";
 import "./ScriptNode.css";
+import { isEnter } from "../enterKey";
 
 // The on-card field opens at the source's own height, between the shared 64px field
 // floor and a cap that keeps a long script from swallowing the card.
@@ -50,7 +51,7 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
-    else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.currentTarget.blur(); }
+    else if (isEnter(e) && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.currentTarget.blur(); }
   }
 
   return (

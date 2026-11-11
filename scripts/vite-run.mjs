@@ -19,4 +19,7 @@ const engine = await server.ssrLoadModule(resolve("src/graph/engineWasm.ts"));
 engine.loadWasmEngineSync(readFileSync(engine.wasmUrl));
 await server.ssrLoadModule(resolve(script));
 await server.close();
+// A pipe takes 64 KB at a time: exiting with more than that still queued cuts the output short (`… | jq` saw half a
+// document), so both streams drain first.
+await Promise.all([process.stdout, process.stderr].map((out) => new Promise((done) => out.write("", done))));
 process.exit(process.exitCode ?? 0);

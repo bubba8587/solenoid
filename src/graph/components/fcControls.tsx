@@ -11,6 +11,7 @@ import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { LazySelect } from "./LazySelect";
 import { usePendingDraft } from "../draftFlush";
 import { stopDragStart } from "../coarse";
+import { isEnter } from "../enterKey";
 
 // The FC's flow states (authored ← →, inherited → →, dictated ← ←): tree/specs/values/format-model.md.
 
@@ -258,7 +259,7 @@ export function CustomPatternField({ value, date, onCommit, className }: {
     setDraft,
     onBlur: () => { if (canceled.current) { canceled.current = false; setDraft(value); return; } commit(); },
     onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+      if (isEnter(e)) { e.preventDefault(); e.currentTarget.blur(); }
       else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
     },
   };

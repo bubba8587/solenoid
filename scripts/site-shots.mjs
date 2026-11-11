@@ -33,9 +33,23 @@ function loadGraph(src) {
   return expand(raw);
 }
 
+/** Gives a page `window.appImport(path)`: the app's own copy of a source module. After a source edit the dev server
+ *  serves changed modules under a `?t=` stamp, so a bare `import("/src/…")` would load a second, empty copy (a null
+ *  editor); this imports the address the page itself loaded. */
+async function withAppImport(page) {
+  await page.evaluateOnNewDocument(() => {
+    performance.setResourceTimingBufferSize(20000);
+    window.appImport = (path) => {
+      const loaded = performance.getEntriesByType("resource").map((e) => e.name).filter((n) => new URL(n).pathname === path);
+      return import(/* @vite-ignore */ loaded.pop() ?? path);
+    };
+  });
+}
+
 async function openGraph(browser, shot) {
   const ctx = await browser.createBrowserContext();
   const page = await ctx.newPage();
+  await withAppImport(page);
   // `zoom` is browser zoom: the same output pixels with a smaller CSS viewport, so the chrome reads larger.
   const [w, h] = shot.size ?? [1440, 900];
   const zoom = shot.zoom ?? 1;
@@ -77,7 +91,7 @@ async function openGraph(browser, shot) {
 /** Every card's and group's class, id, canvas box and label: what `frame.labels` matches against. */
 async function labels(page) {
   return page.evaluate(async () => {
-    const { getEditor, getView } = await import("/src/graph/process.ts");
+    const { getEditor, getView } = await window.appImport("/src/graph/process.ts");
     const vw = getView(), k = vw.transform.k;
     return getEditor().getNodes().map((n) => {
       const r = vw.nodeElement(n.id)?.getBoundingClientRect();
@@ -91,8 +105,11 @@ async function labels(page) {
 /** Puts the matched cards in the middle of the canvas at zoom `k`, or at the zoom that fits them inside `pad`. */
 async function frameCards(page, f) {
   return page.evaluate(async (f) => {
-    const { getEditor, getView } = await import("/src/graph/process.ts");
+    const { getEditor, getView } = await window.appImport("/src/graph/process.ts");
+    // After a source edit the dev server reloads the page once, and the editor is not up for a moment.
+    for (let i = 0; i < 100 && !(getEditor() && getView()); i++) await new Promise((r) => setTimeout(r, 100));
     const ed = getEditor(), vw = getView();
+    if (!ed || !vw) throw new Error("the app's editor did not come up within 10 s");
     const want = (f.labels ?? []).map((l) => l.toLowerCase());
     const nodes = ed.getNodes().filter((n) => {
       const l = String(n.label ?? "").toLowerCase();
@@ -188,8 +205,8 @@ async function runShot(browser, shot) {
     if (shot.expand) {
       // Collapsed groups open first, so a focus on one frames its members rather than its pill.
       await page.evaluate(async () => {
-        const { getEditor, getView } = await import("/src/graph/process.ts");
-        const { setGroupsCollapsed } = await import("/src/graph/groupPush.ts");
+        const { getEditor, getView } = await window.appImport("/src/graph/process.ts");
+        const { setGroupsCollapsed } = await window.appImport("/src/graph/groupPush.ts");
         const groups = getEditor().getNodes().filter((n) => n.constructor.name === "GroupNode" && n.collapsed);
         if (groups.length) await setGroupsCollapsed(getEditor(), getView(), groups, false);
       });
@@ -198,7 +215,7 @@ async function runShot(browser, shot) {
     if (shot.tidy) {
       // The app's own Tidy, so a hand-placed pack graph gets the canvas's spacing.
       await page.evaluate(async () => {
-        const { autoArrange } = await import("/src/graph/canvasCommands.ts");
+        const { autoArrange } = await window.appImport("/src/graph/canvasCommands.ts");
         await autoArrange({ skipConfirm: true });
       });
       await sleep(1500);
@@ -206,8 +223,8 @@ async function runShot(browser, shot) {
     if (shot.fitGroups) {
       // A hand-placed graph gives its groups rough boxes; wrap each around its painted members as the app's group fit does.
       await page.evaluate(async () => {
-        const { getEditor, getView } = await import("/src/graph/process.ts");
-        const { autofitGroupWithHistory } = await import("/src/graph/groupLogic.ts");
+        const { getEditor, getView } = await window.appImport("/src/graph/process.ts");
+        const { autofitGroupWithHistory } = await window.appImport("/src/graph/groupLogic.ts");
         for (const g of getEditor().getNodes().filter((n) => n.constructor.name === "GroupNode")) {
           await autofitGroupWithHistory(getEditor(), getView(), g);
         }
@@ -235,6 +252,7 @@ async function runShot(browser, shot) {
 /** A card is HTML laid out around raw shots (`shot("name")` gives a data URL), rendered in the app's own fonts. */
 async function runCard(browser, card) {
   const page = await browser.newPage();
+  await withAppImport(page);
   try {
     const [w, h] = card.size;
     await page.setViewport({ width: w, height: h, deviceScaleFactor: card.dpr ?? 2 });
@@ -263,10 +281,10 @@ async function runCard(browser, card) {
 
 /** In the page: a pack's own cards on an empty canvas, custom cards before formula presets, in rows of three. */
 async function buildPack({ pack: packId, max = 6 }) {
-  const { BUILTIN_PACKS } = await import("/src/graph/packs.ts");
-  const { FLAT_CATALOG, addNodeByCatalogType } = await import("/src/graph/catalogUtils.ts");
-  const { getEditor, getView, processGraph } = await import("/src/graph/process.ts");
-  const { unselectAllNodes } = await import("/src/graph/canvasCommands.ts");
+  const { BUILTIN_PACKS } = await window.appImport("/src/graph/packs.ts");
+  const { FLAT_CATALOG, addNodeByCatalogType } = await window.appImport("/src/graph/catalogUtils.ts");
+  const { getEditor, getView, processGraph } = await window.appImport("/src/graph/process.ts");
+  const { unselectAllNodes } = await window.appImport("/src/graph/canvasCommands.ts");
   const pack = BUILTIN_PACKS.find((p) => p.id === packId);
   const types = [...(pack.nodes ?? []).map((n) => n.entry.type), ...(pack.tags ?? [])];
   const isPreset = (t) => /^(ExpressionNode|EquationNode)$/.test(FLAT_CATALOG.get(t)?.create().constructor.name ?? "");
@@ -295,8 +313,8 @@ async function buildPack({ pack: packId, max = 6 }) {
 async function runThumbs(browser, only) {
   const { ctx, page } = await openGraph(browser, { graph: { nodes: [] }, settle: 500 });
   const lists = await page.evaluate(async () => {
-    const { SEED_GROUPS } = await import("/src/graph/seeds.ts");
-    const { BUILTIN_PACKS } = await import("/src/graph/packs.ts");
+    const { SEED_GROUPS } = await window.appImport("/src/graph/seeds.ts");
+    const { BUILTIN_PACKS } = await window.appImport("/src/graph/packs.ts");
     return { examples: SEED_GROUPS.flatMap((g) => g.ids), packs: BUILTIN_PACKS.map((p) => p.id) };
   });
   await ctx.close();

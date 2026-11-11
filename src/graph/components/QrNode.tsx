@@ -8,6 +8,7 @@ import { InlineInputs } from "./inlineInput";
 import { LazySelect } from "./LazySelect";
 import { stopDragStart } from "../coarse";
 import "./ConnectionNodes.css";
+import { isEnter } from "../enterKey";
 
 const stopDrag = {
   onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
@@ -26,7 +27,7 @@ function LiteralField({ node, field, placeholder }: { node: QrCodeNodeType; fiel
     <input
       className="sol-conn__url sol-placeholder-example" type="text" value={val} placeholder={placeholder} spellCheck={false}
       onChange={(e) => setVal(e.target.value)} onBlur={commit}
-      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+      onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
       onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
     />
   );

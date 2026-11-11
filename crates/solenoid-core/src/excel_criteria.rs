@@ -231,6 +231,68 @@ pub(crate) enum DateReading {
     Ambiguous(SolError),
 }
 
+/// Which number is the month when a date is written with numbers alone (`1/2/26`): Auto reads it as DATEVALUE does,
+/// `#AMBIGUOUS!` when both could be; the others say which.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum DateOrder {
+    #[default]
+    Auto,
+    Mdy,
+    Dmy,
+    Ymd,
+}
+
+impl DateOrder {
+    /// `MDY`, `DMY`, `YMD` in any case, and blank or `auto` for Auto; anything else is no order.
+    pub fn parse(s: &str) -> Option<Self> {
+        match trim_space(s).to_ascii_uppercase().as_str() {
+            "" | "AUTO" => Some(Self::Auto),
+            "MDY" => Some(Self::Mdy),
+            "DMY" => Some(Self::Dmy),
+            "YMD" => Some(Self::Ymd),
+            _ => None,
+        }
+    }
+}
+
+/// DATEVALUE's reading: Excel's date text under `order` first, then the shared reader for every other form.
+pub(crate) fn datevalue_text(t: &str, order: DateOrder) -> DateReading {
+    let t = trim_space(t);
+    match crate::excel_functions::excel_datevalue(t, order) {
+        Some(Ok(d)) => DateReading::Serial(d),
+        Some(Err(e)) => DateReading::Ambiguous(e),
+        None if order != DateOrder::Auto && numbers_alone(t) => DateReading::NotADate,
+        None => parse_date(t),
+    }
+}
+
+/// Whether the date part (before any time) is numbers and separators alone, as `1/2/26` and `01.02.2026` are.
+pub(crate) fn numbers_alone(t: &str) -> bool {
+    let date = t.split_whitespace().next().unwrap_or("");
+    date.bytes().any(|b| matches!(b, b'/' | b'-' | b'.'))
+        && date.bytes().all(|b| b.is_ascii_digit() || matches!(b, b'/' | b'-' | b'.'))
+}
+
+/// Text read as a date wherever text becomes one outside a formula (Cast to Date, a Date column, Get Column read as
+/// Date, a typed date): the shared reader, which needs a four-digit year ([[C44]] dateSerials). Under an order, a date
+/// of numbers alone takes that order (`1/2/26` as MDY is 2 January 2026), a two-digit year read as DATEVALUE reads it
+/// (author 2026-11-10: naming the order is naming the file's convention), keeping a time of day; one that doesn't fit
+/// it (`13/2/26` as MDY) is no date, never another order's reading.
+pub(crate) fn read_date_text(t: &str, order: DateOrder) -> DateReading {
+    let t = trim_space(t);
+    if order == DateOrder::Auto || !numbers_alone(t) {
+        return parse_date(t);
+    }
+    match crate::excel_functions::excel_datevalue(t, order) {
+        Some(Ok(d)) => match crate::excel_functions::time_after_date(t) {
+            Some(time) => DateReading::Serial(d + time),
+            None => DateReading::NotADate,
+        },
+        Some(Err(e)) => DateReading::Ambiguous(e),
+        _ => DateReading::NotADate,
+    }
+}
+
 fn ascii_digits(s: &[u8]) -> bool {
     s.iter().all(u8::is_ascii_digit)
 }
