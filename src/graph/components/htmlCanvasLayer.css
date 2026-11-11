@@ -2,8 +2,16 @@
 .solenoid-html-layer {
   position: absolute;
   inset: 0;
-  z-index: 2; /* above the graph + dot grid, below app chrome/overlays */
+  z-index: 0; /* the same as .react-flow and before it in the tree, so React Flow stacks above the canvas */
   pointer-events: none;
+}
+
+/* While the canvas draws, it paints the canvas color and dots itself, so React Flow's background and the DOM backing step aside. */
+.sol-hic-on > .react-flow {
+  background: transparent !important;
+}
+.sol-hic-on .sol-canvas-backing {
+  visibility: hidden !important;
 }
 
 /* Only ever at a layer's root (a card's RF wrapper, an edge's svg, a portal child): the vector snapshot reads everything below as the

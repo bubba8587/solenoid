@@ -4,6 +4,7 @@ import { Camera } from "./hicCamera";
 import { styleKey, type VShape } from "./hicVectors";
 import { packAtlas, type AtlasPlacement } from "./rasterAtlas";
 import { IS_COARSE } from "./coarse";
+import { DOT_SPACING } from "./gridSnapStore";
 
 // An imperative engine, so HMR must invalidate or a stale instance stays alive.
 if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot?.invalidate());
@@ -35,6 +36,8 @@ function mipLevel(top: number, target: number): number {
   return Math.max(0, Math.floor(Math.log2(top / Math.max(target, 1e-4))));
 }
 const PAD = 10;
+/** Where a dot sits in its tile: a pixel's center. */
+const DOT_C = (T: number) => Math.floor(T / 2) + 0.5;
 
 export interface EngineNodeSpec {
   id: string;
@@ -105,6 +108,8 @@ export class HtmlCanvasRenderer {
   private selected = new Set<string>();
   private domLive = new Set<string>();
   private selectBox: { x: number; y: number; w: number; h: number } | null = null;
+  private backing: { color: string; dot: string | null } | null = null;
+  private dotTile: { key: string; pattern: CanvasPattern } | null = null;
   private active = false;
   private live = false;
 
@@ -151,8 +156,12 @@ export class HtmlCanvasRenderer {
     this.dirty = true;
   }
 
-  setDebug(on: boolean): void {
-    this.canvas.style.opacity = on ? "0.5" : "";
+  /** The canvas color and dot color the DOM backing wears; the canvas paints them itself, since it sits under React Flow. */
+  setBacking(color: string, dot: string | null): void {
+    if (this.backing?.color === color && this.backing.dot === dot) return;
+    this.backing = { color, dot };
+    this.dotTile = null;
+    this.dirty = true;
   }
 
   setLive(on: boolean): void { if (this.live !== on) { this.live = on; this.dirty = true; } }
@@ -708,6 +717,40 @@ export class HtmlCanvasRenderer {
     }
   }
 
+  /** The backing's color, and its dots as one pattern fill: a dot of radius `zoom` at every multiple of DOT_SPACING, as
+   *  CanvasBacking draws them. The tile is a whole number of pixels and the pattern is scaled back to the exact spacing. */
+  private drawBacking(): void {
+    const { ctx, canvas, cam, bsx, bsy, backing } = this;
+    if (!backing) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = backing.color;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (!backing.dot || document.documentElement.classList.contains("perf-no-grid-dots")) return;
+    const spacing = DOT_SPACING * cam.scale * bsx;
+    if (spacing < 2) return;
+    const T = Math.max(2, Math.round(spacing));
+    const r = cam.scale * bsx * (T / spacing);
+    const key = `${T}|${r.toFixed(3)}|${backing.dot}`;
+    if (this.dotTile?.key !== key) {
+      const tile = document.createElement("canvas");
+      tile.width = T; tile.height = T;
+      const tctx = tile.getContext("2d")!;
+      tctx.fillStyle = backing.dot;
+      // On a pixel's center: on a corner, a sub-pixel dot spreads over four pixels and all but vanishes.
+      tctx.beginPath(); tctx.arc(DOT_C(T), DOT_C(T), r, 0, Math.PI * 2); tctx.fill();
+      const pattern = ctx.createPattern(tile, "repeat");
+      if (!pattern) return;
+      this.dotTile = { key, pattern };
+    }
+    const k = spacing / T, c = DOT_C(T) * k;
+    this.dotTile.pattern.setTransform(new DOMMatrix([k, 0, 0, k * (bsy / bsx), cam.tx * bsx - c, cam.ty * bsy - c * (bsy / bsx)]));
+    ctx.fillStyle = this.dotTile.pattern;
+    // Unsmoothed: the scale is within half a pixel of 1, and resampling would blur a one-pixel dot away.
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = true;
+  }
+
   /** Under the camera transform, so a stroke's world width scales with the zoom as the DOM's does. */
   private drawVector(v: VShape): void {
     const { ctx } = this;
@@ -750,6 +793,7 @@ export class HtmlCanvasRenderer {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!this.active) { this.lastFrameMs = performance.now() - t0; return; }
     const { bsx, bsy } = this;
+    this.drawBacking();
     const camCTM = () => ctx.setTransform(bsx * cam.scale, 0, 0, bsy * cam.scale, bsx * cam.tx, bsy * cam.ty);
 
     const target = this.quality * cam.scale * dpr;

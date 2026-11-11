@@ -70,6 +70,19 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
     const holdZoom = () => (window as unknown as { __hcHoldZoom?: number }).__hcHoldZoom ?? HOLD_ZOOM;
 
     const engine = new HtmlCanvasRenderer(host);
+    // The canvas sits under React Flow (htmlCanvasLayer.css): while it draws, RF's own background and the DOM backing step aside,
+    // so the muted DOM above it stays hit-testable and a live card shows over the canvas, as RF stacks a selected card.
+    const surface = host.parentElement;
+    const setEngaged = (on: boolean) => {
+      engine.setActive(on);
+      surface?.classList.toggle("sol-hic-on", on);
+    };
+    /** The backing's colors, read off the DOM backing, which the canvas paints in its place. */
+    const readBacking = () => {
+      const color = holder().querySelector(".sol-canvas-backing:not(.sol-canvas-backing__dots)");
+      const dot = holder().querySelector(".sol-canvas-backing__dots circle");
+      if (color) engine.setBacking(getComputedStyle(color).backgroundColor, dot ? getComputedStyle(dot).fill : null);
+    };
     engine.setTransformSource(() => view.transform);
     let built = false;
     // Cards move and selection rings toggle only through a new RF `nodes` array; the walk runs a few frames past one, since React writes the ring class after it.
@@ -203,6 +216,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
       const specs = collectSpecs();
       if (hidden) setHolderHidden(true);
       snapshotAllVectors();
+      readBacking();
       observe();
       if (!specs.length) return false;
       engine.setNodes(specs);
@@ -224,7 +238,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
         if (held) exitHeld();
         readSelection();
         setHolderHidden(true);
-        engine.setActive(true);
+        setEngaged(true);
       }
       clearTimeout(gestureTimer);
       gestureTimer = window.setTimeout(exitGesture, gestureZoomed ? zoomSettleMs() : PAN_SETTLE_MS);
@@ -272,11 +286,11 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
         return;
       }
       setHolderHidden(false);
-      engine.setActive(false);
+      setEngaged(false);
     };
 
     setHolderHidden(true);
-    engine.setActive(true);
+    setEngaged(true);
     gesturing = true;
     const tryBuild = () => {
       if (built) return;
@@ -368,7 +382,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
       engine.setTransform(t.k, t.x, t.y);
       const w = window as unknown as { __hcOverlay?: boolean; __hcLive?: boolean; __hcQuality?: number };
       const overlay = !!w.__hcOverlay;
-      engine.setDebug(overlay);
+      holder().style.opacity = overlay ? "0.5" : "";
       engine.setLive(!!w.__hcLive);
       if (typeof w.__hcQuality === "number" && w.__hcQuality !== lastQuality) {
         lastQuality = w.__hcQuality;
@@ -403,7 +417,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
         }
         flushVectors();
         if (held && !moved) syncLive();
-        if (overlay) { engine.setActive(true); setHolderHidden(false); }
+        if (overlay) { setEngaged(true); setHolderHidden(false); }
         // Hold while the pointer is down, or a slow pan (speed momentarily 0) settles to the DOM and flickers.
         else if (moved || (gesturing && pointerDown)) enterGesture();
       }
@@ -447,6 +461,8 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
       observer.disconnect();
       nodeObserver.disconnect();
       observedNodes?.removeEventListener(CANVAS_DRAWN, onCanvasDrawn);
+      surface?.classList.remove("sol-hic-on");
+      holder().style.opacity = "";
       engine.dispose();
     };
   }, [active, editor, view, rf]);
