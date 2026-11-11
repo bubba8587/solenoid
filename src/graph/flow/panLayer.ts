@@ -4,13 +4,10 @@ import { renderModeStore } from "../renderMode";
 
 const CLASS = "sol-pan-layer";
 
-/** A coarse pointer promotes only at or below this zoom: on the author's phone the layer helped far out and hurt close in. */
-export const COARSE_MAX_ZOOM = 0.4;
-
-/** Chromium engines only: the layer's raster and merge behavior is measured there, WebKit (WebKitGTK, Safari) rasters a layer at 1×
- *  and stretches it, and the HTML-in-Canvas mode promotes the viewport itself. A coarse pointer (a phone's GPU) only far out. */
-export function promotesPans(coarse = IS_COARSE, chromium = typeof navigator !== "undefined" && "userAgentData" in navigator, mode = renderModeStore.get(), zoom = 1): boolean {
-  return chromium && mode !== "html" && (!coarse || zoom <= COARSE_MAX_ZOOM);
+/** Chromium engines on fine pointers only: the layer's raster and merge behavior is measured there, WebKit (WebKitGTK, Safari)
+ *  rasters a layer at 1× and stretches it, a coarse pointer may be a mobile GPU, and the HTML-in-Canvas mode promotes the viewport itself. */
+export function promotesPans(coarse = IS_COARSE, chromium = typeof navigator !== "undefined" && "userAgentData" in navigator, mode = renderModeStore.get()): boolean {
+  return !coarse && chromium && mode !== "html";
 }
 
 /** A pointer drag that moves the camera: wheel and pinch zoom and programmatic moves carry no press. */
@@ -19,7 +16,7 @@ export function isPressPan(event: { type: string } | null | undefined): boolean 
 }
 
 /** One promote on the first camera move of a press pan and one demote at its end (a click on the pane moves nothing and never promotes); a zoom mid-gesture demotes for the rest of it, since a promoted layer zooms on a stale raster. */
-export function createPanLayer(viewportOf: () => HTMLElement | null | undefined, gate: (k: number) => boolean = (k) => promotesPans(undefined, undefined, undefined, k)) {
+export function createPanLayer(viewportOf: () => HTMLElement | null | undefined, gate: () => boolean = () => promotesPans()) {
   let el: HTMLElement | null = null;
   let armed = false;
   let zoom = 0;
@@ -33,7 +30,7 @@ export function createPanLayer(viewportOf: () => HTMLElement | null | undefined,
     start(event: { type: string } | null | undefined, k: number) {
       if (!isPressPan(event)) return;
       end();
-      armed = gate(k);
+      armed = gate();
       zoom = k;
     },
     move(k: number) {
