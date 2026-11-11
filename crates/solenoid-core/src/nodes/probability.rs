@@ -156,6 +156,22 @@ impl Dist<'_> {
     }
 }
 
+/// What the picture draws: the middle 99.8%, reaching a finite end of the support when that end is close, so every
+/// value a handle can take is drawn (Binomial's 0 and n, Chi-squared's 0). For a counting family, close is while the
+/// whole range still fits the picture's columns; otherwise within a quarter of the drawn width.
+fn plot_range(d: &Dist) -> Result<(f64, f64), V> {
+    let (mut a, mut b) = (d.quantile(PLOT_TAIL)?, d.quantile(1.0 - PLOT_TAIL)?);
+    let near =
+        |gap: f64, a: f64, b: f64| if d.discrete { b - a + gap < PLOT_POINTS as f64 } else { gap <= (b - a) / 4.0 };
+    if d.lo.is_finite() && near(a - d.lo, a, b) {
+        a = d.lo;
+    }
+    if d.hi.is_finite() && near(d.hi - b, a, b) {
+        b = d.hi;
+    }
+    Ok((a, b))
+}
+
 fn domain() -> V {
     err(ErrorCode::Domain, "A parameter is outside the distribution's domain")
 }
@@ -220,7 +236,7 @@ fn between_or_err(c: &mut Call) -> Result<V, V> {
     };
     let p = p.clamp(0.0, 1.0);
 
-    let (a, b) = (d.quantile(PLOT_TAIL)?, d.quantile(1.0 - PLOT_TAIL)?);
+    let (a, b) = plot_range(&d)?;
     let (xs, ys): (Vec<f64>, Vec<f64>) = if discrete {
         let count = (b - a) as usize + 1;
         let step = (count as f64 / PLOT_POINTS as f64).max(1.0);
@@ -594,6 +610,23 @@ mod tests {
         let (_, counts) = histogram(&(0..1000).map(|i| f64::from(i).sqrt()).collect::<Vec<_>>());
         assert_eq!(counts.len(), BINS);
         assert_eq!(counts.iter().sum::<f64>(), 1000.0);
+    }
+
+    fn range(op: &str, ps: &[f64], discrete: bool) -> (f64, f64) {
+        let (lo, hi) = support(op, ps);
+        plot_range(&Dist { op, ps, lo, hi, discrete }).unwrap_or((f64::NAN, f64::NAN))
+    }
+
+    #[test]
+    fn the_picture_reaches_a_near_end_of_the_support() {
+        assert_eq!(range("binom", &[10.0, 0.5], true), (0.0, 10.0));
+        let (a, b) = range("poisson", &[2.0], true);
+        assert_eq!(a, 0.0);
+        assert!(b > 6.0 && b.is_finite());
+        assert_eq!(range("beta", &[2.0, 5.0], false).0, 0.0);
+        let (a, b) = range("normal", &[0.0, 1.0], false);
+        assert!(close(a, -3.09, 0.01) && close(b, 3.09, 0.01));
+        assert!(range("gamma", &[50.0, 1.0], false).0 > 20.0);
     }
 
     #[test]

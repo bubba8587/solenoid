@@ -43,7 +43,9 @@ export function ProbabilityBetweenComponent({ data, emit }: NodeProps<Node>) {
 
   const pts = pairs(data.plotX, data.plotY);
   const bars = data.plotBars;
-  const s = scaleOf([pts], bars && pts.length > 1 ? (pts[1][0] - pts[0][0]) / 2 : 0);
+  // Room past each end, so a handle pulled to the last column or the curve's edge shows whole.
+  const span = pts.length > 1 ? pts[pts.length - 1][0] - pts[0][0] : 0;
+  const s = scaleOf([pts], (bars && pts.length > 1 ? (pts[1][0] - pts[0][0]) / 2 : 0) + span * 0.03);
   const at = (end: End): number | null => (live?.end === end ? live.v : end === "lo" ? data.shadeLo : data.shadeHi);
   const lo = at("lo") ?? -Infinity, hi = at("hi") ?? Infinity;
   const [a, b] = lo <= hi ? [lo, hi] : [hi, lo];
@@ -53,9 +55,11 @@ export function ProbabilityBetweenComponent({ data, emit }: NodeProps<Node>) {
   const edge = (end: End) => (bars ? (end === "lo" ? -0.5 : 0.5) : 0);
   const valueFrom = (clientX: number, end: End): number | null => {
     const r = stripRef.current?.getBoundingClientRect();
-    if (!r || !s) return null;
+    if (!r || !s || pts.length === 0) return null;
     const fx = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
-    return snap(valueAt(s, fx) - edge(end), s.x1 - s.x0, whole);
+    const v = valueAt(s, fx) - edge(end);
+    // The padding past each end is room to show a handle, not a value: a drag stops at the first and last drawn values.
+    return snap(Math.min(pts[pts.length - 1][0], Math.max(pts[0][0], v)), s.x1 - s.x0, whole);
   };
   const handleX = (end: End): number => {
     const v = at(end);
