@@ -27,7 +27,7 @@ const DRAW_OPTS: DrawElementImageOptions = { preserveElementGeometry: true };
 
 const REF: number = 1;
 /** Texture px per natural px a raster draws at: the clone lays out at REF, and drawElementImage re-rasters its paint at this size. */
-const RASTER = 2;
+const RASTER = 2.5;
 const MIP_MIN_PX = 6;
 const DEFAULT_QUALITY = 1.0;
 
