@@ -5,6 +5,7 @@ import { isFrameValue, type FrameValue } from "./frame";
 import { notifyGraphChanged, processGraph } from "./process";
 import { PivotNode } from "./nodeClasses";
 import { pivotEditor } from "./pivotEditorStore";
+import { pivotConfigOf, writePivotConfig } from "./pivotConfig";
 import { nodeDisplayName } from "./catalogUtils";
 import { setPivotHostAction, type PivotHost } from "./tablePopupStore";
 
@@ -24,6 +25,22 @@ function findPivotHost(hostId: string): PivotHost | null {
       notifyGraphChanged();
       await processGraph(node.id);
       return outputOf(node);
+    },
+    agg: node.agg,
+    config: () => pivotConfigOf(node),
+    async setConfig(next) {
+      writePivotConfig(node, next);
+      notifyGraphChanged();
+      await processGraph(node.id);
+      return outputOf(node);
+    },
+    async keysOf(field) {
+      // A field lists all its values once it filters: make it one (an empty list hides nothing), then read them.
+      if (!(field in node.filterExclude)) {
+        node.filterExclude = { ...node.filterExclude, [field]: [] };
+        await processGraph(node.id);
+      }
+      return node.sourceColumns.find((c) => c.name === field)?.distinct ?? [];
     },
     editFields(onClosed, accent) {
       pivotEditor.open({ node, nodeId: node.id, title: nodeDisplayName(node), accent, onClosed: () => void processGraph(node.id).then(() => onClosed(outputOf(node))) });

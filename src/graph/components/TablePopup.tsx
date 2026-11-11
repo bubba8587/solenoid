@@ -51,6 +51,7 @@ import { PivotTableView, PivotRibbon, PivotSheetButton, type PivotRibbonProps } 
 import { FittingChoice } from "./PopupChoice";
 import { DEFAULT_PIVOT_VIEW, livePivotFolds, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
 import { framePopupData } from "../valuePopup";
+import type { PivotMenuHost } from "./PivotViewMenu";
 import type { FrameValue } from "../frame";
 import { TableEditMenus, TableContextMenu, useEditShortcuts, type EditAxis } from "./TableEditMenu";
 import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex, type AxisSelection } from "../tableEdit";
@@ -1015,6 +1016,14 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     );
   } : undefined;
 
+  // The right-click menu writes the card's settings, then the popup reopens on the new output.
+  const pivotMenuHost: PivotMenuHost | undefined = host && state.pivot ? {
+    agg: host.agg,
+    config: () => host.config(),
+    apply: (next) => void host.setConfig(next).then(reopenWith),
+    keysOf: (field) => host.keysOf(field),
+  } : undefined;
+
   const pivotRibbonProps: PivotRibbonProps | null = state.pivot ? {
     layout: state.pivot,
     options: pivotOpts,
@@ -1093,6 +1102,8 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
           isErrorAt={(r, c) => isSolError(state.data[r]?.[c])}
           query={query}
           ribbon={pivotRibbonProps && <PivotRibbon {...pivotRibbonProps} />}
+          menuHost={pivotMenuHost}
+          copyText={(t) => void copyText(t)}
         />
       ) : view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">

@@ -2,12 +2,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { pivotEditor } from "../pivotEditorStore";
 import { notifyGraphChanged, processGraph } from "../process";
-import { csvList } from "../nodes/frameShapeHook";
-import { listLiteralText } from "../listLiterals";
+import { pivotConfigOf, writePivotConfig, type PivotConfig } from "../pivotConfig";
 import { caseTwin } from "../frame";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameOps";
-import { AGG_OP_META, type PivotNode } from "../nodeClasses";
+import { AGG_OP_META } from "../nodeClasses";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import "./PivotEditorPopup.css";
@@ -31,38 +30,7 @@ const TYPE_GLYPH = (t: string | undefined): ReactNode =>
   t === "number" || t === "string" || t === "date" || t === "logical" ? <TypeIcon type={t} size={10} /> : "?";
 
 type Zone = "rows" | "cols" | "vals" | "details";
-interface Cfg {
-  rows: string[]; cols: string[]; vals: string[];
-  details: string[];
-  funcs: Record<string, AggOp>;
-  rowTotalDepth: number; colTotalDepth: number; rowSort: number; colSort: number; relativeTo: number;
-  exclude: Record<string, string[]>; // field-value filter: field → hidden value keys
-}
-
-const splitNames = (s: string | undefined) => csvList(s).filter(Boolean);
-
-function cfgFromNode(node: PivotNode): Cfg {
-  return {
-    rows: splitNames(node.stringLiterals?.rowFields),
-    cols: splitNames(node.stringLiterals?.colFields),
-    vals: splitNames(node.stringLiterals?.values),
-    details: [...node.detailFields],
-    funcs: { ...node.funcs },
-    rowTotalDepth: node.rowTotalDepth, colTotalDepth: node.colTotalDepth,
-    rowSort: node.rowSort, colSort: node.colSort, relativeTo: node.relativeTo,
-    exclude: Object.fromEntries(Object.entries(node.filterExclude ?? {}).map(([k, v]) => [k, [...v]])),
-  };
-}
-function writeToNode(node: PivotNode, c: Cfg) {
-  node.stringLiterals.rowFields = listLiteralText(c.rows);
-  node.stringLiterals.colFields = listLiteralText(c.cols);
-  node.stringLiterals.values = listLiteralText(c.vals);
-  node.detailFields = c.details;
-  node.funcs = c.funcs;
-  node.rowTotalDepth = c.rowTotalDepth; node.colTotalDepth = c.colTotalDepth;
-  node.rowSort = c.rowSort; node.colSort = c.colSort; node.relativeTo = c.relativeTo;
-  node.filterExclude = c.exclude;
-}
+type Cfg = PivotConfig;
 
 /** Index is a 1-based offset into [fields…, values…]; negative ⇒ descending. */
 function sortOptions(fields: string[], values: string[]): { value: string; label: string }[] {
@@ -89,7 +57,7 @@ export function PivotEditorPopup() {
     if (!state) { initedFor.current = null; return; }
     if (initedFor.current === state) return;
     initedFor.current = state;
-    setCfg(cfgFromNode(state.node));
+    setCfg(pivotConfigOf(state.node));
   }, [state]);
 
   if (!state) return null;
@@ -107,7 +75,7 @@ export function PivotEditorPopup() {
 
   // Saved and recorded at once, not on the compute's finish, which manual calculation or an early-out pass would skip.
   function commit(next: Cfg) {
-    writeToNode(node, next);
+    writePivotConfig(node, next);
     notifyGraphChanged();
     // The field list (a new filter's values) comes back with the compute: draw again once it lands.
     void processGraph(node.id).then(() => setLanded((n) => n + 1));

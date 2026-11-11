@@ -37,6 +37,7 @@ for (let i = 0; i < argv.length; i++) {
   if (a === "--out") opt.out = argv[++i];
   else if (a === "--click") opt.steps.push({ click: argv[++i] });
   else if (a === "--click-edge") opt.steps.push({ click: argv[++i], edge: true });
+  else if (a === "--rclick") opt.steps.push({ click: argv[++i], right: true });
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
   else if (a === "--drag" || a === "--drag-hold") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]), hold: a === "--drag-hold" });
@@ -138,7 +139,7 @@ try {
       const b = await el.boundingBox();
       await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     }
-    else if (step.click) await page.click(step.click, step.edge ? { offset: { x: 5, y: 5 } } : undefined);
+    else if (step.click) await page.click(step.click, { ...(step.edge ? { offset: { x: 5, y: 5 } } : {}), ...(step.right ? { button: "right" } : {}) });
     else if (step.type) {
       await page.click(step.type);
       await page.keyboard.down("Control");

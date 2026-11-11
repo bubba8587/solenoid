@@ -11,6 +11,8 @@ import { useEscapeLayer } from "./escapeLayers";
 import { IS_COARSE } from "../coarse";
 import { APP_LOCALE } from "../locale";
 import { ColumnFormatButton } from "./columnHeadControls";
+import { PointerMenu } from "./TableEditMenu";
+import { pivotMenuSections, type PivotMenuHost, type PivotMenuTarget } from "./PivotViewMenu";
 import "./PivotTableView.css";
 
 const FORM_OPTIONS: { value: PivotForm; label: string }[] = [
@@ -179,7 +181,7 @@ function PivotDetails({ layout, item, indent }: { layout: PivotLayout; item: num
   );
 }
 
-export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt, query, ribbon }: {
+export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt, query, ribbon, menuHost, copyText }: {
   layout: PivotLayout;
   options: PivotViewOptions;
   onOptions: (next: PivotViewOptions) => void;
@@ -188,7 +190,15 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
   isErrorAt: (r: number, c: number) => boolean;
   query: string;
   ribbon: ReactNode;
+  /** The Pivot card the right-click menu edits; with none (a note's pivot) right-click is the browser's own. */
+  menuHost?: PivotMenuHost;
+  copyText?: (text: string) => void;
 }) {
+  const [menu, setMenu] = useState<{ at: { x: number; y: number }; target: PivotMenuTarget } | null>(null);
+  const onMenu = (target: PivotMenuTarget | null) => (menuHost && target ? (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMenu({ at: { x: e.clientX, y: e.clientY }, target });
+  } : undefined);
   // Which groups show their source rows is the popup's own state, never saved.
   const [openDetails, setOpenDetails] = useState<ReadonlySet<string>>(() => new Set());
   const model = buildPivotModel(layout, options, itemText(layout.rowTypes), itemText(layout.colTypes), liveDetailKeys(layout, openDetails));
@@ -226,6 +236,9 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
         scope="row"
         className={`pivot-view__label${label?.total ? " pivot-view__label--total" : ""}${compact && col === 0 ? " pivot-view__label--sticky" : ""}`}
         style={indent ? { paddingLeft: 6 + indent } : undefined}
+        onContextMenu={onMenu(label?.field !== undefined && label.key !== undefined
+          ? { kind: "item", axis: "rows", field: label.field, key: label.key, text: label.total ? label.text.replace(/ Total$/, "") : label.text }
+          : null)}
       >
         <span className="pivot-view__labelin">
           {fold && (
@@ -248,6 +261,16 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
     );
   };
 
+  const headTarget = (h: (typeof model.head)[number][number]): PivotMenuTarget | null => {
+    if ((h.role === "item" || h.role === "total") && h.field !== undefined && h.key !== undefined) {
+      return { kind: "item", axis: "cols", field: h.field, key: h.key, text: h.role === "total" ? h.text.replace(/ Total$/, "") : h.text };
+    }
+    if (h.role === "field") return { kind: "field", axis: "rows", field: h.field ?? 0 };
+    if (h.role === "caption" && layout.colFields.length) return { kind: "field", axis: "cols", field: 0 };
+    if (h.role === "value") return { kind: "value", value: layout.cols[h.col]?.value ?? 0 };
+    if (h.role === "corner" && layout.values.length === 1) return { kind: "value", value: 0 };
+    return null;
+  };
   const empty = emptyText(options.emptyAs);
   return (
     <div className="pivot-view sol-popup__view">
@@ -264,6 +287,7 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
                     rowSpan={h.rowSpan}
                     scope={h.role === "field" || h.role === "corner" ? undefined : "col"}
                     className={`pivot-view__head pivot-view__head--${h.role}${h.colSpan > 1 ? " pivot-view__head--span" : ""}${h.role === "corner" || h.role === "field" ? (compact ? " pivot-view__label--sticky" : "") : ""}`}
+                    onContextMenu={onMenu(headTarget(h))}
                   >{h.text}</th>
                 ))}
               </tr>
@@ -298,6 +322,7 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
                         <td
                           key={j}
                           className={`pivot-view__value${col.kind !== "leaf" ? " pivot-view__value--total" : ""}${options.bandedCols && j % 2 === 1 ? " pivot-view__value--band" : ""}`}
+                          onContextMenu={onMenu({ kind: "value", value: col.value, text })}
                         >
                           {err ? <span className="sol-error-chip">{text}</span> : text === "" && row.src !== null ? empty : text}
                         </td>
@@ -317,6 +342,10 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
           </tbody>
         </table>
       </div>
+      {menu && menuHost && (
+        <PointerMenu at={menu.at} label="Pivot table" onClose={() => setMenu(null)}
+          sections={pivotMenuSections({ target: menu.target, layout, host: menuHost, options, onOptions, copyText: copyText ?? (() => {}) })} />
+      )}
     </div>
   );
 }

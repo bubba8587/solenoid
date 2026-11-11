@@ -292,7 +292,14 @@ A PIVOTBY output opens on the Pivot view ([[C127]] pivotView): the frame drawn a
 
 **Totals and Fields change the Pivot.** Subtotals and Grand Totals are the node's own total depths, the same setting Configure Fields offers ([[C127]] pivotView § Consequences). Subtotals at Bottom or at Top asks PIVOTBY for a subtotal on every outer field of each axis with two or more fields; since PIVOTBY draws subtotals only beside a grand total, turning them on turns that axis's grand total on, and turning a grand total off drops that axis's subtotals (`withSubtotals`, `withGrand`). The grand total choices name what they add: Grand Totals (both), Grand Total Column (Excel's On for Rows Only) and Grand Total Row (Excel's On for Columns Only). A change recomputes the Pivot and reopens the popup on its new output. Fields closes the popup and opens Configure Fields; closing that recomputes and reopens the popup on the new output in the Pivot view.
 
-Tests: `pivotLayout.test.ts`: the Pivot view's layout, model, filter, totals, saved options and Details.
+**The right-click menu** (`PivotViewMenu.tsx`, on the shared `PointerMenu`) edits the Pivot card's own settings through the host (`config`, `setConfig`, `keysOf`, `pivotConfig.ts`), as Configure Fields would, and the popup reopens on the new output. Each label and header cell carries its field and that field's value (`PivotLabel.field`, `key`), so the menu acts on the right one.
+
+- **On an item** (a row label, a column header, a subtotal): Keep Only it (every other value of the field hidden, read with `keysOf`, which makes the field a filter so its whole value list comes back), Hide it, Clear Filter from the field; Sort the field A to Z or Z to A (Smallest to Largest, Oldest to Newest by type) or No Sort, the current one checked; Collapse All and Expand All of an outer row field (the view's folds only); Move Up, Move Down, Move to Columns or Rows, Remove; Copy the label.
+- **On a value cell or value header:** Summarize By (Sum, Count, Average, Max, Min, Median, and the field's own function when it is another; the rest are in Configure Fields), Show Values As (No Calculation or a `% of` total, which is PERCENTOF with its Relative To), Sort Rows by the value either way, Copy the cell, Remove the value field. A calculated field offers only the sort and Copy.
+- **On a field header:** the item menu without an item: Clear Filter, Sort, the field's moves.
+- A pivot with no card behind it (a note's) keeps the browser's own menu.
+
+Tests: `pivotLayout.test.ts`: the Pivot view's layout, model, filter, totals, saved options and Details. `pivotViewMenu.test.ts`: each menu line against the setting it writes.
 
 ## The Dashboard view
 

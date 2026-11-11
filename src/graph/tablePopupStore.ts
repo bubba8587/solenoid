@@ -1,4 +1,6 @@
 // [[C58]] tableInputRawText, [[C107]] obsidianPlugin
+import type { PivotConfig } from "./pivotConfig";
+import type { AggOp } from "./frameOps";
 import type { ComponentType } from "react";
 import { createValueStore } from "./storeKit";
 import type { SolError } from "./errorValue";
@@ -92,6 +94,14 @@ export interface PivotHost {
   setTotals(totals: PivotTotals): Promise<FrameValue | null>;
   /** Opens Configure Fields; `onClosed` gets the output as it then stands. */
   editFields(onClosed: (output: FrameValue | null) => void, accent?: string): void;
+  /** The card's function for a value field with none of its own. */
+  agg: AggOp;
+  /** The card's field settings as they stand. */
+  config(): PivotConfig;
+  /** Writes the settings, recomputes the Pivot and gives its new output. */
+  setConfig(next: PivotConfig): Promise<FrameValue | null>;
+  /** Every value a field takes, sorted and up to 10,000, for Keep Only. */
+  keysOf(field: string): Promise<string[]>;
 }
 /** Finds the Pivot node behind a host. Installed by the app; the Obsidian plugin has no graph, so its pivot views keep their options for the session. */
 interface PivotHostAction { find(hostId: string): PivotHost | null }
