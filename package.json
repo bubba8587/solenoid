@@ -55,7 +55,7 @@
     "@tauri-apps/plugin-opener": "^2.7.3",
     "@xyflow/react": "13.0.0-next.3",
     "@xyflow/system": "1.0.0-next.7",
-    "colord": "^2.11.0",
+    "colord": "^2.12.0",
     "dompurify": "^3.4.17",
     "elkjs": "^0.12.1",
     "katex": "^0.19.1",
@@ -83,14 +83,14 @@
     "estree-walker": "3.0.3",
     "magic-string": "1.4.5",
     "obsidian": "^1.14.4",
-    "papaparse": "^5.7.0",
+    "papaparse": "^5.7.1",
     "postcss": "8.5.32",
     "puppeteer-core": "^25.17.0",
     "rollup-plugin-license": "^3.7.2",
     "three": "0.187.0",
     "tsrs": "0.24.0-ts7.1.0-beta",
     "typescript-eslint": "^8.72.2",
-    "vite": "^8.3.7",
+    "vite": "^8.3.8",
     "vitest": "^5.1.0"
   }
 }

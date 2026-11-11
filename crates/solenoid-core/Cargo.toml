@@ -16,7 +16,7 @@ plugin = []
 [dependencies]
 interim = { path = "../vendor/interim", default-features = false, features = ["jiff_0_2"] }
 # interim reads on jiff in UTC; the bundled zone database serves IANA zones in every build (zone.rs).
-jiff = { version = "0.2.42", default-features = false, features = ["tzdb-bundle-always"] }
+jiff = { version = "0.2.43", default-features = false, features = ["tzdb-bundle-always"] }
 libm = "0.2.16"
 solenoid-schedule = { path = "../solenoid-schedule" }
 serde = { version = "1", features = ["derive"] }
