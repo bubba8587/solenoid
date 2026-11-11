@@ -663,7 +663,9 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
         match column_list(c, key)? {
             Some(names) => {
                 // A field kept while its column is away stays quiet; one only letter case keeps from its column is a slip.
-                if let Some(n) = names.iter().find(|n| !valid.contains(*n) && case_twin(n, names_all.iter().copied()).is_some()) {
+                if let Some(n) =
+                    names.iter().find(|n| !valid.contains(*n) && case_twin(n, names_all.iter().copied()).is_some())
+                {
                     let e = V::err(sol_error(ErrorCode::Ref, column_not_found(n, names_all.iter().copied())));
                     c.show("cachedResult", e.clone());
                     return answer(Cv::V(e));
