@@ -98,6 +98,7 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div
         ref={padRef}
+        className="nodrag nopan"
         style={stripStyle}
         onPointerDown={(e) => {
           e.stopPropagation();

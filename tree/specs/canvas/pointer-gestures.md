@@ -179,7 +179,7 @@ Code: `.nowheel` in `flow/flowWheel.ts` (`scrollsInDirection`), `.nokeys` in `ca
 A figure that owns its own scrolling or keyboard puts these classes on its root, so the canvas gestures stand down for a press or focus inside it.
 
 - **`.nowheel`.** `installWheelZoom` lets the wheel scroll the element instead of zooming, but only if some element between the target and the `.nowheel` root can actually scroll in the wheel's direction (`scrollsInDirection`). A `.nowheel` body with nothing to scroll still zooms.
-- **`.nodrag`.** React Flow's own class: a press there doesn't drag the node.
+- **`.nodrag`.** React Flow's own class: a press there doesn't drag the node. A control dragged inside a card (a pad, a handle, a painted grid) carries it on the element that takes the drag. React Flow's drag listens natively on the card's wrapper, which a press reaches before React's root listener, so a React `stopPropagation()` runs too late and the press would drag the card along with the control. `sourceInvariants.test.ts` fails a component that captures the pointer without `.nodrag`, apart from a named list of surfaces outside cards.
 - **`.nokeys`.** The keyboard version of `.nowheel` (`canvasKeyboard.ts`). The canvas key handler returns early for any key whose target has a `.nokeys` ancestor, so a focused grid cell's arrow keys don't nudge nodes and its letters don't open the Add menu or run Tidy. F9 still recomputes; it is the one key that stays live here, as it does under a modal, while presenting and while drilled in.
 
 The Gantt figure's tree grid (`role=treegrid`) carries all three. A chart drawn as a single `<svg>` needs none.

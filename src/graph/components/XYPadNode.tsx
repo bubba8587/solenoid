@@ -34,6 +34,7 @@ export function XYPadComponent({ data, emit }: NodeProps<XYPadNodeType>) {
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div
         ref={padRef}
+        className="nodrag nopan"
         style={{
           position: "relative",
           width: PAD,

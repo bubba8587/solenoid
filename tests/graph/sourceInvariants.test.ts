@@ -1080,3 +1080,34 @@ describe("[[B19]] spreadsheetHabits — Enter is read through isEnter, so an inp
     expect(offenders, "use isEnter(e) from src/graph/enterKey.ts").toEqual([]);
   });
 });
+
+describe("[[pointer-gestures#Opt-out classes]] — a pad dragged inside a card carries .nodrag", () => {
+  // React Flow's drag listens natively on the card's wrapper, below React's root listener, so a React
+  // stopPropagation() runs too late and the press drags the card too. `.nodrag` is the one opt-out it reads.
+  const SANCTIONED: Record<string, string> = {
+    "components/DrawnCableCapture.tsx": "the canvas's own drawing layer, not inside a card",
+    "components/DrawnCableLayer.tsx": "the canvas's own drawing layer, not inside a card",
+    "components/IsolateEndpoints.tsx": "canvas chrome around an isolated card, not inside one",
+    "components/PopupResizeGrip.tsx": "a popup outside the canvas",
+    "components/inlineInput.tsx": "the scrub is an <input>, which FlowSurface already shields",
+  };
+
+  it("every component that captures the pointer marks its surface .nodrag (or is sanctioned, with a reason)", () => {
+    const offenders = walk(path.join(SRC, "components"))
+      .filter((f) => !SANCTIONED[rel(f)])
+      .filter((f) => {
+        const src = codeLines(f).join("\n");
+        return src.includes("setPointerCapture") && !/\bnodrag\b/.test(src);
+      })
+      .map(rel);
+    expect(offenders, "add className=\"nodrag nopan\" to the element that takes the drag").toEqual([]);
+  });
+
+  it("the sanctioned list stays honest", () => {
+    for (const f of Object.keys(SANCTIONED)) {
+      const p = path.join(SRC, f);
+      expect(fs.existsSync(p), f).toBe(true);
+      expect(fs.readFileSync(p, "utf8").includes("setPointerCapture"), f).toBe(true);
+    }
+  });
+});
