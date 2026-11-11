@@ -53,6 +53,7 @@ import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DelayedPassNode, ValueInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
+import { ProbabilityBetweenNode, AbTestNode, BootstrapNode } from "./probability";
 import { SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, KpiNode } from "./visual";
 import { GanttNode } from "./gantt";
 import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
@@ -323,6 +324,7 @@ export function nodeXWide(node: GraphNode): boolean {
 
 export function nodeWide(node: GraphNode): boolean {
   if (node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof PhysicsConstantNode) return true;
+  if (node instanceof ProbabilityBetweenNode || node instanceof AbTestNode || node instanceof BootstrapNode) return true;
   if (node instanceof ExpressionNode || node instanceof ScriptNode || node instanceof EquationNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode || node instanceof ChartBuilderNode) return true;

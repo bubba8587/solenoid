@@ -354,6 +354,18 @@ const RECIPES: Recipe[] = [
       "ieFrame.frame -> ieChart.values",
     ],
   },
+  {
+    pack: "probability",
+    label: "Probability: how sure can you be?",
+    nodes: [
+      note("head", [0, 0], "Probability", "**Probability Between** shades the chance a value lands in a range: drag its handles. **A/B Test** says how likely it is that version B really converts better than A. **Bootstrap** shows how far an average of twelve deliveries could be from the true one."),
+      card("between", [c(0), 220], "ProbabilityBetweenNode"),
+      card("ab", [c(1), 220], "AbTestNode"),
+      list("days", [c(2), 220], "Delivery days", "3, 5, 4, 6, 2, 8, 5, 4, 7, 3, 5, 6"),
+      card("boot", [c(3), 220], "BootstrapNode"),
+    ],
+    cables: ["days.list -> boot.list"],
+  },
 ];
 
 function make(spec: Spec): Nodes.GraphNode {

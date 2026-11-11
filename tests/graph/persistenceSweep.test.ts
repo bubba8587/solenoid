@@ -160,6 +160,13 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    plotX: "The Probability pack's picture points as its body last showed them; the body draws them again each run",
+    plotY: "The Probability pack's picture points as its body last showed them; the body draws them again each run",
+    plotA: "A/B Test's A curve as its body last showed it; the body draws it again each run",
+    plotB: "A/B Test's B curve as its body last showed it; the body draws it again each run",
+    plotBars: "Probability Between's columns-or-curve choice for its picture, worked out again each run",
+    shadeLo: "Probability Between's shaded range as its body last read it; literals.lo holds the persisted end",
+    shadeHi: "Probability Between's shaded range as its body last read it; literals.hi holds the persisted end",
     rowKeys: "Edit Frame's row keys as its body last read them, for its popup; the body reads them again from the table each run",
     editStatus: "Edit Frame's status of each edit on the last run, for its list; the body works it out again each run",
     settled: "Edit Frame's edits its body found the table now gives, which its coreWatched drops from cellEdits",

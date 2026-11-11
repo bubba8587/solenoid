@@ -161,6 +161,15 @@ fn domain() -> V {
 }
 
 fn between(c: &mut Call) -> Answer {
+    let p = between_or_err(c).unwrap_or_else(|e| {
+        c.show("plotX", V::Null);
+        e
+    });
+    c.show("cachedResult", p.clone());
+    outs(&[("result", p)])
+}
+
+fn between_or_err(c: &mut Call) -> Result<V, V> {
     let op = c.field_str("op", "normal").to_string();
     let Some(&(_, keys, discrete)) = FAMILIES.iter().find(|f| f.0 == op) else {
         return Err(err(ErrorCode::Value, format!("Unknown distribution {op}")));
@@ -170,8 +179,8 @@ fn between(c: &mut Call) -> Answer {
         match num_of(c.read(k))? {
             Some(n) => ps.push(n),
             None => {
-                c.show("cachedResult", V::Null);
-                return outs(&[("result", V::Null)]);
+                c.show("plotX", V::Null);
+                return Ok(V::Null);
             }
         }
     }
@@ -184,7 +193,11 @@ fn between(c: &mut Call) -> Answer {
     }
     let d = Dist { op: &op, ps: &ps, lo: s_lo, hi: s_hi, discrete };
     let probe = if s_lo.is_finite() && s_hi.is_finite() {
-        if discrete { s_lo } else { (s_lo + s_hi) / 2.0 }
+        if discrete {
+            s_lo
+        } else {
+            (s_lo + s_hi) / 2.0
+        }
     } else if s_lo.is_finite() {
         s_lo + 1.0
     } else {
@@ -211,21 +224,17 @@ fn between(c: &mut Call) -> Answer {
     let (xs, ys): (Vec<f64>, Vec<f64>) = if discrete {
         let count = (b - a) as usize + 1;
         let step = (count as f64 / PLOT_POINTS as f64).max(1.0);
-        (0..count.min(PLOT_POINTS)).map(|i| (a + (i as f64 * step).floor())).map(|k| (k, d.density(k))).unzip()
+        (0..count.min(PLOT_POINTS)).map(|i| a + (i as f64 * step).floor()).map(|k| (k, d.density(k))).unzip()
     } else {
         let (a, b) = if b > a { (a, b) } else { (a - 1.0, a + 1.0) };
-        (0..PLOT_POINTS)
-            .map(|i| a + (b - a) * i as f64 / (PLOT_POINTS - 1) as f64)
-            .map(|x| (x, d.density(x)))
-            .unzip()
+        (0..PLOT_POINTS).map(|i| a + (b - a) * i as f64 / (PLOT_POINTS - 1) as f64).map(|x| (x, d.density(x))).unzip()
     };
-    c.show("cachedResult", V::Num(p));
     c.show("plotX", nums(&xs));
     c.show("plotY", nums(&ys));
-    c.show("plotBars", V::Bool(discrete && (b - a) as usize + 1 <= PLOT_POINTS));
+    c.show("plotBars", V::Bool(discrete && ((b - a) as usize) < PLOT_POINTS));
     c.show("shadeLo", bound(lo));
     c.show("shadeHi", bound(hi));
-    outs(&[("result", V::Num(p))])
+    Ok(V::Num(p))
 }
 
 // ─── A/B Test ───────────────────────────────────────────────────────────────────
@@ -315,7 +324,15 @@ impl Belief {
             .pdf
             .iter()
             .enumerate()
-            .map(|(i, p)| p * if i == 0 || i == GRID { 1.0 } else if i % 2 == 1 { 4.0 } else { 2.0 })
+            .map(|(i, p)| {
+                p * if i == 0 || i == GRID {
+                    1.0
+                } else if i % 2 == 1 {
+                    4.0
+                } else {
+                    2.0
+                }
+            })
             .collect();
         let total: f64 = w.iter().sum();
         if total > 0.0 {
@@ -351,16 +368,39 @@ fn ratio_quantile(a: &Belief, wa: &[f64], b: &Belief, wb: &[f64], q: f64) -> f64
     exp((lo + hi) / 2.0)
 }
 
-fn ab_test(c: &mut Call) -> Answer {
-    let blank = |c: &mut Call| {
-        c.show("plotX", V::Null);
-        outs(&[("chance", V::Null), ("lift", V::Null), ("low", V::Null), ("high", V::Null)])
+const AB_OUTS: [(&str, &str); 4] =
+    [("chance", "cachedChance"), ("lift", "cachedLift"), ("low", "cachedLow"), ("high", "cachedHigh")];
+const BOOT_OUTS: [(&str, &str); 3] = [("estimate", "cachedResult"), ("low", "cachedLow"), ("high", "cachedHigh")];
+
+/// Each output answered and shown on the card as its field, an error or a blank on every one, the picture cleared.
+fn answered<const N: usize>(c: &mut Call, keys: [(&str, &str); N], got: Result<Option<[f64; N]>, V>) -> Answer {
+    let vals: Vec<V> = match got {
+        Ok(Some(xs)) => xs.iter().map(|&x| V::Num(x)).collect(),
+        Ok(None) => vec![V::Null; N],
+        Err(e) => vec![e; N],
     };
+    if !matches!(vals.first(), Some(V::Num(_))) {
+        c.show("plotX", V::Null);
+    }
+    let mut out = Vec::with_capacity(N);
+    for ((key, field), v) in keys.iter().zip(vals) {
+        c.show(field, v.clone());
+        out.push((key.to_string(), Cv::from(v)));
+    }
+    Ok(out)
+}
+
+fn ab_test(c: &mut Call) -> Answer {
+    let got = ab_test_or_err(c);
+    answered(c, AB_OUTS, got)
+}
+
+fn ab_test_or_err(c: &mut Call) -> Result<Option<[f64; 4]>, V> {
     let mut got = [0.0; 4];
     for (i, k) in ["na", "ca", "nb", "cb"].iter().enumerate() {
         match num_of(c.read(k))? {
             Some(n) => got[i] = n,
-            None => return blank(c),
+            None => return Ok(None),
         }
     }
     let [na, ca, nb, cb] = got;
@@ -385,7 +425,7 @@ fn ab_test(c: &mut Call) -> Answer {
     c.show("plotX", nums(&xs));
     c.show("plotA", nums(&xs.iter().map(|&x| a.density(x)).collect::<Vec<_>>()));
     c.show("plotB", nums(&xs.iter().map(|&x| b.density(x)).collect::<Vec<_>>()));
-    outs(&[("chance", V::Num(chance)), ("lift", V::Num(lift)), ("low", V::Num(low)), ("high", V::Num(high))])
+    Ok(Some([chance, lift, low, high]))
 }
 
 // ─── Bootstrap ──────────────────────────────────────────────────────────────────
@@ -432,7 +472,34 @@ fn percentile(sorted: &[f64], q: f64) -> f64 {
     }
 }
 
+/// The resampled statistic's columns. A statistic that only takes values on a grid (a mean of whole numbers moves
+/// in steps of 1/n) gets a column per step, since equal bins that don't line up with the steps would leave gaps.
+fn histogram(sorted: &[f64]) -> (Vec<f64>, Vec<f64>) {
+    let (first, last) = (sorted[0], sorted[sorted.len() - 1]);
+    let span = last - first;
+    if !(span > 0.0) {
+        return (vec![first], vec![sorted.len() as f64]);
+    }
+    let tiny = span * 1e-9;
+    let gap = sorted.windows(2).map(|w| w[1] - w[0]).filter(|&d| d > tiny).fold(f64::INFINITY, f64::min);
+    let (width, bins, origin) = if span / gap <= (2 * BINS) as f64 {
+        (gap, (span / gap).round() as usize + 1, first - gap / 2.0)
+    } else {
+        (span / BINS as f64, BINS, first)
+    };
+    let mut counts = vec![0.0; bins];
+    for s in sorted {
+        counts[(((s - origin) / width).max(0.0) as usize).min(bins - 1)] += 1.0;
+    }
+    ((0..bins).map(|i| origin + width * (i as f64 + 0.5)).collect(), counts)
+}
+
 fn bootstrap(c: &mut Call) -> Answer {
+    let got = bootstrap_or_err(c);
+    answered(c, BOOT_OUTS, got)
+}
+
+fn bootstrap_or_err(c: &mut Call) -> Result<Option<[f64; 3]>, V> {
     let op = c.field_str("op", "mean").to_string();
     let raw = c.read("list");
     if raw.is_sol_error() {
@@ -447,12 +514,8 @@ fn bootstrap(c: &mut Call) -> Answer {
         return Err(e.clone());
     }
     let xs: Vec<f64> = items.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect();
-    let none = |c: &mut Call| {
-        c.show("plotX", V::Null);
-        outs(&[("estimate", V::Null), ("low", V::Null), ("high", V::Null)])
-    };
     if xs.is_empty() {
-        return none(c);
+        return Ok(None);
     }
     if xs.len() < 2 {
         return Err(err(ErrorCode::DivZero, "One value has no spread to resample"));
@@ -472,23 +535,10 @@ fn bootstrap(c: &mut Call) -> Answer {
     stats.sort_by(f64::total_cmp);
     let (low, high) = (percentile(&stats, 0.025), percentile(&stats, 0.975));
 
-    let (first, last) = (stats[0], stats[stats.len() - 1]);
-    let width = (last - first) / BINS as f64;
-    let (centers, counts): (Vec<f64>, Vec<f64>) = if width > 0.0 {
-        let mut counts = vec![0.0; BINS];
-        for s in &stats {
-            counts[(((s - first) / width) as usize).min(BINS - 1)] += 1.0;
-        }
-        ((0..BINS).map(|i| first + width * (i as f64 + 0.5)).collect(), counts)
-    } else {
-        (vec![first], vec![stats.len() as f64])
-    };
+    let (centers, counts) = histogram(&stats);
     c.show("plotX", nums(&centers));
     c.show("plotY", nums(&counts));
-    c.show("shadeLo", V::Num(low));
-    c.show("shadeHi", V::Num(high));
-    c.show("cachedResult", V::Num(estimate));
-    outs(&[("estimate", V::Num(estimate)), ("low", V::Num(low)), ("high", V::Num(high))])
+    Ok(Some([estimate, low, high]))
 }
 
 #[cfg(test)]
@@ -531,8 +581,19 @@ mod tests {
             let (wa, wb) = (a.weights(), b.weights());
             let got = 1.0 - ratio_cdf(&a, &wa, &b, &wb, 1.0);
             let want = exact_b_beats_a(1.0 + ca, 1.0 + na - ca, 1.0 + cb, 1.0 + nb - cb);
-            assert!(close(got, want, 2e-4), "{na} {ca} {nb} {cb}: {got} vs {want}");
+            assert!(close(got, want, 1e-5), "{na} {ca} {nb} {cb}: {got} vs {want}");
         }
+    }
+
+    #[test]
+    fn a_stepped_statistic_gets_a_column_per_step() {
+        let means: Vec<f64> = [3.0, 3.0, 4.0, 5.0, 5.0, 5.0, 7.0].iter().map(|x| x / 12.0).collect();
+        let (centers, counts) = histogram(&means);
+        assert_eq!(counts, vec![2.0, 1.0, 3.0, 0.0, 1.0]);
+        assert!(close(centers[0], 3.0 / 12.0, 1e-12));
+        let (_, counts) = histogram(&(0..1000).map(|i| f64::from(i).sqrt()).collect::<Vec<_>>());
+        assert_eq!(counts.len(), BINS);
+        assert_eq!(counts.iter().sum::<f64>(), 1000.0);
     }
 
     #[test]

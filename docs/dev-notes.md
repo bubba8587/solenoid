@@ -6,6 +6,20 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-11c: the Probability pack, pads that dragged their card; cloud session)
+- New pack, Probability (off by default, Analysis): Probability Between, A/B Test, Bootstrap, each drawing the
+  distribution behind its answer (`tree/specs/computation/probability-pack.md`). A/B Test integrates Beta beliefs
+  rather than sampling: B beats A matches Evan Miller's closed form to 10⁻⁵ (Rust tests), the lift interval matched
+  200k Monte Carlo draws. Bootstrap's resampling seed is fixed so the interval never moves on recalculation.
+  Probabilities and lifts author a `percent` format (`annotationFor`): shown 92.45%, computed as 0.9245.
+- Pads dragged their whole card (Curve, XY Pad, Point Plotter, Grid Painter): React Flow's d3-drag listens natively on
+  the card wrapper, below React's root, so a React `stopPropagation()` is too late. They now carry `.nodrag nopan`, and
+  `sourceInvariants.test.ts` fails a component that captures the pointer without it
+  (`tree/specs/canvas/pointer-gestures.md` § Opt-out classes). Angle Dial was immune only because it `preventDefault`s pointerdown.
+- Seen, not touched: `scripts/gen-pack-seeds.test.ts` rewrites every pack seed with a `dateOrder: ""` field the
+  committed seeds lack; the other seeds were left as committed. Recipes number the seed menu by position, so a new
+  pack's recipe goes last.
+
 ### SESSION DIGEST (2026-11-11b: Solenoid 1.6.1, Solenoid Properties 0.1.11; cloud session)
 - Released from `develop`: `main` at `342cb77be`, versions 1.6.1 by `scripts/release-version.mjs`, which also froze the
   cards' `NEXT_RELEASE` marks and moved the guess to 1.7 (`src/graph/release.ts`). Tags are the author's: `v1.6.1` on

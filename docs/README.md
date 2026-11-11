@@ -124,6 +124,7 @@ results get retried and settled rulings relapse.
 | `nodeExcel.ts`, `excelSections.ts`, `formulaCards.ts`, `catalogTags.ts` | `../tree/specs/computation/excel-divergences.md` § The parity mark; `../tree/specs/canvas/add-menu.md` (tags); [[B16]] oneFormulaSurface |
 | `emptySlots.ts`, `crates/solenoid-core/data/call_traits.json` (`blanks`) | `../tree/specs/values/input-roles.md` § Empty slots, § Placeholders; [[D96]] emptySlotShowsItsValue |
 | `nodes/equation.ts`, `crates/solenoid-core/src/nodes/formula.rs` (Equation) | [[C47]] equationNode; `../tree/specs/computation/equation-solver.md` |
+| `nodes/probability.ts`, `packs/probability.ts`, `crates/solenoid-core/src/nodes/probability.rs`, `components/ProbabilityBetweenNode.tsx`, `AbTestNode.tsx`, `BootstrapNode.tsx`, `probabilityPlot.tsx` | `../tree/specs/computation/probability-pack.md`; [[B15]] leanCore |
 | `semanticZoomStore.ts` | [[A1]] visualGraphCalculator; `../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom |
 | `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[A1]] visualGraphCalculator |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; `../tree/specs/canvas/pointer-gestures.md` |

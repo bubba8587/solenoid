@@ -56,3 +56,4 @@ export * from "./nodes/unitCircle";
 export * from "./nodes/geometryFigures";
 export * from "./nodes/tornado";
 export * from "./nodes/composite";
+export * from "./nodes/probability";

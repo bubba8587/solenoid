@@ -28,6 +28,7 @@ mod list;
 mod logic;
 mod matrix;
 pub(crate) mod packs;
+mod probability;
 pub mod qr;
 pub mod refs;
 mod scalar;
@@ -395,6 +396,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| list::run(kind, c))
         .or_else(|| matrix::run(kind, c))
         .or_else(|| packs::run(kind, c))
+        .or_else(|| probability::run(kind, c))
         .or_else(|| geometry::run(kind, c))
         .or_else(|| visual::run(kind, c))
         .or_else(|| widgets::run(kind, c))
@@ -413,6 +415,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 /// The classes whose `data()` is their body here and nothing else (for `OFF_CORE`, that and handing on what the core
 /// can't hold), which the graph calls in Rust with no JavaScript in between (graph-core.md § Direct calls); `directBodies.test.ts` holds the list to the classes' source.
 pub const DIRECT: &[&str] = &[
+    "AbTestNode",
     "AccruedInterestNode",
     "AddColumnNode",
     "AddIndexNode",
@@ -435,6 +438,7 @@ pub const DIRECT: &[&str] = &[
     "BitwiseNode",
     "BondPricingNode",
     "BooleanOpNode",
+    "BootstrapNode",
     "BoxplotNode",
     "BuildCubeNode",
     "BuildFrameNode",
@@ -604,6 +608,7 @@ pub const DIRECT: &[&str] = &[
     "PolyfitNode",
     "PolygonPointsNode",
     "ProbNode",
+    "ProbabilityBetweenNode",
     "PromoNode",
     "ProportionNode",
     "QrCodeNode",

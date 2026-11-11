@@ -141,6 +141,13 @@
    "xor"
   ]
  },
+ "BootstrapNode": {
+  "op": [
+   "mean",
+   "median",
+   "stdev"
+  ]
+ },
  "ByAxisNode": {
   "castTo": [
    "date",
@@ -1223,6 +1230,23 @@
    "sum",
    "var",
    "varp"
+  ]
+ },
+ "ProbabilityBetweenNode": {
+  "op": [
+   "beta",
+   "binom",
+   "chisq",
+   "expon",
+   "f",
+   "gamma",
+   "hypgeom",
+   "lognorm",
+   "negbinom",
+   "normal",
+   "poisson",
+   "t",
+   "weibull"
   ]
  },
  "ProportionNode": {

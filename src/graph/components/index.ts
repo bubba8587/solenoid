@@ -170,6 +170,9 @@ export { DistributionsComponent } from "./DistributionsNode";
 export { BinomDistRangeComponent } from "./BinomDistRangeNode";
 
 export { HypothesisTestComponent } from "./HypothesisTestNode";
+export { ProbabilityBetweenComponent } from "./ProbabilityBetweenNode";
+export { AbTestComponent } from "./AbTestNode";
+export { BootstrapComponent } from "./BootstrapNode";
 
 export { InterpolateComponent } from "./InterpolateNode";
 export { LinestComponent } from "./LinestNode";
