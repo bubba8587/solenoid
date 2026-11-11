@@ -1,7 +1,8 @@
 // [[B11]], [[C26]], [[B16]] oneFormulaSurface, [[node-classes#Formula registrations and op modules]]
 import { describe, it, expect } from "vitest";
 import { NODE_OPS, opsFor, hiddenOps, opEntry } from "../../src/graph/nodeOps";
-import { buildCatalog } from "../../src/graph/catalogUtils";
+import { buildCatalog, catalogTypeOf, nodeName } from "../../src/graph/catalogUtils";
+import { DateDiffNode } from "../../src/graph/nodes/date";
 import { flattenLeaves, searchLeaves } from "../../src/graph/catalogSearch";
 import { despace } from "../../src/graph/formulaNodeParity";
 import { SET_META } from "../../src/graph/nodes/list";
@@ -264,5 +265,15 @@ describe("the one Distribution node is reachable by search without growing the m
         return !!m && isExcelNameList(m[1]);
       });
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("an op without its own leaf reads as its host card", () => {
+  it("DATEDIF set to months or a remainder is DATEDIF, not DAYS, whose leaf comes first", () => {
+    for (const op of ["years", "months", "ym", "md", "yd"] as const) {
+      const n = new DateDiffNode({ op });
+      expect([op, catalogTypeOf(n), nodeName(n)]).toEqual([op, "date-datedif", "DATEDIF"]);
+    }
+    expect(catalogTypeOf(new DateDiffNode({ op: "days" }))).toBe("date-diff-days");
   });
 });
