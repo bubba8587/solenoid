@@ -5,7 +5,6 @@ import type { FrameCell } from "./frame";
 import { isSolError } from "./errorValue";
 import { csvList } from "./nodes/frameShapeHook";
 import { listLiteralText } from "./listLiterals";
-import type { PivotNode } from "./nodes/frame";
 
 export interface PivotConfig {
   rows: string[];
@@ -26,7 +25,18 @@ export interface PivotConfig {
 
 const names = (s: string | undefined) => csvList(s).filter(Boolean);
 
-export function pivotConfigOf(node: PivotNode): PivotConfig {
+/** The PIVOTBY card's fields this module reads and writes (`PivotNode` has them). Structural, so a module that only edits
+ *  a Pivot's layout, as the Obsidian plugin's table popup does, never pulls in the card classes. */
+export interface PivotFields {
+  stringLiterals: Record<string, string>;
+  funcs: Record<string, AggOp>;
+  detailFields: string[];
+  filterExclude: Record<string, string[]>;
+  rowTotalDepth: number; colTotalDepth: number;
+  rowSort: number; colSort: number; relativeTo: number;
+}
+
+export function pivotConfigOf(node: PivotFields): PivotConfig {
   return {
     rows: names(node.stringLiterals?.rowFields),
     cols: names(node.stringLiterals?.colFields),
@@ -39,7 +49,7 @@ export function pivotConfigOf(node: PivotNode): PivotConfig {
   };
 }
 
-export function writePivotConfig(node: PivotNode, c: PivotConfig): void {
+export function writePivotConfig(node: PivotFields, c: PivotConfig): void {
   node.stringLiterals.rowFields = listLiteralText(c.rows);
   node.stringLiterals.colFields = listLiteralText(c.cols);
   node.stringLiterals.values = listLiteralText(c.vals);

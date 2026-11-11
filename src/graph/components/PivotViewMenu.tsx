@@ -197,7 +197,7 @@ export function keyLabel(type: string, key: string, format?: FormatAnnotation | 
   if (key === "") return "(blank)";
   const n = Number(key);
   if ((type === "number" || type === "date") && key.trim() !== "" && Number.isFinite(n)) {
-    const f = formatFrameCell(type as never, n, format ?? undefined);
+    const f = formatFrameCell(type, n, format ?? undefined);
     return f == null ? key : String(f);
   }
   return key;
