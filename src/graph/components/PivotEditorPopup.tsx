@@ -13,6 +13,7 @@ import { PopupShell, popupCardVars } from "./PopupShell";
 import "./PivotEditorPopup.css";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
 import { TypeIcon } from "./TypeIcon";
+import { PivotFilterList } from "./PivotFilterList";
 
 // The per-value function list derives from AGG_OP_META; the pivot is the one surface
 // that also offers the pivotOnly ops.
@@ -82,6 +83,7 @@ export function PivotEditorPopup() {
   const drag = useRef<{ from: Zone | "fields"; field: string } | null>(null);
   const [dropZone, setDropZone] = useState<Zone | "filters" | null>(null);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [, setLanded] = useState(0);
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -107,7 +109,8 @@ export function PivotEditorPopup() {
   function commit(next: Cfg) {
     writeToNode(node, next);
     notifyGraphChanged();
-    void processGraph(node.id);
+    // The field list (a new filter's values) comes back with the compute: draw again once it lands.
+    void processGraph(node.id).then(() => setLanded((n) => n + 1));
     setCfg(next);
   }
   const zoneArr = (c: Cfg, z: Zone) => (z === "rows" ? c.rows : z === "cols" ? c.cols : z === "details" ? c.details : c.vals);
@@ -143,14 +146,8 @@ export function PivotEditorPopup() {
     if (openFilter === field) setOpenFilter(null);
     commit({ ...cfg, exclude: ex });
   }
-  function toggleValue(field: string, key: string) {
-    const cur = new Set(cfg.exclude[field] ?? []);
-    if (cur.has(key)) cur.delete(key); else cur.add(key);
-    commit({ ...cfg, exclude: { ...cfg.exclude, [field]: [...cur] } });
-  }
-  function setAllValues(field: string, hide: boolean) {
-    const keys = fields.find((f) => f.name === field)?.distinct ?? [];
-    commit({ ...cfg, exclude: { ...cfg.exclude, [field]: hide ? [...keys] : [] } });
+  function setHidden(field: string, hidden: string[]) {
+    commit({ ...cfg, exclude: { ...cfg.exclude, [field]: hidden } });
   }
   function valueLabel(field: string, key: string): string {
     if (key === "") return "(blank)";
@@ -281,7 +278,8 @@ export function PivotEditorPopup() {
         {filterFields.map((field) => {
           const hidden = cfg.exclude[field]?.length ?? 0;
           const open = openFilter === field;
-          const distinct = fields.find((f) => f.name === field)?.distinct ?? [];
+          const meta = fields.find((f) => f.name === field);
+          const distinct = meta?.distinct ?? [];
           return (
             <div key={field} className="pivot-filter">
               <span className="pivot-chip pivot-filter__chip" draggable onDragStart={(e) => { startChipDrag(e, { from: "fields", field }); }}>
@@ -292,18 +290,8 @@ export function PivotEditorPopup() {
                 <button className="pivot-chip__x" onClick={() => removeFilter(field)} aria-label="Remove" title="Remove">×</button>
               </span>
               {open && (
-                <div className="pivot-filter__list" onPointerDown={(e) => e.stopPropagation()}>
-                  <div className="pivot-filter__actions">
-                    <button onClick={() => setAllValues(field, false)}>All</button>
-                    <button onClick={() => setAllValues(field, true)}>None</button>
-                  </div>
-                  {distinct.map((key) => (
-                    <label key={key} className="pivot-filter__opt">
-                      <input type="checkbox" checked={!(cfg.exclude[field] ?? []).includes(key)} onChange={() => toggleValue(field, key)} />
-                      <span>{valueLabel(field, key)}</span>
-                    </label>
-                  ))}
-                </div>
+                <PivotFilterList type={typeOf(field)} keys={distinct} total={meta?.distinctTotal ?? distinct.length}
+                  hidden={cfg.exclude[field] ?? []} label={(k) => valueLabel(field, k)} onChange={(h) => setHidden(field, h)} />
               )}
             </div>
           );
@@ -317,6 +305,7 @@ export function PivotEditorPopup() {
       title={state.title}
       onClose={close}
       cardClassName="pivot-editor"
+      resizable={{ min: { w: 420, h: 320 } }}
       cardStyle={popupCardVars(state)}
     >
       <div className="pivot-editor__body">

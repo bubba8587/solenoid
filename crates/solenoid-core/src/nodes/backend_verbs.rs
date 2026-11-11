@@ -394,24 +394,51 @@ fn pivot_cell_key(v: &V) -> String {
     }
 }
 
-/// A column's first 200 distinct keys, for the editor's checklist.
-fn distinct_keys(values: &[V]) -> Vec<String> {
+/// How many of a filter field's values the editor lists, as Excel's filter list does.
+const FILTER_LIST_MAX: usize = 10_000;
+/// How many values a field not yet filtering lists: enough to start, read no further than it needs.
+const FIELD_PEEK: usize = 200;
+
+/// A field's distinct keys for the editor's checklist: a filtering field's all of them, sorted (numbers and dates by
+/// value, text by character code, the blank last) and capped at `FILTER_LIST_MAX`, with how many there are; any
+/// other field's first `FIELD_PEEK`, as found.
+fn distinct_keys(values: &[V], filtering: bool) -> (Vec<String>, usize) {
     let mut seen = HashSet::new();
-    let mut out = Vec::new();
+    let mut out: Vec<(&V, String)> = Vec::new();
     for v in values {
         let k = pivot_cell_key(v);
         if seen.insert(k.clone()) {
-            out.push(k);
-            if out.len() >= 200 {
+            out.push((v, k));
+            if !filtering && out.len() >= FIELD_PEEK {
                 break;
             }
         }
     }
-    out
+    let total = out.len();
+    if filtering {
+        let rank = |v: &V| match v {
+            V::Num(_) | V::Date(_) => 0,
+            V::Null | V::Undef => 3,
+            V::Err(_) => 2,
+            _ => 1,
+        };
+        let num = |v: &V| match v {
+            V::Num(n) | V::Date(n) => *n,
+            _ => 0.0,
+        };
+        out.sort_by(|(a, ka), (b, kb)| {
+            rank(a).cmp(&rank(b)).then_with(|| match rank(a) {
+                0 => num(a).total_cmp(&num(b)),
+                _ => compare_strings(ka, kb),
+            })
+        });
+        out.truncate(FILTER_LIST_MAX);
+    }
+    (out.into_iter().map(|(_, k)| k).collect(), total)
 }
 
-fn source_column(k: &Column, distinct: Vec<String>) -> Json {
-    json!({ "name": k.name, "type": k.ty.as_str(), "distinct": distinct })
+fn source_column(k: &Column, (distinct, total): (Vec<String>, usize)) -> Json {
+    json!({ "name": k.name, "type": k.ty.as_str(), "distinct": distinct, "distinctTotal": total })
 }
 
 /// The editor's field list, which crosses as a list where it is empty.
@@ -460,9 +487,11 @@ fn kept(c: &Call, valid: &HashSet<String>) -> Fields {
 
 /// The hidden value keys as a row mask, ANDed with the wired one.
 fn combine_filter(f: &Frame, exclude: &Map<String, Json>, wired: &V) -> Option<Vec<Option<bool>>> {
-    let active: Vec<(Vec<String>, Option<&Column>)> = exclude
+    let active: Vec<(HashSet<String>, Option<&Column>)> = exclude
         .iter()
-        .map(|(name, ks)| (names_of(Some(ks)), f.columns.iter().find(|k| &k.name == name)))
+        .map(|(name, ks)| {
+            (names_of(Some(ks)).into_iter().collect::<HashSet<_>>(), f.columns.iter().find(|k| &k.name == name))
+        })
         .filter(|(ks, _)| !ks.is_empty())
         .collect();
     let wired = match wired {
@@ -549,6 +578,9 @@ fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCel
 
 fn pivot(c: &mut Call) -> Answer {
     let raw = first(c, "frame");
+    let filters: HashSet<String> =
+        c.field("filterExclude").and_then(Json::as_object).map(|m| m.keys().cloned().collect()).unwrap_or_default();
+    let filtering = |name: &str| filters.contains(name);
     if let Cv::Ref(r) = &raw {
         let schema = match refs::schema(r) {
             Ok(s) => s,
@@ -610,7 +642,10 @@ fn pivot(c: &mut Call) -> Answer {
         let sources = schema
             .columns
             .iter()
-            .map(|k| source_column(k, by_name(&k.name).map(|r| distinct_keys(&r.values)).unwrap_or_default()))
+            .map(|k| {
+                let keys = by_name(&k.name).map(|r| distinct_keys(&r.values, filtering(&k.name))).unwrap_or_default();
+                source_column(k, keys)
+            })
             .collect();
         show_sources(c, sources);
         let columns = schema
@@ -640,7 +675,7 @@ fn pivot(c: &mut Call) -> Answer {
         }
     };
     let Cv::Frame(fr) = &f else { unreachable!() };
-    let sources = fr.columns.iter().map(|k| source_column(k, distinct_keys(&k.values))).collect();
+    let sources = fr.columns.iter().map(|k| source_column(k, distinct_keys(&k.values, filtering(&k.name)))).collect();
     show_sources(c, sources);
     pivot_over(c, f, None)
 }

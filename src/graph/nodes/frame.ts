@@ -477,7 +477,8 @@ export class PivotNode extends GraphNode {
   detailFields: string[] = [];
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
-  sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
+  /** The editor's field list: a filtering field's values sorted and capped at 10,000 (`distinctTotal` counts them all). */
+  sourceColumns: { name: string; type: FrameColType; distinct: string[]; distinctTotal?: number }[] = [];
   /** Calculated value fields: a name and a LAMBDA per row (`calcName{id}`, `calcFn{id}`). */
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["Name", "λ"];
