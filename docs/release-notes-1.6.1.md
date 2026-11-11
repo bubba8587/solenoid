@@ -4,7 +4,7 @@ Pivot calculated fields, retuned themes, the GPU renderer on Chrome's stable API
 
 Highlights
 
-- PIVOTBY calculated fields: a formula per field, like `Profit / Sales`, worked out over each cell's own rows rather than by summing a column. See the Pivot calculated fields example.
+- PIVOTBY calculated fields: name a field and give it a LAMBDA over columns, like `SUM(Miles) / SUM(Gallons)`. Every cell, subtotal and grand total runs it on its own rows, so a ratio stays right at every level instead of averaging row ratios. See the Pivot calculated fields example.
 - The Pivot view grew up.
   - A right-click menu edits the Pivot from the table.
   - Each field header has a sort and filter button; a filtered field shows as a chip.
@@ -12,25 +12,26 @@ Highlights
   - Group a date field by years, quarters, months, weeks or days.
   - A value's number format, from the view's menu.
 - Updated theming.
-  - Orchard keeps its warm ground under any accent, and its amber is a clear burnt orange.
-  - Dawn's light ground is a pale apricot instead of lime.
+  - Orchard's light mode keeps its warm ground under a blue, pink or violet accent instead of washing pastel, and its amber is a clear burnt orange.
+  - Dawn and Dusk's light ground is a pale apricot instead of lime.
   - Blueprint's dark mode keeps warm accents from muddying the ground.
-  - Links in dark mode read brighter.
+  - In the Obsidian look, accent-colored text reads brighter in dark mode.
 - The HTML-in-Canvas GPU renderer (Settings, Renderer) runs on Chrome's shipped API: no flag from Chrome 157.
-  - It holds the canvas at every zoom instead of handing back to the page after each gesture.
+  - It stays on the canvas after a pan or zoom instead of swapping back to the page, which made zoomed-in panning slow.
   - Cables, ribbons, Conduits and standoffs are drawn on the canvas too, so nothing flickers on a zoom.
   - Captures render at 2.5x, so text stays sharp zoomed in.
   - Charts and figures redraw on the canvas when their data changes, and a selected card sits above its group.
-- Edit Frame: change cells of any table by hand, even a computed one. Each edit is kept, listed as its own table, and finds its row again by a key when the table above changes.
+- Edit Frame: change cells of any table by hand, even a computed one. Each edit is kept and listed as its own table, and with Key set it finds its row again when the table above changes.
 
 Obsidian and files
 
-- A note's body is data. Vault Folder can read each note's tasks (done, dates, priority and tags, in the Tasks plugin's and Dataview's forms), its tables, and Dataview's `key:: value` fields; Import Obsidian Note gives a note's tasks and tables as outputs.
+- A note's body is data. Under From each note, Vault Folder can read each note's tasks (done, dates, priority and tags, in the Tasks plugin's and Dataview's forms), its tables, and Dataview's `key:: value` fields. Import Obsidian Note gives a note's tasks and tables as outputs.
 - Vault Folder has a Backlinks column: the notes that link to each note.
 - LINKNAME and LINKPATH read the note a link names.
-- Write to Obsidian can tick checklist items, and never copies body data into properties.
-- Local File reads a whole folder: a name with `*` loads every matching file as one table, subfolders included.
-- A folder's files can each go through one transform: a Files output, By-Row over each file, Append stacks the results.
+- Write to Obsidian can tick or untick checklist items, changing only that mark in the note. Reading a folder and writing it straight back changes nothing.
+- Local File reads a whole folder, like Power Query's From Folder: a name like `monthly/*.csv` loads every matching CSV or Parquet file as one table, with a File column naming each row's file. `**/` reaches into subfolders.
+- Each file can go through the same steps first: Local File's Files output has a row per file, a Composite set to For each runs once per file, and Append stacks the results.
+- Local File's picker lists files in subfolders.
 - Join takes a Cube and carries its lists and tables.
 
 Dates
@@ -38,16 +39,15 @@ Dates
 - A date order (MDY, DMY or YMD) on every card that reads dates from text, and DATEVALUE takes one.
 - Local File reads a CSV's dates in its order, and the Frame popup honors it.
 - Local File and Web Source pick their column types in their popups' headers.
-- `+3 days` reads as a date.
+- Typed relative dates like `+3 days` or `-2 weeks` read as dates.
 
 Cards and formulas
 
-- A Chart plots a table directly.
-- List Input keeps a typed gap.
-- By-Row runs live or on Solve, and says how many passes it ran.
-- A column name off only by letter case says so.
+- A table (an HSTACK or a matrix) wired into a Chart plots its columns instead of an empty chart.
+- A blank between commas in a List Input row stays as a blank item.
+- A Composite's For each mode (formerly By row) runs Live or on Solve, and says how many passes it ran.
+- A column name that's off only by letter case says so.
 - The SUMX2 family counts logicals.
-- A sum past the largest double comes back exact.
 - Get Column answers `#REF!` for a column the table lacks.
 
 Canvas
@@ -64,5 +64,6 @@ Examples
 
 Fixes
 
+- A running or sliding sum no longer stays infinite after a huge number leaves its window.
 - Replace Values writes NaN for a replacement its column can't read.
 - A marker a drill-in undo or redo brings back gets its port again.
