@@ -1551,29 +1551,27 @@ fn order_leaves(rows: &[usize], cols: &[&FrameColumn], sort_field: isize, desc: 
             }
         }
     }
-    let mut sorted_rank: Option<FxHashMap<CellKey, usize>> = None;
-    if sort_field >= 0 && (sort_field as usize) < cols.len() {
-        let sf = sort_field as usize;
-        let cmp = comparator_for(cols[sf].ty);
-        let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
-        let mut ordered = cell_by_enc[sf].clone();
-        stable_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
-            (true, true) => Ordering::Equal,
-            (true, false) => Ordering::Greater,
-            (false, true) => Ordering::Less,
-            _ => cmp(a, b),
-        });
-        if desc {
-            ordered.reverse();
-        }
-        sorted_rank = Some(ordered.iter().enumerate().map(|(idx, (vk, _))| (*vk, idx)).collect());
-    }
-    let rank_at = |lvl: usize, vk: &CellKey| -> usize {
-        match &sorted_rank {
-            Some(r) if lvl as isize == sort_field => r[vk],
-            _ => level_rank[lvl][vk],
-        }
-    };
+    // Every level's items sort ascending by their own type (text by character code, numbers and dates by value, a
+    // blank or an error last), as Excel's PIVOTBY lists them; the sort field's level runs descending when asked
+    // (author 2026-11-11: the order the data first shows them in was no order a reader could follow).
+    let sorted_rank: Vec<FxHashMap<CellKey, usize>> = (0..cols.len())
+        .map(|lvl| {
+            let cmp = comparator_for(cols[lvl].ty);
+            let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
+            let mut ordered = cell_by_enc[lvl].clone();
+            stable_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
+                (true, true) => Ordering::Equal,
+                (true, false) => Ordering::Greater,
+                (false, true) => Ordering::Less,
+                _ => cmp(a, b),
+            });
+            if desc && lvl as isize == sort_field {
+                ordered.reverse();
+            }
+            ordered.iter().enumerate().map(|(idx, (vk, _))| (*vk, idx)).collect()
+        })
+        .collect();
+    let rank_at = |lvl: usize, vk: &CellKey| -> usize { sorted_rank[lvl][vk] };
     let ranks: Vec<Vec<usize>> =
         first_seen.iter().map(|t| t.iter().enumerate().map(|(lvl, c)| rank_at(lvl, &cell_key(c))).collect()).collect();
     let mut order: Vec<usize> = (0..first_seen.len()).collect();

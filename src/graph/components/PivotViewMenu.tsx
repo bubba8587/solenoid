@@ -85,7 +85,7 @@ export function pivotMenuSections({ target, layout, host, options, onOptions, co
         items.push({ label: `Sort ${down}`, checked: cur === -at, onClick: () => edit((c) => { c[sortKey(axis)] = -at; }) });
       }
     }
-    if (items.length) items.push({ label: "No Sort", checked: cur === 0, onClick: () => edit((c) => { c[sortKey(axis)] = 0; }) });
+    if (items.length) items.push({ label: "Default Order", checked: cur === 0, onClick: () => edit((c) => { c[sortKey(axis)] = 0; }) });
     return items;
   };
 

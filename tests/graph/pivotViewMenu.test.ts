@@ -68,7 +68,7 @@ describe("the Pivot view's menu on an item", () => {
     const m = menu(item(1, "Ann"), { ...base(), rowSort: -2 });
     expect(m.find("Sort Z to A").checked).toBe(true);
     expect(m.pick("Sort A to Z")!.rowSort).toBe(2);
-    expect(menu(item(1, "Ann"), { ...base(), rowSort: -2 }).pick("No Sort")!.rowSort).toBe(0);
+    expect(menu(item(1, "Ann"), { ...base(), rowSort: -2 }).pick("Default Order")!.rowSort).toBe(0);
   });
 
   it("moves, reorders and removes the field", () => {

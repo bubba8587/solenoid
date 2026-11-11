@@ -35,7 +35,7 @@ type Cfg = PivotConfig;
 /** Index is a 1-based offset into [fields…, values…]; negative ⇒ descending. */
 function sortOptions(fields: string[], values: string[]): { value: string; label: string }[] {
   const cand = [...fields, ...values.map((v) => `${v} (value)`)];
-  const out = [{ value: "0", label: "No sort" }];
+  const out = [{ value: "0", label: "Default order" }];
   cand.forEach((label, i) => {
     out.push({ value: String(i + 1), label: `${label} ↑` });
     out.push({ value: String(-(i + 1)), label: `${label} ↓` });

@@ -279,19 +279,19 @@ describe("the Pivot calculated fields seed", () => {
 
     // Hand-worked from the twelve fill-ups: each cell is its miles over its gallons.
     const m = await table("ByMonth");
-    expect(m.Plate).toEqual(["ABC-123", "XYZ-789", "VAN-01", "Grand Total"]);
-    expect(r(m["2026-01"])).toEqual([28, 20, 15, 22]); // 420/15, 200/10, 150/10, 770/35
-    expect(r(m["2026-02"])).toEqual(r([25, 22, 16.25, 1125 / 55])); // 250/10, 550/25, 325/20
-    expect(r(m["2026-03"])).toEqual(r([30, 22, null, 640 / 24])); // VAN-01 drove nothing in March
-    expect(r(m["Grand Total"])).toEqual(r([1090 / 39, 970 / 45, 475 / 30, 2535 / 114]));
+    expect(m.Plate).toEqual(["ABC-123", "VAN-01", "XYZ-789", "Grand Total"]);
+    expect(r(m["2026-01"])).toEqual([28, 15, 20, 22]); // 420/15, 150/10, 200/10, 770/35
+    expect(r(m["2026-02"])).toEqual(r([25, 16.25, 22, 1125 / 55])); // 250/10, 325/20, 550/25
+    expect(r(m["2026-03"])).toEqual(r([30, null, 22, 640 / 24])); // VAN-01 drove nothing in March
+    expect(r(m["Grand Total"])).toEqual(r([1090 / 39, 475 / 30, 970 / 45, 2535 / 114]));
 
     const b = await table("Beside");
-    expect(b.Miles).toEqual([1090, 970, 475, 2535]);
-    expect(b.Gallons).toEqual([39, 45, 30, 114]);
-    expect(r(b.MPG)).toEqual(r([1090 / 39, 970 / 45, 475 / 30, 2535 / 114]));
+    expect(b.Miles).toEqual([1090, 475, 970, 2535]);
+    expect(b.Gallons).toEqual([39, 30, 45, 114]);
+    expect(r(b.MPG)).toEqual(r([1090 / 39, 475 / 30, 970 / 45, 2535 / 114]));
 
     // The wrong way: each fill's ratio averaged, so the 60-mile top-up weighs as much as a tank.
     const w = await table("Wrong");
-    expect(r(w["2026-01"]).slice(0, 3)).toEqual([25, 20, 15]);
+    expect(r(w["2026-01"]).slice(0, 3)).toEqual([25, 15, 20]);
   });
 });

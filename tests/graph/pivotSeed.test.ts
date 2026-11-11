@@ -50,13 +50,15 @@ describe("pivot-tables seed", () => {
       const c = f.columns.find((x) => x.name === name);
       return c!.values;
     };
+    // Items list ascending by default (author 2026-11-11), so a region's row is found by its name.
+    const north = (f: FrameValue) => col(f, "Region").indexOf("North");
 
     // p1 — Region × Category SUM with row + column grand totals.
     const p1 = await frameOf("p1");
     expect(p1.columns.map((c) => c.name)).toEqual(["Region", "Electronics", "Furniture", "Office", "Grand Total"]);
-    expect(col(p1, "Region")).toEqual(["North", "South", "East", "West", "Grand Total"]);
-    expect(col(p1, "Electronics")[0]).toBe(7000); // North Electronics
-    expect(col(p1, "Grand Total")).toEqual([10675, 14775, 17850, 9550, 52850]);
+    expect(col(p1, "Region")).toEqual(["East", "North", "South", "West", "Grand Total"]);
+    expect(col(p1, "Electronics")[north(p1)]).toBe(7000); // North Electronics
+    expect(col(p1, "Grand Total")).toEqual([17850, 10675, 14775, 9550, 52850]);
 
     // p2 — Revenue by Rep, sorted high→low by the measure, with grand total.
     const p2 = await frameOf("p2");
@@ -68,31 +70,31 @@ describe("pivot-tables seed", () => {
     expect(col(p3, "Units")).toEqual([62, 60, 154]);
     expect(col(p3, "Price")).toEqual([500, 300, 25]);
 
-    // p4 — Region × Month, columns in chronological first-seen order + col total.
+    // p4 — Region × Month, the months as text in character-code order + col total.
     const p4 = await frameOf("p4");
-    expect(p4.columns.map((c) => c.name)).toEqual(["Region", "Jan", "Feb", "Mar", "Grand Total"]);
-    expect(col(p4, "Jan")[0]).toBe(3075); // North Jan
-    expect(col(p4, "Grand Total")[0]).toBe(10675);
+    expect(p4.columns.map((c) => c.name)).toEqual(["Region", "Feb", "Jan", "Mar", "Grand Total"]);
+    expect(col(p4, "Jan")[north(p4)]).toBe(3075); // North Jan
+    expect(col(p4, "Grand Total")[north(p4)]).toBe(10675);
 
     // p5 — PERCENTOF (% of grand total) by Region.
     const p5 = await frameOf("p5");
-    expect((col(p5, "Revenue")[0] as number)).toBeCloseTo(10675 / 52850);
+    expect((col(p5, "Revenue")[north(p5)] as number)).toBeCloseTo(10675 / 52850);
     expect((col(p5, "Revenue") as number[]).reduce((a, b) => a + b, 0)).toBeCloseTo(1);
 
     // p6 — multi-level rows with subtotals (region subtotal + grand total).
     const p6 = await frameOf("p6");
     const reg6 = col(p6, "Region"), prod6 = col(p6, "Category"), rev6 = col(p6, "Revenue");
-    // North group: 3 leaf rows then a "Total" subtotal of 10675.
+    // East group, first now: 3 leaf rows then a "Total" subtotal of 17850.
     expect(prod6[3]).toBe("Total");
-    expect(rev6[3]).toBe(10675);
+    expect(rev6[3]).toBe(17850);
     expect(reg6[reg6.length - 1]).toBe("Grand Total");
     expect(rev6[rev6.length - 1]).toBe(52850);
 
     // p7 — order COUNT by Region × Channel, with totals (corner = 36 rows).
     const p7 = await frameOf("p7");
-    expect(col(p7, "Online")[0]).toBe(5); // North online orders
-    expect(col(p7, "Retail")[0]).toBe(4);
-    expect(col(p7, "Grand Total")[0]).toBe(9);
+    expect(col(p7, "Online")[north(p7)]).toBe(5); // North online orders
+    expect(col(p7, "Retail")[north(p7)]).toBe(4);
+    expect(col(p7, "Grand Total")[north(p7)]).toBe(9);
     const gt7 = col(p7, "Grand Total");
     expect(gt7[gt7.length - 1]).toBe(36); // grand corner = total order count
 

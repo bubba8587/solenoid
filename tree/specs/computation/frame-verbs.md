@@ -778,11 +778,11 @@ Tests: `frameVerbs.test.ts`: the id column's unit and a shared value unit.
 - `filter`, when present, keeps only source rows whose mask entry is `true`.
 - `details` names columns for the Pivot view only ([[C127]] pivotView): the output is the same with or without it, and with row fields the layout kept beside the output records each row leaf's source rows and those columns' values ([[table-popup#The Pivot view]]); an unknown name is `#REF!`.
 
-**Axes.** Each axis (rows, columns) has leaf groups: the distinct field tuples among the kept rows. Leaves are ordered hierarchically: each field level ranks its values by first appearance across the whole axis, and tuples sort by those ranks level by level, so each outer group stays contiguous. An axis with no fields has one anonymous leaf.
+**Axes.** Each axis (rows, columns) has leaf groups: the distinct field tuples among the kept rows. Leaves are ordered hierarchically: each field level ranks its values ascending by the column type's comparator (text by character code, [[C59]] byteStringOrder; numbers and dates by value; blanks and errors last), as Excel's PIVOTBY lists them (author 2026-11-11, replacing first-appearance order, which no reader could follow), and tuples sort by those ranks level by level, so each outer group stays contiguous. GROUPBY's totals run here too, so its groups follow the same order. An axis with no fields has one anonymous leaf.
 
 **Sorting.** `rowSort` and `colSort` are signed 1-based indices into `[fields…, values…]`; negative means descending.
 
-- A field index re-ranks that level by value (the column type's comparator, blanks and errors last), and descending reverses that level's whole order, which puts blanks first.
+- A field index sorts that level the default way, and descending reverses that level's whole order, which puts blanks first.
 - A value index reorders the leaves flatly by that value's aggregate over the whole axis (a `percentof` scores by sum; a text `min` or `max` scores by code unit, [[C24]] arraySemantics). A blank, `NaN` or error score sorts last, and the reorder happens only when the axis has more than one leaf.
 
 **Totals.** `rowTotalDepth`/`colTotalDepth`:
