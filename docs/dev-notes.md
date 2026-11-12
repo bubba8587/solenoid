@@ -20,6 +20,9 @@ specific item.
   `cargo update` would take it down to 9.4.0, which the reader was never run on; it passes a week old on 2026-11-17. Left on
   bleeding-edge: React Flow 13 (a prerelease), eslint 10, tsrs 0.25, magic-string 1.4, three 0.187. `npm audit`'s one
   moderate (minimatch under typescript-eslint, lint only) predates this.
+  A crate bump also moves `public/third-party-licenses-rust.txt`: run `node scripts/rust-licenses.mjs` (needs
+  `cargo install --locked cargo-about --features cli`), or Rust supply chain's `licenses` job goes red. `port.mjs` doesn't
+  regenerate it either, so a ported `Fix:` with an `Upgrades:` crate needs the same step.
 - **Crates wait a week** (`.cargo/config.toml`, `global-min-publish-age = "7 days"`, the author's word): Cargo 1.100 skips a version
   published more recently when it resolves a lockfile, and refuses a requirement only such a version meets, naming the override.
   A build from the lockfile as it stands is untouched. Cargo 1.99 ignored the setting with a warning, which is why the pin moved
