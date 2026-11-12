@@ -101,6 +101,7 @@ These specs live only on the bleeding-edge branch.
 | `../tree/specs/bleeding-edge/branch.md` | the branch: the generator, its dependencies, its checks, and how an agent works there | `.github/bleeding-edge/bleeding-edge.mjs`, `.github/workflows/bleeding-edge.yml` |
 | `../tree/specs/bleeding-edge/platform-features.md` | the web-platform features the branch uses, what each replaced, which engines lack it, whether it's ready to port, and the candidates | this branch's `Edge:` commits |
 | `../tree/specs/bleeding-edge/dependency-fixes.md` | what the newest dependencies broke, how each was fixed, and when a fix is ready to port | this branch's `Fix:` commits |
+| `../tree/specs/bleeding-edge/rust-1-100.md` | Rust 1.100 read against the crates: what the branch uses, what was measured and left, what is open, and how it goes to a work branch | this branch's `Edge:` commits of 2026-11-12, `.github/bleeding-edge/rust-1.100-sweep.py`, `crates/solenoid-core/tests/alloc_probe.rs` |
 
 ## Integrations
 
