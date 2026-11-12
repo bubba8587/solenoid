@@ -44,10 +44,8 @@
 }
 .describe-profile__fillbar > span,
 .describe-profile__topbar > span { display: block; height: 100%; border-radius: 2px; }
-/* The filled share neutral, the blank share behind it in the warning color: a missing value is a caution. */
-.describe-profile__fill .describe-profile__fillbar { background: color-mix(in srgb, var(--sol-warn) 45%, transparent); }
 .describe-profile__fillbar > span { background: color-mix(in srgb, var(--text) 45%, transparent); }
-.describe-profile__filltext { flex: none; font-size: 11px; color: color-mix(in srgb, var(--sol-warn) 70%, var(--text)); }
+.describe-profile__filltext { flex: none; font-size: 11px; color: var(--text-dim); }
 .describe-profile__fill--full { font-size: 11px; color: var(--text-muted); }
 .describe-profile__caption { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 /* A chart's expand button shows while the tile is hovered or focused, so it never sits on the bars at rest. */
@@ -55,6 +53,24 @@
 .describe-profile__tile:is(:hover, :focus-within) .describe-profile__chart .solenoid-expr__expand { opacity: 1; }
 
 .describe-profile__chart { position: relative; }
+/* The median on the histogram: a dashed rule in the ink, over the bars. */
+.describe-profile__median {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed color-mix(in srgb, var(--text) 70%, transparent);
+  pointer-events: none;
+}
+.describe-profile__statname--marked::before {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 8px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border-left: 1px dashed color-mix(in srgb, var(--text) 70%, transparent);
+}
 /* Min, median, mean and max as a strip of label-over-value cells, the KPI card's reading order at a tile's size. */
 .describe-profile__stats {
   display: grid;
@@ -90,6 +106,19 @@
 .describe-profile__topcount { font-family: var(--font-mono); color: var(--text); text-align: right; }
 .describe-profile__topshare { font-family: var(--font-mono); color: var(--text-muted); text-align: right; }
 .describe-profile__other { font-size: 11px; color: var(--text-muted); }
+.describe-profile__samples { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.describe-profile__sample {
+  max-width: 100%;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle, var(--border));
+  font-size: 11px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 @container table-popup (max-width: 640px) {
   .describe-profile__scroll { margin: 6px 6px 8px; }
@@ -99,7 +128,7 @@
 
 /* A narrow tile (a Display at its starting size, a phone) drops the share column so the bars keep their length, and
    sets its stats two to a row, left and right. */
-@container profile-tile (max-width: 259px) {
+@container profile-tile (max-width: 219px) {
   .describe-profile__toprow { grid-template-columns: minmax(0, 40%) 1fr auto; }
   .describe-profile__topshare { display: none; }
   .describe-profile__stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; row-gap: 4px; }
