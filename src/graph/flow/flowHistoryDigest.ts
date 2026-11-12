@@ -13,7 +13,7 @@ function editBody(n: SavedNode): string {
 }
 
 // These store the user's chosen size (a grip or a height field); every other card's size is a measure re-stamped after each restore.
-const USER_SIZED = new Set(["GroupNode", "NoteNode", "ImportObsidianNode", "ImageNode", "SvgPickerNode"]);
+export const USER_SIZED: ReadonlySet<string> = new Set(["GroupNode", "NoteNode", "ImportObsidianNode", "ImageNode", "SvgPickerNode"]);
 
 export function sameIgnoringDims(prev: SavedGraph, next: SavedGraph): boolean {
   if (prev.nodes.length !== next.nodes.length) return false;
@@ -27,6 +27,26 @@ export function sameIgnoringDims(prev: SavedGraph, next: SavedGraph): boolean {
     }),
   });
   return strip(prev) === strip(next);
+}
+
+/** The save with its top-level fields in one order (a history step keeps `nodes` apart from the rest), and without
+ *  an empty literal map: one a card made at run time and no load makes again is no difference. */
+function comparable(g: SavedGraph): SavedGraph {
+  const empty = (m: object | undefined) => !!m && Object.keys(m).length === 0;
+  const { nodes, ...head } = g;
+  const sorted = Object.fromEntries(Object.keys(head).sort().map((k) => [k, (head as Record<string, unknown>)[k]]));
+  return { ...(sorted as Omit<SavedGraph, "nodes">), nodes: nodes.map((n) => {
+    if (!empty(n.literals) && !empty(n.stringLiterals)) return n;
+    const out = { ...n };
+    if (empty(out.literals)) delete out.literals;
+    if (empty(out.stringLiterals)) delete out.stringLiterals;
+    return out;
+  }) };
+}
+
+/** Whether the canvas landed where the step is, as a whole load of it would: measures and empty maps aside. */
+export function sameLanding(landed: SavedGraph, target: SavedGraph): boolean {
+  return sameIgnoringDims(comparable(landed), comparable(target));
 }
 
 export function describeGraphDelta(prev: SavedGraph, next: SavedGraph): string {

@@ -32,7 +32,7 @@ specific item.
 - A field below its label runs from the label's left edge to the right edge the other fields end on (the quote marks
   hang outside); it had kept `max-width: 100%` while pulled outward, so it sat left and ended short.
 
-### SESSION DIGEST (2026-11-12: Excel workbook Tables, self-hosting groundwork, a Bluesky link; cloud session)
+### SESSION DIGEST (2026-11-12: Excel workbook Tables, self-hosting groundwork, a Bluesky link, undo by delta; cloud session)
 - Local File and Web Source read an Excel workbook's named Table on the core (`xlsx.rs`, the `calamine` crate,
   default features off): the answers Excel saved, types off the cells, an uncalculated formula a per-cell `#N/A`
   naming it (calamine tells it from a formula that answered `""`). Tables only, by the author's call; sheets and
@@ -64,6 +64,17 @@ specific item.
   debs; the build died at the linker), so `desktop-build.yml` now checks with `pkg-config` and installs directly once.
 - This container lacked the `wasm-bindgen` CLI: `cargo install wasm-bindgen-cli --version 0.2.130 --locked`.
 - Site: a Bluesky icon in the header and a footer link; the site review is a backlog item under Landing pages.
+- Undo and redo apply a delta instead of reloading the graph (`src/graph/graphDelta.ts`,
+  `tree/specs/canvas/react-flow-surface-contract.md` § Undo history): only changed cards rebuild, under fresh live ids
+  so their views remount, and one additive pass covers their reach. On `personal-finance`, a value undo went from
+  two whole passes (about 2.7 s, Local File re-reading its files) to about 25 ms. A read-back falls back to the whole
+  load on any miss; the dev console warns with the cards that differed. Two bugs from before: a history step rebuilt
+  from the stack put `nodes` after the other top-level keys, so every compare after an undo saw a change and
+  recorded a spurious step (redo lost); and a whole load inside `withGraphRebuild` ran a second whole pass.
+- Delete (and removing cables from the cable menu) passes over only what lost a cable (`deleteReach`,
+  `src/graph/canvasActions.ts`), not the whole graph. Composite create and unpack still settle whole.
+- Open: a literal or `frameText` edit still rebuilds its one card rather than setting the field in place
+  (`docs/v2.0/27-multiplayer.md`'s hot-field row).
 
 ### SESSION DIGEST (2026-11-11c: the Probability pack, pads that dragged their card; cloud session)
 - New pack, Probability (off by default, Analysis): Probability Between, A/B Test, Bootstrap, each drawing the

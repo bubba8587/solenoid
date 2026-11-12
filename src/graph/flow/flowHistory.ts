@@ -2,7 +2,8 @@
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding, withGraphRebuild } from "../process";
-import { describeGraphDelta, sameIgnoringDims } from "./flowHistoryDigest";
+import { describeGraphDelta, sameLanding } from "./flowHistoryDigest";
+import { applyGraphDelta } from "../graphDelta";
 
 const MAX_DEPTH = 80;
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -47,15 +48,28 @@ function capture(prev?: Snapshot): { graph: SavedGraph; snap: Snapshot; ownBytes
   return g ? { graph: g, ...snapshotOf(g, prev) } : null;
 }
 
-async function restore(snap: Snapshot): Promise<void> {
+async function restore(entry: Entry): Promise<void> {
+  const snap = entry.snap;
   _restoring = true;
   try {
-    const view = getView();
-    const t = view ? { ...view.transform } : null;
     const graph = graphOf(snap);
-    await withGraphRebuild(() => loadGraph(graph, { curtain: false }));
-    _topGraph = null;
-    if (view && t) await view.setCamera(t);
+    // Only what differs changes, so the canvas, the camera and every untouched card's value stay as they are.
+    let applied = false;
+    try { applied = await applyGraphDelta(graph); } catch (err) { console.error("[solenoid] undo delta failed; loading the step whole", err); }
+    if (!applied) {
+      const view = getView();
+      const t = view ? { ...view.transform } : null;
+      // The load runs its own pass, so the cables it builds ask for no second whole one.
+      await withGraphRebuild(() => loadGraph(graph, { curtain: false }), { settled: true });
+      if (view && t) await view.setCamera(t);
+    }
+    // The step as the canvas now holds it (a measure re-stamped, a map a card no longer makes), so the next record
+    // compares with what is there and an untouched canvas records nothing.
+    const c = capture(snap);
+    if (c && sameLanding(c.graph, graph)) {
+      entry.snap = c.snap;
+      _topGraph = c.graph;
+    } else _topGraph = null;
     scheduleAutosave();
   } finally {
     _restoring = false;
@@ -97,7 +111,7 @@ export const flowHistory = {
     if (top) {
       try {
         const prev = _topGraph ?? graphOf(top.snap);
-        if (sameIgnoringDims(prev, c.graph)) return;
+        if (sameLanding(prev, c.graph)) return;
         label = describeGraphDelta(prev, c.graph);
       } catch { /* a label is cosmetic — never block the record */ }
     }
@@ -123,7 +137,7 @@ export const flowHistory = {
     if (_timer) flowHistory.recordNow();
     if (_index <= 0) return;
     _index--;
-    await restore(_stack[_index].snap);
+    await restore(_stack[_index]);
   },
 
   async redo(): Promise<void> {
@@ -131,7 +145,7 @@ export const flowHistory = {
     if (_timer) flowHistory.recordNow();
     if (_index >= _stack.length - 1) return;
     _index++;
-    await restore(_stack[_index].snap);
+    await restore(_stack[_index]);
   },
 
   records: (): Array<{ time: number; label: string }> =>

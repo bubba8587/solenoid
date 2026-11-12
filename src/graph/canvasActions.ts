@@ -27,7 +27,7 @@ import { drawnCableStore, commitDrawn } from "./drawnCables";
 import { PUSH_GAP } from "./groupPushCore";
 import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
-import { processGraph } from "./process";
+import { processGraph, getEditor } from "./process";
 import { MAIN_EDIT_SCOPE, type EditScope } from "./activeGraph";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 import { reconcileFcs } from "./fcReconcile";
@@ -250,6 +250,7 @@ export async function deleteSelection(
     .sort((a, b) => Number(dockedFc(b)) - Number(dockedFc(a)));
   const deleted: SolenoidNode[] = [];
   let deletedGroup = false;
+  const cablesBefore = new Map(editor.getConnections().map((c) => [c.id, c.target]));
   scope.begin();
   try {
     if (selectedCableIds.length > 0) {
@@ -341,8 +342,26 @@ export async function deleteSelection(
   // The per-event settles were suppressed above; run their equivalents once, in the order noderemoved and connectionremoved would.
   for (const node of deleted) forgetNodeDeep(node);
   if (deleted.length) rebuildGroupMembership(editor);
-  await scope.settle();
+  await scope.settle(scope.mainLayers ? deleteReach(editor, cablesBefore) : undefined, { topology: true });
   if (deletedGroup && view) restoreSettledPushes(editor, view);
+}
+
+/** What a delete changes the answer of: each surviving card whose inputs lost or gained a cable (a splice), cleared
+ *  with everything downstream of it, so the one pass after the delete computes that and keeps every other cache. */
+function deleteReach(editor: GraphEditor<Schemes>, before: ReadonlyMap<string, string>): Set<string> {
+  const engine = editor.engine;
+  const reach = new Set<string>();
+  if (!engine) return reach;
+  const after = new Map(editor.getConnections().map((c) => [c.id, c.target]));
+  const touched = new Set<string>();
+  for (const [id, target] of before) if (!after.has(id)) touched.add(target);
+  for (const [id, target] of after) if (!before.has(id)) touched.add(target);
+  for (const id of touched) {
+    if (!editor.getNode(id) || reach.has(id)) continue;
+    engine.reset(id);
+    for (const r of engine.downstreamClosure(id)) reach.add(r);
+  }
+  return reach;
 }
 
 export async function deleteCables(
@@ -350,11 +369,14 @@ export async function deleteCables(
   target: CableContextTarget,
 ): Promise<void> {
   cableSelectionStore.clear();
+  const before = new Map(editor.getConnections().map((c) => [c.id, c.target]));
   for (const id of target.connIds) {
     cableGhostStore.commit(id);
     try { await editor.removeConnection(id); } catch { /* already gone */ }
   }
-  await processGraph();
+  // A drill-in's cables reach the main canvas through its composite, which the main pass finds by computing everything.
+  if (editor === getEditor()) await processGraph(undefined, deleteReach(editor, before), { topology: true });
+  else await processGraph();
 }
 
 /** An FC never docks onto another FC, from the socket menu or a drag. */

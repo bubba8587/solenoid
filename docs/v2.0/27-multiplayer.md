@@ -157,10 +157,11 @@ smallest set of live calls:
 Then one Type Settle and FC reconcile, then one pass over the union of targets. The applier
 runs inside a "remote" scope so its own changes don't echo back out.
 
-**The proof, before any network.** Property test: for pairs of graphs drawn from the seeds and
-random edits, `apply(delta(a, b))` on a live `a` serializes byte-identical to `loadGraph(b)`.
-Then switch `flowHistory.restore` to the delta: undo stops rebuilding the canvas (no flash, the
-camera and selection survive), which is a shipped win on its own.
+**Shipped for undo (2026-11-12): `graphDelta.ts`.** `diffGraphs` (pure) and `applyGraphDelta` now carry undo and
+redo ([[react-flow-surface-contract#Undo history]]), keyed by card name, with a read-back that falls back to a whole
+load on any miss. `graphDelta.test.ts` is the property test above over every shipped example and two kinds of step,
+answers included. What the room still needs from it: keying by `sid` instead of name, and the hot-field row of the
+table (a literal or `frameText` set in place): today any `init` or literal change rebuilds that one card.
 
 **The table popup in a room.** Today it edits a local grid and Save writes the whole string back.
 In a room: each cell commits on blur straight into the table container (the popup already

@@ -149,12 +149,14 @@ flowchart TD
 | A node added live | `processGraph(id, undefined, { topology: true })` |
 | Load or document switch | `processGraph()` at the end of the rebuild, still inside the rebuild scope |
 | Paste | `bulkSettle(pastedIds)`: an additive pass rendering only the pasted nodes |
-| Delete, composite create or unpack, undo, redo | a rebuild scope, then one `bulkSettle()` (a full pass) |
+| Delete (main canvas) | a rebuild scope, then `bulkSettle(reach, { topology: true })`: each surviving card whose inputs lost or gained a cable has its reach reset, and an additive pass renders that reach (`deleteReach` in `canvasActions.ts`); removing cables from the cable menu does the same |
+| Undo, redo | the delta's own pass: an additive pass over what the changed cards reach ([[react-flow-surface-contract#Undo history]]); a whole load where the delta falls back |
+| Composite create or unpack | a rebuild scope, then one `bulkSettle()` (a full pass) |
 | F9, Calculate now, the status bar's Calculate, switching to Automatic or Sketch, local midnight when the document holds a volatile date | `requestRecalc()` |
 | A sink's Run (Write File, Write Obsidian, Write Tasks) while Sketch is selected | `withExactPass(write)`: waits out a pass in flight, then `processGraph()` with `{ force: true }` inside a `beginForceExact` bracket held through the write; no new generation |
 | A live-data connection refresh or a background load landing | `processGraph()` outside any rebuild scope ([[#A refresh never runs inside a rebuild scope]]) |
 
-`bulkSettle(renderOnly?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly)`.
+`bulkSettle(renderOnly?, opts?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly, opts)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly, opts)`. An additive pass clears nothing itself, so a caller that changed values first resets each changed card's reach (`engine.reset(id)`) and names that reach.
 
 ### The perf probe
 
@@ -237,7 +239,7 @@ A rebuild scope marks the graph as being built or rewritten in bulk, as opposed 
 
 - `beginGraphRebuild()` increments the session's depth counter; `endGraphRebuild()` decrements it, never below zero; `isGraphRebuilding()` is true while the counter is above zero. Every opener pairs its `end` in a `finally`.
 - Openers: document load and its rollback (`persistence.ts`), paste, bulk delete, composite create and unpack, the Tornado sweep, the model fuzzer, and undo and redo (through `withGraphRebuild`).
-- `withGraphRebuild(fn)` clears the session's "topology dirty" flag, opens a scope, runs `fn`, closes the scope, and if a cable changed while the scope was open (the canvas pipe calls `markBulkTopoDirty()` instead of settling) runs one `bulkSettle()`. So an undo that only moved a node computes nothing. The flag is a single global, so `withGraphRebuild` does not nest.
+- `withGraphRebuild(fn)` clears the session's "topology dirty" flag, opens a scope, runs `fn`, closes the scope, and if a cable changed while the scope was open (the canvas pipe calls `markBulkTopoDirty()` instead of settling) runs one `bulkSettle()`, unless the caller passes `{ settled: true }` because it runs its own settle and pass (the undo delta). So a step that only moved a node computes nothing. The flag is a single global, so `withGraphRebuild` does not nest.
 
 What an open scope suppresses:
 

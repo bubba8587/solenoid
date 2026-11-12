@@ -1,0 +1,294 @@
+// [[B12]] losslessSaves, [[A1]] visualGraphCalculator (the snapshot history), [[react-flow-surface-contract#Undo history]]
+// Undo and redo move the live canvas to a saved graph by changing only what differs: the cards whose saved body
+// changed are rebuilt, moved cards move, cables come and go, and one pass recomputes what
+// those changes reach. Everything else keeps its node, its caches and its view.
+import { GraphConnection, type GraphNode } from "./graphModel";
+import type { SolenoidNode, SolenoidConnection } from "./schemes";
+import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
+import { serializeGraph } from "./persistence";
+import { getEditor, getView, getEngine, processGraph, withGraphRebuild } from "./process";
+import { restoreNodeState, restoreSideTables, type SideTables } from "./savedNodeBody";
+import { ctorRegistry } from "./nodeCtorRegistry";
+import { FormatControllerNode, CompositeNode } from "./nodeClasses";
+import { remapNodeRefs, type NodeRefs } from "./persistenceCore";
+import { restoreLiterals } from "./literalFields";
+import { nodeNameStore } from "./nodeNameStore";
+import { forgetNodeDeep } from "./nodeStoreRegistry";
+import { nodeSizeStore } from "./nodeSizeStore";
+import { collapseStore } from "./collapseStore";
+import { socketFlipStore } from "./socketFlipStore";
+import { sectionFoldStore } from "./sectionFoldStore";
+import { standoffStore } from "./standoffs";
+import { pinStore } from "./pinStore";
+import { commentStore } from "./commentStore";
+import { frameFormatStore } from "./frameFormatStore";
+import { drawnCableStore } from "./drawnCables";
+import { paletteStore, reportPaletteStore } from "./palette";
+import { docMetaStore } from "./docMetaStore";
+import { compositeEditorStore } from "./compositeEditorStore";
+import { rebuildGroupMembership } from "./groupMembership";
+import { syncGroupCollapse } from "./groupCollapse";
+import { settleCableChange } from "./cableSettle";
+import { repositionDockedNodes } from "./canvasCommands";
+import { sameLanding, USER_SIZED } from "./flow/flowHistoryDigest";
+
+const SIDE_KINDS = ["standoffs", "pins", "comments", "frameFormats"] as const;
+type SideKind = (typeof SIDE_KINDS)[number];
+
+/** What moves a live graph saved as `from` to `to`, keyed by the cards' saved ids (their names in the text form). */
+export interface GraphDelta {
+  /** Saved ids gone from `to`. */
+  removed: string[];
+  /** Cards new in `to`, in its order. */
+  added: SavedNode[];
+  /** Cards in both whose type, init, literals or trust changed: rebuilt from `to`. */
+  rebuilt: SavedNode[];
+  /** Cards whose size, fold, flip or sections changed and nothing a pass reads. */
+  restyled: SavedNode[];
+  /** Cards whose position changed. */
+  moved: SavedNode[];
+  cablesRemoved: SavedConnection[];
+  cablesAdded: SavedConnection[];
+  /** The side tables to replace whole from `to`. */
+  sides: SideKind[];
+  drawnCables: boolean;
+  palette: boolean;
+  reportPalette: boolean;
+  meta: boolean;
+  /** The saved stacking order of the cards in both differs, or a card is new. */
+  order: boolean;
+}
+
+const connKey = (c: SavedConnection): string => `${c.source}\u0000${c.sourceOutput}\u0000${c.target}\u0000${c.targetInput}`;
+const same = (a: unknown, b: unknown): boolean => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/** The init a pass reads: a measured width or height is re-stamped after every restore, so it is no edit. */
+function initKey(n: SavedNode): string {
+  if (USER_SIZED.has(n.type)) return JSON.stringify(n.init ?? {});
+  const { width: _w, height: _h, ...rest } = (n.init ?? {}) as Record<string, unknown>;
+  return JSON.stringify(rest);
+}
+
+const filled = (m: object | undefined) => (m && Object.keys(m).length > 0 ? m : null);
+const bodyKey = (n: SavedNode): string =>
+  JSON.stringify([n.type, n.name ?? null, filled(n.literals), filled(n.stringLiterals), n.foreign ?? null]) + initKey(n);
+const styleKey = (n: SavedNode): string =>
+  JSON.stringify([n.size ?? null, n.collapsed ?? false, n.flipped ?? false, n.sections ?? null]);
+
+/** The delta from `from` to `to`, or null when only a whole load gets there (another save format, another pack set). */
+export function diffGraphs(from: SavedGraph, to: SavedGraph): GraphDelta | null {
+  if (from.v !== to.v || !same(from.packs, to.packs)) return null;
+  const fromById = new Map(from.nodes.map((n) => [n.id, n]));
+  const toById = new Map(to.nodes.map((n) => [n.id, n]));
+  if (fromById.size !== from.nodes.length || toById.size !== to.nodes.length) return null;
+
+  const removed = from.nodes.filter((n) => !toById.has(n.id)).map((n) => n.id);
+  const added: SavedNode[] = [];
+  const rebuilt: SavedNode[] = [];
+  const restyled: SavedNode[] = [];
+  const moved: SavedNode[] = [];
+  for (const n of to.nodes) {
+    const p = fromById.get(n.id);
+    if (!p) { added.push(n); continue; }
+    if (bodyKey(p) !== bodyKey(n)) { rebuilt.push(n); continue; }
+    if (styleKey(p) !== styleKey(n)) restyled.push(n);
+    if (p.x !== n.x || p.y !== n.y) moved.push(n);
+  }
+
+  // A rebuilt or removed card's cables go with it, and a rebuilt or added one's come back from `to`.
+  const fresh = new Set([...removed, ...rebuilt.map((n) => n.id), ...added.map((n) => n.id)]);
+  const toKeys = new Set(to.connections.map(connKey));
+  const fromKeys = new Set(from.connections.map(connKey));
+  const touches = (c: SavedConnection) => fresh.has(c.source) || fresh.has(c.target);
+  const cablesRemoved = from.connections.filter((c) => touches(c) || !toKeys.has(connKey(c)));
+  const cablesAdded = to.connections.filter((c) => touches(c) || !fromKeys.has(connKey(c)));
+
+  const freshCards = rebuilt.length + added.length > 0;
+  const sides = SIDE_KINDS.filter((k) => freshCards || removed.length > 0 || !same(from[k], to[k]));
+
+  const kept = from.nodes.filter((n) => toById.has(n.id)).map((n) => n.id);
+  const keptInTo = to.nodes.filter((n) => fromById.has(n.id)).map((n) => n.id);
+  const order = added.length > 0 || kept.join("\u0000") !== keptInTo.join("\u0000");
+
+  return {
+    removed, added, rebuilt, restyled, moved, cablesRemoved, cablesAdded, sides,
+    drawnCables: !same(from.drawnCables ?? [], to.drawnCables ?? []),
+    palette: !same(from.palette, to.palette),
+    reportPalette: !same(from.reportPalette, to.reportPalette),
+    meta: !same(from.meta, to.meta),
+    order,
+  };
+}
+
+/** Whether the delta changes anything at all. */
+export function isEmptyDelta(d: GraphDelta): boolean {
+  return !d.removed.length && !d.added.length && !d.rebuilt.length && !d.restyled.length && !d.moved.length &&
+    !d.cablesRemoved.length && !d.cablesAdded.length && !d.sides.length && !d.drawnCables && !d.palette &&
+    !d.reportPalette && !d.meta && !d.order;
+}
+
+/** Moves the live main canvas to `target` by its delta. `false`, with nothing changed, when only a whole load gets
+ *  there: no canvas, a card type this build lacks, a save the delta can't express. After the apply the canvas is
+ *  read back, and a result that isn't `target` is answered by a whole load, so undo never lands somewhere else. */
+export async function applyGraphDelta(target: SavedGraph): Promise<boolean> {
+  const editor = getEditor();
+  const view = getView();
+  const engine = getEngine();
+  if (!editor || !view || !engine) return false;
+  const current = serializeGraph();
+  if (!current) return false;
+  const delta = diffGraphs(current, target);
+  if (!delta) return false;
+  if (isEmptyDelta(delta)) return true;
+  const reg = ctorRegistry();
+  if ([...delta.added, ...delta.rebuilt].some((n) => !reg.has(n.type))) return false;
+
+  // Saved id (a name) → live id; every card the save holds has one.
+  const live = new Map<string, string>();
+  for (const n of editor.getNodes()) {
+    const name = nodeNameStore.get(n.id);
+    if (name) live.set(name, n.id);
+  }
+  if (current.nodes.some((n) => !live.has(n.id))) return false;
+
+  const gone = new Set([...delta.removed, ...delta.rebuilt.map((n) => n.id)].map((id) => live.get(id)!));
+  if (compositeEditorStore.stack().some((c) => gone.has(c.id))) compositeEditorStore.close();
+
+  const dirty = new Set<string>();
+  const created: GraphNode[] = [];
+  let cablesChanged = delta.cablesAdded.length + delta.cablesRemoved.length > 0;
+
+  await withGraphRebuild(async () => {
+    const liveCables = new Map(editor.getConnections().map((c) => [
+      `${c.source}\u0000${c.sourceOutput}\u0000${c.target}\u0000${c.targetInput}`, c,
+    ]));
+    for (const sc of delta.cablesRemoved) {
+      const s = live.get(sc.source), t = live.get(sc.target);
+      const c = s && t ? liveCables.get(`${s}\u0000${sc.sourceOutput}\u0000${t}\u0000${sc.targetInput}`) : undefined;
+      if (!c) continue;
+      await editor.removeConnection(c.id);
+      if (!gone.has(c.target)) dirty.add(c.target);
+    }
+
+    // A rebuilt card takes a fresh live id, as a load gives it, so its view mounts afresh rather than keeping the old
+    // card's drafts; what refers to the old id is pointed at the new one below.
+    const oldId = new Map(delta.rebuilt.map((sn) => [sn.id, live.get(sn.id)!]));
+    const swapped = new Map<string, string>();
+    for (const id of gone) {
+      const node = editor.getNode(id);
+      if (!node) continue;
+      for (const c of editor.getConnections().filter((c) => c.source === id || c.target === id)) {
+        await editor.removeConnection(c.id);
+        if (!gone.has(c.target)) dirty.add(c.target);
+        cablesChanged = true;
+      }
+      await editor.removeNode(id);
+      // The rebuild gate holds back the delete settle, which would also take a relocation for a delete.
+      forgetNodeDeep(node as SolenoidNode);
+    }
+    for (const id of delta.removed) live.delete(id);
+
+    for (const sn of [...delta.rebuilt, ...delta.added]) {
+      const Ctor = reg.get(sn.type)!;
+      const node = new Ctor({ ...sn.init });
+      const was = oldId.get(sn.id);
+      if (was) swapped.set(was, node.id);
+      restoreLiterals(node, sn);
+      nodeNameStore.claim(node.id, sn.name ?? sn.id, sn.type);
+      restoreNodeState(node.id, sn);
+      await editor.addNode(node as SolenoidNode);
+      await view.moveNode(node.id, { x: sn.x ?? 0, y: sn.y ?? 0 });
+      live.set(sn.id, node.id);
+      created.push(node);
+      dirty.add(node.id);
+    }
+    const isLive = (id: string) => !!editor.getNode(id);
+    for (const node of created) remapNodeRefs(node as unknown as NodeRefs, live, isLive);
+    const fresh = new Set(created);
+    if (swapped.size) for (const node of editor.getNodes()) if (!fresh.has(node)) remapNodeRefs(node as unknown as NodeRefs, swapped, isLive);
+
+    for (const sc of delta.cablesAdded) {
+      const s = live.get(sc.source), t = live.get(sc.target);
+      const src = s ? editor.getNode(s) : undefined;
+      const tgt = t ? editor.getNode(t) : undefined;
+      if (!src || !tgt) continue;
+      try {
+        await editor.addConnection(new GraphConnection(src, sc.sourceOutput, tgt, sc.targetInput) as SolenoidConnection);
+        dirty.add(tgt.id);
+      } catch { /* a socket the card no longer has: a whole load drops the same cable */ }
+    }
+
+    for (const sn of delta.restyled) {
+      const id = live.get(sn.id)!;
+      nodeSizeStore.set(id, sn.size ? { ...sn.size } : undefined);
+      collapseStore.set(id, sn.collapsed === true);
+      socketFlipStore.set(id, sn.flipped === true);
+      sectionFoldStore.setAll(id, sn.sections ?? {});
+    }
+    for (const sn of delta.moved) await view.moveNode(live.get(sn.id)!, { x: sn.x, y: sn.y });
+
+    if (delta.sides.length) {
+      const mainIds = editor.getNodes().map((n) => n.id);
+      const clear: Record<SideKind, (id: string) => void> = {
+        standoffs: (id) => standoffStore.removeForNode(id),
+        pins: (id) => pinStore.remove(id),
+        comments: (id) => commentStore.removeForNode(id),
+        frameFormats: (id) => frameFormatStore.removeForNode(id),
+      };
+      const sides: SideTables = {};
+      for (const k of delta.sides) {
+        for (const id of mainIds) clear[k](id);
+        (sides as Record<string, unknown>)[k] = target[k];
+      }
+      restoreSideTables(sides, (id) => {
+        const l = live.get(id);
+        return l && editor.getNode(l) ? l : undefined;
+      });
+    }
+
+    for (const node of created) if (node instanceof CompositeNode) await node.hydrate(reg);
+    for (const node of editor.getNodes()) if (node instanceof FormatControllerNode) node.dockSelf(editor);
+
+    // A rebuilt card was added again on top, so the stacking order is compared live, not only where the save moved it.
+    const order = target.nodes.map((n) => live.get(n.id)!);
+    if (order.join("\u0000") !== editor.getNodes().map((n) => n.id).join("\u0000")) editor.reorderNodes(order);
+    if (delta.drawnCables) drawnCableStore.load(target.drawnCables ?? []);
+    if (delta.palette) paletteStore.setDocPalette(target.palette ?? null);
+    if (delta.reportPalette) reportPaletteStore.setReportPalette(target.reportPalette ?? null);
+    if (delta.meta) docMetaStore.setDocMeta(target.meta ?? null);
+
+    rebuildGroupMembership(editor);
+    settleCableChange(editor, view);
+    syncGroupCollapse(editor, view);
+  }, { settled: true });
+
+  // One pass over what the changes reach: each changed card's reach is cleared, everything else keeps its caches.
+  if (dirty.size > 0) {
+    const reach = new Set<string>();
+    for (const id of dirty) {
+      if (!editor.getNode(id)) continue;
+      engine.reset(id);
+      for (const r of engine.downstreamClosure(id)) reach.add(r);
+    }
+    await processGraph(undefined, reach, { topology: cablesChanged || created.length > 0 });
+  }
+  const hosts = new Set<string>();
+  for (const n of editor.getNodes()) {
+    const h = (n as { hostNodeId?: string }).hostNodeId;
+    if (n instanceof FormatControllerNode && h) hosts.add(h);
+  }
+  if (hosts.size) requestAnimationFrame(() => requestAnimationFrame(() => { for (const h of hosts) repositionDockedNodes(h); }));
+
+  const landed = serializeGraph();
+  if (landed && sameLanding(landed, target)) return true;
+  if (import.meta.env?.DEV && landed) {
+    const want = new Map(target.nodes.map((n) => [n.id, JSON.stringify(n)]));
+    const off = landed.nodes.filter((n) => want.get(n.id) !== JSON.stringify(n)).map((n) => ({ got: n, want: want.get(n.id) }));
+    const { nodes: _l, ...lh } = landed;
+    const { nodes: _t, ...th } = target;
+    const head = same(lh, th) ? "same" : JSON.stringify([lh, th]).slice(0, 1500);
+    const order = landed.nodes.map((n) => n.id).join() === target.nodes.map((n) => n.id).join() ? "same" : "differs";
+    console.warn("[solenoid] undo delta missed its target; loading it whole", JSON.stringify({ head, order, off }).slice(0, 3000));
+  }
+  return false;
+}

@@ -98,27 +98,29 @@ export function notifyGraphChanged(): void {
   _graphChanged();
 }
 
-let _bulkSettle: (renderOnly?: Set<string>) => Promise<void> = async (r) => { await processGraph(undefined, r); };
+type BulkSettle = (renderOnly?: Set<string>, opts?: { topology?: boolean }) => Promise<void>;
+let _bulkSettle: BulkSettle = async (r, o) => { await processGraph(undefined, r, o); };
 
-export function setBulkSettle(fn: (renderOnly?: Set<string>) => Promise<void>) {
+export function setBulkSettle(fn: BulkSettle) {
   _bulkSettle = fn;
 }
 
-export function bulkSettle(renderOnly?: Set<string>) {
-  return _bulkSettle(renderOnly);
+export function bulkSettle(renderOnly?: Set<string>, opts?: { topology?: boolean }) {
+  return _bulkSettle(renderOnly, opts);
 }
 
 export function markBulkTopoDirty() { markTopoDirty(); }
 
-// Never nest: the topology-dirty flag is a single global.
-export async function withGraphRebuild<T>(fn: () => Promise<T>): Promise<T> {
+// Never nest: the topology-dirty flag is a single global. `settled`: the caller runs its own settle and pass, so a
+// cable change inside asks for no whole one.
+export async function withGraphRebuild<T>(fn: () => Promise<T>, opts?: { settled?: boolean }): Promise<T> {
   openRebuildScope();
   try {
     return await fn();
   } finally {
     const [ended, dirty] = closeRebuildScope();
     if (ended) rebuildEnded();
-    if (dirty) await bulkSettle();
+    if (dirty && !opts?.settled) await bulkSettle();
   }
 }
 

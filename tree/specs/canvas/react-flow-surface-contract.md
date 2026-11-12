@@ -418,14 +418,27 @@ Tests:
 
 ## Undo history
 
-Code: `flow/flowHistory.ts`, `flow/flowHistoryDigest.ts`.
+Code: `flow/flowHistory.ts`, `flow/flowHistoryDigest.ts`, `graphDelta.ts`.
 
-Undo is a snapshot history ([[A1]] visualGraphCalculator). Every settled mutation records the canonical document (`serializeGraph`), so no action needs its own inverse: an undo is a `loadGraph` of the earlier snapshot. A snapshot is stored as the document's top-level fields plus one JSON string per node, and a node unchanged since the step before reuses that step's string, so history costs one document plus what each step changed rather than one document per step. The parsed document of the current entry is kept for the next record's label.
+Undo is a snapshot history ([[A1]] visualGraphCalculator). Every settled mutation records the canonical document (`serializeGraph`), so no action needs its own inverse: an undo moves the canvas to the earlier snapshot by its delta (below), and a whole `loadGraph` of it only where the delta can't. A snapshot is stored as the document's top-level fields plus one JSON string per node, and a node unchanged since the step before reuses that step's string, so history costs one document plus what each step changed rather than one document per step. The parsed document of the current entry is kept for the next record's label.
 
 - **Recording.** `schedule()` debounces by `COALESCE_MS` (400 ms); `recordNow()` records at once. Neither records while a restore or a rebuild is running. A snapshot identical to the current one is skipped, and so is one that differs only by the cards' measured `init.width` and `init.height`, which re-stamp after a restore mounts the cards; recording that drift would cut off the redo tail for nothing. A new record truncates the redo tail.
 - **Who records.** `processGraph`'s graph-changed hook records component edits and autosaves; position-only changes (a nudge, a group push, standoffs), which never run `processGraph`, record through `afterProgrammaticMove`; drawn-cable edits record through `commitDrawn()`.
 - **Limits.** At most `MAX_DEPTH` (80) entries and `MAX_BYTES` (16 MiB, counted as two bytes per JSON character), where each entry counts only the strings it doesn't share with the entry before it and the oldest surviving entry counts in full. The oldest entries go first, but the current entry and the one before it always stay, so the last edit on a document whose two snapshots exceed the budget can still be undone.
-- **Restoring.** A restore runs without the load curtain and puts the camera back exactly where it was (`setCamera`, so a zoom a pinch left between steps is not snapped), so an undo feels like an edit, and then schedules an autosave, since the restored state is now the document. One restore runs at a time, inside `withGraphRebuild`, so it settles once instead of once per restored cable. Undo first flushes a pending debounced record, before that scope opens, since nothing records inside it.
+- **Restoring by delta.** `applyGraphDelta(step)` serializes the live canvas, diffs it against the step by card name (`diffGraphs`, pure) and changes only what differs, so the canvas, the camera, the selection and every untouched card's node and caches stay as they are:
+
+  | What differs | Applied as |
+  |---|---|
+  | a card gone or new | deleted with its cables (its stores forgotten) / built from the step as a load builds it |
+  | a card's type, `init`, literals, name or trust mark | rebuilt from the step under a fresh live id, so its view mounts afresh rather than keeping the old card's drafts; what referred to the old id (a dock, a group's members, a presentation's steps) is pointed at the new one, and its cables come back from the step |
+  | a cable | removed or added |
+  | size, fold, flip, sections | the stores, no pass |
+  | position | `moveNode`, no pass |
+  | side tables, drawn cables, palettes, document meta | replaced whole from the step when they differ or a card came or went |
+  | stacking order | `reorderNodes` to the step's, since a rebuilt card was added on top |
+
+  A measured `init.width` or `init.height` alone is no edit. Then the cable settle, group membership and collapse run once, each card whose inputs changed (a new or rebuilt card, a cable's target) has its reach reset, and one additive pass renders that reach (`processGraph(undefined, reach, { topology })`). The scope is `withGraphRebuild(fn, { settled: true })`, so the cables it moved ask for no whole `bulkSettle`. Finally the canvas is serialized again and compared with the step (`sameLanding`: top-level key order, measures and empty literal maps aside); a miss, an unknown card type, another pack set or save version, or a throw falls back to the whole load, so undo never lands anywhere a load wouldn't.
+- **Restoring whole.** The fallback runs without the load curtain and puts the camera back exactly where it was (`setCamera`, so a zoom a pinch left between steps is not snapped), so an undo feels like an edit. Either way the restore then schedules an autosave, since the restored state is now the document, and the entry's snapshot becomes the canvas as it landed, so the next record compares with what is there and an untouched canvas records nothing (which would cut off the redo tail). One restore runs at a time, inside a rebuild scope. Undo first flushes a pending debounced record, before that scope opens, since nothing records inside it.
 - **The baseline.** `reset()` is the `setClearHistory` slot: `loadGraph`'s own end-of-load clear seeds the new document's baseline, labeled "Opened". Restores skip it, so an undo never wipes the stack.
 - **Labels.** `describeGraphDelta` (`flowHistoryDigest.ts`) derives each entry's label by diffing it against the one before. The parts join with "; ", most significant first: Added, Removed, Connected and Disconnected (a single cable reads "A → B"), Renamed, then Edited, each naming a single node or counting several. A card's `init.width` and `init.height` are measures re-stamped after every restore, so a change to them alone records nothing (`sameIgnoringDims`). A group's are the user's, so a grip resize or Autofit records an entry, labeled with the "Edited document" fallback. A redo first flushes a pending edit, as undo does, so the edit is kept. Moves are reported only when nothing else changed, since they ride along with group tows and Expand Pushes. Failing all of those, the label is "Changed standoffs", "Drew a cable", "Removed a drawn cable", "Edited a drawn cable" or "Edited document". `records()` lists the applied transitions still on the stack, oldest first and without the "Opened" baseline (once the limits trim the baseline, the oldest surviving entry is listed too), for Session History.
 
@@ -435,6 +448,7 @@ Tests:
 
 - `flow/flowHistory.test.ts`: an undo within the coalesce window keeps the pending edit and steps back one entry, a redo within it records the edit and drops the redo tail, the byte budget keeps the entry before the current one and lists every surviving action once the baseline is trimmed, the camera comes back exactly between zoom steps, and an unchanged node is shared between steps so a 4 MB table doesn't crowd out history.
 - `flow/flowHistoryDigest.test.ts`: the labels each change gets.
+- `graphDelta.test.ts`: the diff's sorting; over every shipped example and two kinds of step (a card deleted, one moved, a cable cut; a card renamed, one folded, a value typed, a pin and a comment), undo and redo by delta land the save and the answers a whole load of the step lands; an undo of one input's edit resets and renders only that input's chain; a delete renders only what lost a cable and lands what a fresh load of the rest gives.
 
 ## The main canvas
 
