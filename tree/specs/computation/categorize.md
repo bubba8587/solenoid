@@ -30,7 +30,7 @@ The card saves its sort as `assigned`: `[category, [item key, …]]`, each categ
 
 ## The sorter
 
-**Sort items…** on the card opens it; the card's summary under the button counts the sorted items. It reuses the Pivot's Configure Fields pieces (`components/FieldChips.tsx`: `FieldsPanel` and `FieldChip`, with `PivotEditorPopup.css`): the unsorted items are the Fields list on top, headed with how many are unsorted, and each category is a column below, up to four across and wrapping after, with `+ Category` in the footer.
+**Sort items…** on the card opens it; the card's summary under the button counts the sorted items. It reuses the Pivot's Configure Fields pieces (`components/FieldChips.tsx`: `FieldsPanel` and `FieldChip`, with `PivotEditorPopup.css`): the unsorted items are the Fields list on top, and each category is a column below, up to four across and wrapping after, with `+ Category` in the footer.
 
 - **Long items.** Items are often long (a bank memo, a free-text answer), so a chip wraps rather than clipping: up to three lines in a column, and up to two at a width capped at 300 pixels in the items list, so long items pack side by side. Category columns are at least 150 pixels wide, as many across as fit the popup (880 pixels to start, resizable).
 - **Placing.** Dragging a chip into a column sorts it there, onto a chip it lands before that chip, and dragging it back onto the items unsorts it, as the chip's × does. A click picks a chip, Ctrl or Cmd adds or drops one, and Shift picks the run from the last pick in the same list; a drag that starts on a picked chip carries every picked one, and with chips picked, a click on a column's empty space sorts them there. Each move commits at once and runs the card.

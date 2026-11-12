@@ -1,0 +1,13 @@
+/* The Chart Builder's picks: settings with no socket. Its checkboxes share one wrapping row; a dropdown pick keeps the
+   row height of the socketed rows around it. */
+.chart-builder__toggles { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 3px 0; }
+.chart-builder__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+.chart-builder__toggle input { width: 14px; height: 14px; margin: 0; cursor: pointer; }

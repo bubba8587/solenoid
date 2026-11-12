@@ -261,8 +261,10 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     // A key that names no input, and that the card isn't born holding, is read by nothing: the loader keeps it in
     // the map (a card's own keys live there too, and a card with no inputs keeps only its own), so a misspelled input (`str:column` for Get Column's `name`) would
     // load, compute from a blank and say nothing.
+    // A card's `savedFields` are settings it keeps in the literal maps with no socket (the Chart Builder's picks).
+    const savedFields = (Ctor as unknown as { savedFields?: ReadonlySet<string> }).savedFields;
     const strayKey = (k: string, map: "literals" | "stringLiterals"): boolean =>
-      inputKeys.length > 0 && !inputKeys.includes(k) && !(k in ((fresh?.[map] as object | undefined) ?? {})) && fresh !== null;
+      inputKeys.length > 0 && !inputKeys.includes(k) && !savedFields?.has(k) && !(k in ((fresh?.[map] as object | undefined) ?? {})) && fresh !== null;
     const stray = (k: string, map: "lit" | "str"): void => {
       const own = Object.keys((fresh?.[map === "lit" ? "literals" : "stringLiterals"] as object | undefined) ?? {});
       issues.push({ line: at(name), node: name, message: `${map}:${k}: ${sn.type} has no input or field named "${k}"${nearest(k, new Set([...inputKeys, ...own]))}, so this value would be silently ignored. Inputs: ${keyList(inputKeys)}.` });

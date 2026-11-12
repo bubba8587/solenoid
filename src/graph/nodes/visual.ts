@@ -908,12 +908,17 @@ export class QuiverNode extends GraphNode {
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
 const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "stacked", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale"] as const;
+/** The fields that are discrete picks (a checkbox or a dropdown): plain card settings with no socket, since nobody
+ *  drives a grid line or a colormap from a cable. The rest (text, column names, numbers) keep their sockets. */
+export const CB_PICK_FIELDS: ReadonlySet<string> = new Set(["grid", "marker", "clamp", "pielabels", "radarscale", "stacked", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "linestyle", "aspect", "yscale", "cmap", "annot", "cbar", "origin"]);
 const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center", "maxgap"] as const;
 
 export class ChartBuilderNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Feeds any figure's Options input. Only the fields given a value are included.",
   };
+  /** The picks, kept in `stringLiterals` with no socket. */
+  static savedFields: ReadonlySet<string> = CB_PICK_FIELDS;
 
   label: string;
   target: ChartTargetId;
@@ -931,46 +936,15 @@ export class ChartBuilderNode extends GraphNode {
     this.addInput("xlabel",    strIn("X label"));
     this.addInput("ylabel",    strIn("Y label"));
     this.addInput("color",     strIn("Color"));
-    this.addInput("grid",      strIn("Grid"));
-    this.addInput("marker",    strIn("Markers"));
-    this.addInput("pielabels", strIn("Pie labels"));
-    this.addInput("radarscale", strIn("Radar scale"));
-    this.addInput("stacked",   strIn("Stacking"));
-    this.addInput("zoom",      strIn("Zoom"));
-    this.addInput("layout",    strIn("Layout"));
-    this.addInput("tiers",     strIn("Header rows"));
-    this.addInput("fit",       strIn("Fit"));
-    this.addInput("critical",  strIn("Critical path"));
-    this.addInput("baseline",  strIn("Baseline"));
-    this.addInput("arrows",    strIn("Arrows"));
-    this.addInput("today",     strIn("Today line"));
-    this.addInput("weekends",  strIn("Weekend shading"));
-    this.addInput("labels",    strIn("Bar labels"));
-    this.addInput("histogram", strIn("Resource band"));
-    this.addInput("minutes",   strIn("Times"));
     this.addInput("window",    strIn("Window"));
     this.addInput("columns",   strIn("Columns"));
-    this.addInput("collapse",  strIn("Outline"));
-    this.addInput("week",      strIn("Week numbers"));
-    this.addInput("fiscal_start", strIn("Fiscal year starts"));
-    this.addInput("status",    strIn("Status line"));
-    this.addInput("group_by",  strIn("Project groups"));
-    this.addInput("cardsize",  strIn("Tile size"));
-    this.addInput("clamp",     strIn("Clamp tiles"));
     this.addInput("x",         strIn("X column"));
     this.addInput("y",         strIn("Y columns"));
     this.addInput("s",         strIn("Size column"));
     this.addInput("c",         strIn("Color column"));
     this.addInput("annotate",  strIn("Point labels"));
     this.addInput("by",        strIn("Split by"));
-    this.addInput("linestyle", strIn("Line style"));
-    this.addInput("aspect",    strIn("Aspect"));
-    this.addInput("yscale",    strIn("Y scale"));
-    this.addInput("cmap",      strIn("Colormap"));
-    this.addInput("annot",     strIn("Cell values"));
     this.addInput("fmt",       strIn("Value format"));
-    this.addInput("cbar",      strIn("Colorbar"));
-    this.addInput("origin",    strIn("First row"));
     this.addInput("xmin",      numIn("X min"));
     this.addInput("xmax",      numIn("X max"));
     this.addInput("ymin",      numIn("Y min"));

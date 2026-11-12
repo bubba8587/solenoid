@@ -155,7 +155,7 @@ export function CategorizePopup() {
     <PopupShell title={state.title} onClose={close} cardClassName="pivot-editor categorize-editor" resizable={{ min: { w: 420, h: 320 } }} cardStyle={popupCardVars(state)}>
       <div className="pivot-editor__body categorize-editor__body">
         <FieldsPanel
-          head={`Items · ${unsorted.length} of ${items.length} unsorted`}
+          head="Items"
           hint={items.length === 0 ? "connect a list" : picked.size ? `${picked.size} picked` : undefined}
           onDrop={() => dropInto(null)}
         >
