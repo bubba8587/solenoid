@@ -361,7 +361,8 @@ export function InlineCsvField({
   value: string | undefined;
   onChange: (v: string) => void;
   listId?: string;
-  /** The field's declared empty kind ([[D96]] emptySlotShowsItsValue); a field that declares none hints at the form. */
+  /** What the field's declared empty kind shows ([[D96]] emptySlotShowsItsValue), "" for one that shows nothing; a field
+   *  that declares none hints at the form. */
   placeholder?: string;
 }) {
   const field = useDraftCommit(value ?? "", (v) => v, (t) => t, onChange);
@@ -523,7 +524,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
               pickerKeys.has(key) ? (
                 <ColumnListField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
               ) : (
-                <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} placeholder={placeholder} />
+                <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} placeholder={empty ? (placeholder ?? "") : undefined} />
               )
             ) : null}
             {trailing?.[key]}

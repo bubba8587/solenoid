@@ -271,3 +271,21 @@ describe("what the change doesn't reach keeps its value", () => {
   });
 
 });
+
+describe("an undo of a Categorize sort", () => {
+  it("brings back the sort and the categories the step had, and redo puts the newer ones back", async () => {
+    const { CategorizeNode } = await import("../../src/graph/nodes/frame");
+    const card = new CategorizeNode();
+    await editor.addNode(card as never);
+    const before = serializeGraph()!;
+    card.assigned = [["Fruit", ["apple", "kiwi"]]];
+    card.stringLiterals.categories = "Fruit, Veg";
+    const after = serializeGraph()!;
+    const live = () => editor.getNodes()[0] as unknown as InstanceType<typeof CategorizeNode>;
+
+    expect(await applyGraphDelta(asStep(before))).not.toBeNull();
+    expect([live().assigned, live().stringLiterals.categories]).toEqual([[], ""]);
+    expect(await applyGraphDelta(asStep(after))).not.toBeNull();
+    expect([live().assigned, live().stringLiterals.categories]).toEqual([[["Fruit", ["apple", "kiwi"]]], "Fruit, Veg"]);
+  });
+});

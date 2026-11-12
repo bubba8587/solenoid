@@ -126,9 +126,12 @@
   .describe-profile__statvalue { font-size: 11px; }
 }
 
-/* A narrow tile (a Display at its starting size, a phone) drops the share column so the bars keep their length, and
-   sets its stats two to a row, left and right. */
+/* A narrow tile (a Display at its starting size, a phone) gives the column name the head's width, its count on the line
+   under it, drops the share column so the bars keep their length, and sets its stats two to a row, left and right. */
 @container profile-tile (max-width: 219px) {
+  .describe-profile__head { flex-wrap: wrap; row-gap: 0; }
+  .describe-profile__name { flex-basis: 0; }
+  .describe-profile__distinct { flex-basis: 100%; padding-left: 17px; }
   .describe-profile__toprow { grid-template-columns: minmax(0, 40%) 1fr auto; }
   .describe-profile__topshare { display: none; }
   .describe-profile__stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; row-gap: 4px; }

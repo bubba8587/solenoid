@@ -1,6 +1,6 @@
 Solenoid 1.6.2
 
-Excel workbooks as a source, undo that changes only what changed, a Probability pack, and a forecast chart on the Weather card. Runs free in your browser at solenoid-ngc.com; the Windows exe and the Linux .deb are below.
+Excel workbooks as a source, a Categorize card for sorting a list into your own groups, stacked bar charts, undo that changes only what changed, a Probability pack, and a forecast chart on the Weather card. Runs free in your browser at solenoid-ngc.com; the Windows exe and the Linux .deb are below.
 
 Highlights
 
@@ -9,6 +9,12 @@ Highlights
   - Column types come from the cells, and the popup's type buttons change them as they do for a CSV.
   - A pattern like `reports/*.xlsx` reads the same Table from every workbook as one table.
   - Only named Tables are read: in Excel, select the data and press Ctrl+T.
+- Categorize: wire in a list (vendor names, expense memos, survey answers) and drag each distinct value into a category on the card's sorter. The card answers a two-column lookup table, Item and Category, to Join back onto your rows.
+  - Categories come from a list you wire or type, or start as Category 1 to 3 to rename, add and remove in the sorter.
+  - A sort is kept by value, so it holds when the list grows, shrinks or reorders. Long items wrap; Ctrl or Shift picks several to drop at once.
+- Stacked charts: Column, Bar and Area take `stacked=True`, or `stacked=percent` for 100% stacked. The Chart Builder offers it as Stacking.
+- A Display, a Dashboard box and a Report show a Pivot as its Pivot view and a Describe output as its Profile, the way their popups open.
+- Describe's Profile (the view its popup opens on, renamed from Dashboard) is rebuilt: tiles pack with no gaps, each column in its own color, number and date columns get a Min, Median, Mean and Max strip with the median marked on the histogram, and key, constant and empty columns say so.
 - Undo and redo change only what changed. The canvas, the camera and every untouched card stay as they are, and undoing a typed value keeps that card's focus. On the Personal Finance example an undo went from about 2.7 seconds to a third of one.
   - Delete, removing a cable, Wrap as Composite and Unpack recalculate only the cards they reach.
 - The Probability pack (Settings, Packs): three cards that draw the distribution behind their answer.
@@ -17,6 +23,8 @@ Highlights
   - Bootstrap: how far a mean, median or standard deviation could be off, from resamples of the values.
 - Weather has a Forecast output: a chart of each day's high and low, rain and sky, with today marked, for a Dashboard or a Display. The card shows the next five days.
 - Pivot calculated fields drag among the values in Configure Fields, and out of the pivot without losing their cable. Sort takes a calculated field.
+  - A pivot keeps its sort and its calculated fields' places by name, so removing or reordering a field never hands the sort to another one.
+- The Chart Builder is shorter: on/off options are checkboxes side by side, and choices nobody wires (grid, colormap, line style, the Gantt's switches) are plain settings with no socket. Schedule, Gantt and Earned Value pick their weekend by name.
 - Card fields line up. Every input field on a card starts at one column, a field too narrow beside its label moves below it, and the long connection cards fold their extras into Options. Equation and TVM are about half as tall.
 
 Canvas
@@ -36,3 +44,10 @@ Fixes
 - A table wired into Frame from Lists is `#TYPE!` naming the input, not a failed card.
 - A deleted card leaves its group.
 - Weather's forecast marks today by the forecast place's clock, and moves at midnight.
+- A calculated field that names no column of the table and no value on its LAMBDA is `#NAME?` saying so, instead of reading 0.
+- A column holding only errors is a Text column, however it got there.
+- Bootstrap on a very large list draws fewer resamples (at least 200, where it drew 1,000 past 20,000 values), so it no longer stalls; answers on up to 20,000 values are unchanged.
+- Probability Between with Low or High wired to a blank answers blank instead of treating the blank as no limit.
+- A Display holding Cards no longer flashes a scrollbar on and off at some sizes.
+- An empty list field shows what it does when left empty (Categorize's reads [3 categories]) instead of a generic hint.
+- The Chart Builder's Grid checkbox shows checked on a new card, as the chart draws it.

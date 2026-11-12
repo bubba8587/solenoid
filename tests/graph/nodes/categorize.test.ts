@@ -84,3 +84,17 @@ describe("the sorter's grid", () => {
     expect([1, 3, 5, 6, 7, 10, 11, 20, 24].map(perRow)).toEqual([1, 3, 5, 3, 4, 5, 4, 5, 5]);
   });
 });
+
+describe("Categorize in the text form", () => {
+  it("writes its sort as a value and reads it back the same", async () => {
+    const { writeTextForm, readTextForm } = await import("../../../src/graph/textForm");
+    const node = { id: "c", type: "CategorizeNode", position: { x: 0, y: 0 },
+      init: { label: "Sort", assigned: [["Fruit", ["apple", "kiwi"]], ["Veg", ["leek"]]] }, stringLiterals: { categories: "Fruit, Veg" } };
+    const text = writeTextForm({ v: 2, nodes: [node], connections: [] } as never);
+    expect(text).toContain("assigned=");
+    const back = readTextForm(text).nodes[0] as unknown as { init: { assigned: unknown }; stringLiterals: Record<string, string> };
+    expect(back.init.assigned).toEqual([["Fruit", ["apple", "kiwi"]], ["Veg", ["leek"]]]);
+    expect(back.stringLiterals.categories).toBe("Fruit, Veg");
+    expect(new CategorizeNode(back.init as never).assigned).toEqual([["Fruit", ["apple", "kiwi"]], ["Veg", ["leek"]]]);
+  });
+});
