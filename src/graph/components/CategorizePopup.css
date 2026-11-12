@@ -82,3 +82,19 @@
   cursor: pointer;
 }
 .categorize-add:hover { background: var(--btn-hover); border-color: var(--border-strong); }
+
+/* Items are often long (a bank memo, a free-text answer), so a chip wraps rather than clipping to a few characters:
+   up to three lines in a column, two in the item list, where a capped width lets long ones pack side by side. */
+.categorize-editor .pivot-chip { align-items: flex-start; }
+.categorize-editor .pivot-chip__name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap-style: balance;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+.categorize-editor .pivot-fields .pivot-chip { max-width: 300px; }
+.categorize-editor .pivot-fields .pivot-chip__name { -webkit-line-clamp: 2; line-clamp: 2; }
+.categorize-editor .pivot-chip__x { flex: none; }
