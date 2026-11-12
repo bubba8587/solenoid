@@ -20,8 +20,11 @@ specific item.
   date fits a 180 px card.
 - `LazySelect` publishes its measured floor as `--lazy-min` (`.sol-lazy-select`) instead of an inline min-width: the
   inline one beat every stylesheet rule and held Currency's FROM/TO wider than their row.
-- Seen, left: IFS/SWITCH placeholders (`Output 1`) clip in their narrower fields; XMATCH's keyed field plus its type
-  button is tight at 180 px. Stacking a field under its label stays unused; no row needed it once the column landed.
+- Follow-up: a word or date field whose own label would leave it too narrow moves below its label (IF, XMATCH, SWITCH's
+  Expression, IFS's Otherwise, TEXTAFTER's If not found, FIND's Within text: six cards grow a row), and the column is
+  set by the rows that stay. A number row with an overlong label (Auto-refresh at 180 px) keeps one line out of the
+  column. `sol-conn__num` is the inline number box (no spinner, its height), and dropdowns on a row match field height.
+  The plan measures a wrapped label unwrapped (its line boxes summed), or a wrapped label would read as narrow and stick.
 
 ### SESSION DIGEST (2026-11-12: Excel workbook Tables, self-hosting groundwork, a Bluesky link; cloud session)
 - Local File and Web Source read an Excel workbook's named Table on the core (`xlsx.rs`, the `calamine` crate,

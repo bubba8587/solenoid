@@ -22,6 +22,75 @@ const noSubscribe = () => () => {};
 const IO_LABEL_COLUMN =
   ".solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child), .sol-conn__field > .sol-conn__label";
 
+/** A field whose content is words or a date, and the input width it needs beside its label before it moves below it:
+ *  about eleven characters of text, a full date, a short value beside a keyed slot's type button. */
+const WIDE_FIELDS: ReadonlyArray<[string, number]> = [
+  ["input[type=date], .solenoid-node__value-input", 96],
+  [".solenoid-node__keyed", 64],
+  [".solenoid-node__quoted--inline, .sol-conn__url, input.solenoid-node__inline-input:not([type=number])", 72],
+];
+/** The label column leaves its field this much (a six-digit number), and the gap from label to field. */
+const FIELD_FLOOR = 60;
+const LABEL_GAP = 12;
+/** A number field beside a label too long for the column keeps one line while it has this much (a 4-digit count). */
+const SOLO_FLOOR = 40;
+
+/** A label's width on one line, even while it wraps: the sum of its line boxes and a space per break. Screen px. */
+function unwrappedWidth(range: Range, label: HTMLElement): number {
+  range.selectNodeContents(label);
+  const lines = new Map<number, { left: number; right: number }>();
+  for (const r of range.getClientRects()) {
+    if (r.width === 0) continue;
+    const key = Math.round(r.top);
+    const line = lines.get(key);
+    if (line) { line.left = Math.min(line.left, r.left); line.right = Math.max(line.right, r.right); }
+    else lines.set(key, { left: r.left, right: r.right });
+  }
+  let sum = 0;
+  for (const l of lines.values()) sum += l.right - l.left;
+  return sum + Math.max(0, lines.size - 1) * 4;
+}
+
+type LabelPlan = { width: number | null; modes: Array<[HTMLElement, "below" | "solo" | null]> };
+
+/** The card's label column and the rows that leave it: a word or date field whose own label would leave it too
+ *  narrow goes `below` its label at full width, and a number row whose label is past the column's cap stays on one line
+ *  as a `solo` rather than wrapping. Layout px; the canvas zoom is divided out of the Range rects. */
+function planLabelColumn(card: HTMLElement): LabelPlan {
+  const scale = card.getBoundingClientRect().width / (card.offsetWidth || 1) || 1;
+  const range = document.createRange();
+  const rows: Array<{ row: HTMLElement; label: number; room: number; need: number | null }> = [];
+  for (const label of card.querySelectorAll<HTMLElement>(IO_LABEL_COLUMN)) {
+    const field = label.nextElementSibling as HTMLElement | null;
+    const row = label.parentElement;
+    if (!field || !row || field.classList.contains("solenoid-node__row-remove")) continue;
+    const natural = Math.ceil(unwrappedWidth(range, label) / scale);
+    const cs = getComputedStyle(row);
+    let trailing = 0;
+    for (let n = field.nextElementSibling as HTMLElement | null; n; n = n.nextElementSibling as HTMLElement | null) {
+      if (n.offsetParent !== null) trailing += n.offsetWidth + parseFloat(cs.columnGap || "0");
+    }
+    // The room beside the label: the row's content box less the gap and whatever follows the field.
+    const room = row.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - LABEL_GAP - trailing;
+    const kind = WIDE_FIELDS.find(([sel]) => field.matches(sel));
+    // A field's chrome around its input (the quote marks, a keyed slot's type button) counts against the room.
+    const input = field.matches("input") ? field : field.querySelector<HTMLElement>("input");
+    const need = kind ? kind[1] + (input ? field.offsetWidth - input.offsetWidth : 0) : null;
+    rows.push({ row, label: natural, room, need });
+  }
+  const modes: LabelPlan["modes"] = [];
+  let width = 0;
+  let any = false;
+  for (const r of rows) {
+    let mode: "below" | "solo" | null = null;
+    if (r.need !== null && r.room - r.label < r.need) mode = "below";
+    else if (r.need === null && r.label > r.room - FIELD_FLOOR && r.room - r.label >= SOLO_FLOOR) mode = "solo";
+    modes.push([r.row, mode]);
+    if (!mode) { width = Math.max(width, r.label); any = true; }
+  }
+  return { width: any ? width : null, modes };
+}
+
 /** SVG strokes, not CSS borders, so the frame can't subpixel-crack under zoom (DESIGN.md § Cards); two sibling viewports, since an absolutely positioned svg keeps its intrinsic 300×150 unless sized and geometry on a nested svg proved unreliable. */
 export function CardFrame() {
   return (
@@ -119,33 +188,19 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   // After every commit, which also covers the collapse toggle's re-layout.
   useLayoutEffect(syncOutputSocketTop);
 
-  /** The widest input-row label's natural width in layout px, or null for a card with no labeled input row. */
-  function readLabelColumn(): number | null | undefined {
-    const el = ref.current;
-    if (!el) return undefined;
-    let widest = 0;
-    let found = false;
-    const range = document.createRange();
-    for (const label of el.querySelectorAll<HTMLElement>(IO_LABEL_COLUMN)) {
-      const next = label.nextElementSibling;
-      if (!next || next.classList.contains("solenoid-node__row-remove")) continue;
-      range.selectNodeContents(label);
-      widest = Math.max(widest, range.getBoundingClientRect().width);
-      found = true;
-    }
-    if (!found) return null;
-    // Range rects are on screen, under the canvas zoom.
-    const scale = el.getBoundingClientRect().width / (el.offsetWidth || 1);
-    return Math.ceil(widest / (scale || 1));
-  }
   const labelColumnOwner = useRef({});
-  // Every labeled input row starts its field at one x: the card's widest label, capped in CSS.
+  // Every labeled input row starts its field at one x; a few rows step out of that column (`planLabelColumn`).
   useLayoutEffect(() => {
-    measureThenWrite(labelColumnOwner.current, readLabelColumn, (w) => {
+    measureThenWrite(labelColumnOwner.current, () => (ref.current ? planLabelColumn(ref.current) : undefined), (plan) => {
       const el = ref.current;
-      if (!el || w === undefined) return;
-      if (w === null) el.style.removeProperty("--io-label-w");
-      else if (el.style.getPropertyValue("--io-label-w") !== `${w}px`) el.style.setProperty("--io-label-w", `${w}px`);
+      if (!el || !plan) return;
+      if (plan.width === null) el.style.removeProperty("--io-label-w");
+      else if (el.style.getPropertyValue("--io-label-w") !== `${plan.width}px`) el.style.setProperty("--io-label-w", `${plan.width}px`);
+      for (const [row, mode] of plan.modes) {
+        if ((row.getAttribute("data-io-fit") ?? "") === (mode ?? "")) continue;
+        if (mode) row.setAttribute("data-io-fit", mode);
+        else row.removeAttribute("data-io-fit");
+      }
     });
   });
 

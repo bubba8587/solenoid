@@ -89,7 +89,7 @@
   color: var(--text-dim);
 }
 /* On the card's label column with the io-rows around it (NodeCard measures both), wrapping past the cap. */
-.sol-conn__label {
+.sol-conn__field:not([data-io-fit]) > .sol-conn__label {
   flex: 0 0 auto;
   min-width: min(var(--io-label-w, 0px), 100% - 72px);
   max-width: calc(100% - 72px);
@@ -110,7 +110,11 @@
   min-width: 60px;
   text-align: right;
   box-sizing: border-box;
-  padding: 3px 6px;
+  /* The inline number field's box (nodeCard.css .solenoid-node__inline-input): its height, and no spinner. */
+  padding: 1px 6px;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: textfield;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -118,6 +122,11 @@
   font-family: var(--font-mono);
   font-size: 12px;
   outline: none;
+}
+.sol-conn__num::-webkit-outer-spin-button,
+.sol-conn__num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 .sol-conn__num:focus {
   border-color: var(--node-accent, var(--accent));

@@ -738,7 +738,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 /* The label column: every labeled input row's field starts at one x, the card's widest label (`--io-label-w`,
    NodeCard measures it), capped so the field keeps 60px, room for six digits or a short word. A label past the cap
    wraps onto a second, balanced line rather than squeezing its field. Same selector as NodeCard's IO_LABEL_COLUMN. */
-.solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child) {
+.solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero):not([data-io-fit]) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child) {
   flex: 0 0 auto;
   min-width: min(var(--io-label-w, 0px), 100% - 72px);
   max-width: calc(100% - 72px);
@@ -751,6 +751,51 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   margin-left: 4px;
   min-width: 60px;
 }
+/* Rows that leave the label column (NodeCard's `planLabelColumn` sets data-io-fit). A word or date field whose own label
+   would leave it too narrow goes below the label at the body's full width; the socket stays on the label's line.
+   A number row whose label is past the cap keeps one line, its field narrower. Scoped by :has, so a row the plan
+   hasn't revisited since its field went (a wired input) falls back to an ordinary row. */
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="below"]:has(> :is(.solenoid-node__quoted--inline, .solenoid-node__keyed, .solenoid-node__inline-input, .solenoid-node__value-input, .sol-conn__url)) {
+  flex-wrap: wrap;
+  row-gap: 3px;
+  padding-block: 2px;
+}
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="below"] > :is(.solenoid-node__io-label, .sol-conn__label) {
+  flex: 0 0 100%;
+  min-width: 0;
+  max-width: none;
+}
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="below"] > :is(.solenoid-node__io-label, .sol-conn__label) + * {
+  /* A basis past what's left beside the full-width label forces the break; it grows to the line below. */
+  flex: 1 1 50%;
+  min-width: 0;
+  margin-left: -4px;
+}
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="below"] > :is(.solenoid-node__io-label, .sol-conn__label) + :last-child {
+  margin-right: -4px;
+}
+.solenoid-node__io-row[data-io-fit="below"] > .solenoid-node__io-label + .solenoid-node__quoted--inline {
+  margin-left: calc(-4px - var(--quote-hang));
+}
+.solenoid-node__io-row[data-io-fit="below"] > .solenoid-node__io-label + .solenoid-node__quoted--inline:last-child {
+  margin-right: calc(-4px - var(--quote-hang));
+}
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="solo"] > :is(.solenoid-node__io-label, .sol-conn__label) {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+  white-space: nowrap;
+}
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="solo"] > :is(.solenoid-node__io-label, .sol-conn__label) + * {
+  min-width: 40px;
+}
+/* A dropdown on a 22px row is as tall as the fields around it. */
+.solenoid-node__io-row > :is(.solenoid-node__select, .sol-conn__select),
+.sol-conn__field > .sol-conn__select {
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
 /* The quote marks hang outside the field, so a text field's box lines up with the number fields above and below. */
 .solenoid-node__io-label + .solenoid-node__quoted--inline {
   margin-left: calc(4px - var(--quote-hang));
