@@ -50,7 +50,9 @@ function MeasuredChart({ value, fontScale, recordNav, ladderAction }: { value: C
     return () => ro.disconnect();
   }, []);
   return (
-    <div ref={ref} className={value.op === "record" ? "nowheel" : undefined} style={{ width: "100%", height: "100%", overflow: value.op === "record" ? "auto" : "hidden" }}>
+    // A Record scrolls in its box. Its gutter is kept whether or not the bar shows: a bar taking width as it appears would
+    // re-lay the cards narrower and shorter, the bar would go, the width come back, and the bar flash on and off.
+    <div ref={ref} className={value.op === "record" ? "nowheel" : undefined} style={{ width: "100%", height: "100%", overflow: value.op === "record" ? "auto" : "hidden", scrollbarGutter: value.op === "record" ? "stable" : undefined }}>
       <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} recordNav={recordNav} ladderAction={ladderAction} />
     </div>
   );

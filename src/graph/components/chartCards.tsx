@@ -101,7 +101,7 @@ function MasonryGallery({ count, track, className, layoutKey, tile }: {
       const w = el.clientWidth;
       const tiles = tileRefs.current.slice(0, n);
       const heights = tiles.map((t) => (t ? t.offsetHeight : 0));
-      const want = Math.round(planColumns(w, GALLERY_GAP, { ...track, items: n }).colWidth);
+      const want = Math.floor(planColumns(w, GALLERY_GAP, { ...track, items: n }).colWidth);
       const settled = tiles.every((t) => !t || t.offsetWidth === want);
       setBox((prev) =>
         prev && prev.w === w && prev.settled === settled &&
@@ -118,7 +118,9 @@ function MasonryGallery({ count, track, className, layoutKey, tile }: {
   }, [n, layoutKey]);
 
   const plan = planColumns(box?.w ?? 0, GALLERY_GAP, { ...track, items: n });
-  const colWidth = Math.round(plan.colWidth);
+  // Floored, never rounded: a track rounded up makes the columns a pixel or two wider than the box, whose scrollbar then
+  // takes room, re-plans the tracks and goes again, flashing on and off.
+  const colWidth = Math.floor(plan.colWidth);
   if (box?.settled) shownOnce.current = true;
   const show = box !== null && (box.settled || shownOnce.current);
   // Heights measured for another count of tiles (Rows just changed) place nothing: the layout effect measures the new
