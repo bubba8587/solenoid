@@ -529,11 +529,11 @@ pub fn bind_bracket_params(n: Ast, names: &[String]) -> Ast {
         Ast::WholeCol(c) if names.contains(&c) => Ast::Name(c),
         Ast::Call { name, args } => Ast::Call { name, args: args.into_iter().map(to_name).collect() },
         Ast::Apply { func, args } => {
-            Ast::Apply { func: Box::new(to_name(*func)), args: args.into_iter().map(to_name).collect() }
+            Ast::Apply { func: Box::map(func, to_name), args: args.into_iter().map(to_name).collect() }
         }
-        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::new(to_name(*arg)) },
-        Ast::Percent(arg) => Ast::Percent(Box::new(to_name(*arg))),
-        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::new(to_name(*l)), r: Box::new(to_name(*r)) },
+        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::map(arg, to_name) },
+        Ast::Percent(arg) => Ast::Percent(Box::map(arg, to_name)),
+        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::map(l, to_name), r: Box::map(r, to_name) },
         other => other,
     }
 }
@@ -559,11 +559,11 @@ fn bracket_params(n: Ast) -> Ast {
             Ast::Call { name, args }
         }
         Ast::Apply { func, args } => {
-            Ast::Apply { func: Box::new(bracket_params(*func)), args: args.into_iter().map(bracket_params).collect() }
+            Ast::Apply { func: Box::map(func, bracket_params), args: args.into_iter().map(bracket_params).collect() }
         }
-        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::new(bracket_params(*arg)) },
-        Ast::Percent(arg) => Ast::Percent(Box::new(bracket_params(*arg))),
-        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::new(bracket_params(*l)), r: Box::new(bracket_params(*r)) },
+        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::map(arg, bracket_params) },
+        Ast::Percent(arg) => Ast::Percent(Box::map(arg, bracket_params)),
+        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::map(l, bracket_params), r: Box::map(r, bracket_params) },
         other => other,
     }
 }
