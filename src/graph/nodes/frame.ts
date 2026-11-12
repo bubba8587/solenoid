@@ -484,6 +484,9 @@ export class PivotNode extends GraphNode {
   sourceColumns: { name: string; type: FrameColType; distinct: string[]; distinctTotal?: number }[] = [];
   /** Calculated value fields: a name and a LAMBDA per row (`calcName{id}`, `calcFn{id}`). */
   nextPairId = 0;
+  /** Each calculated field's place among the values, by its id: before the value at that index, -1 dragged out of the
+   *  pivot (its cable kept). A field with none sits after the values, which is where a newly wired one lands. */
+  calcPlace: Record<string, number> = {};
   readonly pairLabels: [string, string] = ["Name", "λ"];
   readonly pairPlaceholders = ["MPG", undefined] as const;
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
@@ -497,6 +500,7 @@ export class PivotNode extends GraphNode {
     pivotView?: Partial<PivotViewOptions>;
     detailFields?: string[];
     valueKeys?: string[];
+    calcPlace?: Record<string, number>;
   }) {
     super("Pivot");
     this.pivotView = readPivotView(init?.pivotView);
@@ -505,6 +509,9 @@ export class PivotNode extends GraphNode {
     this.agg = init?.agg ?? "sum";
     if (init?.funcs) this.funcs = { ...init.funcs };
     if (init?.filterExclude) this.filterExclude = { ...init.filterExclude };
+    if (init?.calcPlace && typeof init.calcPlace === "object") {
+      for (const [id, at] of Object.entries(init.calcPlace)) if (typeof at === "number" && Number.isInteger(at) && at >= -1) this.calcPlace[id] = at;
+    }
     this.rowTotalDepth = init?.rowTotalDepth ?? 0;
     this.colTotalDepth = init?.colTotalDepth ?? 0;
     this.rowSort = init?.rowSort ?? 0;
@@ -554,6 +561,7 @@ export class PivotNode extends GraphNode {
       this.removeInput(k);
       delete this.stringLiterals[k];
     }
+    delete this.calcPlace[id];
   }
 
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {

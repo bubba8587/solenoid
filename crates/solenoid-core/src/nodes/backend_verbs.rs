@@ -529,18 +529,26 @@ fn flat_cube(k: &Cube) -> Frame {
     Frame { columns, total_rows: None, approx: None, source: None, layout: None }
 }
 
-/// The card's calculated value fields, in socket order: each a name (blank is `Calculated N`) and the LAMBDA wired
-/// to its λ, whose parameters name the columns it reads ([[C50]] lambdaBindsByName). A row with no LAMBDA is skipped.
-fn calc_fields(c: &Call) -> Vec<(String, Rc<crate::eval::LambdaV>)> {
+/// The card's calculated value fields, in socket order: each a name (blank is `Calculated N`), the LAMBDA wired to
+/// its λ, whose parameters name the columns it reads ([[C50]] lambdaBindsByName), and its place among the values
+/// (`calcPlace`, by id: an index, none for after them). A row with no LAMBDA is skipped, and so is one dragged out
+/// of the values (a place of -1), its cable kept.
+fn calc_fields(c: &Call) -> Vec<(String, Rc<crate::eval::LambdaV>, Option<usize>)> {
     let ids: Vec<String> = c.sockets.iter().filter_map(|s| s.key.strip_prefix("calcFn").map(String::from)).collect();
+    let places = c.field("calcPlace").and_then(Json::as_object);
     let mut out = Vec::new();
     for (n, id) in ids.iter().enumerate() {
         let V::Lambda(lam) = super::stats::first(c, &format!("calcFn{id}")) else { continue };
+        let at = match places.and_then(|m| m.get(id)).and_then(Json::as_f64) {
+            Some(p) if p < 0.0 => continue,
+            Some(p) => Some(p as usize),
+            None => None,
+        };
         let name = match str_input(c, &format!("calcName{id}"), "") {
             V::Str(s) if !trim_space(&s).is_empty() => trim_space(&s).to_string(),
             _ => format!("Calculated {}", n + 1),
         };
-        out.push((name, lam));
+        out.push((name, lam, at));
     }
     out
 }
@@ -739,7 +747,7 @@ fn pivot(c: &mut Call) -> Answer {
             }
             // A calculated field reads its parameters' columns, and the columns its body names with no parameter: a
             // `[Column]`, or a bare name its card captured. Left out, they'd read as the card's empty slot, a 0.
-            for (_, lam) in calc_fields(c) {
+            for (_, lam, _) in calc_fields(c) {
                 let mut names = lam.params.clone();
                 names.extend(lam.captured.iter().flatten().cloned());
                 if let Some(body) = &lam.body {
@@ -882,9 +890,10 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
     };
     let calcs: Vec<PivotCalc> = calcs
         .iter()
-        .map(|(name, lam)| PivotCalc {
+        .map(|(name, lam, at)| PivotCalc {
             name: name.clone(),
             eval: Box::new(move |rows: &[usize]| calc_cell(f, lam, rows)),
+            at: *at,
         })
         .collect();
     let (out, layout) = match pivot_frame_calc(&to_core(f), &spec, &calcs) {

@@ -561,7 +561,10 @@ function pivotSummary(data: PivotNodeType): string {
   if (rows.length) parts.push(`Rows: ${rows.join(", ")}`);
   if (cols.length) parts.push(`Cols: ${cols.join(", ")}`);
   if (vals.length) parts.push(`Σ ${vals.map((v) => `${v} (${(data.funcs?.[v] ?? data.agg).toUpperCase()})`).join(", ")}`);
-  const calcs = data.valuePairKeys().map(([name], i) => data.stringLiterals?.[name]?.trim() || `Calculated ${i + 1}`);
+  // A field dragged out of the values (a place of -1) is off the pivot, so off its summary.
+  const calcs = data.valuePairKeys()
+    .map(([name], i) => (data.calcPlace[name.slice(8)] === -1 ? "" : data.stringLiterals?.[name]?.trim() || `Calculated ${i + 1}`))
+    .filter(Boolean);
   if (calcs.length) parts.push(`λ ${calcs.join(", ")}`);
   return parts.join(" · ");
 }

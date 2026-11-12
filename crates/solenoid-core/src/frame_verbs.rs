@@ -1715,6 +1715,8 @@ pub type PivotLayoutJson = Json;
 pub struct PivotCalc<'a> {
     pub name: String,
     pub eval: CalcEval<'a>,
+    /// Where its column sits among the values: before the spec's value at this index; none, or past them, after.
+    pub at: Option<usize>,
 }
 /// A calculated field's answer over a cell's source rows, and whether it is a date.
 pub type CalcEval<'a> = Box<dyn Fn(&[usize]) -> (FrameCell, bool) + 'a>;
@@ -1974,8 +1976,16 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         }
     }
 
-    // The calculated fields follow the spec's values: their names head their columns as a value's does.
-    let all_values: Vec<String> = value_names.iter().cloned().chain(calcs.iter().map(|k| k.name.clone())).collect();
+    // Each calculated field sits where its `at` puts it among the spec's values (index `v_n + k` for the k-th), the
+    // rest after them; its name heads its columns as a value's does.
+    let slots: Vec<usize> = {
+        let before = |i: usize| (0..calcs.len()).filter(move |&k| calcs[k].at == Some(i)).map(|k| v_n + k);
+        let mut s: Vec<usize> = (0..v_n).flat_map(|i| before(i).chain(std::iter::once(i))).collect();
+        s.extend((0..calcs.len()).filter(|&k| calcs[k].at.is_none_or(|a| a >= v_n)).map(|k| v_n + k));
+        s
+    };
+    let named = |v: usize| if v < v_n { value_names[v].clone() } else { calcs[v - v_n].name.clone() };
+    let all_values: Vec<String> = (0..v_n + calcs.len()).map(named).collect();
     let value_names = &all_values;
     let multi_val = all_values.len() > 1;
     let col_header = |co: &AxisOut, v: usize| -> String {
@@ -2010,7 +2020,7 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     let mut raw_headers = Vec::new();
     let mut body_specs: Vec<(&AxisOut, usize)> = Vec::new();
     for co in &col_out {
-        for v in 0..all_values.len() {
+        for &v in &slots {
             raw_headers.push(col_header(co, v));
             body_specs.push((co, v));
         }
@@ -2091,8 +2101,8 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         "colFields": col_fields,
         "colTypes": col_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
         "colFormats": col_cols.iter().map(|c| c.format.as_deref().cloned().unwrap_or(Json::Null)).collect::<Vec<_>>(),
-        "values": value_names,
-        "funcs": funcs.iter().map(|f| serde_json::to_value(f).unwrap_or(Json::Null)).chain(calcs.iter().map(|_| json!("calc"))).collect::<Vec<_>>(),
+        "values": slots.iter().map(|&v| value_names[v].clone()).collect::<Vec<_>>(),
+        "funcs": slots.iter().map(|&v| if v < v_n { serde_json::to_value(funcs[v]).unwrap_or(Json::Null) } else { json!("calc") }).collect::<Vec<_>>(),
         "rows": row_out
             .iter()
             .map(|ro| {

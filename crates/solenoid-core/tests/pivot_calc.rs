@@ -100,6 +100,7 @@ fn a_calculated_field_reads_the_same_rows_as_a_value_field() {
                 let cells: Vec<FrameCell> = at.iter().map(|&i| x.values[i].clone()).collect();
                 (aggregate_group(&cells, op, Some(FrameColType::Number)), false)
             }),
+            at: None,
         };
         let (out, _) = match pivot_frame_calc(&f, &spec, &[calc]) {
             Ok(o) => o,

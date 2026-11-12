@@ -94,7 +94,38 @@ export function regroupField(c: PivotConfig, zone: "rows" | "cols", field: strin
   return { ...c, [zone]: list, exclude };
 }
 
-/** A pivot's calculated fields, by the names its last result captions them with (wired or typed names alike). */
-export function calcFieldNames(layout: { values: readonly string[]; funcs: readonly string[] } | null | undefined): string[] {
-  return layout ? layout.values.filter((_, i) => layout.funcs[i] === "calc") : [];
+
+/** A calculated field as the Configure Fields popup drags it among the values: a token no column name can be. */
+const CALC_TOKEN = "\u0000λ";
+export const calcToken = (id: string): string => CALC_TOKEN + id;
+export const calcIdOf = (token: string): string | null => (token.startsWith(CALC_TOKEN) ? token.slice(CALC_TOKEN.length) : null);
+
+/** The Values zone in its order: the plain values, and each placed calculated field (`ids`, wired, in socket order)
+ *  before the value its place names, or after them all with no place. One placed at -1 is out of the pivot. */
+export function valuesWithCalcs(vals: readonly string[], place: Readonly<Record<string, number>>, ids: readonly string[]): string[] {
+  const at = (id: string) => place[id] ?? Infinity;
+  const placed = ids.filter((id) => at(id) >= 0);
+  const out: string[] = [];
+  vals.forEach((v, i) => {
+    for (const id of placed) if (at(id) === i) out.push(calcToken(id));
+    out.push(v);
+  });
+  for (const id of placed) if (at(id) >= vals.length) out.push(calcToken(id));
+  return out;
+}
+
+/** The Values zone's order back to what the card saves: its plain values, and each calculated field's place, none
+ *  when it trails the values, -1 for a wired one not in the zone. A place for an unwired field is kept as it was. */
+export function placesFrom(tokens: readonly string[], ids: readonly string[], prev: Readonly<Record<string, number>>): { vals: string[]; place: Record<string, number> } {
+  const vals = tokens.filter((t) => calcIdOf(t) === null);
+  const place: Record<string, number> = {};
+  for (const [id, at] of Object.entries(prev)) if (!ids.includes(id)) place[id] = at;
+  let before = 0;
+  for (const t of tokens) {
+    const id = calcIdOf(t);
+    if (id === null) before++;
+    else if (before < vals.length) place[id] = before;
+  }
+  for (const id of ids) if (!tokens.includes(calcToken(id))) place[id] = -1;
+  return { vals, place };
 }

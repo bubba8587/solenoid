@@ -325,17 +325,33 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     expect(two.col("Calculated 2")!.values).toEqual([20, 30, 50]);
   });
 
+  it("sits where its place puts it among the values, and a place of -1 leaves it off the pivot", async () => {
+    const lazy = planned(log, { kind: "distinct" });
+    const order = async (calcPlace: Record<string, number>) => {
+      const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0", "calcName1", "calcFn1"], calcPlace });
+      Object.assign(n.stringLiterals, { rowFields: "Plate", values: "Miles, Gallons", calcName0: "MPG", calcName1: "GPM" });
+      const out = n.data({ frame: [lazy], rowFields: [["Plate"]], colFields: [[]], values: [["Miles", "Gallons"]], calcFn0: [MPG], calcFn1: [lambda("", "SUM(Gallons) / SUM(Miles)")] }).frame;
+      return ((await readFrame(out as FrameInput)) as FrameValue).columns.map((c) => c.name);
+    };
+    expect(await order({})).toEqual(["Plate", "Miles", "Gallons", "MPG", "GPM"]);
+    expect(await order({ 1: 0, 0: 1 })).toEqual(["Plate", "GPM", "Miles", "MPG", "Gallons"]);
+    expect(await order({ 0: -1 })).toEqual(["Plate", "Miles", "Gallons", "GPM"]);
+  });
+
   it("saves and reloads with its fields; removing one keeps the others' slots", () => {
     const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0"] });
     n.addValuePair(); n.addValuePair();
     Object.assign(n.stringLiterals, { calcName0: "MPG", calcName1: "Cost", calcName2: "Range" });
+    n.calcPlace = { 0: 0, 1: -1 };
     n.removeValuePair("calcName1");
+    expect(n.calcPlace).toEqual({ 0: 0 });
     expect(n.valuePairKeys()).toEqual([["calcName0", "calcFn0"], ["calcName2", "calcFn2"]]);
     expect(n.stringLiterals.calcName1).toBeUndefined();
     const saved = JSON.parse(JSON.stringify(savedNodeBody(n)));
     const back = new PivotNode(saved.init as never);
     restoreLiterals(back, saved);
     expect(back.valuePairKeys()).toEqual(n.valuePairKeys());
+    expect(back.calcPlace).toEqual({ 0: 0 });
     back.addValuePair();
     expect(back.valuePairKeys()[2]).toEqual(["calcName3", "calcFn3"]);
     expect(back.stringLiterals.calcName2).toBe("Range");

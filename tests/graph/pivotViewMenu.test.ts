@@ -5,7 +5,7 @@ import { pivotFrame } from "./coreVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 import { buildPivotModel, pivotLayoutOf, DEFAULT_PIVOT_VIEW, type PivotViewOptions } from "../../src/graph/pivotLayout";
 import type { PivotConfig } from "../../src/graph/pivotConfig";
-import { calcFieldNames, pivotKey } from "../../src/graph/pivotConfig";
+import { calcIdOf, calcToken, pivotKey, placesFrom, valuesWithCalcs } from "../../src/graph/pivotConfig";
 import { keyLabel, pivotMenuSections, type PivotMenuTarget, type PivotValueFormat } from "../../src/graph/components/PivotViewMenu";
 
 const sales: FrameValue = {
@@ -140,10 +140,27 @@ describe("a field header's value list", () => {
   });
 });
 
-describe("Configure Fields lists calculated fields", () => {
-  it("names each calculated value by its caption in the last result, and nothing without one", () => {
-    expect(calcFieldNames({ values: ["Miles", "MPG", "Calculated 2"], funcs: ["sum", "calc", "calc"] })).toEqual(["MPG", "Calculated 2"]);
-    expect(calcFieldNames({ values: ["Miles"], funcs: ["sum"] })).toEqual([]);
-    expect(calcFieldNames(null)).toEqual([]);
+describe("Configure Fields places calculated fields among the values", () => {
+  const ids = ["0", "2"];
+  it("a field with no place trails the values; a place puts it before that value; -1 is off the pivot", () => {
+    expect(valuesWithCalcs(["Miles", "Gallons"], {}, ids)).toEqual(["Miles", "Gallons", calcToken("0"), calcToken("2")]);
+    expect(valuesWithCalcs(["Miles", "Gallons"], { 2: 0 }, ids)).toEqual([calcToken("2"), "Miles", "Gallons", calcToken("0")]);
+    expect(valuesWithCalcs(["Miles", "Gallons"], { 0: 1, 2: -1 }, ids)).toEqual(["Miles", calcToken("0"), "Gallons"]);
+    expect(valuesWithCalcs([], {}, ids)).toEqual([calcToken("0"), calcToken("2")]);
+  });
+
+  it("reads back from the zone's order: places, none when trailing, -1 when dragged out, an unwired field's kept", () => {
+    expect(placesFrom(["Miles", calcToken("0"), "Gallons", calcToken("2")], ids, { 5: 1 }))
+      .toEqual({ vals: ["Miles", "Gallons"], place: { 0: 1, 5: 1 } });
+    expect(placesFrom([calcToken("2"), "Miles"], ids, {})).toEqual({ vals: ["Miles"], place: { 2: 0, 0: -1 } });
+    // A round trip keeps the order.
+    const order = [calcToken("2"), "Miles", calcToken("0"), "Gallons"];
+    const { vals, place } = placesFrom(order, ids, {});
+    expect(valuesWithCalcs(vals, place, ids)).toEqual(order);
+  });
+
+  it("a calculated field's token is never a column name", () => {
+    expect(calcIdOf(calcToken("3"))).toBe("3");
+    expect(calcIdOf("λ3")).toBeNull();
   });
 });
