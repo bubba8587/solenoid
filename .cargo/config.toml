@@ -4,4 +4,4 @@
 #   CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow cargo update <crate>
 # Cargo reads it from 1.100 on (rust-toolchain.toml). The bleeding-edge branch sets it to "0" in a commit of its own.
 [registry]
-global-min-publish-age = "7 days"
+global-min-publish-age = "0"
