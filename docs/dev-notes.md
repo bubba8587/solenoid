@@ -51,6 +51,11 @@ specific item.
 - Checked and left: Tab and Shift+Tab toggling chrome is the spec's (`tree/specs/canvas/react-flow-surface-contract.md` § The
   canvas keyboard); the collapse sweep against 1.6.1 shows no card the layout sweep broke; the label column's measuring is
   about 0.1 ms for a canvas of cards; the deployed script worker carries its `Content-Security-Policy`.
+- **For the 1.6.2 cut:** `scripts/release-version.mjs` froze the `NEXT_RELEASE` marks in `nodeCatalog.ts` alone and
+  stopped with an error on a patch (the next guess was already 1.7); it now freezes the packs' own files too
+  (`src/graph/packs/probability.ts` holds the first marks outside the catalog) and a dry run of `1.6.2` in a scratch
+  worktree finishes: 6 marks. Weather is marked updated. `docs/release-notes-1.6.2.md` is a draft. Left for the
+  release itself: the What's New deck's 1.6.2 slides, and the author's `build:wasm:opt`.
 - Another session pushes to `develop` at the same time: `git pull --rebase` before each push, and rebuild the wasm
   when both sides touched Rust (`source-stamp.txt` conflicts; take either side and run `npm run build:wasm`).
 

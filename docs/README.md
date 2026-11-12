@@ -58,6 +58,7 @@ is parked there.
   1.6 and its patch releases (1.6.1 on top), with the bar for what earns a spot.
 - **`release-notes-1.6.md`** — the GitHub release notes for 1.6, in 1.5's shape.
 - **`release-notes-1.6.1.md`** — the GitHub release notes for 1.6.1, in 1.6's shape.
+- **`release-notes-1.6.2.md`** — the GitHub release notes for 1.6.2, drafted 2026-11-12 for the author to edit before the release.
 - **`android.md`** — the Android app: what is prepared, the first build on the author's
   machine, and what to check then.
 - **`out-of-scope.md`** — the standing NO list.
