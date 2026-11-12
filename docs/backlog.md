@@ -282,7 +282,9 @@ The site is five pages (`/about` is the landing page; `/` is the app) sharing `l
 - [ ] **solenoid-ngc.com follow-ups (author):** Google Search Console has the domain and its sitemap (2026-10-08).
   Left: Bing Webmaster Tools (skipped for now; Import from GSC needs no DNS). Optional: `solenoidngc.com` as a redirect.
 - [ ] **Bluesky handle `@solenoid-ngc.com` (author, later):** Bluesky Settings → Account → Handle → I have my own domain →
-  DNS panel; add its TXT record (`_atproto`, `did=did:plc:…`) in Vercel's Domains → DNS Records, then Verify.
+  DNS panel; add its TXT record (`_atproto`, `did=did:plc:…`) in Vercel's Domains → DNS Records, then Verify. (Or serve
+  the bare DID at `public/.well-known/atproto-did`.) The switch frees `solenoid-ngc.bsky.social`, so links to it break:
+  change `BLUESKY_URL` in `siteNav.tsx` to `https://bsky.app/profile/solenoid-ngc.com` the same day.
 - [ ] **Tagline "node graph calculator" in the site copy** (author 2026-10-04, aligned during the copy pass): it is only in
   the README today; the planned domain (solenoid-ngc.com) carries its initials, the copy spells it out, never "NGC".
 - [ ] **Author reviews the site copy.** An agent pass (2026-09-23) brought every page to DESIGN.md §7;
@@ -290,6 +292,20 @@ The site is five pages (`/about` is the landing page; `/` is the app) sharing `l
 - [ ] **Public changelog page (parked, author wants it later).** Would live at `/changelog` off
   `docs/release-notes-features.md` + the What's New slides. Deferred so it does not just mirror
   GitHub Releases; revisit when there is a reason it earns its own surface.
+- [ ] **Site review (2026-11-12, from screenshots of the live site), most useful first:**
+  - **The hero graph is unreadable on phones** (390 px wide): the live canvas shrinks to tiny cards in a tall black box.
+    Show a still or a short loop below a breakpoint and keep the live graph for desktop.
+  - **The Socket types legend holds the hero's second slot**, insider vocabulary for a first visit. Put something that
+    sells the idea there (a spreadsheet beside the same model as a graph, or "every Excel function by its own name") and
+    move the legend down beside the Typed sockets section.
+  - **Download shows one desktop build**, the one `downloadLabel` guesses, so the other platform means a trip to GitHub
+    Releases. Show Windows and Linux both, with the version; hide the Download button on phones (no phone build).
+  - **Examples:** the "What's new in 1.4" tile is stale at 1.6.1; the thumbnails are whole graphs too small to read. Add
+    a line under each tile, or crop the thumbnail to the card that matters.
+  - **Phone header wraps to two rows** with "Open the app" alone on the second. A menu button, or GitHub as an icon
+    like Bluesky, would fit it on one.
+  - **Obsidian page copy:** "turbocharges" reads as stock marketing; "Knap + Reports" is named without saying what Knap is.
+  - **No way to follow along but Bluesky:** an RSS feed of releases or an email signup. (A changelog page is parked above.)
 - [ ] **Finish the landing/Obsidian scene rebuild.** Feature scenes are real canvases (Obsidian
   hero `LiveGraph`, `VaultTableScene`, `LocalFileScene`, `NoteImportScene`, `TaskNotesScene` on the
   demo API fake). Still hand-built DOM/SVG: the Presenter scene (landing) and the Obsidian page's
