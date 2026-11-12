@@ -149,9 +149,8 @@ flowchart TD
 | A node added live | `processGraph(id, undefined, { topology: true })` |
 | Load or document switch | `processGraph()` at the end of the rebuild, still inside the rebuild scope |
 | Paste | `bulkSettle(pastedIds)`: an additive pass rendering only the pasted nodes |
-| Delete (main canvas) | a rebuild scope, then `bulkSettle(reach, { topology: true })`: each surviving card whose inputs lost or gained a cable has its reach reset, and an additive pass renders that reach (`deleteReach` in `canvasActions.ts`); removing cables from the cable menu does the same |
-| Undo, redo | the delta's own pass: an additive pass over what the changed cards reach ([[react-flow-surface-contract#Undo history]]); a whole load where the delta falls back |
-| Composite create or unpack | a rebuild scope, then one `bulkSettle()` (a full pass) |
+| Delete, Wrap as Composite, Unpack (main canvas) | a rebuild scope, then `bulkSettle(reach, { topology: true })`: each surviving card whose inputs lost or gained a cable, and each card new to the canvas (the composite, the unpacked cards), has its reach reset, and an additive pass renders that reach (`changedReach`, `editReach.ts`); removing cables from the cable menu does the same. In a drill-in, the drill-in's own settle |
+| Undo, redo | the delta's own pass, inside its rebuild scope so Manual computes it as a load's: an additive pass over what the changed cards reach ([[react-flow-surface-contract#Undo history]]); a whole load where the delta falls back |
 | F9, Calculate now, the status bar's Calculate, switching to Automatic or Sketch, local midnight when the document holds a volatile date | `requestRecalc()` |
 | A sink's Run (Write File, Write Obsidian, Write Tasks) while Sketch is selected | `withExactPass(write)`: waits out a pass in flight, then `processGraph()` with `{ force: true }` inside a `beginForceExact` bracket held through the write; no new generation |
 | A live-data connection refresh or a background load landing | `processGraph()` outside any rebuild scope ([[#A refresh never runs inside a rebuild scope]]) |

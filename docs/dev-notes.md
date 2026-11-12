@@ -71,14 +71,24 @@ specific item.
 - Undo and redo apply a delta instead of reloading the graph (`src/graph/graphDelta.ts`,
   `tree/specs/canvas/react-flow-surface-contract.md` § Undo history): only changed cards rebuild, under fresh live ids
   so their views remount, and one additive pass covers their reach. On `personal-finance`, a value undo went from
-  two whole passes (about 2.7 s, Local File re-reading its files) to about 25 ms. A read-back falls back to the whole
-  load on any miss; the dev console warns with the cards that differed. Two bugs from before: a history step rebuilt
+  two whole passes (about 2.7 s, Local File re-reading its files) to about 340 ms (below). A read-back falls back
+  to the whole load on any miss; the dev console warns with the cards that differed. Two bugs from before: a history step rebuilt
   from the stack put `nodes` after the other top-level keys, so every compare after an undo saw a change and
   recorded a spurious step (redo lost); and a whole load inside `withGraphRebuild` ran a second whole pass.
 - Delete (and removing cables from the cable menu) passes over only what lost a cable (`deleteReach`,
   `src/graph/canvasActions.ts`), not the whole graph. Composite create and unpack still settle whole.
+- Undo, second pass: a fuzz of live edit chains on every example (`tests/graph/graphDeltaChain.test.ts`, stressed to
+  8 draws of 25 steps) found two real bugs. A deleted group member stayed in the group, so the save wrote its per-load
+  id where a name belongs (pre-existing; `dropFromGroups`, `src/graph/groupMembership.ts`). And a Format Controller's
+  saved type depends on the edit path ([[D117]]), so it is no longer an edit or a miss (`SETTLED_INIT`). In Manual the
+  delta's pass runs inside the rebuild scope, so undo still computes as the whole load did.
+- Measured on `personal-finance` (an undo of a slider edit): the whole undo is about 340 ms, of which about 270 ms is
+  the recompute the edit itself cost; the old reload was about 2.7 s. An earlier note here said 25 ms: that was one
+  pass, not the whole undo. `window.__solenoidPerf = true` prints an `[perf] undo` line with the phases.
+- Wrap as Composite and Unpack pass over only what they reach, as Delete does (`src/graph/editReach.ts`).
 - Open: a literal or `frameText` edit still rebuilds its one card rather than setting the field in place
-  (`docs/v2.0/27-multiplayer.md`'s hot-field row).
+  (`docs/v2.0/27-multiplayer.md`'s hot-field row). A drill-in's undo still rebuilds the composite's inside whole
+  (`src/graph/flow/FlowCompositeOverlay.tsx`, `restoreInternal`).
 
 ### SESSION DIGEST (2026-11-11c: the Probability pack, pads that dragged their card; cloud session)
 - New pack, Probability (off by default, Analysis): Probability Between, A/B Test, Bootstrap, each drawing the

@@ -15,6 +15,20 @@ function editBody(n: SavedNode): string {
 // These store the user's chosen size (a grip or a height field); every other card's size is a measure re-stamped after each restore.
 export const USER_SIZED: ReadonlySet<string> = new Set(["GroupNode", "NoteNode", "ImportObsidianNode", "ImageNode", "SvgPickerNode"]);
 
+/** Init fields a card saves only to seed its next load, which the type settle works out again: a Format Controller's
+ *  type follows its socket's, with the memory an emptied socket keeps ([[D117]] emptyKeepsLastType), so two canvases
+ *  equal in everything a person made can hold different ones. No edit, and no difference between landings. */
+export const SETTLED_INIT: Readonly<Record<string, readonly string[]>> = { FormatControllerNode: ["socketDataType"] };
+
+/** `init` without the fields `SETTLED_INIT` names for the card's type. */
+export function withoutSettled(type: string, init: Record<string, unknown> | undefined): Record<string, unknown> {
+  const drop = SETTLED_INIT[type];
+  if (!drop || !init) return init ?? {};
+  const out = { ...init };
+  for (const k of drop) delete out[k];
+  return out;
+}
+
 export function sameIgnoringDims(prev: SavedGraph, next: SavedGraph): boolean {
   if (prev.nodes.length !== next.nodes.length) return false;
   const strip = (g: SavedGraph) => JSON.stringify({
@@ -29,15 +43,18 @@ export function sameIgnoringDims(prev: SavedGraph, next: SavedGraph): boolean {
   return strip(prev) === strip(next);
 }
 
-/** The save with its top-level fields in one order (a history step keeps `nodes` apart from the rest), and without
+/** The save with its top-level fields in one order (a history step keeps `nodes` apart from the rest), its cables
+ *  grouped by the input they feed, and without
  *  an empty literal map: one a card made at run time and no load makes again is no difference. */
 function comparable(g: SavedGraph): SavedGraph {
   const empty = (m: object | undefined) => !!m && Object.keys(m).length === 0;
   const { nodes, ...head } = g;
-  const sorted = Object.fromEntries(Object.keys(head).sort().map((k) => [k, (head as Record<string, unknown>)[k]]));
+  // Cables into one input keep their order (a list input reads them in it); across inputs the order means nothing.
+  const into = (c: SavedConnection) => `${c.target}\u0000${c.targetInput}`;
+  const cables = [...(head.connections ?? [])].sort((a, b) => (into(a) < into(b) ? -1 : into(a) > into(b) ? 1 : 0));
+  const sorted = Object.fromEntries(Object.keys(head).sort().map((k) => [k, k === "connections" ? cables : (head as Record<string, unknown>)[k]]));
   return { ...(sorted as Omit<SavedGraph, "nodes">), nodes: nodes.map((n) => {
-    if (!empty(n.literals) && !empty(n.stringLiterals)) return n;
-    const out = { ...n };
+    const out = SETTLED_INIT[n.type] ? { ...n, init: withoutSettled(n.type, n.init) } : { ...n };
     if (empty(out.literals)) delete out.literals;
     if (empty(out.stringLiterals)) delete out.stringLiterals;
     return out;

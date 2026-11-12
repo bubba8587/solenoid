@@ -11,7 +11,9 @@ import { ctorRegistry } from "./nodeCtorRegistry";
 import { forgetNode } from "./nodeStoreRegistry";
 import { standoffStore } from "./standoffs";
 import { measuredBox } from "./nodeSize";
-import { getOwningEditor, editScopeFor } from "./activeGraph";
+import { getOwningEditor, editScopeFor, type EditScope } from "./activeGraph";
+import { cableTargets, changedReach } from "./editReach";
+import { getEditor } from "./process";
 import { rebuildGroupMembership } from "./groupMembership";
 
 type Editor = GraphEditor<Schemes>;
@@ -61,6 +63,7 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
   const composite = new CompositeNode({ label: "Composite" });
 
   const scope = editScopeFor(editor);
+  const before = cableTargets(editor);
   scope.begin(); // relocated, not deleted: the gate keeps their stores
   try {
     // A node leaves after its cables, as the editor removes them in clear().
@@ -137,9 +140,16 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
   }
   rebuildGroupMembership(editor);
 
-  // beginGraphRebuild suppressed the per-cable settle, so run it once here.
-  await scope.settle();
+  // beginGraphRebuild suppressed the per-cable settle, so run it once here, over what the wrap reaches.
+  await settleOver(editor, scope, before, [composite.id]);
   return composite.id;
+}
+
+/** The settle after a wrap or unpack: on the main canvas a pass over what changed (the new cards and what their
+ *  cables feed), keeping every other cache; a drill-in's own settle as before. */
+async function settleOver(editor: Editor, scope: EditScope, before: ReadonlyMap<string, string>, added: string[]): Promise<void> {
+  if (editor === getEditor()) await scope.settle(changedReach(editor, before, added), { topology: true });
+  else await scope.settle();
 }
 
 export async function unpackComposite(editor: Editor, view: View, compositeId: string): Promise<boolean> {
@@ -163,6 +173,7 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
 
   cableSelectionStore.set(null);
   const scope = editScopeFor(editor);
+  const before = cableTargets(editor);
   scope.begin();
   try {
     for (const c of outerConns) await editor.removeConnection(c.id);
@@ -227,7 +238,7 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
   rebuildGroupMembership(editor);
   // The gate held the pipe's forget; the members were relocated, only the composite is gone.
   forgetNode(compositeId);
-  await scope.settle();
+  await settleOver(editor, scope, before, internalNodes.filter((n) => !markerIds.has(n.id)).map((n) => n.id));
   return true;
 }
 

@@ -11,7 +11,7 @@ import {
 } from "./nodeClasses";
 import { ribbonForConnection } from "./ribbonCable";
 import { forgetNodeDeep } from "./nodeStoreRegistry";
-import { rebuildGroupMembership } from "./groupMembership";
+import { rebuildGroupMembership, dropFromGroups } from "./groupMembership";
 import { restoreSettledPushes } from "./groupPush";
 import { CONDUIT_PIVOT } from "./ribbonCable";
 import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY } from "./groupCollapse";
@@ -28,6 +28,7 @@ import { PUSH_GAP } from "./groupPushCore";
 import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
 import { processGraph, getEditor } from "./process";
+import { cableTargets, changedReach } from "./editReach";
 import { MAIN_EDIT_SCOPE, type EditScope } from "./activeGraph";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 import { reconcileFcs } from "./fcReconcile";
@@ -196,6 +197,7 @@ export function linkStandoffBetween(
 export function settleNodeRemoved(editor: GraphEditor<Schemes>, view: View, node: SolenoidNode, gated: boolean): void {
   if (gated) return;
   forgetNodeDeep(node);
+  dropFromGroups(editor, new Set([node.id]));
   rebuildGroupMembership(editor);
   syncGroupCollapse(editor, view);
   if (node instanceof GroupNode) restoreSettledPushes(editor, view);
@@ -250,7 +252,7 @@ export async function deleteSelection(
     .sort((a, b) => Number(dockedFc(b)) - Number(dockedFc(a)));
   const deleted: SolenoidNode[] = [];
   let deletedGroup = false;
-  const cablesBefore = new Map(editor.getConnections().map((c) => [c.id, c.target]));
+  const cablesBefore = cableTargets(editor);
   scope.begin();
   try {
     if (selectedCableIds.length > 0) {
@@ -341,27 +343,10 @@ export async function deleteSelection(
 
   // The per-event settles were suppressed above; run their equivalents once, in the order noderemoved and connectionremoved would.
   for (const node of deleted) forgetNodeDeep(node);
+  dropFromGroups(editor, new Set(deleted.map((n) => n.id)));
   if (deleted.length) rebuildGroupMembership(editor);
-  await scope.settle(scope.mainLayers ? deleteReach(editor, cablesBefore) : undefined, { topology: true });
+  await scope.settle(scope.mainLayers ? changedReach(editor, cablesBefore) : undefined, { topology: true });
   if (deletedGroup && view) restoreSettledPushes(editor, view);
-}
-
-/** What a delete changes the answer of: each surviving card whose inputs lost or gained a cable (a splice), cleared
- *  with everything downstream of it, so the one pass after the delete computes that and keeps every other cache. */
-function deleteReach(editor: GraphEditor<Schemes>, before: ReadonlyMap<string, string>): Set<string> {
-  const engine = editor.engine;
-  const reach = new Set<string>();
-  if (!engine) return reach;
-  const after = new Map(editor.getConnections().map((c) => [c.id, c.target]));
-  const touched = new Set<string>();
-  for (const [id, target] of before) if (!after.has(id)) touched.add(target);
-  for (const [id, target] of after) if (!before.has(id)) touched.add(target);
-  for (const id of touched) {
-    if (!editor.getNode(id) || reach.has(id)) continue;
-    engine.reset(id);
-    for (const r of engine.downstreamClosure(id)) reach.add(r);
-  }
-  return reach;
 }
 
 export async function deleteCables(
@@ -369,13 +354,13 @@ export async function deleteCables(
   target: CableContextTarget,
 ): Promise<void> {
   cableSelectionStore.clear();
-  const before = new Map(editor.getConnections().map((c) => [c.id, c.target]));
+  const before = cableTargets(editor);
   for (const id of target.connIds) {
     cableGhostStore.commit(id);
     try { await editor.removeConnection(id); } catch { /* already gone */ }
   }
   // A drill-in's cables reach the main canvas through its composite, which the main pass finds by computing everything.
-  if (editor === getEditor()) await processGraph(undefined, deleteReach(editor, before), { topology: true });
+  if (editor === getEditor()) await processGraph(undefined, changedReach(editor, before), { topology: true });
   else await processGraph();
 }
 

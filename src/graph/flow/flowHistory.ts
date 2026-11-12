@@ -4,6 +4,7 @@ import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding, withGraphRebuild } from "../process";
 import { describeGraphDelta, sameLanding } from "./flowHistoryDigest";
 import { applyGraphDelta } from "../graphDelta";
+import { perfEnabled } from "../perfProbe";
 
 const MAX_DEPTH = 80;
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -50,26 +51,30 @@ function capture(prev?: Snapshot): { graph: SavedGraph; snap: Snapshot; ownBytes
 
 async function restore(entry: Entry): Promise<void> {
   const snap = entry.snap;
+  const t0 = perfEnabled() ? performance.now() : 0;
   _restoring = true;
   try {
     const graph = graphOf(snap);
     // Only what differs changes, so the canvas, the camera and every untouched card's value stay as they are.
-    let applied = false;
-    try { applied = await applyGraphDelta(graph); } catch (err) { console.error("[solenoid] undo delta failed; loading the step whole", err); }
-    if (!applied) {
+    let landed: SavedGraph | null = null;
+    try { landed = await applyGraphDelta(graph); } catch (err) { console.error("[solenoid] undo delta failed; loading the step whole", err); }
+    const applied = landed !== null;
+    if (!landed) {
       const view = getView();
       const t = view ? { ...view.transform } : null;
       // The load runs its own pass, so the cables it builds ask for no second whole one.
       await withGraphRebuild(() => loadGraph(graph, { curtain: false }), { settled: true });
       if (view && t) await view.setCamera(t);
+      landed = serializeGraph();
     }
-    // The step as the canvas now holds it (a measure re-stamped, a map a card no longer makes), so the next record
-    // compares with what is there and an untouched canvas records nothing.
-    const c = capture(snap);
-    if (c && sameLanding(c.graph, graph)) {
+    // The step becomes the canvas as it landed (a measure re-stamped, a settled type, a dead reference a load drops),
+    // so the next record compares with what is there and an untouched canvas records nothing, which would cut the redo tail.
+    if (landed) {
+      const c = snapshotOf(landed, snap);
       entry.snap = c.snap;
-      _topGraph = c.graph;
+      _topGraph = landed;
     } else _topGraph = null;
+    if (perfEnabled()) console.log(`[perf] undo total=${(performance.now() - t0).toFixed(1)}ms${applied ? "" : " (whole load)"}`);
     scheduleAutosave();
   } finally {
     _restoring = false;

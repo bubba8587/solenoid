@@ -15,12 +15,15 @@ import { sameLanding } from "../../src/graph/flow/flowHistoryDigest";
 import { SEEDS } from "../../src/graph/seeds";
 import { readTextForm } from "../../src/graph/textForm";
 import { deleteSelection } from "../../src/graph/canvasActions";
+import { createCompositeFromSelection, unpackComposite } from "../../src/graph/compositeLogic";
+import { calcModeStore } from "../../src/graph/calcModeStore";
 
 /** Seeds left out: the ones `seedsCompute.test.ts` leaves out, and those whose answers roll on every pass. */
 const SKIPPED = new Set(["null-and-logical", "composite-workbench", "garden-dashboard"]);
 
 let editor: GraphEditor<Schemes>;
 let engine: DataflowEngine<Schemes>;
+let view: View;
 
 beforeEach(() => {
   forgetAllNodes();
@@ -28,7 +31,7 @@ beforeEach(() => {
   engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const pos = new Map<string, { x: number; y: number }>();
-  const view = {
+  view = {
     hasNode: (id: string) => pos.has(id),
     position: (id: string) => pos.get(id) ?? { x: 0, y: 0 },
     moveNode: async (id: string, p: { x: number; y: number }) => { pos.set(id, { ...p }); },
@@ -144,11 +147,11 @@ describe("undo by delta lands where a whole load does", () => {
 
       // Undo: from the edited canvas back to the original, then redo forward again.
       await whole(b.save);
-      expect(await applyGraphDelta(asStep(a.save))).toBe(true);
+      expect(await applyGraphDelta(asStep(a.save))).not.toBeNull();
       expect(sameLanding(serializeGraph()!, a.save)).toBe(true);
       if (steady) expect(answers()).toEqual(a.answers);
 
-      expect(await applyGraphDelta(asStep(b.save))).toBe(true);
+      expect(await applyGraphDelta(asStep(b.save))).not.toBeNull();
       expect(sameLanding(serializeGraph()!, b.save)).toBe(true);
       if (steady) expect(answers()).toEqual(b.answers);
     });
@@ -180,7 +183,7 @@ describe("what the change doesn't reach keeps its value", () => {
     engine.pass = (changed, renderOnly, topology) => { passes.push(renderOnly && [...renderOnly].map((id) => nodeNameStore.get(id)!).sort()); return pass(changed, renderOnly, topology); };
     engine.reset = (id) => { resets.push(id ? nodeNameStore.get(id)! : "<every cache>"); reset(id); };
     const liveG = nodeNameStore.byName("G");
-    expect(await applyGraphDelta(asStep(first.save))).toBe(true);
+    expect(await applyGraphDelta(asStep(first.save))).not.toBeNull();
     expect(canon(serializeGraph()!)).toBe(canon(first.save));
     expect(nodeNameStore.byName("G")).toBe(liveG);
     expect(passes).toEqual([["A", "F"]]);
@@ -199,6 +202,50 @@ describe("what the change doesn't reach keeps its value", () => {
     const left = answers();
     engine.pass = pass;
     expect((await whole(serializeGraph()!)).answers).toEqual(left);
+  });
+
+
+  it("in Manual an undo still computes what it changed, as the whole load it replaces did", async () => {
+    const first = await whole(readTextForm(TEXT));
+    const edit = structuredClone(first.save);
+    edit.nodes.find((n) => n.id === "A")!.init.value = "3";
+    await whole(edit);
+    calcModeStore.setMode("manual");
+    try {
+      expect(await applyGraphDelta(asStep(first.save))).not.toBeNull();
+      expect(answers()).toEqual(first.answers);
+    } finally {
+      calcModeStore.setMode("auto");
+    }
+  });
+
+
+  it("wrapping a card as a composite, and unpacking it, each compute only what they reach", async () => {
+    await whole(readTextForm(TEXT));
+    const passes: Array<string[] | undefined> = [];
+    const pass = engine.pass.bind(engine);
+    const name = (id: string) => nodeNameStore.get(id) ?? editor.getNode(id)?.constructor.name ?? id;
+    engine.pass = (changed, renderOnly, topology) => { passes.push(renderOnly && [...renderOnly].map(name).sort()); return pass(changed, renderOnly, topology); };
+    for (const n of editor.getNodes()) (n as { selected?: boolean }).selected = nodeNameStore.get(n.id) === "F";
+    const id = await createCompositeFromSelection(editor, view);
+    expect(id).not.toBeNull();
+    expect(passes).toEqual([[name(id!)]]);
+    const wrapped = answers();
+    engine.pass = pass;
+    expect((await whole(serializeGraph()!)).answers).toEqual(wrapped);
+
+    const comp = editor.getNodes().find((n) => n.constructor.name === "CompositeNode")!;
+    engine.pass = (changed, renderOnly, topology) => { passes.push(renderOnly && [...renderOnly].map(name).sort()); return pass(changed, renderOnly, topology); };
+    passes.length = 0;
+    const inner = (comp as unknown as { internalEditor: GraphEditor<Schemes> }).internalEditor.getNodes()
+      .filter((n) => n.constructor.name === "ArithmeticNode").map((n) => n.id);
+    expect(await unpackComposite(editor, view, comp.id)).toBe(true);
+    // The one card the composite held (it keeps no name inside a composite yet: the backlog's composite names).
+    expect(passes).toEqual([inner.map(name)]);
+    const save = serializeGraph()!;
+    const unpacked = answers();
+    engine.pass = pass;
+    expect((await whole(save)).answers).toEqual(unpacked);
   });
 
 });

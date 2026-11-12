@@ -26,11 +26,12 @@ import { drawnCableStore } from "./drawnCables";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
 import { compositeEditorStore } from "./compositeEditorStore";
-import { rebuildGroupMembership } from "./groupMembership";
+import { rebuildGroupMembership, dropFromGroups } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
 import { settleCableChange } from "./cableSettle";
 import { repositionDockedNodes } from "./canvasCommands";
-import { sameLanding, USER_SIZED } from "./flow/flowHistoryDigest";
+import { perfEnabled } from "./perfProbe";
+import { sameLanding, USER_SIZED, withoutSettled } from "./flow/flowHistoryDigest";
 
 const SIDE_KINDS = ["standoffs", "pins", "comments", "frameFormats"] as const;
 type SideKind = (typeof SIDE_KINDS)[number];
@@ -62,10 +63,12 @@ export interface GraphDelta {
 const connKey = (c: SavedConnection): string => `${c.source}\u0000${c.sourceOutput}\u0000${c.target}\u0000${c.targetInput}`;
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-/** The init a pass reads: a measured width or height is re-stamped after every restore, so it is no edit. */
+/** The init a pass reads: a measured width or height is re-stamped after every restore, and a settled type is the
+ *  type settle's (`SETTLED_INIT`), so neither is an edit. */
 function initKey(n: SavedNode): string {
-  if (USER_SIZED.has(n.type)) return JSON.stringify(n.init ?? {});
-  const { width: _w, height: _h, ...rest } = (n.init ?? {}) as Record<string, unknown>;
+  const init = withoutSettled(n.type, n.init);
+  if (USER_SIZED.has(n.type)) return JSON.stringify(init);
+  const { width: _w, height: _h, ...rest } = init;
   return JSON.stringify(rest);
 }
 
@@ -127,21 +130,25 @@ export function isEmptyDelta(d: GraphDelta): boolean {
     !d.reportPalette && !d.meta && !d.order;
 }
 
-/** Moves the live main canvas to `target` by its delta. `false`, with nothing changed, when only a whole load gets
- *  there: no canvas, a card type this build lacks, a save the delta can't express. After the apply the canvas is
- *  read back, and a result that isn't `target` is answered by a whole load, so undo never lands somewhere else. */
-export async function applyGraphDelta(target: SavedGraph): Promise<boolean> {
+/** Moves the live main canvas to `target` by its delta, and answers the canvas's save as it landed (the read-back, so
+ *  the history keeps it without serializing again). `null`, with nothing changed, when only a whole load gets there:
+ *  no canvas, a card type this build lacks, a save the delta can't express; and `null` after the apply when the
+ *  read-back isn't `target`, which the caller answers with a whole load, so undo never lands somewhere else. */
+export async function applyGraphDelta(target: SavedGraph): Promise<SavedGraph | null> {
   const editor = getEditor();
   const view = getView();
   const engine = getEngine();
-  if (!editor || !view || !engine) return false;
+  if (!editor || !view || !engine) return null;
+  const perf = perfEnabled();
+  const t0 = perf ? performance.now() : 0;
   const current = serializeGraph();
-  if (!current) return false;
+  if (!current) return null;
+  const t1 = perf ? performance.now() : 0;
   const delta = diffGraphs(current, target);
-  if (!delta) return false;
-  if (isEmptyDelta(delta)) return true;
+  if (!delta) return null;
+  if (isEmptyDelta(delta)) return current;
   const reg = ctorRegistry();
-  if ([...delta.added, ...delta.rebuilt].some((n) => !reg.has(n.type))) return false;
+  if ([...delta.added, ...delta.rebuilt].some((n) => !reg.has(n.type))) return null;
 
   // Saved id (a name) → live id; every card the save holds has one.
   const live = new Map<string, string>();
@@ -149,7 +156,7 @@ export async function applyGraphDelta(target: SavedGraph): Promise<boolean> {
     const name = nodeNameStore.get(n.id);
     if (name) live.set(name, n.id);
   }
-  if (current.nodes.some((n) => !live.has(n.id))) return false;
+  if (current.nodes.some((n) => !live.has(n.id))) return null;
 
   const gone = new Set([...delta.removed, ...delta.rebuilt.map((n) => n.id)].map((id) => live.get(id)!));
   if (compositeEditorStore.stack().some((c) => gone.has(c.id))) compositeEditorStore.close();
@@ -173,6 +180,10 @@ export async function applyGraphDelta(target: SavedGraph): Promise<boolean> {
     // A rebuilt card takes a fresh live id, as a load gives it, so its view mounts afresh rather than keeping the old
     // card's drafts; what refers to the old id is pointed at the new one below.
     const oldId = new Map(delta.rebuilt.map((sn) => [sn.id, live.get(sn.id)!]));
+    // A selected card stays selected through its rebuild.
+    const wasSelected = new Set(delta.rebuilt
+      .filter((sn) => (editor.getNode(live.get(sn.id)!) as { selected?: boolean } | undefined)?.selected === true)
+      .map((sn) => sn.id));
     const swapped = new Map<string, string>();
     for (const id of gone) {
       const node = editor.getNode(id);
@@ -186,6 +197,7 @@ export async function applyGraphDelta(target: SavedGraph): Promise<boolean> {
       // The rebuild gate holds back the delete settle, which would also take a relocation for a delete.
       forgetNodeDeep(node as SolenoidNode);
     }
+    dropFromGroups(editor, new Set(delta.removed.map((id) => live.get(id)!)));
     for (const id of delta.removed) live.delete(id);
 
     for (const sn of [...delta.rebuilt, ...delta.added]) {
@@ -193,6 +205,7 @@ export async function applyGraphDelta(target: SavedGraph): Promise<boolean> {
       const node = new Ctor({ ...sn.init });
       const was = oldId.get(sn.id);
       if (was) swapped.set(was, node.id);
+      if (wasSelected.has(sn.id)) (node as { selected?: boolean }).selected = true;
       restoreLiterals(node, sn);
       nodeNameStore.claim(node.id, sn.name ?? sn.id, sn.type);
       restoreNodeState(node.id, sn);
@@ -260,18 +273,19 @@ export async function applyGraphDelta(target: SavedGraph): Promise<boolean> {
     rebuildGroupMembership(editor);
     settleCableChange(editor, view);
     syncGroupCollapse(editor, view);
-  }, { settled: true });
 
-  // One pass over what the changes reach: each changed card's reach is cleared, everything else keeps its caches.
-  if (dirty.size > 0) {
-    const reach = new Set<string>();
-    for (const id of dirty) {
-      if (!editor.getNode(id)) continue;
-      engine.reset(id);
-      for (const r of engine.downstreamClosure(id)) reach.add(r);
+    // One pass over what the changes reach: each changed card's reach is cleared, everything else keeps its caches.
+    // Inside the scope, as a load's pass is, so an undo computes in Manual too, as the whole load it replaces did.
+    if (dirty.size > 0) {
+      const reach = new Set<string>();
+      for (const id of dirty) {
+        if (!editor.getNode(id) || reach.has(id)) continue;
+        engine.reset(id);
+        for (const r of engine.downstreamClosure(id)) reach.add(r);
+      }
+      await processGraph(undefined, reach, { topology: cablesChanged || created.length > 0 });
     }
-    await processGraph(undefined, reach, { topology: cablesChanged || created.length > 0 });
-  }
+  }, { settled: true });
   const hosts = new Set<string>();
   for (const n of editor.getNodes()) {
     const h = (n as { hostNodeId?: string }).hostNodeId;
@@ -279,16 +293,31 @@ export async function applyGraphDelta(target: SavedGraph): Promise<boolean> {
   }
   if (hosts.size) requestAnimationFrame(() => requestAnimationFrame(() => { for (const h of hosts) repositionDockedNodes(h); }));
 
+  const t2 = perf ? performance.now() : 0;
   const landed = serializeGraph();
-  if (landed && sameLanding(landed, target)) return true;
+  const hit = !!landed && sameLanding(landed, target);
+  if (perf) {
+    const t3 = performance.now();
+    console.log(`[perf] undo delta  rebuilt=${delta.rebuilt.length} added=${delta.added.length} removed=${delta.removed.length} ` +
+      `moved=${delta.moved.length} cables=${delta.cablesAdded.length}+/${delta.cablesRemoved.length}-  serialize=${(t1 - t0).toFixed(1)}ms ` +
+      `apply+pass=${(t2 - t1).toFixed(1)}ms  check=${(t3 - t2).toFixed(1)}ms${hit ? "" : "  MISSED"}`);
+  }
+  if (hit) return landed;
   if (import.meta.env?.DEV && landed) {
     const want = new Map(target.nodes.map((n) => [n.id, JSON.stringify(n)]));
     const off = landed.nodes.filter((n) => want.get(n.id) !== JSON.stringify(n)).map((n) => ({ got: n, want: want.get(n.id) }));
-    const { nodes: _l, ...lh } = landed;
-    const { nodes: _t, ...th } = target;
-    const head = same(lh, th) ? "same" : JSON.stringify([lh, th]).slice(0, 1500);
+    const fields = [...new Set([...Object.keys(landed), ...Object.keys(target)])]
+      .filter((k) => k !== "nodes" && k !== "connections" && !same((landed as never)[k], (target as never)[k]));
+    const gotCables = new Set(landed.connections.map(connKey));
+    const wantCables = new Set(target.connections.map(connKey));
+    const cables = {
+      missing: target.connections.filter((c) => !gotCables.has(connKey(c))),
+      extra: landed.connections.filter((c) => !wantCables.has(connKey(c))),
+    };
     const order = landed.nodes.map((n) => n.id).join() === target.nodes.map((n) => n.id).join() ? "same" : "differs";
-    console.warn("[solenoid] undo delta missed its target; loading it whole", JSON.stringify({ head, order, off }).slice(0, 3000));
+    const cableOrder = landed.connections.map(connKey).join() === target.connections.map(connKey).join() ? "same"
+      : landed.connections.map(connKey).map((k, i) => k === connKey(target.connections[i]) ? "" : `${i}: ${k} / ${connKey(target.connections[i])}`).filter(Boolean).slice(0, 4);
+    console.warn("[solenoid] undo delta missed its target; loading it whole", JSON.stringify({ fields, cables, cableOrder, order, off }).slice(0, 4000));
   }
-  return false;
+  return null;
 }
