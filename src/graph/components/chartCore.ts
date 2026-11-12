@@ -35,6 +35,13 @@ export function useSeriesColors(): string[] {
   return SERIES_SLOTS.map((slot) => resolveColor(slot));
 }
 
+/** The series colors with the error color (vermilion, `--sol-error`) and the neutral gray left out: for marks that each
+ *  stand for one thing beside many, where a red one would read as a fault and a gray one as nothing (Describe's tiles). */
+export function useDataColors(): string[] {
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  return SERIES_SLOTS.filter((slot) => slot !== "vermilion" && slot !== "gray").map((slot) => resolveColor(slot));
+}
+
 /** The color of a Conditional Regions label at `i`, the categorical palette in turn. */
 export function regionLabelColor(colors: readonly string[], i: number): string {
   return colors[i % colors.length];

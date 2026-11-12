@@ -4,7 +4,8 @@ import { MasonryGallery } from "./MasonryGallery";
 import type { DescribeTile } from "../describeProfile";
 import { defaultCellText } from "../cellText";
 import { APP_LOCALE } from "../locale";
-import { ChartView, useChartColors } from "./chartView";
+import { ChartView } from "./chartView";
+import { useDataColors } from "./chartCore";
 import { ChartExpandButton } from "./ChartExpandButton";
 import { TypeIcon } from "./TypeIcon";
 import { setProfileView } from "../tablePopupStore";
@@ -41,9 +42,9 @@ function useSeen<T extends HTMLElement>(): [React.RefObject<T | null>, boolean] 
   return [ref, seen];
 }
 
-function Tile({ tile, width }: { tile: DescribeTile; width: number }) {
+/** `color`: the column's own series color, as a chart paints its series, so neighboring tiles read apart. */
+function Tile({ tile, width, color }: { tile: DescribeTile; width: number; color: string }) {
   const [ref, seen] = useSeen<HTMLDivElement>();
-  const { viz } = useChartColors();
   const plotW = Math.max(60, width - TILE_INSET);
   const rows = tile.count + tile.blank;
   const filled = rows ? tile.count / rows : 0;
@@ -103,9 +104,9 @@ function Tile({ tile, width }: { tile: DescribeTile; width: number }) {
 
       {hist && (
         <div className="describe-profile__chart" style={{ height: HIST_H }}>
-          {seen && <ChartView op="column" series={histSeries} width={plotW} height={HIST_H} axes={false} labels={binLabels} />}
+          {seen && <ChartView op="column" series={histSeries} width={plotW} height={HIST_H} axes={false} labels={binLabels} opts={{ color }} />}
           {medianAt != null && <span className="describe-profile__median" style={{ left: medianAt }} />}
-          <ChartExpandButton title={`${tile.name}: distribution`} op="column" axes series={histSeries} labels={binLabels} />
+          <ChartExpandButton title={`${tile.name}: distribution`} op="column" axes series={histSeries} labels={binLabels} opts={{ color }} />
         </div>
       )}
       {hist && (
@@ -123,8 +124,8 @@ function Tile({ tile, width }: { tile: DescribeTile; width: number }) {
         <>
           <div className="describe-profile__caption">In row order</div>
           <div className="describe-profile__chart describe-profile__trend" style={{ height: TREND_H }}>
-            {seen && <ChartView op="line" series={trendSeries} width={plotW} height={TREND_H} axes={false} />}
-            <ChartExpandButton title={tile.name} op="line" axes series={trendSeries} />
+            {seen && <ChartView op="line" series={trendSeries} width={plotW} height={TREND_H} axes={false} opts={{ color }} />}
+            <ChartExpandButton title={tile.name} op="line" axes series={trendSeries} opts={{ color }} />
           </div>
         </>
       )}
@@ -140,7 +141,7 @@ function Tile({ tile, width }: { tile: DescribeTile; width: number }) {
           {topValues.map((t) => (
             <div key={t.text} className="describe-profile__toprow">
               <span className="describe-profile__toplabel">{label(t.text)}</span>
-              <span className="describe-profile__topbar"><span style={{ width: `${topMax ? (t.count / topMax) * 100 : 0}%`, background: viz }} /></span>
+              <span className="describe-profile__topbar"><span style={{ width: `${topMax ? (t.count / topMax) * 100 : 0}%`, background: color }} /></span>
               <span className="describe-profile__topcount">{count(t.count)}</span>
               <span className="describe-profile__topshare">{share(t.count, tile.count)}</span>
             </div>
@@ -173,6 +174,8 @@ export function installDescribeProfile(): () => void {
 
 /** The Profile view: one tile per column of the frame Describe read; the filter matches column names. */
 export function DescribeProfile({ tiles, query }: { tiles: readonly DescribeTile[]; query: string }) {
+  // Each column its own color, in the series order a chart uses, never the error red.
+  const colors = useDataColors();
   // One array while the filter holds, so the masonry measures again only when the tiles change.
   const shown = useMemo(() => {
     const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -183,7 +186,7 @@ export function DescribeProfile({ tiles, query }: { tiles: readonly DescribeTile
       <div className="describe-profile__scroll sol-popup__scroll">
         {/* A masonry, as a Record figure's Gallery packs, so a short tile leaves no hole under it. */}
         <MasonryGallery count={shown.length} track={TILE_TRACK} gap={GAP} className="describe-profile__grid" layoutKey={shown}
-          tile={(i, width) => <Tile key={`${i}:${shown[i].name}`} tile={shown[i]} width={width} />} />
+          tile={(i, width) => <Tile key={`${i}:${shown[i].name}`} tile={shown[i]} width={width} color={colors[tiles.indexOf(shown[i]) % colors.length]} />} />
         {shown.length === 0 && <div className="describe-profile__other">{tiles.length ? "No column matches" : "No columns"}</div>}
       </div>
     </div>
