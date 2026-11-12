@@ -9,8 +9,17 @@ specific item.
 ### SESSION DIGEST (2026-11-12d: Rust 1.100, the crate cooldown; cloud session)
 
 - **The pin is Rust 1.100.0** (`rust-toolchain.toml`, the author's word). The crates needed no change: fmt, clippy, the three crates'
-  release tests and the whole TypeScript suite pass through a module rebuilt with it. `rust-version` in the manifests stays 1.99
-  until the bleeding-edge findings are ported (backlog, Rust core).
+  release tests and the whole TypeScript suite pass through a module rebuilt with it.
+- **Bleeding-edge's Rust 1.100 findings are ported** (`port.mjs`, seven `Edge:` commits, no conflict): `rust-version = "1.100"`,
+  the never type, `bool::toggle`, `Box::map` in the bracket-parameter rewrite, `DropGuard` for the call depth, ROW()'s row,
+  the LAMBDA root and the scoped LAMBDAs, `trim_prefix`/`trim_suffix`, `Vec::from_fn` at 210 sites. No answer moved. The
+  allocation probe and the sweep script stay on bleeding-edge, beside its Rust 1.100 report.
+- **Dependencies for 1.6.2, a week old only:** jiff 0.2.39, crc32fast 1.5.4, log 0.4.35, cc 1.11.0 (`cargo update -p`, under
+  the cooldown); marked 18.1.3, @lezer/common 1.5.5, @anthropic-ai/sdk 1.5.0, vitest 5.1.0, @vitejs/plugin-react 6.2.1
+  (`npm install --before=2026-11-05`). zip stays at 9.5.1, locked by the workbook work before the cooldown existed: a full
+  `cargo update` would take it down to 9.4.0, which the reader was never run on; it passes a week old on 2026-11-17. Left on
+  bleeding-edge: React Flow 13 (a prerelease), eslint 10, tsrs 0.25, magic-string 1.4, three 0.187. `npm audit`'s one
+  moderate (minimatch under typescript-eslint, lint only) predates this.
 - **Crates wait a week** (`.cargo/config.toml`, `global-min-publish-age = "7 days"`, the author's word): Cargo 1.100 skips a version
   published more recently when it resolves a lockfile, and refuses a requirement only such a version meets, naming the override.
   A build from the lockfile as it stands is untouched. Cargo 1.99 ignored the setting with a warning, which is why the pin moved

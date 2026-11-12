@@ -606,8 +606,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8878: (a: number, b: number, c: number, d: unknown) => void;
-    readonly __wasm_bindgen_func_elem_8880: (a: number, b: number, c: unknown, d: unknown) => void;
+    readonly __wasm_bindgen_func_elem_8925: (a: number, b: number, c: number, d: unknown) => void;
+    readonly __wasm_bindgen_func_elem_8927: (a: number, b: number, c: unknown, d: unknown) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;
