@@ -14,8 +14,8 @@ specific item.
 - `retypeColumns` now keeps an error with no text behind it under any picked type (a workbook's error cell), and a
   stray reads again from its text.
 - Web Source: `fetchBytes` (`httpBridge.ts`), and the desktop shell's `net_fetch` answers base64 for `binary`. That
-  shell change is unbuilt here (the author's no-`src-tauri`-builds rule): the Android or desktop CI build is its
-  first compile.
+  shell change was unbuilt here (the author's no-`src-tauri`-builds rule); CI's Rust supply chain `shell` job compiled
+  and tested it. A new crate means `node scripts/rust-licenses.mjs` (needs `cargo install cargo-about --features cli`).
 - A workbook formula with no saved answer is its own code, `#UNCALC!` (ERROR.TYPE 8, as Excel's #GETTING_DATA;
   `error-values.md`). Local File and Web Source fold All matching, Dates and Auto-refresh into Options, and an idle
   card's message replaces "Not connected". The demo vault holds `Data/sales-targets.xlsx` and reads binary files.

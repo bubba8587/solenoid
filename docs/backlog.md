@@ -283,8 +283,8 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
   Graph's `/shares/…/driveItem/content`; `microsoft.tenantId`/`clientId` in `solenoid.config.json`. Needs a Microsoft
   365 developer tenant to test.
 - [ ] **Open a graph from a link** (`?doc=<url>`), designed with the cloud library (`v2.0/21-collaboration.md`).
-- [ ] **First compile of the `binary` `net_fetch`** (`src-tauri/src/net.rs`, written 2026-11-12 without a build): check
-  the desktop or Android CI build, then a desktop Web Source on an `.xlsx` address.
+- [ ] **Try a desktop Web Source on an `.xlsx` address** (the `binary` `net_fetch`, `src-tauri/src/net.rs`): it
+  compiles and passes the shell's lints and tests in CI (Rust supply chain, 2026-11-12), but no one has run it.
 
 ## Landing pages
 
