@@ -1,6 +1,6 @@
 // [[C23]] calcModes, [[live-connections#Service providers]]
 import { describe, it, expect } from "vitest";
-import { weatherUrl, forecastChart } from "../../src/graph/weatherProvider";
+import { weatherUrl, forecastChart, placeToday } from "../../src/graph/weatherProvider";
 import { forecastWindow } from "../../src/graph/components/forecastView";
 import type { FrameValue } from "../../src/graph/frame";
 import type { ForecastPayload } from "../../src/graph/chartValue";
@@ -52,4 +52,19 @@ describe("forecastWindow", () => {
     expect(forecastWindow({ ...p, today: 99 }, 3).high).toEqual([6, 7, 8]);
   });
   it("leaves a short forecast whole", () => expect(forecastWindow(p, 20)).toBe(p));
+});
+
+describe("placeToday", () => {
+  // 12 Nov 2026 23:30 UTC is serial 46338; Tokyo (+9 h) is already on the 13th, Honolulu (-10 h) still on the 12th.
+  const now = new Date(Date.UTC(2026, 10, 12, 23, 30));
+  it("is the calendar day at the forecast's place, not here", () => {
+    expect(placeToday(0, now)).toBe(46338);
+    expect(placeToday(9 * 3600, now)).toBe(46339);
+    expect(placeToday(-10 * 3600, now)).toBe(46338);
+    expect(placeToday(-10 * 3600, new Date(Date.UTC(2026, 10, 12, 9, 30)))).toBe(46337);
+  });
+  it("falls back to the day here when the reply names no offset", () => {
+    const here = new Date(2026, 10, 12, 23, 30);
+    expect(placeToday(null, here)).toBe(46338);
+  });
 });

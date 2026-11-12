@@ -2,9 +2,9 @@
 import { dayOf } from "../dateValue";
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, chartOut, readInput, readTextInput } from "./shared";
-import { serialToJsDate, wallClockSerial } from "./dateSerial";
+import { serialToJsDate } from "./dateSerial";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
-import { weatherUrl, parseWeather, forecastChart, type TempUnit, type WeatherResult } from "../weatherProvider";
+import { weatherUrl, parseWeather, forecastChart, placeToday, type TempUnit, type WeatherResult } from "../weatherProvider";
 import { holidaysUrl, holidaysOnCore } from "../holidaysProvider";
 import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, fxSeriesFrame, type FxRate } from "../fxProvider";
 import { notesToCube, type VaultNote, type VaultTypeSources } from "../vaultCube";
@@ -661,7 +661,7 @@ export class WeatherNode extends GraphNode {
     }
     const c = this.cached;
     const fcUnit = this.unit === "F" ? "degF" : "degC";
-    this.cachedChart = c ? forecastChart(c.daily, this.unit, wallClockSerial(new Date(), true), this.label) : null;
+    this.cachedChart = c ? forecastChart(c.daily, this.unit, placeToday(c.utcOffsetSeconds), this.label) : null;
     return {
       daily: c?.daily ?? null,
       temp: c?.nowTemp != null ? applyFcUnit(c.nowTemp, fcUnit) : null,

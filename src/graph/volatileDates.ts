@@ -1,12 +1,12 @@
 // [[C23]] calcModes, [[C44]] dateSerials
-// Midnight rollover: TODAY, NOW, the Today, Holidays and World Clock cards (the clock also ticks each minute), a Knap `'now' | date` and relative Date Inputs answer for the calendar day, so at each local midnight a
+// Midnight rollover: TODAY, NOW, the Today, Holidays, Weather (its forecast marks today) and World Clock cards (the clock also ticks each minute), a Knap `'now' | date` and relative Date Inputs answer for the calendar day, so at each local midnight a
 // document holding any of them recomputes once. One timer, re-armed after each firing.
 
 import { isRelativeDateText } from "./nodes/dateSerial";
 
 const VOLATILE_FN = /\b(TODAY|NOW)\s*\(/i;
 const KNAP_NOW = /["']now["']\s*\|\s*date\b/;
-const CLOCK_NODES = new Set(["TodayNowNode", "HolidaysNode", "WorldClockNode"]);
+const CLOCK_NODES = new Set(["TodayNowNode", "HolidaysNode", "WorldClockNode", "WeatherNode"]);
 
 export function hasVolatileDates(nodes: readonly unknown[]): boolean {
   for (const n of nodes) {
