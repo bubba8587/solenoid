@@ -84,7 +84,7 @@ const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string; on: boolean }
   { key: "arrows", label: "Arrows", on: true }, { key: "today", label: "Today line", on: true },
   { key: "status", label: "Status line", on: true }, { key: "weekends", label: "Weekend shading", on: true },
   { key: "labels", label: "Bar labels", on: true }, { key: "histogram", label: "Resource band", on: false },
-  { key: "minutes", label: "Times to the minute", on: false }, { key: "group_by", label: "Project groups", on: true },
+  { key: "minutes", label: "Exact times", on: false }, { key: "group_by", label: "Project groups", on: true },
 ];
 const SELECT_KEYS: readonly {
   key: ChartBuilderKey;
