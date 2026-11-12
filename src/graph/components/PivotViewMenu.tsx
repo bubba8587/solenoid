@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AggOp } from "../frameOps";
 import { formatFrameCell, type FrameCell } from "../frame";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import type { PivotConfig } from "../pivotConfig";
+import { sameSort, type PivotConfig, type PivotSort } from "../pivotConfig";
 import { DATE_GROUPS, dateGroupOf, pivotKey, regroupField } from "../pivotConfig";
 import { FUNC_CAPTION, groupKey, valueCaption, type PivotLayout, type PivotViewOptions } from "../pivotLayout";
 import { useOutsideClose, type PointerMenuItem, type PointerMenuSection } from "./TableEditMenu";
@@ -78,14 +78,14 @@ export function pivotMenuSections({ target, layout, host, options, onOptions, co
     const cur = cfg[sortKey(axis)];
     const items: PointerMenuItem[] = [];
     if (fieldName !== null) {
-      const at = fields.indexOf(fieldName) + 1;
-      if (at > 0) {
+      if (fields.includes(fieldName)) {
         const [up, down] = sortWords(type);
-        items.push({ label: `Sort ${up}`, checked: cur === at, onClick: () => edit((c) => { c[sortKey(axis)] = at; }) });
-        items.push({ label: `Sort ${down}`, checked: cur === -at, onClick: () => edit((c) => { c[sortKey(axis)] = -at; }) });
+        const asc: PivotSort = { by: "field", name: fieldName }, desc: PivotSort = { ...asc, desc: true };
+        items.push({ label: `Sort ${up}`, checked: sameSort(cur, asc), onClick: () => edit((c) => { c[sortKey(axis)] = asc; }) });
+        items.push({ label: `Sort ${down}`, checked: sameSort(cur, desc), onClick: () => edit((c) => { c[sortKey(axis)] = desc; }) });
       }
     }
-    if (items.length) items.push({ label: "Default Order", checked: cur === 0, onClick: () => edit((c) => { c[sortKey(axis)] = 0; }) });
+    if (items.length) items.push({ label: "Default Order", checked: cur === null, onClick: () => edit((c) => { c[sortKey(axis)] = null; }) });
     return items;
   };
 
@@ -176,11 +176,11 @@ export function pivotMenuSections({ target, layout, host, options, onOptions, co
       ...(known ? [] : [{ label: "Other", checked: true, onClick: () => {} }]),
     ] });
   }
-  const at = cfg.rows.length + cfg.vals.indexOf(name) + 1;
   if (layout.rowFields.length && cfg.vals.includes(name)) {
+    const asc: PivotSort = { by: "value", name }, desc: PivotSort = { ...asc, desc: true };
     sections.push({ heading: "Sort Rows", items: [
-      { label: "Largest to Smallest", checked: cfg.rowSort === -at, onClick: () => edit((c) => { c.rowSort = -at; }) },
-      { label: "Smallest to Largest", checked: cfg.rowSort === at, onClick: () => edit((c) => { c.rowSort = at; }) },
+      { label: "Largest to Smallest", checked: sameSort(cfg.rowSort, desc), onClick: () => edit((c) => { c.rowSort = desc; }) },
+      { label: "Smallest to Largest", checked: sameSort(cfg.rowSort, asc), onClick: () => edit((c) => { c.rowSort = asc; }) },
     ] });
   }
   const tail: PointerMenuItem[] = [];
@@ -253,9 +253,9 @@ export function PivotFieldDropdown({ at, fields, initialField = 0, host, onClose
   const cfg = host.config();
   // A field sorts on the axis it is placed on; a filter-only field has no sort.
   const axis: "rows" | "cols" | null = cfg.rows.includes(name) ? "rows" : cfg.cols.includes(name) ? "cols" : null;
-  const sortAt = axis ? (axis === "rows" ? cfg.rows : cfg.cols).indexOf(name) + 1 : 0;
   const sortKey = axis === "cols" ? "colSort" : "rowSort";
   const cur = cfg[sortKey];
+  const asc: PivotSort = { by: "field", name }, desc: PivotSort = { ...asc, desc: true };
   const [up, down] = sortWords(type);
   const write = (change: (c: PivotConfig) => void) => { const next = copyOf(host.config()); change(next); host.apply(next); };
   const format = fields[field]?.format ?? null;
@@ -268,12 +268,12 @@ export function PivotFieldDropdown({ at, fields, initialField = 0, host, onClose
           {fields.map((f, i) => <option key={f.name} value={i}>{f.name}</option>)}
         </select>
       )}
-      {sortAt > 0 && (
+      {axis && (
         <div className="sol-popup-menu__group" role="group" aria-label="Sort">
-          <button type="button" role="menuitemradio" aria-checked={cur === sortAt} className={`sol-popup-menu__item${cur === sortAt ? " sol-popup-menu__item--checked" : ""}`}
-            onClick={() => write((c) => { c[sortKey] = sortAt; })}>Sort {up}</button>
-          <button type="button" role="menuitemradio" aria-checked={cur === -sortAt} className={`sol-popup-menu__item${cur === -sortAt ? " sol-popup-menu__item--checked" : ""}`}
-            onClick={() => write((c) => { c[sortKey] = -sortAt; })}>Sort {down}</button>
+          <button type="button" role="menuitemradio" aria-checked={sameSort(cur, asc)} className={`sol-popup-menu__item${sameSort(cur, asc) ? " sol-popup-menu__item--checked" : ""}`}
+            onClick={() => write((c) => { c[sortKey] = asc; })}>Sort {up}</button>
+          <button type="button" role="menuitemradio" aria-checked={sameSort(cur, desc)} className={`sol-popup-menu__item${sameSort(cur, desc) ? " sol-popup-menu__item--checked" : ""}`}
+            onClick={() => write((c) => { c[sortKey] = desc; })}>Sort {down}</button>
         </div>
       )}
       <div className="sol-popup-menu__sep" />

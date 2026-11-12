@@ -16,7 +16,7 @@ import seed from "../../../src/graph/seedGraphs/pivot-calculated-fields.json";
 import { restoreLiterals } from "../../../src/graph/literalFields";
 import { isSolError } from "../../../src/graph/errorValue";
 import { pivotLayoutOf, pivotViewFrame } from "../../../src/graph/pivotLayout";
-import { calcFieldName, movedSort, pivotConfigOf, writePivotConfig } from "../../../src/graph/pivotConfig";
+import { calcFieldName, calcToken, calcsOnPivot, pivotConfigOf, placesFrom, regroupField, valuesWithCalcs, writePivotConfig, type CalcPlaces, type PivotSort } from "../../../src/graph/pivotConfig";
 
 // A fleet's fuel log: MPG per plate per month is miles over gallons in that cell's rows.
 const log = new FrameInputNode({
@@ -344,21 +344,38 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     expect(two.col("Calculated 2")!.values).toEqual([20, 30, 50]);
   });
 
-  it("sits where its place puts it among the values, and a place of -1 leaves it off the pivot", async () => {
+  it("sits before the value its place names, in the places' order, and a place of false leaves it off the pivot", async () => {
     const lazy = planned(log, { kind: "distinct" });
-    const order = async (calcPlace: Record<string, number>) => {
+    const order = async (calcPlace: CalcPlaces) => {
       const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0", "calcName1", "calcFn1"], calcPlace });
       Object.assign(n.stringLiterals, { rowFields: "Plate", values: "Miles, Gallons", calcName0: "MPG", calcName1: "GPM" });
       const out = n.data({ frame: [lazy], rowFields: [["Plate"]], colFields: [[]], values: [["Miles", "Gallons"]], calcFn0: [MPG], calcFn1: [lambda("", "SUM(Gallons) / SUM(Miles)")] }).frame;
       return ((await readFrame(out as FrameInput)) as FrameValue).columns.map((c) => c.name);
     };
-    expect(await order({})).toEqual(["Plate", "Miles", "Gallons", "MPG", "GPM"]);
-    expect(await order({ 1: 0, 0: 1 })).toEqual(["Plate", "GPM", "Miles", "MPG", "Gallons"]);
-    expect(await order({ 0: -1 })).toEqual(["Plate", "Miles", "Gallons", "GPM"]);
+    expect(await order([])).toEqual(["Plate", "Miles", "Gallons", "MPG", "GPM"]);
+    expect(await order([["1", "Miles"], ["0", "Gallons"]])).toEqual(["Plate", "GPM", "Miles", "MPG", "Gallons"]);
+    expect(await order([["0", false]])).toEqual(["Plate", "Miles", "Gallons", "GPM"]);
+    // Two fields before one value stand in the places' order, the second field first here; so do two after the values.
+    expect(await order([["1", "Gallons"], ["0", "Gallons"]])).toEqual(["Plate", "Miles", "GPM", "MPG", "Gallons"]);
+    expect(await order([["1", null], ["0", null]])).toEqual(["Plate", "Miles", "Gallons", "GPM", "MPG"]);
+    // A place before a value that is away is after the values, and the field is back in its place when the value is.
+    expect(await order([["0", "Cost"]])).toEqual(["Plate", "Miles", "Gallons", "MPG", "GPM"]);
+  });
+
+  it("the Values zone's order turns into places by name and back", () => {
+    const tokens = [calcToken("1"), "Miles", calcToken("0"), calcToken("2"), "Gallons"];
+    const { vals, place } = placesFrom(tokens, ["0", "1", "2", "3"], [["9", "Miles"]]);
+    expect(vals).toEqual(["Miles", "Gallons"]);
+    // Each field before the next value after it; a wired one not in the zone is off; an unwired one's place is kept.
+    expect(place).toEqual([["1", "Miles"], ["0", "Gallons"], ["2", "Gallons"], ["3", false], ["9", "Miles"]]);
+    expect(valuesWithCalcs(vals, place, ["0", "1", "2", "3"])).toEqual(tokens);
+    // A value removed elsewhere (a typed list, the view's menu) leaves every other field where it was.
+    expect(valuesWithCalcs(["Gallons"], place, ["0", "1", "2", "3"])).toEqual([calcToken("0"), calcToken("2"), "Gallons", calcToken("1")]);
+    expect(calcsOnPivot(place, ["0", "1", "2", "3"])).toEqual(["1", "0", "2"]);
   });
 
   it("a placed field's columns say which value they hold: the layout's value index follows its values list", () => {
-    const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0"], calcPlace: { 0: 0 } });
+    const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0"], calcPlace: [["0", "Miles"]] });
     Object.assign(n.stringLiterals, { rowFields: "Plate", colFields: "Month", values: "Miles", calcName0: "MPG" });
     const out = n.data({ frame: [log], rowFields: [["Plate"]], colFields: [["Month"]], values: [["Miles"]], calcFn0: [MPG] }).frame as FrameValue;
     const layout = pivotLayoutOf(out)!;
@@ -378,45 +395,77 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     expect((await run({ frame: planned(log, { kind: "distinct" }), calcs: [["MPG", field]] })).col("MPG")!.values).toEqual(eager);
   });
 
-  it("a sort stays on its field when the fields around it change, and goes when its field does", () => {
-    const keys = (fields: string[], vals: string[], calcs: string[] = []) => [...fields.map((f) => `f\u0000${f}`), ...vals.map((v) => `v\u0000${v}`), ...calcs.map((c) => `c\u0000${c}`)];
-    // Sorted by Miles, descending, the second of [Plate, Miles]: a row field added before it makes it the third.
-    expect(movedSort(-2, keys(["Plate"], ["Miles"]), keys(["Month", "Plate"], ["Miles"]))).toBe(-3);
-    expect(movedSort(2, keys(["Plate"], ["Miles", "Gallons"]), keys(["Plate"], ["Gallons"]))).toBe(0);
-    expect(movedSort(0, keys(["Plate"], ["Miles"]), keys([], []))).toBe(0);
-    // A calculated field the caller didn't list keeps its place after the values.
-    expect(movedSort(3, keys(["Plate"], ["Miles"]), keys(["Plate"], ["Miles", "Gallons"]))).toBe(4);
+  it("a sort is saved as the field it names, so it stays on it whatever happens to the fields around it", () => {
+    const rowsOf = (n: PivotNode, values: string[], rowFields = ["Plate"], fn1: unknown = GPM) =>
+      (n.data({ frame: [log], rowFields: [rowFields], colFields: [[]], values: [values], calcFn0: [MPG], calcFn1: [fn1] }).frame as FrameValue).columns[rowFields.length - 1].values;
+    const GPM = lambda("", "SUM(Gallons) / SUM(Miles)");
+    // Sorted by MPG, largest first: ABC-123's is 25, XYZ-789's 20. By Plate alone the order is the same, so the
+    // ascending sort is the one that shows a sort still holds.
+    const n = new PivotNode({ rowSort: { by: "calc", name: "0" }, valueKeys: ["calcName0", "calcFn0", "calcName1", "calcFn1"] });
+    Object.assign(n.stringLiterals, { rowFields: "Plate", values: "Miles", calcName0: "MPG", calcName1: "GPM" });
+    const byMpg = ["XYZ-789", "ABC-123"];
+    expect(rowsOf(n, ["Miles"])).toEqual(byMpg);
+    // A value added before it, the values gone, a row field added before it, the other calculated field dragged out
+    // or placed first, its cable pulled: the sort is still MPG's.
+    expect(rowsOf(n, ["Gallons", "Miles"])).toEqual(byMpg);
+    expect(rowsOf(n, [])).toEqual(byMpg);
+    n.calcPlace = [["1", false]];
+    expect(rowsOf(n, ["Miles"])).toEqual(byMpg);
+    n.calcPlace = [["1", "Miles"], ["0", null]];
+    expect(rowsOf(n, ["Miles"])).toEqual(byMpg);
+    expect(rowsOf(n, ["Miles"], ["Plate"], undefined)).toEqual(byMpg);
+    // While its own field is away the order is the default one, and the sort is back when the field is.
+    n.calcPlace = [["0", false]];
+    expect(rowsOf(n, ["Miles"])).toEqual(["ABC-123", "XYZ-789"]);
+    n.calcPlace = [];
+    expect(rowsOf(n, ["Miles"])).toEqual(byMpg);
 
-    const n = new PivotNode({ rowSort: 3, colSort: -2, valueKeys: ["calcName0", "calcFn0", "calcName1", "calcFn1"] });
-    Object.assign(n.stringLiterals, { rowFields: "Plate", colFields: "Month", values: "Miles" });
-    // Rows sorted by the first calculated field (Plate, Miles, then field 0), columns by Miles descending.
-    writePivotConfig(n, { ...pivotConfigOf(n), vals: ["Gallons", "Miles"] }, { before: ["0", "1"], after: ["0", "1"] });
-    expect([n.rowSort, n.colSort]).toEqual([4, -3]);
-    // The second calculated field dragged out of the pivot leaves the first where it was; the first dragged out ends the sort.
-    writePivotConfig(n, pivotConfigOf(n), { before: ["0", "1"], after: ["0"] });
-    expect(n.rowSort).toBe(4);
-    writePivotConfig(n, pivotConfigOf(n), { before: ["0"], after: [] });
-    expect([n.rowSort, n.colSort]).toEqual([0, -3]);
-    // A sort picked in the same write is taken as picked.
-    writePivotConfig(n, { ...pivotConfigOf(n), rowSort: 1 });
-    expect(n.rowSort).toBe(1);
+    // By a value and by a field, the same: Gallons is ABC-123's 20 and XYZ-789's 30.
+    n.rowSort = { by: "value", name: "Gallons", desc: true };
+    expect(rowsOf(n, ["Miles", "Gallons"])).toEqual(["XYZ-789", "ABC-123"]);
+    expect(rowsOf(n, ["Gallons"])).toEqual(["XYZ-789", "ABC-123"]);
+    expect(rowsOf(n, ["Miles"])).toEqual(["ABC-123", "XYZ-789"]);
+    n.rowSort = { by: "field", name: "Plate", desc: true };
+    expect(rowsOf(n, ["Miles"], ["Month", "Plate"])).toEqual(["XYZ-789", "ABC-123", "XYZ-789", "ABC-123"]);
   });
 
-  it("sorts rows and columns by a calculated field, after the plain values in the sort's list", () => {
-    const sorted = (rowSort: number, colSort = 0) => {
+  it("an editor that takes a sort's field off the pivot ends the sort; a regrouped date field keeps it", () => {
+    const n = new PivotNode({ rowSort: { by: "value", name: "Miles", desc: true }, colSort: { by: "field", name: "Month" }, valueKeys: ["calcName0", "calcFn0"] });
+    Object.assign(n.stringLiterals, { rowFields: "Plate", colFields: "Month", values: "Miles, Gallons" });
+    writePivotConfig(n, { ...pivotConfigOf(n), vals: ["Gallons", "Miles"], rows: ["Month", "Plate"] });
+    expect([n.rowSort, n.colSort]).toEqual([{ by: "value", name: "Miles", desc: true }, { by: "field", name: "Month" }]);
+    writePivotConfig(n, { ...pivotConfigOf(n), vals: ["Gallons"], cols: [] });
+    expect([n.rowSort, n.colSort]).toEqual([null, null]);
+    // A sort naming a value the typed list never held (a wired list's) is left alone.
+    n.rowSort = { by: "value", name: "Cost" };
+    writePivotConfig(n, { ...pivotConfigOf(n), vals: [] });
+    expect(n.rowSort).toEqual({ by: "value", name: "Cost" });
+    // The calculated field's row removed on the card takes a sort by it along.
+    n.rowSort = { by: "calc", name: "0", desc: true };
+    n.removeValuePair("calcName0");
+    expect(n.rowSort).toBeNull();
+    // Months (When) for When: the sort follows the field to its new name.
+    const c = regroupField({ ...pivotConfigOf(n), rows: ["When"], rowSort: { by: "field", name: "When", desc: true } }, "rows", "When", "Months");
+    expect([c.rows, c.rowSort]).toEqual([["Months (When)"], { by: "field", name: "Months (When)", desc: true }]);
+    // A save from before sorts were named (a number) reads as no sort.
+    expect(new PivotNode({ rowSort: -2 } as never).rowSort).toBeNull();
+  });
+
+  it("sorts rows and columns by a calculated field", () => {
+    const sorted = (rowSort: PivotSort | null, colSort: PivotSort | null = null) => {
       const n = new PivotNode({ rowSort, colSort, valueKeys: ["calcName0", "calcFn0"] });
       Object.assign(n.stringLiterals, { rowFields: "Plate", colFields: "Month", values: "Miles", calcName0: "MPG" });
       const out = n.data({ frame: [log], rowFields: [["Plate"]], colFields: [["Month"]], values: [["Miles"]], calcFn0: [MPG] }).frame as FrameValue;
       return { rows: out.columns[0].values, cols: out.columns.slice(1).map((c) => c.name) };
     };
-    // Plate is sort 1, Miles 2, MPG 3: ABC-123's MPG is 25, XYZ-789's 20; February's 30 and January's 50/3.
-    expect(sorted(3).rows).toEqual(["XYZ-789", "ABC-123"]);
-    expect(sorted(-3).rows).toEqual(["ABC-123", "XYZ-789"]);
-    expect(sorted(0, -3).cols).toEqual(["2026-02 | Miles", "2026-02 | MPG", "2026-01 | Miles", "2026-01 | MPG"]);
+    // ABC-123's MPG is 25, XYZ-789's 20; February's 30 and January's 50/3.
+    expect(sorted({ by: "calc", name: "0" }).rows).toEqual(["XYZ-789", "ABC-123"]);
+    expect(sorted({ by: "calc", name: "0", desc: true }).rows).toEqual(["ABC-123", "XYZ-789"]);
+    expect(sorted(null, { by: "calc", name: "0", desc: true }).cols).toEqual(["2026-02 | Miles", "2026-02 | MPG", "2026-01 | Miles", "2026-01 | MPG"]);
   });
 
   it("names every wired field in the layout by id, a wired name and one dragged out of the pivot included", () => {
-    const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0", "calcName1", "calcFn1"], calcPlace: { 1: -1 } });
+    const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0", "calcName1", "calcFn1"], calcPlace: [["1", false]] });
     Object.assign(n.stringLiterals, { rowFields: "Plate", values: "", calcName1: "Off" });
     const out = n.data({ frame: [log], rowFields: [["Plate"]], colFields: [[]], values: [[]], calcName0: ["Wired MPG"], calcFn0: [MPG], calcFn1: [MPG] }).frame as FrameValue;
     expect(pivotLayoutOf(out)?.calcNames).toEqual({ 0: "Wired MPG", 1: "Off" });
@@ -425,30 +474,30 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
 
   it("a field dragged out comes back into the values when its cable is pulled and wired again", async () => {
     const editor = new GraphEditor<Schemes>();
-    const p = new PivotNode({ valueKeys: ["calcName0", "calcFn0"], calcPlace: { 0: -1 } });
+    const p = new PivotNode({ valueKeys: ["calcName0", "calcFn0"], calcPlace: [["0", false]] });
     const l = new LambdaNode({ params: "Miles, Gallons", expr: "SUM(Miles) / SUM(Gallons)" });
     for (const node of [p, l]) await editor.addNode(node as unknown as Schemes["Node"]);
     const cable = new GraphConnection(l, "result", p, "calcFn0") as Schemes["Connection"];
     await editor.addConnection(cable);
-    expect(p.calcPlace).toEqual({ 0: -1 });
+    expect(p.calcPlace).toEqual([["0", false]]);
     await editor.removeConnection(cable.id);
-    expect(p.calcPlace).toEqual({});
+    expect(p.calcPlace).toEqual([]);
   });
 
   it("saves and reloads with its fields; removing one keeps the others' slots", () => {
     const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0"] });
     n.addValuePair(); n.addValuePair();
     Object.assign(n.stringLiterals, { calcName0: "MPG", calcName1: "Cost", calcName2: "Range" });
-    n.calcPlace = { 0: 0, 1: -1 };
+    n.calcPlace = [["0", "Miles"], ["1", false]];
     n.removeValuePair("calcName1");
-    expect(n.calcPlace).toEqual({ 0: 0 });
+    expect(n.calcPlace).toEqual([["0", "Miles"]]);
     expect(n.valuePairKeys()).toEqual([["calcName0", "calcFn0"], ["calcName2", "calcFn2"]]);
     expect(n.stringLiterals.calcName1).toBeUndefined();
     const saved = JSON.parse(JSON.stringify(savedNodeBody(n)));
     const back = new PivotNode(saved.init as never);
     restoreLiterals(back, saved);
     expect(back.valuePairKeys()).toEqual(n.valuePairKeys());
-    expect(back.calcPlace).toEqual({ 0: 0 });
+    expect(back.calcPlace).toEqual([["0", "Miles"]]);
     back.addValuePair();
     expect(back.valuePairKeys()[2]).toEqual(["calcName3", "calcFn3"]);
     expect(back.stringLiterals.calcName2).toBe("Range");

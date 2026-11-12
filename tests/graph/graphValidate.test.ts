@@ -107,6 +107,14 @@ describe("validateGraph — semantics", () => {
     expect(issues.find((i) => i.node === "T")?.message).toContain("cable a Value Input into it (`fv<-Name.value`)");
   });
 
+  it("refuses a pivot's sort or calculated-field place written as a position, with the form that works", () => {
+    const { issues } = validateText(`P: PivotNode rowSort=-2 calcPlace={"0":0}\n---\n{ "v": 2 }`);
+    expect(issues.map((i) => i.message.split(":")[0])).toEqual(["rowSort=-2", "calcPlace={\"0\""]);
+    expect(issues[0].message).toContain('write rowSort={"by":"value","name":"<a value>","desc":true}');
+    const named = validateText(`P: PivotNode rowSort={"by":"field","name":"Plate"} colSort=0 calcPlace=[["0","Miles"],["1",false]]\n---\n{ "v": 2 }`);
+    expect(named.issues).toEqual([]);
+  });
+
   it("refuses a setting written as the wrong kind of value, with the form that works", () => {
     const { issues } = validateText(`A: ValueInputNode value=3\nS: SliderInputNode value="2"\n---\n{}`);
     expect(issues.find((i) => i.node === "A")?.message).toContain('value on ValueInputNode is text, so write value="3"');

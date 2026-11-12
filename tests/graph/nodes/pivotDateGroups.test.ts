@@ -72,7 +72,7 @@ describe("grouped date fields", () => {
 
 describe("regrouping a placed field", () => {
   const cfg = (rows: string[], exclude: Record<string, string[]> = {}): PivotConfig => ({
-    rows, cols: [], vals: ["Amt"], details: [], funcs: {}, rowTotalDepth: 0, colTotalDepth: 0, rowSort: 0, colSort: 0, relativeTo: 0, exclude,
+    rows, cols: [], vals: ["Amt"], details: [], funcs: {}, rowTotalDepth: 0, colTotalDepth: 0, rowSort: null, colSort: null, relativeTo: 0, exclude,
   });
   it("renames it where it stands, back to the dates with none, and drops its old filter", () => {
     expect(dateGroupOf("Months (When)")).toEqual({ unit: "Months", from: "When" });

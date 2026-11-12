@@ -53,7 +53,7 @@
         "label": "Revenue by Rep — sorted high→low",
         "agg": "sum",
         "rowTotalDepth": 1,
-        "rowSort": -2
+        "rowSort": { "by": "value", "name": "Revenue", "desc": true }
       },
       "stringLiterals": {
         "rowFields": "Rep",

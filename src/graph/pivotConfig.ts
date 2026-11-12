@@ -7,6 +7,41 @@ import { csvList } from "./nodes/frameShapeHook";
 import { listLiteralText } from "./listLiterals";
 import { pivotLayoutOf } from "./pivotLayout";
 
+/** What a pivot axis sorts by: one of its own fields or a value, by name, or a calculated field, by its id; `desc` for
+ *  largest first. Saved as what it names, never a position, so it stays on its field however the fields around it
+ *  change (the core turns it into PIVOTBY's position on each pass, `sort_position`). */
+export interface PivotSort { by: "field" | "value" | "calc"; name: string; desc?: true }
+
+export const sameSort = (a: PivotSort | null, b: PivotSort | null): boolean =>
+  a === b || (!!a && !!b && a.by === b.by && a.name === b.name && !!a.desc === !!b.desc);
+
+/** A saved sort read back: null for anything that isn't one. */
+export function readPivotSort(v: unknown): PivotSort | null {
+  const o = v as Partial<PivotSort> | null;
+  if (!o || typeof o !== "object" || typeof o.name !== "string" || (o.by !== "field" && o.by !== "value" && o.by !== "calc")) return null;
+  return { by: o.by, name: o.name, ...(o.desc === true ? { desc: true as const } : {}) };
+}
+
+/** Each calculated field's place, by its id, in the Values zone's order: the name of the value it sits before, null
+ *  for after the values, false for dragged out of the pivot (its cable kept). A field it doesn't list sits after the
+ *  values, in socket order, which is where a newly wired one lands. By name, so a place holds whatever happens to the
+ *  values list. */
+export type CalcPlaces = Array<[id: string, before: string | null | false]>;
+
+export const calcIsOff = (place: CalcPlaces, id: string): boolean => place.some(([k, b]) => k === id && b === false);
+
+/** Saved places read back, anything malformed left out. */
+export function readCalcPlaces(v: unknown): CalcPlaces {
+  if (!Array.isArray(v)) return [];
+  const out: CalcPlaces = [];
+  for (const p of v) {
+    if (!Array.isArray(p) || typeof p[0] !== "string" || out.some(([k]) => k === p[0])) continue;
+    const b: unknown = p[1];
+    out.push([p[0], typeof b === "string" || b === false ? b : null]);
+  }
+  return out;
+}
+
 export interface PivotConfig {
   rows: string[];
   cols: string[];
@@ -16,9 +51,9 @@ export interface PivotConfig {
   funcs: Record<string, AggOp>;
   rowTotalDepth: number;
   colTotalDepth: number;
-  /** 1-based into [fields…, values…, calculated fields on the pivot…], negative descending, 0 none. */
-  rowSort: number;
-  colSort: number;
+  /** What each axis sorts by; null is the default order. */
+  rowSort: PivotSort | null;
+  colSort: PivotSort | null;
   relativeTo: number;
   /** A field's hidden values, by `pivotKey`. */
   exclude: Record<string, string[]>;
@@ -34,7 +69,7 @@ export interface PivotFields {
   detailFields: string[];
   filterExclude: Record<string, string[]>;
   rowTotalDepth: number; colTotalDepth: number;
-  rowSort: number; colSort: number; relativeTo: number;
+  rowSort: PivotSort | null; colSort: PivotSort | null; relativeTo: number;
 }
 
 export function pivotConfigOf(node: PivotFields): PivotConfig {
@@ -45,34 +80,23 @@ export function pivotConfigOf(node: PivotFields): PivotConfig {
     details: [...node.detailFields],
     funcs: { ...node.funcs },
     rowTotalDepth: node.rowTotalDepth, colTotalDepth: node.colTotalDepth,
-    rowSort: node.rowSort, colSort: node.colSort, relativeTo: node.relativeTo,
+    rowSort: node.rowSort && { ...node.rowSort }, colSort: node.colSort && { ...node.colSort }, relativeTo: node.relativeTo,
     exclude: Object.fromEntries(Object.entries(node.filterExclude ?? {}).map(([k, v]) => [k, [...v]])),
   };
 }
 
-/** What a sort's number names, by position: its axis's fields, then the values, then the calculated fields on the pivot. */
-const sortKeys = (fields: readonly string[], vals: readonly string[], calcs: readonly string[]): string[] =>
-  [...fields.map((f) => `f\u0000${f}`), ...vals.map((v) => `v\u0000${v}`), ...calcs.map((id) => `c\u0000${id}`)];
-
-/** A sort (1-based into `before`, negative descending) as the number that names the same field in `after`, or 0, the
- *  default order, when that field is gone. A number past `before` names a calculated field the caller didn't list,
- *  and keeps its distance from the end. */
-export function movedSort(sort: number, before: readonly string[], after: readonly string[]): number {
-  if (!sort) return 0;
-  const i = Math.abs(sort) - 1;
-  const at = i < before.length ? after.indexOf(before[i]) : i + after.length - before.length;
-  return at < 0 ? 0 : Math.sign(sort) * (at + 1);
-}
-
-/** Writes the settings to the card. A sort is saved as a position, so when the fields change and the sort itself
- *  doesn't, its number moves to name the field it named before (`movedSort`). `calcs`: the ids of the calculated
- *  fields on the pivot, in socket order, before and after this write, where the caller changes them. */
-export function writePivotConfig(node: PivotFields, c: PivotConfig, calcs?: { before: readonly string[]; after: readonly string[] }): void {
+/** Writes the settings to the card. A sort whose field or value this write takes off the pivot goes with it; one whose
+ *  field is only away (a wired list that changed, a column the input lacks for now) is kept, and sorts again when the
+ *  field is back. */
+export function writePivotConfig(node: PivotFields, c: PivotConfig): void {
   const was = pivotConfigOf(node);
-  const sortFor = (sort: number, wasSort: number, wasFields: string[], fields: string[]) =>
-    sort !== wasSort ? sort : movedSort(sort, sortKeys(wasFields, was.vals, calcs?.before ?? []), sortKeys(fields, c.vals, calcs?.after ?? []));
-  const rowSort = sortFor(c.rowSort, was.rowSort, was.rows, c.rows);
-  const colSort = sortFor(c.colSort, was.colSort, was.cols, c.cols);
+  const kept = (sort: PivotSort | null, wasFields: string[], fields: string[]): PivotSort | null => {
+    if (!sort || sort.by === "calc") return sort && { ...sort };
+    const [before, after] = sort.by === "field" ? [wasFields, fields] : [was.vals, c.vals];
+    return before.includes(sort.name) && !after.includes(sort.name) ? null : { ...sort };
+  };
+  const rowSort = kept(c.rowSort, was.rows, c.rows);
+  const colSort = kept(c.colSort, was.cols, c.cols);
   node.stringLiterals.rowFields = listLiteralText(c.rows);
   node.stringLiterals.colFields = listLiteralText(c.cols);
   node.stringLiterals.values = listLiteralText(c.vals);
@@ -114,7 +138,11 @@ export function regroupField(c: PivotConfig, zone: "rows" | "cols", field: strin
   if (list.includes(name)) list.splice(at, 1); else list[at] = name;
   const exclude = { ...c.exclude };
   delete exclude[field];
-  return { ...c, [zone]: list, exclude };
+  // A sort by the field follows it to its new name.
+  const key = zone === "rows" ? "rowSort" : "colSort";
+  const sort = c[key];
+  const moved = sort?.by === "field" && sort.name === field ? { ...sort, name } : sort;
+  return { ...c, [zone]: list, exclude, [key]: moved };
 }
 
 
@@ -123,33 +151,42 @@ const CALC_TOKEN = "\u0000λ";
 export const calcToken = (id: string): string => CALC_TOKEN + id;
 export const calcIdOf = (token: string): string | null => (token.startsWith(CALC_TOKEN) ? token.slice(CALC_TOKEN.length) : null);
 
-/** The Values zone in its order: the plain values, and each placed calculated field (`ids`, wired, in socket order)
- *  before the value its place names, or after them all with no place. One placed at -1 is out of the pivot. */
-export function valuesWithCalcs(vals: readonly string[], place: Readonly<Record<string, number>>, ids: readonly string[]): string[] {
-  const at = (id: string) => place[id] ?? Infinity;
-  const placed = ids.filter((id) => at(id) >= 0);
+/** The calculated fields on the pivot, in the order the card places them: the listed ones in the list's order, then
+ *  the rest (`ids`, wired, in socket order) with no place. */
+function placedCalcs(place: CalcPlaces, ids: readonly string[]): CalcPlaces {
+  const listed = place.filter(([id]) => ids.includes(id));
+  const rest: CalcPlaces = ids.filter((id) => !listed.some(([k]) => k === id)).map((id) => [id, null]);
+  return [...listed, ...rest].filter(([, before]) => before !== false);
+}
+
+/** The ids of the calculated fields on the pivot, in the card's order: the order a sort and the core count them in. */
+export const calcsOnPivot = (place: CalcPlaces, ids: readonly string[]): string[] => placedCalcs(place, ids).map(([id]) => id);
+
+/** The Values zone in its order: the plain values, each calculated field before the value its place names, and the
+ *  ones with no place (or whose value is away) after them all. */
+export function valuesWithCalcs(vals: readonly string[], place: CalcPlaces, ids: readonly string[]): string[] {
+  const on = placedCalcs(place, ids);
   const out: string[] = [];
-  vals.forEach((v, i) => {
-    for (const id of placed) if (at(id) === i) out.push(calcToken(id));
+  for (const v of vals) {
+    for (const [id, before] of on) if (before === v) out.push(calcToken(id));
     out.push(v);
-  });
-  for (const id of placed) if (at(id) >= vals.length) out.push(calcToken(id));
+  }
+  for (const [id, before] of on) if (before === null || !vals.includes(before as string)) out.push(calcToken(id));
   return out;
 }
 
-/** The Values zone's order back to what the card saves: its plain values, and each calculated field's place, none
- *  when it trails the values, -1 for a wired one not in the zone. A place for an unwired field is kept as it was. */
-export function placesFrom(tokens: readonly string[], ids: readonly string[], prev: Readonly<Record<string, number>>): { vals: string[]; place: Record<string, number> } {
+/** The Values zone's order back to what the card saves: its plain values, and the calculated fields' places in the
+ *  zone's order, each before the next value after it; a wired one not in the zone is off the pivot. A place for an
+ *  unwired field is kept as it was. */
+export function placesFrom(tokens: readonly string[], ids: readonly string[], prev: CalcPlaces): { vals: string[]; place: CalcPlaces } {
   const vals = tokens.filter((t) => calcIdOf(t) === null);
-  const place: Record<string, number> = {};
-  for (const [id, at] of Object.entries(prev)) if (!ids.includes(id)) place[id] = at;
-  let before = 0;
-  for (const t of tokens) {
+  const place: CalcPlaces = [];
+  tokens.forEach((t, i) => {
     const id = calcIdOf(t);
-    if (id === null) before++;
-    else if (before < vals.length) place[id] = before;
-  }
-  for (const id of ids) if (!tokens.includes(calcToken(id))) place[id] = -1;
+    if (id !== null) place.push([id, tokens.slice(i + 1).find((x) => calcIdOf(x) === null) ?? null]);
+  });
+  for (const id of ids) if (!place.some(([k]) => k === id)) place.push([id, false]);
+  for (const p of prev) if (!ids.includes(p[0])) place.push([p[0], p[1]]);
   return { vals, place };
 }
 

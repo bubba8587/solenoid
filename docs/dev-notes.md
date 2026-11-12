@@ -67,11 +67,17 @@ specific item.
   canvas keyboard); the collapse sweep against 1.6.1 shows no card the layout sweep broke; the label column's measuring is
   about 0.1 ms for a canvas of cards; the deployed script worker carries its `Content-Security-Policy`.
 - **The author's calls on what the run found (2026-11-12):** a calculated field's bare name that is no column and
-  has no value on its LAMBDA card is `#NAME?` (the LAMBDA carries the captures its card left empty, `empty`); a
-  pivot's sort moves with its field when Configure Fields or the view's menu changes the fields (`movedSort`,
-  `writePivotConfig`); Frame from Lists types a list of errors alone Text, whatever its socket last settled to, after
-  which the undo fuzz passes at 20 steps on the six draws tried. The wrap that makes a loop waits; Bootstrap's budget
-  and Probability Between's wired blank are still open in the backlog.
+  has no value on its LAMBDA card is `#NAME?` (the LAMBDA carries the captures its card left empty, `empty`). Frame
+  from Lists types a list of errors alone Text, whatever its socket last settled to, after which the undo fuzz passes
+  at 20 steps on the six draws tried. Bootstrap never draws fewer than 200 resamples (it was 1,000). An end of
+  Probability Between wired to a blank blanks the answer. The wrap that makes a loop waits in the backlog.
+- **A pivot saves names, not positions** (the author: "fully fix" it). `rowSort` and `colSort` are what the axis
+  sorts by (`PivotSort`: a field or a value by name, a calculated field by id), and `calcPlace` lists each calculated
+  field's place as the name of the value it sits before (`CalcPlaces`, in the Values zone's order); the core resolves
+  both on every pass (`sort_position`, `calc_fields_all`, `nodes/backend_verbs.rs`), so no edit to the fields, typed,
+  wired or in an editor, can pass a sort or a place to another field. A first try that kept positions and moved them
+  in the editors (`movedSort`) missed the card's own edits and wired lists, and is gone. Old saves' numbers read as no
+  sort and no places ([[B7]] preAlphaBreakFreely); no seed held either.
 - **For the 1.6.2 cut:** `scripts/release-version.mjs` froze the `NEXT_RELEASE` marks in `nodeCatalog.ts` alone and
   stopped with an error on a patch (the next guess was already 1.7); it now freezes the packs' own files too
   (`src/graph/packs/probability.ts` holds the first marks outside the catalog) and a dry run of `1.6.2` in a scratch

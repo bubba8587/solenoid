@@ -13,6 +13,7 @@ import {
   type SocketDataType,
 } from "./sockets";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
+import { readCalcPlaces, readPivotSort } from "./pivotConfig";
 import type { CompositeSavedNode } from "./nodes/composite";
 
 export interface GraphIssue {
@@ -205,6 +206,20 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
         : typeof d === "boolean" && (typeof v === "number" || typeof v === "string") ? `true or false, so write ${k}=true or ${k}=false`
         : null;
       if (fix) issues.push({ line: at(name), node: name, message: `${k}=${JSON.stringify(v)}: ${k} on ${sn.type} is ${fix}. As written it would be read as blank or 0.` });
+    }
+
+    // A pivot saves its sorts and its calculated fields' places by name. A position, as both once were, would be read
+    // as none, so it is refused with the form that works.
+    if (sn.type === "PivotNode") {
+      for (const k of ["rowSort", "colSort"] as const) {
+        const v = sn.init?.[k];
+        if (v == null || v === 0 || readPivotSort(v)) continue;
+        issues.push({ line: at(name), node: name, message: `${k}=${JSON.stringify(v)}: a pivot's sort names what it sorts by, so write ${k}={"by":"value","name":"<a value>","desc":true} (by is field, value or calc; a calculated field by its id). As written it would be read as no sort.` });
+      }
+      const places = sn.init?.calcPlace;
+      if (places != null && (!Array.isArray(places) || readCalcPlaces(places).length !== places.length)) {
+        issues.push({ line: at(name), node: name, message: `calcPlace=${JSON.stringify(places)}: a calculated field's place names the value it sits before, so write calcPlace=[["<field id>","<a value>"]] (null for after the values, false for off the pivot). As written it would be read as no places.` });
+      }
     }
 
     const internal = sn.init?.internal as { nodes?: unknown; connections?: unknown } | undefined;

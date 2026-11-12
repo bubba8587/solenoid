@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { pivotEditor } from "../pivotEditorStore";
 import { notifyGraphChanged, processGraph } from "../process";
-import { DATE_GROUPS, calcFieldName, calcIdOf, calcToken, dateGroupOf, pivotConfigOf, placesFrom, regroupField, valuesWithCalcs, writePivotConfig, type DateGroup, type PivotConfig } from "../pivotConfig";
+import { DATE_GROUPS, calcFieldName, calcIdOf, calcIsOff, calcToken, calcsOnPivot, dateGroupOf, pivotConfigOf, placesFrom, regroupField, valuesWithCalcs, writePivotConfig, type PivotSort, type DateGroup, type PivotConfig } from "../pivotConfig";
 import { caseTwin } from "../frame";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameOps";
@@ -35,21 +35,32 @@ const TYPE_GLYPH = (t: string | undefined): ReactNode =>
 type Zone = "rows" | "cols" | "vals" | "details";
 type Cfg = PivotConfig;
 
-/** Index is a 1-based offset into [fields…, values…]; negative ⇒ descending. */
-function sortOptions(fields: string[], values: string[]): { value: string; label: string }[] {
-  const cand = [...fields, ...values.map((v) => `${v} (value)`)];
-  const out = [{ value: "0", label: "Default order" }];
-  cand.forEach((label, i) => {
-    out.push({ value: String(i + 1), label: `${label} ↑` });
-    out.push({ value: String(-(i + 1)), label: `${label} ↓` });
-  });
+const sortValue = (s: PivotSort | null): string => (s ? JSON.stringify([s.by, s.name, !!s.desc]) : "");
+
+/** An axis's sorts: by one of its fields, by a value, or by a calculated field on the pivot, each way. A saved sort
+ *  whose field is away is listed as it stands, so the select never shows another in its place. */
+function sortOptions(fields: string[], values: string[], calcs: { id: string; name: string }[], cur: PivotSort | null): { value: string; label: string; sort: PivotSort | null }[] {
+  const cand: { sort: PivotSort; label: string }[] = [
+    ...fields.map((name) => ({ sort: { by: "field" as const, name }, label: name })),
+    ...values.map((name) => ({ sort: { by: "value" as const, name }, label: `${name} (value)` })),
+    ...calcs.map((c) => ({ sort: { by: "calc" as const, name: c.id }, label: `${c.name} (value)` })),
+  ];
+  const out: { value: string; label: string; sort: PivotSort | null }[] = [{ value: "", label: "Default order", sort: null }];
+  for (const { sort, label } of cand) {
+    out.push({ value: sortValue(sort), label: `${label} ↑`, sort });
+    const desc: PivotSort = { ...sort, desc: true };
+    out.push({ value: sortValue(desc), label: `${label} ↓`, sort: desc });
+  }
+  if (cur && !out.some((o) => o.value === sortValue(cur))) {
+    out.push({ value: sortValue(cur), label: `${cur.by === "calc" ? "A calculated field" : cur.name} ${cur.desc ? "↓" : "↑"} (not on the pivot)`, sort: cur });
+  }
   return out;
 }
 
 export function PivotEditorPopup() {
   const state = useSyncExternalStore(pivotEditor.subscribe, pivotEditor.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const [cfg, setCfg] = useState<Cfg>({ rows: [], cols: [], vals: [], details: [], funcs: {}, rowTotalDepth: 0, colTotalDepth: 0, rowSort: 0, colSort: 0, relativeTo: 0, exclude: {} });
+  const [cfg, setCfg] = useState<Cfg>({ rows: [], cols: [], vals: [], details: [], funcs: {}, rowTotalDepth: 0, colTotalDepth: 0, rowSort: null, colSort: null, relativeTo: 0, exclude: {} });
   const initedFor = useRef<typeof state>(null);
   const drag = useRef<{ from: Zone | "fields"; field: string } | null>(null);
   const [dropZone, setDropZone] = useState<Zone | "filters" | null>(null);
@@ -73,9 +84,9 @@ export function PivotEditorPopup() {
   const calcs = node.valuePairKeys().map(([nameKey, fnKey], n) => ({
     id: nameKey.slice(8), wired: connected.has(fnKey), name: calcFieldName(node, nameKey.slice(8), n),
   })).filter((c) => c.wired);
-  // The sort's values: the plain ones, then the calculated fields on the pivot in their row order, as the core reads it.
-  const sortValues = [...cfg.vals, ...calcs.filter((c) => node.calcPlace[c.id] !== -1).map((c) => c.name)];
   const calcIds = calcs.map((c) => c.id);
+  // The calculated fields a sort can name: the ones on the pivot.
+  const sortCalcs = calcsOnPivot(node.calcPlace, calcIds).map((id) => calcs.find((c) => c.id === id)!);
   const calcName = (token: string) => calcs.find((c) => c.id === calcIdOf(token))?.name ?? "";
   const valueTokens = valuesWithCalcs(cfg.vals, node.calcPlace, calcIds);
   const removedCalcs = calcs.filter((c) => !valueTokens.includes(calcToken(c.id)));
@@ -89,14 +100,12 @@ export function PivotEditorPopup() {
   const chipTitle = (field: string) => (isMissing(field) ? `${field} · ${missingNote(field)}` : `${field} · ${typeOf(field)}`);
 
   // Saved and recorded at once, not on the compute's finish, which manual calculation or an early-out pass would skip.
-  function commit(next: Cfg, place: Record<string, number> = node.calcPlace) {
-    // A sort names its field by position: the write moves it with its field, the calculated fields among them.
-    const onPivot = (p: Record<string, number>) => calcs.filter((c) => p[c.id] !== -1).map((c) => c.id);
-    writePivotConfig(node, next, { before: onPivot(node.calcPlace), after: onPivot(place) });
-    node.calcPlace = place;
+  function commit(next: Cfg) {
+    writePivotConfig(node, next);
     notifyGraphChanged();
     // The field list (a new filter's values) comes back with the compute: draw again once it lands.
     void processGraph(node.id).then(() => setLanded((n) => n + 1));
+    // The write ends a sort whose field it took off the pivot.
     setCfg({ ...next, rowSort: node.rowSort, colSort: node.colSort });
   }
   /** Values in the zone's order, calculated fields among them: the plain values and each field's place. */
@@ -105,7 +114,10 @@ export function PivotEditorPopup() {
     const funcs = { ...base.funcs };
     for (const k of Object.keys(funcs)) if (!vals.includes(k)) delete funcs[k];
     for (const v of vals) if (!(v in funcs) && !base.vals.includes(v)) funcs[v] = node.agg || "sum";
-    commit({ ...base, vals, funcs }, place);
+    node.calcPlace = place;
+    // A sort by a calculated field dragged out of the pivot goes with it.
+    const kept = (sort: PivotSort | null) => (sort?.by === "calc" && calcIsOff(place, sort.name) ? null : sort);
+    commit({ ...base, vals, funcs, rowSort: kept(base.rowSort), colSort: kept(base.colSort) });
   }
   const insertAt = (list: string[], item: string, at?: number) => {
     const without = list.filter((t) => t !== item);
@@ -294,6 +306,12 @@ export function PivotEditorPopup() {
     </select>
   );
 
+  const sortSelect = (value: PivotSort | null, options: ReturnType<typeof sortOptions>, onChange: (sort: PivotSort | null) => void) => (
+    <select className="pivot-ctl" value={sortValue(value)} onChange={(e) => onChange(options.find((o) => o.value === e.target.value)?.sort ?? null)} onPointerDown={(e) => e.stopPropagation()}>
+      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+
   // Unchecked values compile to the engine's exclude mask.
   const filterFields = Object.keys(cfg.exclude);
   const filterAvail = fields.filter((f) => !(f.name in cfg.exclude));
@@ -368,7 +386,7 @@ export function PivotEditorPopup() {
             {renderZone("cols", "Columns")}
             <div className="pivot-zone__controls">
               <label>Totals {numSelect(cfg.colTotalDepth, TOTAL_DEPTH_OPTIONS, (n) => commit({ ...cfg, colTotalDepth: n }))}</label>
-              <label>Sort {numSelect(cfg.colSort, sortOptions(cfg.cols, sortValues), (n) => commit({ ...cfg, colSort: n }))}</label>
+              <label>Sort {sortSelect(cfg.colSort, sortOptions(cfg.cols, cfg.vals, sortCalcs, cfg.colSort), (sort) => commit({ ...cfg, colSort: sort }))}</label>
             </div>
           </div>
 
@@ -376,7 +394,7 @@ export function PivotEditorPopup() {
             {renderZone("rows", "Rows")}
             <div className="pivot-zone__controls">
               <label>Totals {numSelect(cfg.rowTotalDepth, TOTAL_DEPTH_OPTIONS, (n) => commit({ ...cfg, rowTotalDepth: n }))}</label>
-              <label>Sort {numSelect(cfg.rowSort, sortOptions(cfg.rows, sortValues), (n) => commit({ ...cfg, rowSort: n }))}</label>
+              <label>Sort {sortSelect(cfg.rowSort, sortOptions(cfg.rows, cfg.vals, sortCalcs, cfg.rowSort), (sort) => commit({ ...cfg, rowSort: sort }))}</label>
             </div>
           </div>
 

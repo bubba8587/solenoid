@@ -36,6 +36,7 @@ import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
+import { calcIsOff, readCalcPlaces, readPivotSort, type CalcPlaces, type PivotSort } from "../pivotConfig";
 import { setDescribeTiles, type DescribeTile } from "../describeProfile";
 import { isDateOrder, type DateOrder } from "../dateOrder";
 
@@ -466,8 +467,9 @@ export class PivotNode extends GraphNode {
   funcs: Record<string, AggOp> = {};
   rowTotalDepth = 0;
   colTotalDepth = 0;
-  rowSort = 0;
-  colSort = 0;
+  /** What the rows and the columns sort by, saved as the field it names; null is the default order. */
+  rowSort: PivotSort | null = null;
+  colSort: PivotSort | null = null;
   relativeTo = 0;
   /** The totals are the Pivot view's, never the Frame's ([[table-popup#The Pivot view]]); on, they also go out as Row Totals and
    *  Column Totals. */
@@ -484,9 +486,8 @@ export class PivotNode extends GraphNode {
   sourceColumns: { name: string; type: FrameColType; distinct: string[]; distinctTotal?: number }[] = [];
   /** Calculated value fields: a name and a LAMBDA per row (`calcName{id}`, `calcFn{id}`). */
   nextPairId = 0;
-  /** Each calculated field's place among the values, by its id: before the value at that index, -1 dragged out of the
-   *  pivot (its cable kept). A field with none sits after the values, which is where a newly wired one lands. */
-  calcPlace: Record<string, number> = {};
+  /** Each calculated field's place among the values (`CalcPlaces`, `pivotConfig.ts`). */
+  calcPlace: CalcPlaces = [];
   readonly pairLabels: [string, string] = ["Name", "λ"];
   readonly pairPlaceholders = ["MPG", undefined] as const;
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
@@ -494,13 +495,13 @@ export class PivotNode extends GraphNode {
 
   constructor(init?: {
     label?: string; agg?: AggOp; funcs?: Record<string, AggOp>;
-    rowTotalDepth?: number; colTotalDepth?: number; rowSort?: number; colSort?: number; relativeTo?: number;
+    rowTotalDepth?: number; colTotalDepth?: number; rowSort?: PivotSort | null; colSort?: PivotSort | null; relativeTo?: number;
     exportTotals?: boolean;
     filterExclude?: Record<string, string[]>;
     pivotView?: Partial<PivotViewOptions>;
     detailFields?: string[];
     valueKeys?: string[];
-    calcPlace?: Record<string, number>;
+    calcPlace?: CalcPlaces;
   }) {
     super("Pivot");
     this.pivotView = readPivotView(init?.pivotView);
@@ -509,13 +510,11 @@ export class PivotNode extends GraphNode {
     this.agg = init?.agg ?? "sum";
     if (init?.funcs) this.funcs = { ...init.funcs };
     if (init?.filterExclude) this.filterExclude = { ...init.filterExclude };
-    if (init?.calcPlace && typeof init.calcPlace === "object") {
-      for (const [id, at] of Object.entries(init.calcPlace)) if (typeof at === "number" && Number.isInteger(at) && at >= -1) this.calcPlace[id] = at;
-    }
+    this.calcPlace = readCalcPlaces(init?.calcPlace);
     this.rowTotalDepth = init?.rowTotalDepth ?? 0;
     this.colTotalDepth = init?.colTotalDepth ?? 0;
-    this.rowSort = init?.rowSort ?? 0;
-    this.colSort = init?.colSort ?? 0;
+    this.rowSort = readPivotSort(init?.rowSort);
+    this.colSort = readPivotSort(init?.colSort);
     this.relativeTo = init?.relativeTo ?? 0;
     this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("rowFields", strListIn("Rows"));
@@ -561,14 +560,17 @@ export class PivotNode extends GraphNode {
       this.removeInput(k);
       delete this.stringLiterals[k];
     }
-    delete this.calcPlace[id];
+    this.calcPlace = this.calcPlace.filter(([k]) => k !== id);
+    // A sort by the field goes with it.
+    if (this.rowSort?.by === "calc" && this.rowSort.name === id) this.rowSort = null;
+    if (this.colSort?.by === "calc" && this.colSort.name === id) this.colSort = null;
   }
 
   /** A calculated field's λ cable pulled: one dragged out of the pivot comes back into the values when next wired. */
   inputUnwired(key: string): void {
     if (!key.startsWith("calcFn")) return;
     const id = key.slice(6);
-    if (this.calcPlace[id] === -1) delete this.calcPlace[id];
+    if (calcIsOff(this.calcPlace, id)) this.calcPlace = this.calcPlace.filter(([k]) => k !== id);
   }
 
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {

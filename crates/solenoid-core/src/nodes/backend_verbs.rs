@@ -529,13 +529,49 @@ fn flat_cube(k: &Cube) -> Frame {
     Frame { columns, total_rows: None, approx: None, source: None, layout: None }
 }
 
-/// The card's calculated value fields with a LAMBDA wired to their λ, in socket order: each its id, its name (typed
-/// or wired; blank is `Calculated N`), its LAMBDA, whose parameters name the columns it reads ([[C50]]
-/// lambdaBindsByName), and its place among the values (`calcPlace`, by id: an index, none for after them, -1 dragged
-/// out of the pivot with its cable kept).
-fn calc_fields_all(c: &Call) -> Vec<(String, String, Rc<crate::eval::LambdaV>, Option<f64>)> {
+/// Where a calculated field sits (`calcPlace`): before the value of a name, after the values, or off the pivot (dragged
+/// out, its cable kept).
+#[derive(Clone, PartialEq)]
+enum CalcPlace {
+    Before(String),
+    After,
+    Off,
+}
+
+/// One of the card's calculated value fields with a LAMBDA wired to its λ.
+struct CalcField {
+    id: String,
+    /// Typed or wired; blank is `Calculated N`, N its row on the card.
+    name: String,
+    /// Its parameters name the columns it reads ([[C50]] lambdaBindsByName).
+    lam: Rc<crate::eval::LambdaV>,
+    place: CalcPlace,
+}
+
+/// The card's calculated fields, in the order the card places them: `calcPlace` lists `[id, place]` pairs in the
+/// Values zone's order (a place the name of the value the field sits before, null for after the values, false for
+/// off the pivot), and a field it doesn't list follows them, after the values, in socket order. The places are by
+/// name, so they hold whatever happens to the values list.
+fn calc_fields_all(c: &Call) -> Vec<CalcField> {
     let ids: Vec<String> = c.sockets.iter().filter_map(|s| s.key.strip_prefix("calcFn").map(String::from)).collect();
-    let places = c.field("calcPlace").and_then(Json::as_object);
+    let listed: Vec<(String, CalcPlace)> = c
+        .field("calcPlace")
+        .and_then(Json::as_array)
+        .map(|pairs| {
+            pairs
+                .iter()
+                .filter_map(|p| {
+                    let id = p.get(0)?.as_str()?.to_string();
+                    let place = match p.get(1) {
+                        Some(Json::String(v)) => CalcPlace::Before(v.clone()),
+                        Some(Json::Bool(false)) => CalcPlace::Off,
+                        _ => CalcPlace::After,
+                    };
+                    Some((id, place))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     let mut out = Vec::new();
     for (n, id) in ids.iter().enumerate() {
         let V::Lambda(lam) = super::stats::first(c, &format!("calcFn{id}")) else { continue };
@@ -543,18 +579,36 @@ fn calc_fields_all(c: &Call) -> Vec<(String, String, Rc<crate::eval::LambdaV>, O
             V::Str(s) if !trim_space(&s).is_empty() => trim_space(&s).to_string(),
             _ => format!("Calculated {}", n + 1),
         };
-        out.push((id.clone(), name, lam, places.and_then(|m| m.get(id)).and_then(Json::as_f64)));
+        let place = listed.iter().find(|(k, _)| k == id).map_or(CalcPlace::After, |(_, p)| p.clone());
+        out.push(CalcField { id: id.clone(), name, lam, place });
     }
+    // Stable: the listed fields in the list's order, then the rest as their sockets stand.
+    out.sort_by_key(|f| listed.iter().position(|(k, _)| *k == f.id).unwrap_or(usize::MAX));
     out
 }
 
-/// The calculated fields on the pivot: those not dragged out, each with its place among the values.
-fn calc_fields(c: &Call) -> Vec<(String, Rc<crate::eval::LambdaV>, Option<usize>)> {
-    calc_fields_all(c)
-        .into_iter()
-        .filter(|(.., at)| at.is_none_or(|p| p >= 0.0))
-        .map(|(_, name, lam, at)| (name, lam, at.map(|p| p as usize)))
-        .collect()
+/// The calculated fields on the pivot: those not dragged out.
+fn calc_fields(c: &Call) -> Vec<CalcField> {
+    calc_fields_all(c).into_iter().filter(|f| f.place != CalcPlace::Off).collect()
+}
+
+/// A saved sort (`rowSort`, `colSort`) as PIVOTBY's signed position into the axis's fields, then the values, then the
+/// calculated fields on the pivot. The card saves what it sorts by (`{"by": "field" | "value" | "calc", "name": …}`, a
+/// calculated field by its id, with `"desc": true` for largest first), never a position, so the sort stays on its
+/// field however the fields around it change; while that field is away the order is the default one, 0.
+fn sort_position(saved: Option<&Json>, fields: &[String], values: &[String], calcs: &[CalcField]) -> f64 {
+    let Some(o) = saved.and_then(Json::as_object) else { return 0.0 };
+    let (Some(by), Some(name)) = (o.get("by").and_then(Json::as_str), o.get("name").and_then(Json::as_str)) else {
+        return 0.0;
+    };
+    let at = match by {
+        "field" => fields.iter().position(|f| f == name),
+        "value" => values.iter().position(|v| v == name).map(|i| fields.len() + i),
+        "calc" => calcs.iter().position(|f| f.id == name).map(|k| fields.len() + values.len() + k),
+        _ => None,
+    };
+    let desc = o.get("desc").and_then(Json::as_bool).unwrap_or(false);
+    at.map_or(0.0, |i| if desc { -(i as f64 + 1.0) } else { i as f64 + 1.0 })
 }
 
 /// Every name a LAMBDA body could read as a column: its `[brackets]`, its `@` names and its bare names.
@@ -779,9 +833,9 @@ fn pivot(c: &mut Call) -> Answer {
             }
             // A calculated field reads its parameters' columns, and the columns its body names with no parameter: a
             // `[Column]`, or a bare name its card captured. Left out, they'd read as the card's empty slot, a 0.
-            for (_, lam, _) in calc_fields(c) {
+            for field in calc_fields(c) {
                 let mut names = Vec::new();
-                lambda_names(&lam, &mut names);
+                lambda_names(&field.lam, &mut names);
                 for n in names {
                     want(n);
                 }
@@ -907,7 +961,9 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
     let mut spec = json!({
         "rowFields": row_fields, "colFields": col_fields, "values": values, "funcs": funcs,
         "rowTotalDepth": num("rowTotalDepth"), "colTotalDepth": num("colTotalDepth"),
-        "rowSort": num("rowSort"), "colSort": num("colSort"), "relativeTo": num("relativeTo"),
+        "rowSort": json_num(sort_position(c.field("rowSort"), &row_fields, &values, &calcs)),
+        "colSort": json_num(sort_position(c.field("colSort"), &col_fields, &values, &calcs)),
+        "relativeTo": num("relativeTo"),
         "details": fields.details,
     });
     if let Some(m) = filter {
@@ -919,10 +975,14 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
     };
     let calcs: Vec<PivotCalc> = calcs
         .iter()
-        .map(|(name, lam, at)| PivotCalc {
-            name: name.clone(),
-            eval: Box::new(move |rows: &[usize]| calc_cell(f, lam, rows)),
-            at: *at,
+        .map(|field| PivotCalc {
+            name: field.name.clone(),
+            eval: Box::new(move |rows: &[usize]| calc_cell(f, &field.lam, rows)),
+            // A place before a value that is away now is after the values, until the value is back.
+            at: match &field.place {
+                CalcPlace::Before(v) => values.iter().position(|x| x == v),
+                _ => None,
+            },
         })
         .collect();
     let (out, layout) = match pivot_frame_calc(&to_core(f), &spec, &calcs) {
@@ -946,8 +1006,7 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
     let mut layout = layout;
     layout["totals"] = split.totals;
     // Every wired field's name by id, on the pivot or dragged out, for Configure Fields and the card's summary.
-    layout["calcNames"] =
-        Json::Object(calc_fields_all(c).into_iter().map(|(id, name, ..)| (id, Json::String(name))).collect());
+    layout["calcNames"] = Json::Object(calc_fields_all(c).into_iter().map(|f| (f.id, Json::String(f.name))).collect());
     let mut plain = wire(&split.plain);
     plain.layout = Some(Rc::new(layout));
     let plain = Cv::Frame(Rc::new(plain));

@@ -1,5 +1,5 @@
 // [[C58]] tableInputRawText
-import { calcFieldName } from "../pivotConfig";
+import { calcFieldName, calcIsOff } from "../pivotConfig";
 import { csvList } from "../nodes/frameShapeHook";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import type {
@@ -562,9 +562,9 @@ function pivotSummary(data: PivotNodeType): string {
   if (rows.length) parts.push(`Rows: ${rows.join(", ")}`);
   if (cols.length) parts.push(`Cols: ${cols.join(", ")}`);
   if (vals.length) parts.push(`Σ ${vals.map((v) => `${v} (${(data.funcs?.[v] ?? data.agg).toUpperCase()})`).join(", ")}`);
-  // A field dragged out of the values (a place of -1) is off the pivot, so off its summary.
+  // A field dragged out of the values is off the pivot, so off its summary.
   const calcs = data.valuePairKeys()
-    .map(([name], i) => (data.calcPlace[name.slice(8)] === -1 ? "" : calcFieldName(data, name.slice(8), i)))
+    .map(([name], i) => (calcIsOff(data.calcPlace, name.slice(8)) ? "" : calcFieldName(data, name.slice(8), i)))
     .filter(Boolean);
   if (calcs.length) parts.push(`λ ${calcs.join(", ")}`);
   return parts.join(" · ");
