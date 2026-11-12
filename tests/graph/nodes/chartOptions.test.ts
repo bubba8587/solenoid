@@ -56,6 +56,15 @@ describe("the Chart card reads its options string", () => {
     expect(chartOptionsOf("radarscale=nonsense").radarscale).toBeUndefined();
   });
 
+  it("parses stacked as pandas' flag, with percent for Excel's 100% Stacked", () => {
+    expect(chartOptionsOf("stacked=True").stacked).toBe("stacked");
+    expect(chartOptionsOf("stacked=on").stacked).toBe("stacked");
+    expect(chartOptionsOf("stacked=percent").stacked).toBe("percent");
+    expect(chartOptionsOf("stacked=100%").stacked).toBe("percent");
+    expect(chartOptionsOf("stacked=off").stacked).toBeUndefined();
+    expect(chartOptionsOf("stacked=nonsense").stacked).toBeUndefined();
+  });
+
   it("ignores unknown keys, blank values, and junk", () => {
     expect(chartOptionsOf("bogus=1;title=;color=red;nope")).toEqual({ color: "red" });
     expect(chartOptionsOf("")).toEqual({});

@@ -155,6 +155,14 @@ const SELECT_KEYS: readonly {
     ],
   },
   {
+    key: "stacked", label: "Stacking", clearValue: "off",
+    options: [
+      { value: "off", label: "Side by side" },
+      { value: "stacked", label: "Stacked" },
+      { value: "percent", label: "100% stacked" },
+    ],
+  },
+  {
     key: "zoom", label: "Zoom", clearValue: "fit",
     options: [
       { value: "fit", label: "Fit the width" },
@@ -222,7 +230,7 @@ const SECTIONED_ABOVE = 10;
 // Keys in no section (the title, axis labels, font size, a few one-figure settings) stay at the top.
 const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] = [
   { label: "Columns", keys: ["x", "y", "s", "c", "annotate", "by"] },
-  { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha", "maxgap"] },
+  { label: "Style", keys: ["stacked", "color", "linestyle", "linewidth", "marker", "markersize", "alpha", "maxgap"] },
   { label: "Axes", keys: ["grid", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
   { label: "Color scale", keys: ["cmap", "center", "vmin", "vmax", "cbar", "annot", "fmt"] },
   { label: "Timeline", keys: ["zoom", "tiers", "fit", "window", "columns", "collapse", "group_by"] },

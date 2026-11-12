@@ -384,11 +384,23 @@ export function MultiSeriesView({
   const yLabel = axes && opts?.ylabel
     ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis }
     : undefined;
-  const yFmt = valueTickFormat([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax]);
-  const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt);
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
   const cols = series.map((s) => Array.from({ length: n }, (_, i) => num(s.values[i])));
+  // Stacked, the value axis spans each category's piles (positives up, negatives down); 100% stacked spans 0 to 1.
+  const stack = op === "column" || op === "bar" || op === "area" ? opts?.stacked : undefined;
+  const piles = stack === "stacked"
+    ? Array.from({ length: n }, (_, i) => cols.reduce<[number, number]>(([up, down], c) => {
+      const v = c[i] ?? 0;
+      return v > 0 ? [up + v, down] : [up, down + v];
+    }, [0, 0])).flat()
+    : [];
+  const share = (v: number) => `${Math.round(v * 100)}%`;
+  const axisValues = stack === "percent" ? [0, 1] : [...series.flatMap((s) => s.values), ...piles, opts?.ymin, opts?.ymax];
+  const yFmt = stack === "percent" ? share : valueTickFormat(axisValues);
+  const yAxisW = valueAxisWidth(axisValues, fs, !!yLabel, yFmt);
+  const stackId = stack ? "stack" : undefined;
+  const stackOffset = stack === "percent" ? "expand" as const : stack && op !== "area" ? "sign" as const : undefined;
   const kept = op === "line" || op === "area" ? envelopeRows(cols, n, Math.round(width - yAxisW)) : null;
   const data = (kept ?? Array.from({ length: n }, (_, i) => i)).map((i) => {
     const o: Record<string, number | null> = { i };
@@ -405,9 +417,10 @@ export function MultiSeriesView({
   const showGrid = axes && (opts?.grid ?? true);
   const showMarkers = opts?.marker ?? false;
   const dotR = opts?.markersize ?? LINE_DOT_R;
-  const fillAlpha = opts?.alpha ?? (op === "area" && series.length >= 2 ? 0.18 : 0.25);
+  // Stacked areas never cover one another, so they fill nearly solid.
+  const fillAlpha = opts?.alpha ?? (stack && op === "area" ? 0.6 : op === "area" && series.length >= 2 ? 0.18 : 0.25);
   const markAlpha = opts?.alpha ?? 1;
-  const yDomain = yDomainOf(opts);
+  const yDomain: ReturnType<typeof yDomainOf> = stack === "percent" ? [0, 1] : yDomainOf(opts);
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
   const margin = { top: axes ? PLOT_TOP : 6, right: axes && (op === "line" || op === "area") ? edgeRoom(tickFmt(n - 1), fs) : 8, bottom: axes ? 4 : 2, left: 0 };
@@ -438,26 +451,26 @@ export function MultiSeriesView({
   if (op === "line" || op === "area") {
     const Container = op === "area" ? AreaChart : LineChart;
     chart = (
-      <Container width={width} height={chartH} data={data} margin={margin}>
+      <Container width={width} height={chartH} data={data} margin={margin} stackOffset={stackOffset}>
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {tip}
         {series.map((s, j) => op === "area"
-          ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j)) : false} isAnimationActive={false} />
+          ? <Area key={j} dataKey={`s${j}`} name={s.name} stackId={stackId} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j)) : false} isAnimationActive={false} />
           : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={markAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, markAlpha * dim(j)) : false} isAnimationActive={false} />)}
       </Container>
     );
   } else if (op === "bar") {
     chart = (
-      <BarChart width={width} height={chartH} data={data} layout="vertical" margin={margin}>
+      <BarChart width={width} height={chartH} data={data} layout="vertical" margin={margin} stackOffset={stackOffset}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
         {axes && <XAxis type="number" tick={AXIS} tickLine={false} tickFormatter={yFmt} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={catW} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
         {axes && refElsSwap}
         {tip}
-        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} stackId={stackId} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   } else if (op === "radar") {
@@ -482,13 +495,13 @@ export function MultiSeriesView({
     );
   } else {
     chart = (
-      <BarChart width={width} height={chartH} data={data} margin={margin}>
+      <BarChart width={width} height={chartH} data={data} margin={margin} stackOffset={stackOffset}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {tip}
-        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} stackId={stackId} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   }

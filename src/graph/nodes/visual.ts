@@ -907,7 +907,7 @@ export class QuiverNode extends GraphNode {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "stacked", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale"] as const;
 const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center", "maxgap"] as const;
 
 export class ChartBuilderNode extends GraphNode {
@@ -935,6 +935,7 @@ export class ChartBuilderNode extends GraphNode {
     this.addInput("marker",    strIn("Markers"));
     this.addInput("pielabels", strIn("Pie labels"));
     this.addInput("radarscale", strIn("Radar scale"));
+    this.addInput("stacked",   strIn("Stacking"));
     this.addInput("zoom",      strIn("Zoom"));
     this.addInput("layout",    strIn("Layout"));
     this.addInput("tiers",     strIn("Header rows"));

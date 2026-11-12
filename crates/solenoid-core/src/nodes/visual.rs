@@ -195,6 +195,15 @@ fn to_radar_scale(v: &str) -> Option<&'static str> {
     }
 }
 
+/// `stacked=True` as pandas writes it piles the series; `percent` (Excel's 100% Stacked) piles each category's share.
+fn to_stacked(v: &str) -> Option<&'static str> {
+    match lower_text(trim_space(v)).as_ref() {
+        "percent" | "100%" | "expand" => Some("percent"),
+        "stacked" | "stack" => Some("stacked"),
+        other => to_bool(other).and_then(|b| b.then_some("stacked")),
+    }
+}
+
 fn to_line_style(v: &str) -> Option<&'static str> {
     match lower_text(trim_space(v)).as_ref() {
         "-" | "solid" => Some("solid"),
@@ -271,6 +280,7 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
             "grid" | "marker" | "annot" | "cbar" => flag(&mut o, &key),
             "pielabels" => word(&mut o, "pielabels", to_pie_labels(val)),
             "radarscale" => word(&mut o, "radarscale", to_radar_scale(val)),
+            "stacked" => word(&mut o, "stacked", to_stacked(val)),
             "linewidth" | "lw" => put_num(&mut o, "linewidth", to_num(val)),
             "markersize" | "ms" => put_num(&mut o, "markersize", to_num(val).filter(|n| *n > 0.0)),
             "alpha" => put_num(&mut o, "alpha", to_num(val)),
@@ -1975,7 +1985,7 @@ fn quiver(c: &mut Call) -> Answer {
 
 // ─── Chart Builder ──────────────────────────────────────────────────────────────
 
-const CB_STR_KEYS: [&str; 43] = [
+const CB_STR_KEYS: [&str; 44] = [
     "title",
     "xlabel",
     "ylabel",
@@ -1984,6 +1994,7 @@ const CB_STR_KEYS: [&str; 43] = [
     "marker",
     "pielabels",
     "radarscale",
+    "stacked",
     "zoom",
     "layout",
     "tiers",
