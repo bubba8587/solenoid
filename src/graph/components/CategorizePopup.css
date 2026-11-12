@@ -4,7 +4,7 @@
 .categorize-editor { width: 880px; }
 .categorize-editor__body { display: flex; flex-direction: column; gap: 10px; overflow: auto; flex: 1 1 auto; min-height: 0; }
 .categorize-editor .pivot-fields__list { max-height: 26vh; overflow: auto; }
-.categorize-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-items: start; }
+.categorize-grid { display: grid; gap: 8px; align-items: start; overflow-x: auto; flex: none; }
 
 .categorize-zone { display: flex; flex-direction: column; min-width: 0; }
 .categorize-zone__head {
@@ -88,7 +88,7 @@
 .categorize-editor .pivot-chip { align-items: flex-start; }
 .categorize-editor .pivot-chip__name {
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   text-wrap-style: balance;
   display: -webkit-box;
   -webkit-box-orient: vertical;

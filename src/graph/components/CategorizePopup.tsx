@@ -30,6 +30,9 @@ function CategoryName({ name, taken, onRename }: { name: string; taken: readonly
   );
 }
 
+const MAX_PER_ROW = 5;
+export const perRow = (n: number): number => Math.max(1, Math.ceil(n / Math.ceil(Math.max(n, 1) / MAX_PER_ROW)));
+
 export function CategorizePopup() {
   const state = useSyncExternalStore(categorizeEditor.subscribe, categorizeEditor.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -161,7 +164,10 @@ export function CategorizePopup() {
         >
           {unsortedKeys.map((k) => chip(k, unsortedKeys, null))}
         </FieldsPanel>
-        <div className="categorize-grid">
+        {/* The columns per row follow the category count alone, never the popup's width, so a resize stretches the
+            columns and never moves a category to another row: at most five, the rows balanced (7 is 4 and 3). Below 130
+            pixels a column, the grid scrolls sideways rather than squeezing. */}
+        <div className="categorize-grid" style={{ gridTemplateColumns: `repeat(${perRow(names.length)}, minmax(130px, 1fr))` }}>
           {names.map(zone)}
         </div>
         {wired && names.length === 0 && <div className="pivot-zone__hint">The Categories cable carries no names.</div>}

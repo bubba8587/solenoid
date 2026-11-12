@@ -77,3 +77,10 @@ describe("the sort's edits", () => {
     expect(nextCategoryName(["Fruit"])).toBe("Category 2");
   });
 });
+
+describe("the sorter's grid", () => {
+  it("puts at most five categories in a row, the rows balanced, whatever the popup's width", async () => {
+    const { perRow } = await import("../../../src/graph/components/CategorizePopup");
+    expect([1, 3, 5, 6, 7, 10, 11, 20, 24].map(perRow)).toEqual([1, 3, 5, 3, 4, 5, 4, 5, 5]);
+  });
+});
