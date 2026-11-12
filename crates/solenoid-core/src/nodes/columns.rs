@@ -385,6 +385,7 @@ pub(crate) fn lambda_with_captures(lam: &Rc<LambdaV>, units: &[V], side: &dyn Fn
         src: lam.src.clone(),
         units: lam.units.clone(),
         descriptions: lam.descriptions.clone(),
+        empty: lam.empty.clone(),
     })
 }
 

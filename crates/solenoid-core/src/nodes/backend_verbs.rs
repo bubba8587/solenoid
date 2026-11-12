@@ -622,14 +622,23 @@ fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCel
             v => args.push(v),
         }
     }
-    // A LAMBDA card's capture naming a column reads its slice (`lambda_body`); one off a column only by letter case
-    // would read the card's empty slot, a 0, so it is #NAME? with the hint instead.
+    // A LAMBDA card's capture naming a column reads its slice (`lambda_body`). One that names no column reads its
+    // card's own value, wired or typed; with neither it would read the empty slot, a 0, and a misspelled column would
+    // compute quietly, so it is #NAME? (as is one off a column only by letter case, with the hint).
     for name in lam.captured.iter().flatten() {
-        if !f.columns.iter().any(|k| &k.name == name)
-            && case_twin(name, f.columns.iter().map(|k| k.name.as_str())).is_some()
+        if f.columns.iter().any(|k| &k.name == name) {
+            continue;
+        }
+        if case_twin(name, f.columns.iter().map(|k| k.name.as_str())).is_some()
             && let V::Err(e) = slice(name)
         {
             return (FrameCell::Err(e), false);
+        }
+        if lam.empty.contains(name) {
+            let msg = format!(
+                "The calculated field reads {name}, which is no column of the table and has no value on its LAMBDA card"
+            );
+            return (FrameCell::Err(Rc::new(sol_error(ErrorCode::Name, msg))), false);
         }
     }
     // `[Column]` in the body that no parameter names reads the same slice, so a field needs no parameters at all.

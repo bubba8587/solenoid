@@ -98,6 +98,11 @@ fn lambda(c: &mut Call) -> Answer {
     at_col_names(&ast, &mut names);
     let captured: Vec<String> = names.into_iter().filter(|n| !params.contains(n)).collect();
     let units: Vec<V> = captured.iter().map(|v| c.read_variable(v)).collect();
+    let empty: Vec<String> = captured
+        .iter()
+        .filter(|v| c.wired(v).is_none_or(<[V]>::is_empty) && matches!(c.unwired(v), V::Undef | V::Null))
+        .cloned()
+        .collect();
     // The body reads its captures unit-blind; a computed column reads their units ([[C25]] firstClassUnits).
     let env: Env = captured.iter().cloned().zip(units.iter().map(strip_unit_cells)).collect();
     let descriptions =
@@ -111,6 +116,7 @@ fn lambda(c: &mut Call) -> Answer {
         src: Some(expr),
         units,
         descriptions,
+        empty,
     }));
     c.show("cachedValue", lam.clone());
     c.show("cachedError", V::Null);

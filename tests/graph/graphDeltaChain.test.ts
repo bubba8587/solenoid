@@ -2,9 +2,6 @@
 // A run of edits a person might make, each made live and captured as the history captures it, then undone step by
 // step and redone again by delta: every step lands the save and the answers the canvas had when it was captured.
 // Stress it with more steps and other draws: STEPS=25 SALT=3 npx vitest run tests/graph/graphDeltaChain.test.ts The edits are drawn from a fixed seed per example, so a failure reproduces.
-// Known at 20 steps (pack-fluids, SALT=1 and 6): a list of errors alone keeps the type its output last carried
-// ([[socket-lattice#Requirements]], run-time types), which no save holds, so Frame from Lists types that column Number
-// live and Text after an undo or a reload.
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

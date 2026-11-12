@@ -428,7 +428,8 @@ pub fn serialize_cube<S: serde::Serializer>(c: &Cube, s: S) -> Result<S::Ok, S::
     m.end()
 }
 
-/// A LAMBDA's reply: one with its body's text as `{"lambda": {params, expr, captured, capturedValues, readValues}}`,
+/// A LAMBDA's reply: one with its body's text as `{"lambda": {params, expr, captured, capturedValues, readValues}}`
+/// (and `empty`, the captures its card left empty, where there are any),
 /// which `nodeWire.ts` compiles back into a callable LAMBDA, its captures with their units beside the values its body
 /// reads; one without (a formula's own LAMBDA, a bare function name) as `{"lambda": true}`, which JS can't take.
 pub fn serialize_lambda<S: serde::Serializer>(l: &crate::eval::LambdaV, s: S) -> Result<S::Ok, S::Error> {
@@ -458,6 +459,9 @@ pub fn serialize_lambda<S: serde::Serializer>(l: &crate::eval::LambdaV, s: S) ->
             m.serialize_entry("readValues", &Cells(read))?;
             if let Some(d) = &l.descriptions {
                 m.serialize_entry("descriptions", d.as_ref())?;
+            }
+            if !l.empty.is_empty() {
+                m.serialize_entry("empty", &l.empty)?;
             }
             m.end()
         }

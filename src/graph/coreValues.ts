@@ -75,7 +75,8 @@ export function coreValue(v: unknown, units = false): unknown {
     if (values.includes(undefined) || read.includes(undefined)) return undefined;
     const d = v.descriptions;
     const descriptions = d ? { descriptions: Object.fromEntries(Object.entries(d).map(([k, x]) => [toWellFormed(k), toWellFormed(x)])) } : {};
-    return { __lambda: { params: v.params.map(toWellFormed), expr: toWellFormed(v.expr), captured: captured.map(toWellFormed), capturedValues: values, readValues: read, ...descriptions } };
+    const empty = v.empty?.length ? { empty: v.empty.map(toWellFormed) } : {};
+    return { __lambda: { params: v.params.map(toWellFormed), expr: toWellFormed(v.expr), captured: captured.map(toWellFormed), capturedValues: values, readValues: read, ...descriptions, ...empty } };
   }
   if (v === null || typeof v === "number" || typeof v === "boolean" || isSolError(v)) return wireCell(v);
   return undefined;

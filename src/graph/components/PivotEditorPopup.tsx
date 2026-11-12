@@ -89,12 +89,15 @@ export function PivotEditorPopup() {
   const chipTitle = (field: string) => (isMissing(field) ? `${field} · ${missingNote(field)}` : `${field} · ${typeOf(field)}`);
 
   // Saved and recorded at once, not on the compute's finish, which manual calculation or an early-out pass would skip.
-  function commit(next: Cfg) {
-    writePivotConfig(node, next);
+  function commit(next: Cfg, place: Record<string, number> = node.calcPlace) {
+    // A sort names its field by position: the write moves it with its field, the calculated fields among them.
+    const onPivot = (p: Record<string, number>) => calcs.filter((c) => p[c.id] !== -1).map((c) => c.id);
+    writePivotConfig(node, next, { before: onPivot(node.calcPlace), after: onPivot(place) });
+    node.calcPlace = place;
     notifyGraphChanged();
     // The field list (a new filter's values) comes back with the compute: draw again once it lands.
     void processGraph(node.id).then(() => setLanded((n) => n + 1));
-    setCfg(next);
+    setCfg({ ...next, rowSort: node.rowSort, colSort: node.colSort });
   }
   /** Values in the zone's order, calculated fields among them: the plain values and each field's place. */
   function commitValues(tokens: string[], base: Cfg = cfg) {
@@ -102,8 +105,7 @@ export function PivotEditorPopup() {
     const funcs = { ...base.funcs };
     for (const k of Object.keys(funcs)) if (!vals.includes(k)) delete funcs[k];
     for (const v of vals) if (!(v in funcs) && !base.vals.includes(v)) funcs[v] = node.agg || "sum";
-    node.calcPlace = place;
-    commit({ ...base, vals, funcs });
+    commit({ ...base, vals, funcs }, place);
   }
   const insertAt = (list: string[], item: string, at?: number) => {
     const without = list.filter((t) => t !== item);

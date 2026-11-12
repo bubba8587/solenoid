@@ -3462,8 +3462,13 @@ fn frame_from_lists(c: &mut Call) -> Answer {
             known.push(V::str("date"));
             continue;
         }
+        // A list of errors and nothing else to read is a Text column. Its socket's type there is only what its source
+        // last carried, which no save holds, so the column would be one type live and another after a reload.
+        let only_errors = matches!(&wired, V::List(items) if items.iter().any(|x| matches!(x, V::Err(_)))
+            && items.iter().all(|x| matches!(x, V::Null | V::Undef | V::Err(_))));
+        let ty = if only_errors { Some("string") } else { col_type_for_socket(c.input_type(vals_k)) };
         lists.push(wired);
-        known.push(col_type_for_socket(c.input_type(vals_k)).map_or(V::Null, V::str));
+        known.push(ty.map_or(V::Null, V::str));
     }
     if names.is_empty() {
         return shown_frame(c, "frame", V::Null);

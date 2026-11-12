@@ -16,7 +16,7 @@ import seed from "../../../src/graph/seedGraphs/pivot-calculated-fields.json";
 import { restoreLiterals } from "../../../src/graph/literalFields";
 import { isSolError } from "../../../src/graph/errorValue";
 import { pivotLayoutOf, pivotViewFrame } from "../../../src/graph/pivotLayout";
-import { calcFieldName } from "../../../src/graph/pivotConfig";
+import { calcFieldName, movedSort, pivotConfigOf, writePivotConfig } from "../../../src/graph/pivotConfig";
 
 // A fleet's fuel log: MPG per plate per month is miles over gallons in that cell's rows.
 const log = new FrameInputNode({
@@ -115,6 +115,24 @@ describe("PIVOTBY calculated fields over column names with spaces", () => {
     const cell = byPlate("", "SUM([Miles Driven]) / SUM(gallons)")[2];
     expect(isSolError(cell) && cell.code).toBe("#NAME?");
     expect(isSolError(cell) && cell.message).toContain('the table has "Gallons"');
+  });
+
+  it("a bare name that is no column and has no value on its LAMBDA card is #NAME?, never the empty slot's 0", () => {
+    // A misspelled column, on either side of the division: neither a quiet 0 nor a #DIV/0!.
+    for (const expr of ["SUM(Milage) / SUM(Gallons)", "SUM([Miles Driven]) / SUM(Galons)"]) {
+      const cell = byPlate("", expr)[2];
+      expect(isSolError(cell) && cell.code, expr).toBe("#NAME?");
+      expect(isSolError(cell) && cell.message, expr).toMatch(/which is no column of the table and has no value on its LAMBDA card$/);
+    }
+    // A name the card gives a value, typed or wired, is that value: miles per gallon, doubled.
+    const typed = new LambdaNode({ params: "", expr: "SUM([Miles Driven]) / SUM(Gallons) * k", literals: { k: 2 } }).data({}).result;
+    const wired = new LambdaNode({ params: "", expr: "SUM([Miles Driven]) / SUM(Gallons) * k" }).data({ k: [2] }).result;
+    for (const field of [typed, wired]) {
+      const n = new PivotNode({ rowTotalDepth: 1, valueKeys: ["calcName0", "calcFn0"] });
+      Object.assign(n.stringLiterals, { rowFields: "Plate", values: "", calcName0: "MPG" });
+      const out = pivotViewFrame(n.data({ frame: [spaced], rowFields: [["Plate"]], colFields: [[]], values: [[]], calcFn0: [field] }).frame as FrameValue);
+      expect(out.columns.find((c) => c.name === "MPG")!.values).toEqual([50, 40, 44]);
+    }
   });
 
   it("a bracket naming no column is #NAME?, and a malformed bracket parameter is refused by the LAMBDA card", () => {
@@ -358,6 +376,30 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     const eager = (await run({ frame: log, calcs: [["MPG", field]] })).col("MPG")!.values;
     expect(eager).toEqual([25, 20, 22]);
     expect((await run({ frame: planned(log, { kind: "distinct" }), calcs: [["MPG", field]] })).col("MPG")!.values).toEqual(eager);
+  });
+
+  it("a sort stays on its field when the fields around it change, and goes when its field does", () => {
+    const keys = (fields: string[], vals: string[], calcs: string[] = []) => [...fields.map((f) => `f\u0000${f}`), ...vals.map((v) => `v\u0000${v}`), ...calcs.map((c) => `c\u0000${c}`)];
+    // Sorted by Miles, descending, the second of [Plate, Miles]: a row field added before it makes it the third.
+    expect(movedSort(-2, keys(["Plate"], ["Miles"]), keys(["Month", "Plate"], ["Miles"]))).toBe(-3);
+    expect(movedSort(2, keys(["Plate"], ["Miles", "Gallons"]), keys(["Plate"], ["Gallons"]))).toBe(0);
+    expect(movedSort(0, keys(["Plate"], ["Miles"]), keys([], []))).toBe(0);
+    // A calculated field the caller didn't list keeps its place after the values.
+    expect(movedSort(3, keys(["Plate"], ["Miles"]), keys(["Plate"], ["Miles", "Gallons"]))).toBe(4);
+
+    const n = new PivotNode({ rowSort: 3, colSort: -2, valueKeys: ["calcName0", "calcFn0", "calcName1", "calcFn1"] });
+    Object.assign(n.stringLiterals, { rowFields: "Plate", colFields: "Month", values: "Miles" });
+    // Rows sorted by the first calculated field (Plate, Miles, then field 0), columns by Miles descending.
+    writePivotConfig(n, { ...pivotConfigOf(n), vals: ["Gallons", "Miles"] }, { before: ["0", "1"], after: ["0", "1"] });
+    expect([n.rowSort, n.colSort]).toEqual([4, -3]);
+    // The second calculated field dragged out of the pivot leaves the first where it was; the first dragged out ends the sort.
+    writePivotConfig(n, pivotConfigOf(n), { before: ["0", "1"], after: ["0"] });
+    expect(n.rowSort).toBe(4);
+    writePivotConfig(n, pivotConfigOf(n), { before: ["0"], after: [] });
+    expect([n.rowSort, n.colSort]).toEqual([0, -3]);
+    // A sort picked in the same write is taken as picked.
+    writePivotConfig(n, { ...pivotConfigOf(n), rowSort: 1 });
+    expect(n.rowSort).toBe(1);
   });
 
   it("sorts rows and columns by a calculated field, after the plain values in the sort's list", () => {

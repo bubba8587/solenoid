@@ -51,6 +51,12 @@ specific item.
 - Checked and left: Tab and Shift+Tab toggling chrome is the spec's (`tree/specs/canvas/react-flow-surface-contract.md` § The
   canvas keyboard); the collapse sweep against 1.6.1 shows no card the layout sweep broke; the label column's measuring is
   about 0.1 ms for a canvas of cards; the deployed script worker carries its `Content-Security-Policy`.
+- **The author's calls on what the run found (2026-11-12):** a calculated field's bare name that is no column and
+  has no value on its LAMBDA card is `#NAME?` (the LAMBDA carries the captures its card left empty, `empty`); a
+  pivot's sort moves with its field when Configure Fields or the view's menu changes the fields (`movedSort`,
+  `writePivotConfig`); Frame from Lists types a list of errors alone Text, whatever its socket last settled to, after
+  which the undo fuzz passes at 20 steps on the six draws tried. The wrap that makes a loop waits; Bootstrap's budget
+  and Probability Between's wired blank are still open in the backlog.
 - **For the 1.6.2 cut:** `scripts/release-version.mjs` froze the `NEXT_RELEASE` marks in `nodeCatalog.ts` alone and
   stopped with an error on a patch (the next guess was already 1.7); it now freezes the packs' own files too
   (`src/graph/packs/probability.ts` holds the first marks outside the catalog) and a dry run of `1.6.2` in a scratch

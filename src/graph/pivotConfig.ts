@@ -16,7 +16,7 @@ export interface PivotConfig {
   funcs: Record<string, AggOp>;
   rowTotalDepth: number;
   colTotalDepth: number;
-  /** 1-based into [fields…, values…], negative descending, 0 none. */
+  /** 1-based into [fields…, values…, calculated fields on the pivot…], negative descending, 0 none. */
   rowSort: number;
   colSort: number;
   relativeTo: number;
@@ -50,14 +50,36 @@ export function pivotConfigOf(node: PivotFields): PivotConfig {
   };
 }
 
-export function writePivotConfig(node: PivotFields, c: PivotConfig): void {
+/** What a sort's number names, by position: its axis's fields, then the values, then the calculated fields on the pivot. */
+const sortKeys = (fields: readonly string[], vals: readonly string[], calcs: readonly string[]): string[] =>
+  [...fields.map((f) => `f\u0000${f}`), ...vals.map((v) => `v\u0000${v}`), ...calcs.map((id) => `c\u0000${id}`)];
+
+/** A sort (1-based into `before`, negative descending) as the number that names the same field in `after`, or 0, the
+ *  default order, when that field is gone. A number past `before` names a calculated field the caller didn't list,
+ *  and keeps its distance from the end. */
+export function movedSort(sort: number, before: readonly string[], after: readonly string[]): number {
+  if (!sort) return 0;
+  const i = Math.abs(sort) - 1;
+  const at = i < before.length ? after.indexOf(before[i]) : i + after.length - before.length;
+  return at < 0 ? 0 : Math.sign(sort) * (at + 1);
+}
+
+/** Writes the settings to the card. A sort is saved as a position, so when the fields change and the sort itself
+ *  doesn't, its number moves to name the field it named before (`movedSort`). `calcs`: the ids of the calculated
+ *  fields on the pivot, in socket order, before and after this write, where the caller changes them. */
+export function writePivotConfig(node: PivotFields, c: PivotConfig, calcs?: { before: readonly string[]; after: readonly string[] }): void {
+  const was = pivotConfigOf(node);
+  const sortFor = (sort: number, wasSort: number, wasFields: string[], fields: string[]) =>
+    sort !== wasSort ? sort : movedSort(sort, sortKeys(wasFields, was.vals, calcs?.before ?? []), sortKeys(fields, c.vals, calcs?.after ?? []));
+  const rowSort = sortFor(c.rowSort, was.rowSort, was.rows, c.rows);
+  const colSort = sortFor(c.colSort, was.colSort, was.cols, c.cols);
   node.stringLiterals.rowFields = listLiteralText(c.rows);
   node.stringLiterals.colFields = listLiteralText(c.cols);
   node.stringLiterals.values = listLiteralText(c.vals);
   node.detailFields = c.details;
   node.funcs = c.funcs;
   node.rowTotalDepth = c.rowTotalDepth; node.colTotalDepth = c.colTotalDepth;
-  node.rowSort = c.rowSort; node.colSort = c.colSort; node.relativeTo = c.relativeTo;
+  node.rowSort = rowSort; node.colSort = colSort; node.relativeTo = c.relativeTo;
   node.filterExclude = c.exclude;
 }
 

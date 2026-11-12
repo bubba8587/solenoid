@@ -33,6 +33,9 @@ pub struct LambdaV {
     pub units: Vec<V>,
     /// The LAMBDA card's notes on its variables (`descriptions`).
     pub descriptions: Option<Rc<serde_json::Value>>,
+    /// The captures its card left empty, neither wired nor typed (`empty`): each reads 0, and a reader that binds a
+    /// capture by name (a calculated field's column) can tell a name that found nothing from a value of its own.
+    pub empty: Vec<String>,
 }
 
 use crate::value_kinds::MAX_GENERATED;
@@ -2127,6 +2130,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
                 src: Some(src.to_string()),
                 units,
                 descriptions,
+                empty: strs("empty"),
             }))
         }
         _ => cell_to_v(&crate::wire::decode_cell(j)),
