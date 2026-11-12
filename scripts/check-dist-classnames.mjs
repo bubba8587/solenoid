@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[save-format#A save loses nothing quietly]]
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 

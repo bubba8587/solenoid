@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[save-format#A save loses nothing quietly]]
 export * from "./nodes/shared";
 export * from "./nodes/input";
 export * from "./nodes/control";

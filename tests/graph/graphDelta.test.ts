@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[react-flow-surface-contract#Undo history]]
+// [[save-format#A save loses nothing quietly]], [[react-flow-surface-contract#Undo history]]
 // Undo moves the live canvas to a step by its delta: the canvas it lands on is the one a whole load of that step
 // builds, the same save and the same answers, and a card the change doesn't reach is never computed again.
 import type { View } from "../../src/graph/view";

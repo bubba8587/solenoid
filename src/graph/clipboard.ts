@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[save-format#A save loses nothing quietly]]
 // `navigator.clipboard` is undefined outside a secure context and can reject, so this falls back to execCommand;
 // true only when something actually copied.
 export async function copyText(text: string): Promise<boolean> {

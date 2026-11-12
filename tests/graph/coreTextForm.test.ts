@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[B12]] losslessSaves, [[save-format#The text form]]
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[save-format#A save loses nothing quietly]], [[save-format#The text form]]
 // The text form's frozen answers (fixtures/core/text-form.json.gz), compared as text.
 import { describe, expect, it } from "vitest";
 import { frozen } from "./coreFixtures";

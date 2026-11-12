@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[B12]] losslessSaves
+// [[C10]] socketLattice, [[save-format#A save loses nothing quietly]]
 import { describe, it, expect, beforeAll } from "vitest";
 import { GraphNode, GraphSocket } from "../../src/graph/graphModel";
 import * as Nodes from "../../src/graph/nodeClasses";

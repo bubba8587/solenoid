@@ -2,11 +2,11 @@
 aliases: ["Node classes and op modules"]
 tags: [spec, floors]
 ---
-<!-- [[B12]] losslessSaves, [[C17]] shareImpl, [[C25]] firstClassUnits, [[C23]] calcModes, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[B11]] maximalMerge, [[B14]] oneDesignSystem, [[D86]] blankRoles; covers: src/graph/nodes/*.ts -->
+<!-- [[save-format#A save loses nothing quietly]], [[C17]] shareImpl, [[C25]] firstClassUnits, [[C23]] calcModes, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[B11]] maximalMerge, [[B14]] oneDesignSystem, [[D86]] blankRoles; covers: src/graph/nodes/*.ts -->
 
 # Spec: Node classes and op modules
 
-Serves [[B12]] losslessSaves, [[C17]] shareImpl, [[C25]] firstClassUnits, [[C23]] calcModes and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder and [[D86]] blankRoles. Node merges and control-driven socket swaps serve [[B11]] maximalMerge; frame input labels serve [[B14]] oneDesignSystem.
+Serves [[save-format#A save loses nothing quietly]], [[C17]] shareImpl, [[C25]] firstClassUnits, [[C23]] calcModes and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder and [[D86]] blankRoles. Node merges and control-driven socket swaps serve [[B11]] maximalMerge; frame input labels serve [[B14]] oneDesignSystem.
 
 This is the floor every node class and op module under `src/graph/nodes/` is built to. A file that implements a specific mechanism (units, dates, errors, a family's merge) cites that leaf in its own header. This spec's `covers:` line is what `dte blast` and `dte coverage` read instead of a citation in every file.
 

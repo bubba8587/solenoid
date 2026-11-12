@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[B13]] aiInScope, [[command-palette#AI mode]]
+// [[save-format#A save loses nothing quietly]], [[B13]] aiInScope, [[command-palette#AI mode]]
 
 import { describe, it, expect, afterEach } from "vitest";
 import { demoReply, makeDemoFetch, DEMO_KEY } from "../../src/graph/aiDemo";

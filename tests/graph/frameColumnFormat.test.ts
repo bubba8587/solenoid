@@ -238,7 +238,7 @@ describe("describeAnnotation — the one shared inherit/column hint wording", ()
   });
 });
 
-// [[B12]] losslessSaves: a column's format follows the column through a rename in the Frame Input popup.
+// [[save-format#A save loses nothing quietly]]: a column's format follows the column through a rename in the Frame Input popup.
 describe("frameFormatStore.rekey", () => {
   it("moves a renamed column's format to its new name", async () => {
     const input = new FrameInputNode({ frameText: source([{ name: "B", type: "number", cells: ["1.23456"] }]) });

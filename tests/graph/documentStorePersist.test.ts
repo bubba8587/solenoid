@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[per-doc-autosave-persistence#Two slots per pair]], [[per-doc-autosave-persistence#Restore]]
+// [[save-format#A save loses nothing quietly]], [[per-doc-autosave-persistence#Two slots per pair]], [[per-doc-autosave-persistence#Restore]]
 import { describe, it, expect, vi } from "vitest";
 
 // Editor-less, serializeGraph() returns null and documents keep their EMPTY_GRAPH.
@@ -203,7 +203,7 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
 });
 
 
-describe("[[B12]] losslessSaves — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
+describe("[[save-format#A save loses nothing quietly]] — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
   const slotKeys = () => [..._mem.keys()].filter((k) => /^solenoid\.docs\.(index|doc\.[^.]+)\.(a|b)$/.test(k));
 
   it("every slot payload the STORE wrote is prefix-readable", () => {
@@ -229,7 +229,7 @@ describe("[[B12]] losslessSaves — every written slot payload starts {\"seq\":N
   });
 });
 
-describe("[[B12]] losslessSaves — a capture that throws is loud and keeps the document on screen", () => {
+describe("[[save-format#A save loses nothing quietly]] — a capture that throws is loud and keeps the document on screen", () => {
   it("returns false, raises one sticky notice, and a swap verb stays put", async () => {
     documentStore.saveAs("Faulty");
     const before = documentStore.currentId();

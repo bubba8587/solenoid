@@ -177,7 +177,7 @@ Tests: `selectionOps.test.ts`: `restackOrder` takes the selection to the front o
 - A class with a resize gesture either reads the init back or routes its size through `nodeSizeStore`, as Display's grip does (its own persisted channel, `sn.size`).
 - No other class may start reading the init.
 
-Why: a field with two jobs drifts silently, and this one can drift either way. A new resizable class that forgets to read the init back loses the user's drag on reload ([[B12]] losslessSaves); a compute class that starts reading it freezes an old measured size into its layout. Layout math reads sizes through `measuredBox()` ([[auto-arrange-tidy#Size reads]]).
+Why: a field with two jobs drifts silently, and this one can drift either way. A new resizable class that forgets to read the init back loses the user's drag on reload ([[save-format#A save loses nothing quietly]]); a compute class that starts reading it freezes an old measured size into its layout. Layout math reads sizes through `measuredBox()` ([[auto-arrange-tidy#Size reads]]).
 
 ## The dot grid
 

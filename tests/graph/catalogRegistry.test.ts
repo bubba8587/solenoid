@@ -1,4 +1,4 @@
-// [[C28]], [[C138]] addMenuReachesAll, [[B12]] losslessSaves, [[B18]] safeToShare, [[C10]] socketLattice, [[socket-lattice#Each port owns its socket instance]], [[socket-lattice#Date-valued ports are date-typed]], [[type-propagation-on-in-place-socket-retype#A trueany output declares its passthrough]]
+// [[C28]], [[C138]] addMenuReachesAll, [[save-format#A save loses nothing quietly]], [[B18]] safeToShare, [[C10]] socketLattice, [[socket-lattice#Each port owns its socket instance]], [[socket-lattice#Date-valued ports are date-typed]], [[type-propagation-on-in-place-socket-retype#A trueany output declares its passthrough]]
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -44,7 +44,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(dead).toEqual([]);
   });
 
-  // [[B12]] losslessSaves, the uniqueness half. The save format stores
+  // [[save-format#A save loses nothing quietly]], the uniqueness half. The save format stores
   // `type: n.constructor.name` and the ctor registry maps name → class
   // FIRST-WINS (nodeCtorRegistry) — so two classes sharing a name means every
   // saved instance of the loser reconstructs as the WRONG class: the init
@@ -52,7 +52,7 @@ describe("catalog ↔ registry consistency", () => {
   // still fit re-attach, and the graph opens looking mostly right while
   // computing something else. No placeholder fires — that path needs an ABSENT
   // type, and a collision is indistinguishable from a hit.
-  it("no two catalog classes share a constructor name ([[B12]] losslessSaves)", () => {
+  it("no two catalog classes share a constructor name ([[save-format#A save loses nothing quietly]])", () => {
     const byName = new Map<string, Set<unknown>>();
     for (const entry of FLAT_CATALOG.values()) {
       let inst: object;
@@ -65,12 +65,12 @@ describe("catalog ↔ registry consistency", () => {
     expect(collisions, `class-name collisions — saves of the losing class reload as the winner: ${collisions.join(", ")}`).toEqual([]);
   });
 
-  // [[B12]] losslessSaves, the SHAPE half. A persisted `type` must be a real class name
+  // [[save-format#A save loses nothing quietly]], the SHAPE half. A persisted `type` must be a real class name
   // — a Capitalized identifier of some length — never a minifier's single letter.
   // This runs UNMINIFIED so it can't see a bad production build directly (that is
   // scripts/check-dist-classnames.mjs on postbuild); it pins the source invariant
   // so a class deliberately named `A`, or an accidental non-identifier, fails here.
-  it("every catalog class name is a real identifier, >= 4 chars ([[B12]] losslessSaves)", () => {
+  it("every catalog class name is a real identifier, >= 4 chars ([[save-format#A save loses nothing quietly]])", () => {
     const bad: string[] = [];
     for (const entry of FLAT_CATALOG.values()) {
       let name: string;

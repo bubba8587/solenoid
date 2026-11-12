@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C28]] literalsIffEditable, [[save-format#Every save passes through the text form]], [[save-format#Node lines]]
+// [[save-format#A save loses nothing quietly]], [[C28]] literalsIffEditable, [[save-format#Every save passes through the text form]], [[save-format#Node lines]]
 import { describe, it, expect } from "vitest";
 import { isDeepStrictEqual } from "node:util";
 import type { GraphNode } from "../../src/graph/graphModel";
@@ -64,7 +64,7 @@ function roundTrip(n: GraphNode): string | null {
   return problems.length ? problems.join(", ") : null;
 }
 
-describe("[[B12]] losslessSaves: every catalog node survives the text form with a cable on every socket", () => {
+describe("[[save-format#A save loses nothing quietly]]: every catalog node survives the text form with a cable on every socket", () => {
   it("default instances", () => {
     const broken: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {

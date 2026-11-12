@@ -2,11 +2,11 @@
 aliases: ["Composite nodes"]
 tags: [spec, computation]
 ---
-<!-- [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] pipelineIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
+<!-- [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] pipelineIsCompositePreset, [[C35]] unknownViaPlaceholder, [[save-format#A save loses nothing quietly]], [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
 
 # Spec: Composite nodes
 
-Serves [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] pipelineIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] pipelineIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[save-format#A save loses nothing quietly]], [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves.
 
 This file owns the Composite card: its value model, its boundary ports and markers, every run mode, the heavy-mode hold, loops inside a composite, making a composite from a selection and unpacking it, how it saves and loads, and how edits inside it reach the outside. How the drill-in canvas mounts, leaves, undoes and substitutes the active graph is [[composite-drill-in-mount-lifecycle]]; this file only names the points where the drill-in calls into the composite. The outer pass that retargets an inner edit onto the owning card is [[compute-pass]]. The save shape of `init.internal` is also summarized in [[save-format]].
 

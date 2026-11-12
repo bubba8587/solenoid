@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[react-flow-surface-contract#Format Controller docking]], [[format-model#The FC card]], [[type-propagation-on-in-place-socket-retype#Three derived-type systems, one settle point]]
+// [[save-format#A save loses nothing quietly]], [[react-flow-surface-contract#Format Controller docking]], [[format-model#The FC card]], [[type-propagation-on-in-place-socket-retype#Three derived-type systems, one settle point]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";

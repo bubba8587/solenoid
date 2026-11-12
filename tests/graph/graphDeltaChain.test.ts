@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[react-flow-surface-contract#Undo history]]
+// [[save-format#A save loses nothing quietly]], [[react-flow-surface-contract#Undo history]]
 // A run of edits a person might make, each made live and captured as the history captures it, then undone step by
 // step and redone again by delta: every step lands the save and the answers the canvas had when it was captured.
 // Stress it with more steps and other draws: STEPS=25 SALT=3 npx vitest run tests/graph/graphDeltaChain.test.ts The edits are drawn from a fixed seed per example, so a failure reproduces.

@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[B16]] oneFormulaSurface
+// [[save-format#A save loses nothing quietly]], [[B16]] oneFormulaSurface
 // The text form a save passes through (`crates/solenoid-graph/src/text_form.rs`): the core writes and reads it; the
 // node names and the init field order are the app's.
 import { withImpliedRows } from "./textFormRows";

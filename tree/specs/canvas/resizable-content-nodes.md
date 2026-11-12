@@ -2,11 +2,11 @@
 aliases: ["Resizable-content nodes"]
 tags: [spec, canvas]
 ---
-<!-- [[B12]] losslessSaves -->
+<!-- [[save-format#A save loses nothing quietly]] -->
 
 # Spec: Resizable-content nodes
 
-Serves [[B12]] losslessSaves. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[save-format#A save loses nothing quietly]]. It covers what the system does and blocks, and the decision each behavior serves.
 
 Some nodes render content whose size changes with live input: a slider, a drag, a growing list. For these, the **node body stays a constant size** (it is the node's hit area and the `offsetParent` its contents position against), and the visible content overflows it. The node's top-left corner then never moves as the content changes, so nothing has to re-center it.
 

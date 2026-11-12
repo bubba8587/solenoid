@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[B12]] losslessSaves
+// [[C86]] membershipByGesture, [[save-format#A save loses nothing quietly]]
 // A deleted card leaves every group that held it, so neither the group nor the save written from it names a card
 // that is gone (the save had carried the dead card's per-load id where a name belongs).
 import { it, expect, vi } from "vitest";

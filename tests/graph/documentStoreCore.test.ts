@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[per-doc-autosave-persistence#Change detection is object identity]]
+// [[save-format#A save loses nothing quietly]], [[per-doc-autosave-persistence#Change detection is object identity]]
 import { describe, it, expect } from "vitest";
 import {
   emptyLibrary,
@@ -221,7 +221,7 @@ function deepFreeze<T>(o: T): T {
   return o;
 }
 
-describe("[[B12]] losslessSaves — every transform returns new objects, never mutates (identity is the persist signal)", () => {
+describe("[[save-format#A save loses nothing quietly]] — every transform returns new objects, never mutates (identity is the persist signal)", () => {
   const frozenLib = (): DocLibrary =>
     deepFreeze(addDocument(addDocument(emptyLibrary(), doc("a", "A")), doc("b", "B")));
 

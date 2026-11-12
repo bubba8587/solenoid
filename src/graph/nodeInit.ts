@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[save-format#A save loses nothing quietly]]
 // What a save holds of a card: its init fields, captured as plain JSON. Free of the editor, so a card's body on the
 // core (nodeOnCore.ts) and the Obsidian plugin can read it.
 import type { GraphNode } from "./graphModel";

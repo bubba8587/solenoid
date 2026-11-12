@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[B18]] safeToShare
+// [[save-format#A save loses nothing quietly]], [[B18]] safeToShare
 import { describe, it, expect } from "vitest";
 import { WriteFileNode } from "../../../src/graph/nodeClasses";
 

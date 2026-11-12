@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[save-format#The strict validator]]
+// [[save-format#A save loses nothing quietly]], [[save-format#The strict validator]]
 
 import type { GraphNode } from "../../src/graph/graphModel";
 import { describe, it, expect } from "vitest";

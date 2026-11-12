@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C10]] socketLattice, [[conduit-lane-faces#Rotation]], [[conduit-lane-faces#Lane count and expansion]],
+// [[save-format#A save loses nothing quietly]], [[C10]] socketLattice, [[conduit-lane-faces#Rotation]], [[conduit-lane-faces#Lane count and expansion]],
 // [[conduit-lane-faces#The toolbar]], [[react-flow-surface-contract#Deleting a selection]]
 import { describe, it, expect } from "vitest";
 import { ConduitNode, conduitGhostSpecs, conduitLaneOf, conduitSeqTaken } from "../../../src/graph/nodes/conduit";

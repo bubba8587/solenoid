@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator (the snapshot history), [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator (the snapshot history), [[save-format#A save loses nothing quietly]]
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding, withGraphRebuild } from "../process";

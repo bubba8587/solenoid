@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator, [[composite-nodes#Save and load]]
+// [[save-format#A save loses nothing quietly]], [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator, [[composite-nodes#Save and load]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

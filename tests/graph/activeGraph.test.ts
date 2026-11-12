@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[composite-drill-in-mount-lifecycle#The canvas-substitution seam]], [[save-format#Saving binds the main graph]]
+// [[save-format#A save loses nothing quietly]], [[composite-drill-in-mount-lifecycle#The canvas-substitution seam]], [[save-format#Saving binds the main graph]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

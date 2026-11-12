@@ -2,11 +2,11 @@
 aliases: ["Per-doc autosave persistence"]
 tags: [spec, documents]
 ---
-<!-- [[B12]] losslessSaves -->
+<!-- [[save-format#A save loses nothing quietly]] -->
 
 # Spec: Per-doc autosave persistence
 
-Serves [[B12]] losslessSaves. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[save-format#A save loses nothing quietly]]. It covers what the system does and blocks, and the decision each behavior serves.
 
 Autosave keeps the user's whole document library in the browser's `localStorage`. Every document has its own pair of slots, and one small index pair lists the documents.
 
@@ -27,7 +27,7 @@ Tests: `documentStorePersist.test.ts` ("per-doc autosave keys"), through the rea
 
 ## Two slots per pair
 
-Each pair rotates so a crash in the middle of a write never destroys the only good copy ([[B12]] losslessSaves). **MUST:** a pair always writes the older slot and reads the newer one; a slot's `seq` is a strictly increasing counter kept for the session, never a raw clock reading; `seq` is the first key of every slot payload. The last two each close a way the rotation could silently bring back an older write, as the bullets below say.
+Each pair rotates so a crash in the middle of a write never destroys the only good copy ([[save-format#A save loses nothing quietly]]). **MUST:** a pair always writes the older slot and reads the newer one; a slot's `seq` is a strictly increasing counter kept for the session, never a raw clock reading; `seq` is the first key of every slot payload. The last two each close a way the rotation could silently bring back an older write, as the bullets below say.
 
 ```mermaid
 flowchart LR
@@ -71,7 +71,7 @@ Tests: `documentStorePersist.test.ts`: deleting a document removes its keys.
 
 ## Swapping documents
 
-**MUST:** every `documentStore` verb that changes which document is on screen calls `captureCurrent()` before switching and guards on `isGraphRebuilding()`. A capture that cannot serialize returns false, raises one sticky notice, and the verb stays on the document, since switching would drop its unsaved canvas. Without the capture, edits made within the autosave delay are discarded; without the guard, the verb can race a load and serialize a half-built canvas into the current document ([[B12]] losslessSaves). The exceptions carry their reason:
+**MUST:** every `documentStore` verb that changes which document is on screen calls `captureCurrent()` before switching and guards on `isGraphRebuilding()`. A capture that cannot serialize returns false, raises one sticky notice, and the verb stays on the document, since switching would drop its unsaved canvas. Without the capture, edits made within the autosave delay are discarded; without the guard, the verb can race a load and serialize a half-built canvas into the current document ([[save-format#A save loses nothing quietly]]). The exceptions carry their reason:
 
 - `restore` runs at startup, when nothing is live yet;
 - `remove` skips the capture because the document is going away, and capturing would resurrect its dying edits; `removeFolder` skips it for the same reason, since every document under the folder goes;
@@ -113,7 +113,7 @@ Tests: `draftFlush.test.ts`: every registered draft commits once and a failing o
 
 ## Change detection is object identity
 
-`persist()` decides a document changed by comparing object references (`_lastPersisted.get(id) === doc` skips the write). **MUST:** every `documentStoreCore` transform returns a new `SolDoc` for each document it changes (`{ ...d, … }`), and never mutates a document in place. An in-place mutation still updates the screen, but `persist()` sees the same reference and never writes it, so the edit vanishes on the next reload ([[B12]] losslessSaves). Mutating a document you just created, before its first persist, is fine; `importAsDocument` does this. A future transform that needs to touch a document copies it first.
+`persist()` decides a document changed by comparing object references (`_lastPersisted.get(id) === doc` skips the write). **MUST:** every `documentStoreCore` transform returns a new `SolDoc` for each document it changes (`{ ...d, … }`), and never mutates a document in place. An in-place mutation still updates the screen, but `persist()` sees the same reference and never writes it, so the edit vanishes on the next reload ([[save-format#A save loses nothing quietly]]). Mutating a document you just created, before its first persist, is fine; `importAsDocument` does this. A future transform that needs to touch a document copies it first.
 
 A capture whose graph equals the stored one leaves the library as it was (`updateCurrentGraph`), so the document keeps its `updatedAt` and is not rewritten. Equal means equal as JSON would write it: key order, keys holding `undefined` and the file's `savedAt` stamp don't count.
 

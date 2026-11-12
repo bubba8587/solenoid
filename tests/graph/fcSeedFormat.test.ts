@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C118]] formatTravelsWithValue, [[format-model#The FC card]]
+// [[save-format#A save loses nothing quietly]], [[C118]] formatTravelsWithValue, [[format-model#The FC card]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";

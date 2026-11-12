@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[D99]] rustIsSpec, [[save-format#The text form]]
+// [[save-format#A save loses nothing quietly]], [[D99]] rustIsSpec, [[save-format#The text form]]
 //! The text form held to the frozen answers in `fixtures/core/text-form.json.gz`.
 
 use std::io::Read;

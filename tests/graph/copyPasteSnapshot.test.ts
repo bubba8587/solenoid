@@ -142,7 +142,7 @@ describe("paste", () => {
 });
 
 describe("paste carries the card's own look", () => {
-  it("size and frame column formats come with the clone ([[B12]] losslessSaves)", async () => {
+  it("size and frame column formats come with the clone ([[save-format#A save loses nothing quietly]])", async () => {
     const src = await add(new DisplayNode());
     nodeSizeStore.set(src.id, { w: 320, h: 240 });
     frameFormatStore.set(src.id, "price", { format: "currency", unit: "" } as FormatAnnotation);

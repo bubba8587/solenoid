@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[B12]] noForwardCompat, [[save-format#A save loses nothing quietly]]
 import { flushDrafts } from "./draftFlush";
 import { isDesktop, isAndroidApp } from "./fileBridge";
 import { GraphConnection, GraphNode } from "./graphModel";

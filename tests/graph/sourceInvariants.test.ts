@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[B18]] safeToShare, [[D79]], [[B11]], [[D22]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull, [[components#The rules]]
+// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[save-format#A save loses nothing quietly]], [[B18]] safeToShare, [[D79]], [[B11]], [[D22]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull, [[components#The rules]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -299,7 +299,7 @@ describe("[[C26]] opArgDistinct — OP pickers bind `op`, ARG pickers never do",
   });
 });
 
-describe("[[B12]] losslessSaves — the text form carries every SavedGraph field, both directions", () => {
+describe("[[save-format#A save loses nothing quietly]] — the text form carries every SavedGraph field, both directions", () => {
   // serializeGraph() returns readTextForm(writeTextForm(raw)) — the text form is
   // the NARROW WAIST of the save path, so a SavedGraph field that either
   // direction omits is deleted from EVERY save, and autosave then writes the
@@ -342,14 +342,14 @@ describe("[[B12]] losslessSaves — the text form carries every SavedGraph field
     }
     expect(
       missing,
-      `SavedGraph fields the text-form narrow waist drops ([[B12]] losslessSaves) — the field ` +
+      `SavedGraph fields the text-form narrow waist drops ([[save-format#A save loses nothing quietly]]) — the field ` +
       `will silently vanish from every save until both directions carry it:\n  ` +
       missing.join("\n  "),
     ).toEqual([]);
   });
 });
 
-describe("[[B12]] losslessSaves — class names are load-bearing: keepNames stays in both bundler configs", () => {
+describe("[[save-format#A save loses nothing quietly]] — class names are load-bearing: keepNames stays in both bundler configs", () => {
   // `constructor.name` is not a label here — it is the TYPE written into every
   // save (persistence.ts), the ctor-registry key that loads resolve through, and
   // a dispatch key (the graph core's SEES_ERRORS and LAZY_FRAME_NODES, groupCollapse, pinStore…). A build without
@@ -597,7 +597,7 @@ describe("[[D79]] effectsEdgeTriggered — an outward effect from data() gates o
   });
 });
 
-describe("[[B12]] losslessSaves — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
+describe("[[save-format#A save loses nothing quietly]] — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
   // [[per-doc-autosave-persistence#Swapping documents]]
   const SANCTIONED: Record<string, string> = {
     restore: "startup — no live graph exists to capture yet; the refused-doc fallback (audit 20p) is its own guard",
@@ -631,7 +631,7 @@ describe("[[B12]] losslessSaves — every documentStore verb that swaps the canv
     }
     expect(
       offenders,
-      `documentStore verbs that swap the canvas without the discipline ([[B12]] losslessSaves):\n  ` +
+      `documentStore verbs that swap the canvas without the discipline ([[save-format#A save loses nothing quietly]]):\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });

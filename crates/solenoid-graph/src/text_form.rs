@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[B16]] oneFormulaSurface, [[C130]] rustCore
+// [[save-format#A save loses nothing quietly]], [[B16]] oneFormulaSurface, [[C130]] rustCore
 //! The text form a save passes through (`tree/specs/documents/save-format.md` § The text form); the app names the nodes
 //! and owns the init field order (`textForm.ts`), everything else is here.
 

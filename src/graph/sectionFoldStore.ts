@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[save-format#A save loses nothing quietly]]
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

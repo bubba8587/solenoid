@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[A1]] visualGraphCalculator (the snapshot history), [[react-flow-surface-contract#Undo history]]
+// [[save-format#A save loses nothing quietly]], [[A1]] visualGraphCalculator (the snapshot history), [[react-flow-surface-contract#Undo history]]
 // Undo and redo move the live canvas to a saved graph by changing only what differs: the cards whose saved body
 // changed are rebuilt, moved cards move, cables come and go, and one pass recomputes what
 // those changes reach. Everything else keeps its node, its caches and its view.

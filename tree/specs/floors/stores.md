@@ -2,7 +2,7 @@
 aliases: ["Module-singleton stores"]
 tags: [spec, floors]
 ---
-<!-- [[A1]] visualGraphCalculator, [[B12]] losslessSaves, [[C106]] noNativeDialogs; covers: src/graph/*Store.ts, src/graph/storeKit.ts, src/graph/nodeStoreRegistry.ts -->
+<!-- [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]], [[C106]] noNativeDialogs; covers: src/graph/*Store.ts, src/graph/storeKit.ts, src/graph/nodeStoreRegistry.ts -->
 
 # Spec: Module-singleton stores
 

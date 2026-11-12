@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C69]]
+// [[save-format#A save loses nothing quietly]], [[C69]]
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";

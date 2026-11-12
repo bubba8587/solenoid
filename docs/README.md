@@ -131,7 +131,7 @@ results get retried and settled rulings relapse.
 | `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[A1]] visualGraphCalculator |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; `../tree/specs/canvas/pointer-gestures.md` |
 | `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | [[B3]] sameNodeEverywhere; `../tree/specs/canvas/react-flow-surface-contract.md`; [[A1]] visualGraphCalculator |
-| `flow/flowHistory.ts`, `flow/flowHistoryDigest.ts`, `graphDelta.ts` | [[A1]] visualGraphCalculator, [[B12]] losslessSaves; `../tree/specs/canvas/react-flow-surface-contract.md` § Undo history |
+| `flow/flowHistory.ts`, `flow/flowHistoryDigest.ts`, `graphDelta.ts` | [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]; `../tree/specs/canvas/react-flow-surface-contract.md` § Undo history |
 | `graphCompute.ts`, `process.ts`, `editReach.ts`, `passSession.ts`, `calcModeStore.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs`, `session.rs`, `pass.rs` (the pass and the input boundary) | `../tree/specs/computation/compute-pass.md`; [[C23]] calcModes; `../tree/specs/values/error-values.md` |
 | `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | [[B3]] sameNodeEverywhere; `../tree/specs/canvas/react-flow-surface-contract.md`; [[A1]] visualGraphCalculator; `../DESIGN.md` § Cards |
 | `connectionStore.ts`, `httpBridge.ts`, `src-tauri/src/net.rs`, `dataProviders.ts`, `crates/solenoid-core/src/providers.rs`, live-source fetch | [[C23]] calcModes; `../tree/specs/computation/live-connections.md` |
@@ -159,8 +159,8 @@ results get retried and settled rulings relapse.
 | `formatModel.ts`, `formatController.ts`, FC controls | `tree/specs/values/format-model.md` |
 | `alertStore.ts` | [[D79]] effectsEdgeTriggered; `../tree/specs/computation/alert-node-alerts-hud.md` |
 | `nodeNameStore.ts` | [[B16]] oneFormulaSurface; `../tree/specs/documents/addressable-model.md` |
-| `persistence.ts`, `textForm.ts`, `crates/solenoid-graph/src/text_form.rs`, `graphValidate.ts`, `fileSession.ts` | [[B12]] losslessSaves; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
-| `documentStore.ts`, `documentStoreCore.ts` | [[B12]] losslessSaves; `../tree/specs/documents/per-doc-autosave-persistence.md` |
+| `persistence.ts`, `textForm.ts`, `crates/solenoid-graph/src/text_form.rs`, `graphValidate.ts`, `fileSession.ts` | [[save-format#A save loses nothing quietly]]; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
+| `documentStore.ts`, `documentStoreCore.ts` | [[save-format#A save loses nothing quietly]]; `../tree/specs/documents/per-doc-autosave-persistence.md` |
 | `persistence.ts` (load gate, literal maps), `literalFields.ts`, `crates/solenoid-core/src/nodes/fields.rs`, `components/inlineInput.tsx` (`KeyedField`, `LogicalCheck`), `ExtensibleInputs.tsx`, `PairedExtensibleInputs.tsx` | [[C28]] literalsIffEditable; `../tree/specs/documents/inline-literal-maps.md` (§ One field per input, § Wildcard slots) |
 | `components/CollapsedCell.tsx` + `.css`, `NodeShell cellCollapse` | `../tree/specs/floors/components.md` § Card chrome (Cell collapse) |
 | `flow/FlowCompositeOverlay.tsx`, `flow/drillStack.ts`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` |

@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[save-format#The capture is a fixed point, and plain JSON]], [[save-format#Every field is persisted or deliberately transient]]
+// [[save-format#A save loses nothing quietly]], [[save-format#The capture is a fixed point, and plain JSON]], [[save-format#Every field is persisted or deliberately transient]]
 import { describe, it, expect } from "vitest";
 import type { GraphNode } from "../../src/graph/graphModel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -107,7 +107,7 @@ describe("everything extractInit captures survives a JSON round trip", () => {
   });
 });
 
-describe("[[B12]] losslessSaves: a grown row keeps the socket order a reload rebuilds", () => {
+describe("[[save-format#A save loses nothing quietly]]: a grown row keeps the socket order a reload rebuilds", () => {
   it("every row-growing catalog node reloads with its live input order", () => {
     const moved: string[] = [];
     for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
@@ -148,7 +148,7 @@ describe("literal values never enter init", () => {
 
 
 
-describe("[[B12]] losslessSaves — every own field is persisted or deliberately transient", () => {
+describe("[[save-format#A save loses nothing quietly]] — every own field is persisted or deliberately transient", () => {
   // extractInit's BESPOKE extras: object-valued fields captured by dedicated
   // blocks inside extractInit rather than the flat whitelist (deep-copy /
   // filtering semantics). Kept in sync by the honesty check below.
@@ -277,7 +277,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     }
     expect(
       [...offenders.entries()].map(([k, o]) => `${k} (${o.join(", ")})`),
-      `Unclassified node fields ([[B12]] losslessSaves): each must either persist (whitelist / ` +
+      `Unclassified node fields ([[save-format#A save loses nothing quietly]]): each must either persist (whitelist / ` +
       `bespoke extras) or join DELIBERATELY_TRANSIENT with the reason — the ` +
       `asofDirection bug is what an unclassified field looks like.`,
     ).toEqual([]);
@@ -306,7 +306,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 
 // ─── [[save-format#What a save deliberately omits]]: the size-owner set ──────────────────
 
-describe("[[B12]] losslessSaves — the size-owner set is exactly the declared list", () => {
+describe("[[save-format#A save loses nothing quietly]] — the size-owner set is exactly the declared list", () => {
   const SIZE_OWNERS = new Set([
     "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
     "composite", "pipeline",                     // the composite card (pipeline = its preset)
@@ -330,7 +330,7 @@ describe("[[B12]] losslessSaves — the size-owner set is exactly the declared l
     expect(
       adopts,
       `These classes now adopt persisted width/height but are not declared ` +
-      `SIZE_OWNERS ([[B12]] losslessSaves) — declare them (is the size a user gesture?), ` +
+      `SIZE_OWNERS ([[save-format#A save loses nothing quietly]]) — declare them (is the size a user gesture?), ` +
       `or stop consuming the init`,
     ).toEqual([]);
     expect(

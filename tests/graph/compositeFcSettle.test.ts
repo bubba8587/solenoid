@@ -1,4 +1,4 @@
-// [[B11]] maximalMerge, [[C118]] formatTravelsWithValue, [[B12]] losslessSaves
+// [[B11]] maximalMerge, [[C118]] formatTravelsWithValue, [[save-format#A save loses nothing quietly]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

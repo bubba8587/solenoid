@@ -2,11 +2,11 @@
 aliases: ["Components"]
 tags: [spec, floors]
 ---
-<!-- [[B19]] spreadsheetHabits, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem, [[A1]] visualGraphCalculator; covers: src/graph/components/*.tsx, src/graph/flow/*.tsx, src/graph/*.tsx -->
+<!-- [[B19]] spreadsheetHabits, [[save-format#A save loses nothing quietly]], [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem, [[A1]] visualGraphCalculator; covers: src/graph/components/*.tsx, src/graph/flow/*.tsx, src/graph/*.tsx -->
 
 # Spec: Components
 
-Serves [[B19]] spreadsheetHabits, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere and [[B14]] oneDesignSystem.
+Serves [[B19]] spreadsheetHabits, [[save-format#A save loses nothing quietly]], [[B3]] sameNodeEverywhere and [[B14]] oneDesignSystem.
 
 What every React component in the app is built to. A component that implements a specific mechanism cites that mechanism's leaf in its own header; this spec is the floor every one of them stands on, and its `covers:` line is what `dte blast` and `dte coverage` read instead of a citation per file. The first section is the rules; the rest describes the shared card kit that almost every node component is assembled from: the card shell, the value box, the input rows and manual resize. How a socket anchors and how a cable finds it is [[react-flow-surface-contract]]; visual rules (color, type, spacing) are DESIGN.md.
 
