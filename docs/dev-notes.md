@@ -97,6 +97,25 @@ specific item.
   release itself: the What's New deck's 1.6.2 slides, and the author's `build:wasm:opt`.
 - Another session pushes to `develop` at the same time: `git pull --rebase` before each push, and rebuild the wasm
   when both sides touched Rust (`source-stamp.txt` conflicts; take either side and run `npm run build:wasm`).
+- **Later the same session, with the author:** stacked Column, Bar and Area charts (`stacked=True` or `percent`); a
+  new card, **Categorize** (`tree/specs/computation/categorize.md`), whose sorter shares the Pivot editor's Fields list
+  and chips (`FieldChips.tsx`) and saves its sort by item and category name; the Chart Builder's picks lose their
+  sockets (`CB_PICK_FIELDS`, a class's `savedFields` for the validator) and every on/off option is a checkbox on a
+  two-column grid that knows the figure's default; Schedule, Gantt and Earned Value pick their weekend by name
+  (`WeekendPick.tsx`). A Display, a Dashboard box and a Report show a frame in its popup's default view
+  (`specialFrameView`); Describe's view is Profile, rebuilt on the Record Gallery's masonry (`MasonryGallery.tsx`) with
+  a stat strip, a median rule and a color per column from `useDataColors` (the series colors without the error red and
+  the gray; Categorize uses them too). Fixed on the way: a Cards figure's tracks rounded up past their box, so a sized
+  Display's scrollbar flashed (tracks floor now); a list field showed "a, b, c" whatever it declared.
+- **What the author caught that a test had not:** DESIGN.md was skipped before the sorter's first draft (colored
+  borders round neutral bodies, ad-hoc mixes, a text ×, gesture-narrating hints); read it before the first line of any
+  UI. A popup laid out by width snapped categories between rows on resize; lay out by count. Long items and 16 to 24
+  categories were not tried until asked; try the extremes of the data before showing a view.
+- **Ways to check a UI here:** `shot-graph.mjs` `--wait` is one wait before every step, not a pause between them, so a
+  check of undo after an edit belongs in a delta test (`graphDelta.test.ts` § Categorize), not a screenshot. A real
+  HTML5 drag works with `--drag`. On a phone (`--size 390x844`) a card's button takes two taps, the first selects.
+- **Open, small:** a light-mode Profile shot once came out one narrow column with no header and never again in three
+  runs; if it is seen in the app, the masonry measured the popup mid-open.
 
 ### SESSION DIGEST (2026-11-12b: card body spacing and alignment sweep; cloud session)
 - Every catalog card was mounted and shot (a scratch gallery script: `FLAT_CATALOG` create, `view.zoom(1)`, element

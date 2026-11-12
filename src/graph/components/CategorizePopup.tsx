@@ -9,7 +9,7 @@ import { categoriesText, categoryOf, dropCategory, moveItems, nextCategoryName, 
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { FieldChip, FieldsPanel, startChipDrag } from "./FieldChips";
 import { useConnectedInputs, useDraftCommit } from "./inlineInput";
-import { useSeriesColors } from "./chartCore";
+import { useDataColors } from "./chartCore";
 import { CloseIcon } from "./CloseIcon";
 import "./CategorizePopup.css";
 
@@ -43,7 +43,7 @@ export function CategorizePopup() {
   const lastPick = useRef<string | null>(null);
   const connected = useConnectedInputs(state?.node.id ?? "");
   // Each category wears a palette color, as a chart's series do, so the columns read apart at a glance.
-  const colors = useSeriesColors();
+  const colors = useDataColors();
   useEffect(() => { setPicked(new Set()); }, [state]);
 
   if (!state) return null;
@@ -167,7 +167,7 @@ export function CategorizePopup() {
         {/* The columns per row follow the category count alone, never the popup's width, so a resize stretches the
             columns and never moves a category to another row: at most five, the rows balanced (7 is 4 and 3). Below 130
             pixels a column, the grid scrolls sideways rather than squeezing. */}
-        <div className="categorize-grid" style={{ gridTemplateColumns: `repeat(${perRow(names.length)}, minmax(130px, 1fr))` }}>
+        <div className="categorize-grid" style={{ "--per-row": perRow(names.length) } as React.CSSProperties}>
           {names.map(zone)}
         </div>
         {wired && names.length === 0 && <div className="pivot-zone__hint">The Categories cable carries no names.</div>}

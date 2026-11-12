@@ -4,7 +4,18 @@
 .categorize-editor { width: 880px; }
 .categorize-editor__body { display: flex; flex-direction: column; gap: 10px; overflow: auto; flex: 1 1 auto; min-height: 0; }
 .categorize-editor .pivot-fields__list { max-height: 26vh; overflow: auto; }
-.categorize-grid { display: grid; gap: 8px; align-items: start; overflow-x: auto; flex: none; }
+.categorize-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--per-row, 3), minmax(130px, 1fr));
+  gap: 8px;
+  align-items: start;
+  overflow-x: auto;
+  flex: none;
+}
+/* A phone sets two categories a row, each the half of the screen, rather than a row it scrolls sideways through. */
+@media (max-width: 640px) {
+  .categorize-grid { grid-template-columns: repeat(min(var(--per-row, 2), 2), minmax(0, 1fr)); }
+}
 
 .categorize-zone { display: flex; flex-direction: column; min-width: 0; }
 .categorize-zone__head {
