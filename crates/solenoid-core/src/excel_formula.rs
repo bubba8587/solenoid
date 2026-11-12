@@ -689,7 +689,7 @@ pub fn wholly_parenthesized(src: &str) -> bool {
     let (mut depth, mut quoted) = (0i32, false);
     for (i, c) in t.char_indices() {
         match c {
-            '"' => quoted = !quoted,
+            '"' => quoted.toggle(),
             '(' if !quoted => depth += 1,
             ')' if !quoted => {
                 depth -= 1;

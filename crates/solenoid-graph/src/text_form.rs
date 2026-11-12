@@ -407,7 +407,7 @@ fn tokens(s: &str) -> Vec<&str> {
             match (in_str, b[i]) {
                 (true, b'\\') => i += 2,
                 (true, b'"') | (false, b'"') => {
-                    in_str = !in_str;
+                    in_str.toggle();
                     i += 1;
                 }
                 (false, b' ') => break,

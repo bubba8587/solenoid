@@ -790,7 +790,7 @@ pub fn filter_rows_multi(
         let mut kept = combine == FilterCombine::And;
         for (j, pred) in preds.iter_mut().enumerate() {
             if pred(cols[j].cell_at(i))? != kept {
-                kept = !kept;
+                kept.toggle();
                 break;
             }
         }
