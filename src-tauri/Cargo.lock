@@ -4374,6 +4374,7 @@ dependencies = [
  "libm",
  "md-5",
  "qrcodegen",
+ "quick-xml",
  "rustc-hash",
  "ryu-js",
  "serde",
@@ -4386,6 +4387,7 @@ dependencies = [
  "unicode-normalization",
  "uuid",
  "wasm-bindgen",
+ "zip",
 ]
 
 [[package]]
