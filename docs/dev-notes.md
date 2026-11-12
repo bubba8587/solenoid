@@ -17,7 +17,7 @@ specific item.
   shell change was unbuilt here (the author's no-`src-tauri`-builds rule); CI's Rust supply chain `shell` job compiled
   and tested it. A new crate means `node scripts/rust-licenses.mjs` (needs `cargo install cargo-about --features cli`).
 - A workbook formula with no saved answer is its own code, `#UNCALC!` (ERROR.TYPE 8, as Excel's #GETTING_DATA;
-  `error-values.md`). Local File and Web Source fold All matching, Dates and Auto-refresh into Options, and an idle
+  `tree/specs/values/error-values.md`). Local File and Web Source fold All matching, Dates and Auto-refresh into Options, and an idle
   card's message replaces "Not connected". The demo vault holds `Data/sales-targets.xlsx` and reads binary files.
 - Seen, not touched: the table popup's footer Sum skips error cells (a column holding `#UNCALC!` still sums).
 - Self-hosting: `docs/self-hosting.md` is the proposal for the engineering team (SharePoint via Microsoft Graph, or
