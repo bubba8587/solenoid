@@ -49,15 +49,16 @@ function skyOf(condition: string): Sky | null {
   return "cloud";
 }
 
-const CLOUD = "M17 34h20a7 7 0 0 0 .6-14 10 10 0 0 0-19.2-2.6A8.3 8.3 0 0 0 17 34z";
+/** One cumulus at the origin's scale: a flat base, a small left puff, a tall middle one and a right shoulder. */
+const CLOUD = "M14.5 36h25a7.5 7.5 0 0 0 1.2-14.9A10.5 10.5 0 0 0 20.6 18.4 8.6 8.6 0 0 0 14.5 36z";
 
-function Sun({ x, y, r }: { x: number; y: number; r: number }) {
-  const rays = Array.from({ length: 8 }, (_, i) => {
-    const a = (i * Math.PI) / 4;
+function Sun({ x, y, r, rays = 8, from = 0 }: { x: number; y: number; r: number; rays?: number; from?: number }) {
+  const lines = Array.from({ length: rays }, (_, i) => {
+    const a = from + (i * Math.PI * 2) / 8;
     const [c, s] = [Math.cos(a), Math.sin(a)];
-    return <line key={i} className="sol-art__ray" x1={x + c * (r + 3)} y1={y + s * (r + 3)} x2={x + c * (r + 6)} y2={y + s * (r + 6)} />;
+    return <line key={i} className="sol-art__ray" x1={x + c * (r + 2.6)} y1={y + s * (r + 2.6)} x2={x + c * (r + 5.4)} y2={y + s * (r + 5.4)} />;
   });
-  return <g>{rays}<circle className="sol-art__sun" cx={x} cy={y} r={r} /></g>;
+  return <g>{lines}<circle className="sol-art__halo" cx={x} cy={y} r={r + 1.6} /><circle className="sol-art__sun" cx={x} cy={y} r={r} /></g>;
 }
 
 /** The current condition as a small picture; nothing fetched yet draws a faded cloud. */
@@ -82,16 +83,28 @@ export function SkyAt({ condition, x, y, width }: { condition: string; x: number
 }
 
 function SkyGlyph({ sky }: { sky: Sky | null }) {
+  // A cloud over weather sits high, leaving the bottom of the box for what falls from it; a partly cloudy one sits
+  // low and left, clear of the sun.
+  const [dx, dy] = sky === "partly" ? [-3, 3] : sky === "rain" || sky === "snow" || sky === "storm" || sky === "fog" ? [0, -5] : [0, 0];
+  const front = <path className="sol-art__cloud" d={CLOUD} transform={`translate(${dx} ${dy})`} />;
   return (
     <>
-      {sky === "clear" && <Sun x={27} y={23} r={8} />}
-      {sky === "partly" && <Sun x={20} y={17} r={6} />}
-      {sky === "cloud" && <path className="sol-art__cloud sol-art__cloud--back" d={CLOUD} transform="translate(8 -7) scale(0.8)" />}
-      {sky !== "clear" && <path className="sol-art__cloud" d={CLOUD} />}
-      {sky === "fog" && [38, 42].map((y, i) => <line key={y} className="sol-art__fog" x1={14 + i * 4} y1={y} x2={40 + i * 2} y2={y} />)}
-      {sky === "rain" && [20, 27, 34].map((x) => <line key={x} className="sol-art__drop" x1={x} y1="38" x2={x - 2} y2="43" />)}
-      {sky === "snow" && [20, 27, 34].map((x, i) => <circle key={x} className="sol-art__flake" cx={x} cy={i % 2 ? 42 : 39} r="1.5" />)}
-      {sky === "storm" && <path className="sol-art__bolt" d="M29 33l-5 7h4l-2 6 7-8h-4l2-5z" />}
+      {sky === "clear" && <Sun x={27} y={23} r={9} />}
+      {sky === "partly" && <Sun x={34} y={15} r={7.5} rays={5} from={-Math.PI * 0.75} />}
+      {sky === "cloud" && <path className="sol-art__cloud sol-art__cloud--back" d={CLOUD} transform="translate(13 -7) scale(0.78)" />}
+      {sky !== "clear" && front}
+      {sky === "fog" && [[13, 36, 34], [19, 41, 30]].map(([x, y, w]) => <line key={y} className="sol-art__fog" x1={x} y1={y} x2={x + w} y2={y} />)}
+      {sky === "rain" && [18, 26, 34].map((x, i) => <line key={x} className="sol-art__drop" x1={x + 1.5} y1={35 + (i % 2) * 2} x2={x - 1} y2={41 + (i % 2) * 2} />)}
+      {sky === "snow" && [[18, 36.5], [27, 41], [36, 36.5]].map(([x, y]) => <Flake key={x} x={x} y={y} />)}
+      {sky === "storm" && <path className="sol-art__bolt" d="M28.5 27l-6 9h4.6l-2.6 8.5 9-11h-4.8l3-6.5z" />}
     </>
+  );
+}
+
+function Flake({ x, y }: { x: number; y: number }) {
+  return (
+    <g className="sol-art__flake">
+      {[0, 60, 120].map((a) => <line key={a} x1={x - 3.2} y1={y} x2={x + 3.2} y2={y} transform={`rotate(${a} ${x} ${y})`} />)}
+    </g>
   );
 }
