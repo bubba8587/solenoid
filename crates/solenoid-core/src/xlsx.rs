@@ -107,7 +107,7 @@ fn excel_error(e: &CellErrorType, at: &str) -> SolError {
         CellErrorType::Num => (ErrorCode::Domain, "#NUM!"),
         CellErrorType::Ref => (ErrorCode::Ref, "#REF!"),
         CellErrorType::Value => (ErrorCode::Value, "#VALUE!"),
-        CellErrorType::GettingData => (ErrorCode::NotAvailable, "#GETTING_DATA"),
+        CellErrorType::GettingData => (ErrorCode::Uncalc, "#GETTING_DATA"),
     };
     sol_error(code, format!("{at} is {shown} in the workbook"))
 }
@@ -244,7 +244,7 @@ pub fn read_table(bytes: &[u8], table: &str) -> Result<Vec<ReadColumn>, SolError
                 match data.get((i, j)).unwrap_or(&Data::Empty) {
                     Data::Empty => match formula_at(row, col) {
                         Some(f) => Cell::Err(Rc::new(sol_error(
-                            ErrorCode::NotAvailable,
+                            ErrorCode::Uncalc,
                             format!(
                                 "{} holds a formula (={f}) Excel never calculated. Open the workbook in Excel and save it.",
                                 address(row, col)

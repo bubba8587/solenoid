@@ -280,7 +280,7 @@ Tests:
 ## Display
 
 - **`null`**: a scalar renders as the muted em dash; a cell in a list or Frame renders the word `null`, muted.
-- **`SolError`**: the red badge with its code. All 17 codes are in `errorValue.ts`, and `#OVERFLOW!` is toured in the error showcase seed.
+- **`SolError`**: the red badge with its code. All 18 codes are in `errorValue.ts`, and `#OVERFLOW!` is toured in the error showcase seed.
 - **`NaN`**: the literal `NaN`, shown quietly with a muted background tint (not error red, not chip-like) and a fixed structural tooltip. Never "N/A".
 - **`Infinity`**: the `∞` glyph (`-∞` when negative), in `formatScalar` and list previews (`format.ts`).
 

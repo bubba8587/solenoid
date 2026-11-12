@@ -16,6 +16,10 @@ specific item.
 - Web Source: `fetchBytes` (`httpBridge.ts`), and the desktop shell's `net_fetch` answers base64 for `binary`. That
   shell change is unbuilt here (the author's no-`src-tauri`-builds rule): the Android or desktop CI build is its
   first compile.
+- A workbook formula with no saved answer is its own code, `#UNCALC!` (ERROR.TYPE 8, as Excel's #GETTING_DATA;
+  `error-values.md`). Local File and Web Source fold All matching, Dates and Auto-refresh into Options, and an idle
+  card's message replaces "Not connected". The demo vault holds `Data/sales-targets.xlsx` and reads binary files.
+- Seen, not touched: the table popup's footer Sum skips error cells (a column holding `#UNCALC!` still sums).
 - Self-hosting: `docs/self-hosting.md` is the proposal for the engineering team (SharePoint via Microsoft Graph, or
   same-origin hosting). Built: `solenoid.config.json` with `trustedSources`, hosts that skip the network prompt
   (`deploymentConfig.ts`). Not built: the Microsoft sign-in, opening a graph from a link; the product call comes first.

@@ -64,7 +64,7 @@ function statusText(s: ConnectionState): string {
     case "error":   return s.message || "Failed";
     case "ok":      return `${s.files ? `${s.files} file${s.files === 1 ? "" : "s"} · ` : ""}${s.rows ?? 0}×${s.cols ?? 0}${s.fetchedAt ? ` · ${new Date(s.fetchedAt).toLocaleTimeString()}` : ""}`;
     case "gated":   return "Waiting for permission";
-    default:        return "Not connected";
+    default:        return s.message || "Not connected";
   }
 }
 
@@ -164,7 +164,7 @@ async function retypeAndReopen(data: RetypableSource, c: number, type: FrameColT
 
 /** An Excel workbook's Table to read, once a read has listed them (`tableName`; blank reads the only one). A saved
  *  pick the workbook no longer has stays listed, so the card's error can name it. */
-function WorkbookTablePick({ node }: { node: { id: string; tableName: string; xlsxTables: { name: string; sheet: string; rows: number }[]; edited(): void } }) {
+function WorkbookTablePick({ node }: { node: { id: string; tableName: string; xlsxTables: { name: string; sheet: string }[]; edited(): void } }) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
   const [table, setTable] = useNodeField(node, "tableName");
   const tables = node.xlsxTables;
@@ -176,7 +176,7 @@ function WorkbookTablePick({ node }: { node: { id: string; tableName: string; xl
       <LazySelect className="sol-conn__select" value={table || (tables.length === 1 ? tables[0].name : "")} onChange={(e) => setTable(e.target.value)} {...stopDrag}>
         {tables.length !== 1 && !table && <option value="">Pick a Table…</option>}
         {table && !known && <option value={table}>{table} (not in the workbook)</option>}
-        {tables.map((t) => <option key={t.name} value={t.name}>{t.name} · {t.sheet} · {t.rows} row{t.rows === 1 ? "" : "s"}</option>)}
+        {tables.map((t) => <option key={t.name} value={t.name}>{t.name}{t.sheet === t.name ? "" : ` · ${t.sheet}`}</option>)}
       </LazySelect>
     </label>
   );
@@ -206,13 +206,15 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
-        <div className="sol-conn__field" title="How the source writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
-          Dates
-          <DateOrderToggle node={data} />
-        </div>
         <WorkbookTablePick node={data} />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField node={data} />
+        <CardSection label="Options" collapsible defaultOpen={data.dateOrder !== "" || data.refreshMinutes > 0}>
+          <div className="sol-conn__field" title="How the source writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
+            Dates
+            <DateOrderToggle node={data} />
+          </div>
+          <RefreshIntervalField node={data} />
+        </CardSection>
         <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)}
           popupOverrides={{ onRetypeColumn: (col, t) => void retypeAndReopen(data, col, t) }} />
       </div>
@@ -402,7 +404,10 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
             }).then((rel) => { if (rel) pick(rel); })}
           />
         )}
+        <WorkbookTablePick node={data} />
+        <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {folder && (desktop || isDemoVaultPath(folder)) && (
+          <CardSection label="Options" collapsible defaultOpen={pattern !== "" || data.dateOrder !== "" || data.refreshMinutes > 0}>
           <label className="sol-conn__field" title="Reads every file whose name matches, stacked as one table with a File column. * stands for anything, **/ for any subfolder.">
             All matching
             <input
@@ -414,17 +419,12 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
               onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
             />
           </label>
-        )}
-        {folder && (desktop || isDemoVaultPath(folder)) && (
           <div className="sol-conn__field" title="How the file writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
             Dates
             <DateOrderToggle node={data} />
           </div>
-        )}
-        <WorkbookTablePick node={data} />
-        <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
-        {desktop && folder && (
-          <RefreshIntervalField node={data} />
+          {desktop && <RefreshIntervalField node={data} />}
+          </CardSection>
         )}
       </div>
       {frameOut && (

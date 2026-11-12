@@ -82,7 +82,7 @@ fn a_formula_excel_never_calculated_is_an_error_naming_the_cell() {
     assert_eq!(
         err_at(&calc.cells[2]),
         (
-            ErrorCode::NotAvailable,
+            ErrorCode::Uncalc,
             "F6 holds a formula (=B6*2) Excel never calculated. Open the workbook in Excel and save it.".into()
         )
     );

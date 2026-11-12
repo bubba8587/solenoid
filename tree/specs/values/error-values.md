@@ -33,7 +33,7 @@ Tests: `errorValue.test.ts` ("SolError tagging"): a tagged error round-trips thr
 
 The set is Excel-style `#CODE!`, but more specific than Excel's seven, following SQLSTATE class 22 and OpenFormula Err:5xx. `SolErrorCode` is the union.
 
-The seventeen codes, grouped here by what went wrong (the set itself is flat):
+The eighteen codes, grouped here by what went wrong (the set itself is flat):
 
 ```mermaid
 mindmap
@@ -54,6 +54,7 @@ mindmap
       ["#N/A"]
       ["#NAME?"]
       ["#REF!"]
+      ["#UNCALC!: a workbook formula never calculated"]
     what was typed
       ["#SYNTAX!"]
       ["#AMBIGUOUS!: D/M or M/D"]
@@ -78,6 +79,7 @@ mindmap
 | `#NAME?` | an unknown name | Excel; Err:525 |
 | `#REF!` | a dangling reference | Excel; Err:524 |
 | `#CIRC!` | a circular dependency | Err:522; Excel only warns |
+| `#UNCALC!` | a formula an Excel workbook saved without its answer, read by Local File or Web Source ([[live-connections#Excel workbooks]]); Excel's own `#GETTING_DATA` reads as it too | Solenoid only; ERROR.TYPE 8, as Excel's #GETTING_DATA |
 | `#SOLVE!` | the Equation node found no root (the core's `nodes/formula.rs`) | Solenoid only |
 | `#AMBIGUOUS!` | a date string could read as either D/M or M/D (`parse_date`, the core's `excel_criteria.rs`, through `parseDate` in `nodes/dateSerial.ts`) | Solenoid only |
 | `#ERROR!` | an unexpected internal failure; the guard's catch-all | Err:517 |

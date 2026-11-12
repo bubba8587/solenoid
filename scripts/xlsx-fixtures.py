@@ -86,6 +86,9 @@ STYLES = ('<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schem
 def workbook(path, sheets, date1904=False):
     """sheets: [(name, rows, [(table name, ref, columns)])]."""
     z = zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED)
+    # A fixed time on every entry, so a rerun writes the same bytes.
+    plain_writestr = z.writestr
+    z.writestr = lambda name, data: plain_writestr(zipfile.ZipInfo(name, (2026, 1, 1, 0, 0, 0)), data, zipfile.ZIP_DEFLATED)
     overrides = ['<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
                  '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>']
     wb_sheets, wb_rels = [], []
@@ -162,3 +165,27 @@ workbook(os.path.join(OUT, "dates1904.xlsx"), [
 workbook(os.path.join(OUT, "no-tables.xlsx"), [("Sheet1", [(1, ["a", "b"]), (2, [1, 2])], [])])
 
 print("wrote", sorted(os.listdir(OUT)))
+
+# The demo vault's sample workbook (demo-vault/Data/): each rep's quarterly target, a saved formula for the stretch
+# goal, and a second Table on its own sheet, so the Table pick has a choice to show.
+DEMO = os.path.join(os.path.dirname(__file__), "..", "demo-vault", "Data", "sales-targets.xlsx")
+REPS = ["John McCarthy", "Mary Jackson", "Tim Berners-Lee", "Claude Shannon"]
+TARGETS = ["Rep", "Quarter", "Target", "Stretch", "Set on", "Signed off"]
+rows = [(1, ["Sales targets, 2026 (set by the regional leads)"]), (3, TARGETS)]
+r = 4
+for q, (quarter, set_on) in enumerate([("Q1", 46020), ("Q2", 46111), ("Q3", 46203), ("Q4", 46295)]):
+    for k, rep in enumerate(REPS):
+        target = 1200 + 150 * k + 200 * q
+        rows.append((r, [rep, quarter, target, ("f", f"C{r}*1.15", round(target * 1.15, 2)), ("date", set_on), q < 3]))
+        r += 1
+workbook(DEMO, [
+    ("Targets", rows, [("Targets", f"A3:F{r - 1}", TARGETS)]),
+    ("Reps", [
+        (1, ["Rep", "Territory", "Started"]),
+        (2, ["John McCarthy", "West", ("date", 44410)]),
+        (3, ["Mary Jackson", "East", ("date", 44929)]),
+        (4, ["Tim Berners-Lee", "North", ("date", 45302)]),
+        (5, ["Claude Shannon", "South", ("date", 45667)]),
+    ], [("Reps", "A1:C5", ["Rep", "Territory", "Started"])]),
+])
+print("wrote", os.path.relpath(DEMO))

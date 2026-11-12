@@ -6168,6 +6168,8 @@ fn error_type_num(code: ErrorCode) -> f64 {
         ErrorCode::Ref => 4.0,
         ErrorCode::Name => 5.0,
         ErrorCode::NotAvailable => 7.0,
+        // Excel's #GETTING_DATA, a value not calculated yet.
+        ErrorCode::Uncalc => 8.0,
         ErrorCode::Domain | ErrorCode::Overflow | ErrorCode::Conv => 6.0,
         ErrorCode::Value
         | ErrorCode::Syntax

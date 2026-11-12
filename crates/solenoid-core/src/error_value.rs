@@ -25,6 +25,8 @@ spelled! {
         Ambiguous = "#AMBIGUOUS!",
         /// A position (a date, a temperature reading) used as an amount ([[E20]] pointError).
         Point = "#POINT!",
+        /// A workbook formula with no saved answer: Excel never calculated it (live-connections § Excel workbooks).
+        Uncalc = "#UNCALC!",
         Error = "#ERROR!",
     }
 }

@@ -54,6 +54,7 @@ describe("Local File over a workbook", () => {
     expect(col(f, "code").values[0]).toBe("02134");
     expect(col(f, "amount").values.slice(0, 3)).toEqual([100, 250.5, null]);
     const unrun = col(f, "calc").values[2] as SolError;
+    expect(unrun.code).toBe("#UNCALC!");
     expect(isSolError(unrun) && unrun.message).toBe("F6 holds a formula (=B6*2) Excel never calculated. Open the workbook in Excel and save it.");
     expect(connectionStore.getState(node.id)).toMatchObject({ status: "ok", rows: 11, cols: 6 });
     expect(extractInit(node)).toMatchObject({ fileName: "sales.xlsx", tableName: "Sales" });
