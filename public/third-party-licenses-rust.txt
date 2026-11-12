@@ -627,7 +627,7 @@ DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 MIT License
-Used by: bitflags 2.13.2, log 0.4.34, regex-automata 0.4.18, regex-syntax 0.8.11
+Used by: bitflags 2.13.2, log 0.4.35, regex-automata 0.4.18, regex-syntax 0.8.11
 ================================================================================
 
 Copyright (c) 2014 The Rust Project Developers
@@ -1587,7 +1587,7 @@ DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 MIT License
-Used by: crc32fast 1.5.3
+Used by: crc32fast 1.5.4
 ================================================================================
 
 MIT License
@@ -1904,7 +1904,7 @@ SOFTWARE.
 
 ================================================================================
 MIT License
-Used by: aho-corasick 1.1.5, byteorder 1.5.0, csv-core 0.1.13, csv 1.4.0, jiff-core 0.1.1, jiff-tzdb 0.1.9, jiff 0.2.38, memchr 2.8.3
+Used by: aho-corasick 1.1.5, byteorder 1.5.0, csv-core 0.1.13, csv 1.4.0, jiff-core 0.1.2, jiff-tzdb 0.1.9, jiff 0.2.39, memchr 2.8.3
 ================================================================================
 
 The MIT License (MIT)
