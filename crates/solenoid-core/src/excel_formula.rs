@@ -165,7 +165,7 @@ fn is_number_literal(v: &str) -> bool {
         None => all(mant),
         Some((a, f)) => (all(a) && (f.is_empty() || all(f))) || (a.is_empty() && all(f)),
     };
-    mant_ok && exp.is_none_or(|e| all(e.strip_prefix(['+', '-']).unwrap_or(e)))
+    mant_ok && exp.is_none_or(|e| all(e.trim_prefix(['+', '-'])))
 }
 
 fn tokenize(src: &str) -> Option<Vec<Tok>> {

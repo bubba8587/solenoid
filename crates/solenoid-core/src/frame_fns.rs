@@ -790,7 +790,7 @@ fn nest_groups(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
 
 /// `/^-?\d+(\.\d+)?$/`
 fn plain_decimal(t: &str) -> bool {
-    let body = t.strip_prefix('-').unwrap_or(t);
+    let body = t.trim_prefix('-');
     let (int, frac) = match body.split_once('.') {
         Some((i, f)) => (i, Some(f)),
         None => (body, None),

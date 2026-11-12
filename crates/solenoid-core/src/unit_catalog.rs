@@ -124,7 +124,7 @@ fn parse_factor(tok: &str) -> Option<Unit> {
         return None;
     }
     let is_num = |s: &str, frac: bool| {
-        let s = s.strip_prefix('-').unwrap_or(s);
+        let s = s.trim_prefix('-');
         let (int, dec) = match s.split_once('.') {
             Some((i, f)) if frac => (i, Some(f)),
             _ => (s, None),

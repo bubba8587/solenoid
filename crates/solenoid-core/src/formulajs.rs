@@ -149,7 +149,7 @@ fn matches_digits(s: &str, radix: u32, max: usize) -> bool {
 
 /// `/^-?[0-9]{1,max}$/`.
 fn matches_decimal(s: &str, max: usize) -> bool {
-    matches_digits(s.strip_prefix('-').unwrap_or(s), 10, max)
+    matches_digits(s.trim_prefix('-'), 10, max)
 }
 
 /// A negative number in 10-bit two's complement: a 1, then (512 + n) in 9 binary digits.

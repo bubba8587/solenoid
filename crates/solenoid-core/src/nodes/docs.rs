@@ -1400,7 +1400,7 @@ fn record(c: &mut Call, op: &str) -> Answer {
 
 /// A wired λ's name in the formulas, `fn1` as `λ1`.
 fn lambda_socket_name(key: &str) -> String {
-    format!("λ{}", key.strip_prefix("fn").unwrap_or(key))
+    format!("λ{}", key.trim_prefix("fn"))
 }
 
 /// A computed column over the table on the core's evaluator: its cells, or the error that

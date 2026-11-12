@@ -2614,7 +2614,7 @@ fn parse_value_text(text: &str) -> f64 {
         neg = true;
         t = trim_space(&t[1..t.len() - 1]);
     }
-    let unsigned = t.strip_prefix(['+', '-']).unwrap_or(t);
+    let unsigned = t.trim_prefix(['+', '-']);
     if let Some(after) = unsigned.strip_prefix('$') {
         owned = format!("{}{}", &t[..t.len() - unsigned.len()], after);
         t = &owned;
