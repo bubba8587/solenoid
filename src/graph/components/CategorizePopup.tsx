@@ -152,7 +152,7 @@ export function CategorizePopup() {
 
   const unsortedKeys = unsorted.map(([k]) => k);
   return (
-    <PopupShell title={state.title} onClose={close} cardClassName="pivot-editor categorize-editor" resizable={{ min: { w: 420, h: 320 } }} cardStyle={popupCardVars(state)}>
+    <PopupShell title={state.title} onClose={close} cardClassName="pivot-editor categorize-editor" resizable={{ min: { w: 420, h: 260 } }} cardStyle={popupCardVars(state)}>
       <div className="pivot-editor__body categorize-editor__body">
         <FieldsPanel
           head="Items"

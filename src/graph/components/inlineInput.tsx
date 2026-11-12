@@ -356,10 +356,13 @@ export function InlineCsvField({
   value,
   onChange,
   listId,
+  placeholder,
 }: {
   value: string | undefined;
   onChange: (v: string) => void;
   listId?: string;
+  /** The field's declared empty kind ([[D96]] emptySlotShowsItsValue); a field that declares none hints at the form. */
+  placeholder?: string;
 }) {
   const field = useDraftCommit(value ?? "", (v) => v, (t) => t, onChange);
   return (
@@ -367,7 +370,7 @@ export function InlineCsvField({
       type="text"
       className="solenoid-node__inline-input solenoid-node__inline-input--list"
       value={field.draft}
-      placeholder="a, b, c"
+      placeholder={placeholder ?? "a, b, c"}
       list={listId}
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
@@ -520,7 +523,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
               pickerKeys.has(key) ? (
                 <ColumnListField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
               ) : (
-                <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} />
+                <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} placeholder={placeholder} />
               )
             ) : null}
             {trailing?.[key]}

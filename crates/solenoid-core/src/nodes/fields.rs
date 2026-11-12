@@ -146,7 +146,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("ChartBuilderNode", "markersize", Empty::Behavior("auto")),
     ("ChartBuilderNode", "maxgap", Empty::Behavior("auto")),
     ("ChartBuilderNode", "s", Empty::Fallback(Fill::Text(""))),
-    ("CategorizeNode", "categories", Empty::Behavior("Category 1, 2, 3")),
+    ("CategorizeNode", "categories", Empty::Behavior("3 categories")),
     ("ChartBuilderNode", "title", Empty::Fallback(Fill::Text(""))),
     ("ChartBuilderNode", "vmax", Empty::Behavior("auto")),
     ("ChartBuilderNode", "vmin", Empty::Behavior("auto")),

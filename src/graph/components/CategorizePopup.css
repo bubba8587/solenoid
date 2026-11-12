@@ -2,7 +2,7 @@
    the Fields list and the footer). A category is drawn as a node card is (DESIGN.md, the Tinted-Box Rule): its palette
    color (`--cat`) in the header band at --header-tint and the cap on the header's top three sides, the body neutral. */
 .categorize-editor { width: 880px; }
-.categorize-editor__body { display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+.categorize-editor__body { display: flex; flex-direction: column; gap: 10px; overflow: auto; flex: 1 1 auto; min-height: 0; }
 .categorize-editor .pivot-fields__list { max-height: 26vh; overflow: auto; }
 .categorize-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-items: start; }
 

@@ -12,7 +12,7 @@ Categorize maps a scattered list of values onto a few hand-picked categories: tw
 
 ## What it answers
 
-**Items** takes any list (a table is read cell by cell, row by row). Each distinct value is one item, kept in first-seen order; a repeat counts once and a blank or an error is skipped, so a raw column with repeats wires straight in. **Categories** is a text list. Wired, its distinct non-blank texts are the categories, in order; typed, the field's items are; left blank, the categories are `Category 1`, `Category 2` and `Category 3` (`DEFAULT_CATEGORIES`, the field's Behavior).
+**Items** takes any list (a table is read cell by cell, row by row). Each distinct value is one item, kept in first-seen order; a repeat counts once and a blank or an error is skipped, so a raw column with repeats wires straight in. **Categories** is a text list. Wired, its distinct non-blank texts are the categories, in order; typed, the field's items are; left blank, the categories are `Category 1`, `Category 2` and `Category 3` (`DEFAULT_CATEGORIES`; the empty field reads `[3 categories]`, its Behavior).
 
 The answer, **Lookup**, is a Frame of two columns, `Item` and `Category`: every item sorted into a category on the categories' order and, within one, the order the items were dropped there; then every unsorted item in first-seen order with a blank Category. Unsorted items stay in the table so what is left shows downstream and a Join reads the same blank either way. The Item column keeps the items' kind: Date when every item is a date, Number when every item is a number, Logical when every one is a logical, Text otherwise (each item as its text). A list mixing dates with another kind is refused as Frame from Lists refuses it. No items gives a blank answer.
 
