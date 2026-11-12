@@ -133,3 +133,39 @@ fn a_missing_table_names_the_ones_there_are() {
     let junk = read_table(b"not a zip", "x").unwrap_err();
     assert!(junk.message.starts_with("Not an Excel workbook"), "{}", junk.message);
 }
+
+fn nums(c: &ReadColumn) -> Vec<f64> {
+    c.cells.iter().map(|x| if let FrameCell::Num(n) = x { *n } else { f64::NAN }).collect()
+}
+
+#[test]
+fn a_stray_cell_far_down_the_sheet_costs_a_table_nothing() {
+    // The sheet's last cell is XFD1048576: read densely it is 17 billion cells. Only the Table's own cells are kept.
+    let t = tables(&book("edges.xlsx")).unwrap();
+    assert_eq!(
+        t.iter().map(|t| (t.name.as_str(), t.rows)).collect::<Vec<_>>(),
+        [("Small", 2), ("Totals", 2), ("NoHeader", 2), ("HeaderOnly", 0)]
+    );
+    assert!(t.iter().all(|t| t.sheet == "Edges"));
+    let cols = read_table(&book("edges.xlsx"), "Small").unwrap();
+    assert_eq!(nums(col(&cols, "k")), [1.0, 2.0]);
+    assert!(matches!(&col(&cols, "v").cells[1], FrameCell::Str(s) if &**s == "two"));
+}
+
+#[test]
+fn a_totals_row_is_not_data_with_a_header_row_or_without_one() {
+    let cols = read_table(&book("edges.xlsx"), "Totals").unwrap();
+    assert_eq!(nums(col(&cols, "cost")), [10.0, 20.0]);
+    let cols = read_table(&book("edges.xlsx"), "NoHeader").unwrap();
+    assert_eq!(cols.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["Column1", "Column2"]);
+    assert_eq!(nums(col(&cols, "Column2")), [1.0, 2.0], "the first row is data, the totals row is not");
+    assert!(matches!(&col(&cols, "Column1").cells[0], FrameCell::Str(s) if &**s == "p"));
+}
+
+#[test]
+fn a_table_that_is_its_header_row_alone_reads_as_its_columns_with_no_rows() {
+    let cols = read_table(&book("edges.xlsx"), "HeaderOnly").unwrap();
+    assert_eq!(cols.iter().map(|c| (c.name.as_str(), c.cells.len())).collect::<Vec<_>>(), [("a", 0), ("b", 0)]);
+    let (_, rows) = table_columnar(&book("edges.xlsx"), "HeaderOnly").unwrap();
+    assert_eq!(rows, 0);
+}

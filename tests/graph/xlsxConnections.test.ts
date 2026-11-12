@@ -100,11 +100,13 @@ describe("Local File over a workbook", () => {
     const { node, out } = await read({ fileName: "*.xlsx", tableName: "Sales" });
     const f = out.frame as FrameValue;
     expect(f.columns[0]).toMatchObject({ name: "File", values: Array(11).fill("sales.xlsx") });
-    expect(connectionStore.getState(node.id).message).toMatch(/^3 didn't read: dates1904\.xlsx \(No Table named "Sales"/);
+    expect(connectionStore.getState(node.id).message).toMatch(/^4 didn't read: dates1904\.xlsx \(No Table named "Sales"/);
     // The picker lists every Table the matched workbooks hold, so a pattern's Table can be picked before any reads.
     expect(node.xlsxTables.map((t) => t.name)).toEqual(expect.arrayContaining(["Sales", "Regions"]));
     const fresh = await read({ fileName: "*.xlsx" });
     expect(fresh.node.xlsxTables.map((t) => t.name)).toEqual(expect.arrayContaining(["Sales", "Regions"]));
+    // mixed.xlsx and dates1904.xlsx each hold one Table, so the pattern reads those; sales.xlsx and edges.xlsx wait for a pick.
+    expect(connectionStore.getState(fresh.node.id).message).toMatch(/sales\.xlsx \(Pick a Table: Sales, Regions\)/);
   });
 });
 

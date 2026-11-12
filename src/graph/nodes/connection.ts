@@ -481,6 +481,10 @@ export class LocalFileNode extends GraphNode {
         if (!read) return superseded;
         this.xlsxTables = read.tables;
         this.readTypes = read.readTypes;
+        // Nothing read because the workbooks hold several Tables and none is picked: the card asks, as one workbook does.
+        if (isSolError(read.frame) && !this.tableName.trim() && read.tables.length > 1) {
+          return fail(`Pick a Table: ${read.tables.map((t) => t.name).join(", ")}`, "idle");
+        }
         if (isSolError(read.frame)) return fail(read.frame.message, "error", read.frame);
         this.lastKey = key;
         this.cachedResult = read.frame;

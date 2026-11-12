@@ -61,7 +61,9 @@ def col_letter(i):
 def sheet_xml(rows, n_tables, first_table_rel):
     body = []
     for r, cells in rows:
-        xs = "".join(cell(f"{col_letter(c)}{r}", v) for c, v in enumerate(cells))
+        # A dict places its cells by column letter, for a row that doesn't start at A.
+        at = cells.items() if isinstance(cells, dict) else ((col_letter(c), v) for c, v in enumerate(cells))
+        xs = "".join(cell(f"{c}{r}", v) for c, v in at)
         body.append(f'<row r="{r}">{xs}</row>')
     parts = ""
     if n_tables:
@@ -70,10 +72,11 @@ def sheet_xml(rows, n_tables, first_table_rel):
     return f'<?xml version="1.0" encoding="UTF-8"?><worksheet {NS}><sheetData>{"".join(body)}</sheetData>{parts}</worksheet>'
 
 
-def table_xml(tid, name, ref, columns):
+def table_xml(tid, name, ref, columns, attrs=""):
+    """attrs: extra attributes on the table element, such as ' totalsRowCount="1"'."""
     cols = "".join(f'<tableColumn id="{k + 1}" name="{esc(c)}"/>' for k, c in enumerate(columns))
     return (f'<?xml version="1.0" encoding="UTF-8"?><table {NS.split(" ")[0]} id="{tid}" name="{name}" '
-            f'displayName="{name}" ref="{ref}"><autoFilter ref="{ref}"/>'
+            f'displayName="{name}" ref="{ref}"{attrs}><autoFilter ref="{ref}"/>'
             f'<tableColumns count="{len(columns)}">{cols}</tableColumns></table>')
 
 
@@ -84,7 +87,7 @@ STYLES = ('<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schem
 
 
 def workbook(path, sheets, date1904=False):
-    """sheets: [(name, rows, [(table name, ref, columns)])]."""
+    """sheets: [(name, rows, [(table name, ref, columns) or (table name, ref, columns, table attributes)])]."""
     z = zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED)
     # A fixed time on every entry, so a rerun writes the same bytes.
     plain_writestr = z.writestr
@@ -99,11 +102,11 @@ def workbook(path, sheets, date1904=False):
         wb_rels.append(f'<Relationship Id="rId{k}" Type="{REL}/worksheet" Target="worksheets/sheet{k}.xml"/>')
         z.writestr(f"xl/worksheets/sheet{k}.xml", sheet_xml(rows, len(tables), 1))
         rels = []
-        for j, (tname, ref, columns) in enumerate(tables):
+        for j, (tname, ref, columns, *attrs) in enumerate(tables):
             table_no += 1
             overrides.append(f'<Override PartName="/xl/tables/table{table_no}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>')
             rels.append(f'<Relationship Id="rId{j + 1}" Type="{REL}/table" Target="../tables/table{table_no}.xml"/>')
-            z.writestr(f"xl/tables/table{table_no}.xml", table_xml(table_no, tname, ref, columns))
+            z.writestr(f"xl/tables/table{table_no}.xml", table_xml(table_no, tname, ref, columns, *attrs))
         if rels:
             z.writestr(f"xl/worksheets/_rels/sheet{k}.xml.rels",
                        f'<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="{PKG}">{"".join(rels)}</Relationships>')
@@ -160,6 +163,24 @@ workbook(os.path.join(OUT, "mixed.xlsx"), [
 workbook(os.path.join(OUT, "dates1904.xlsx"), [
     ("Sheet1", [(1, ["day"]), (2, [("date", 0)]), (3, [("date", 1)])], [("Days", "A1:A3", ["day"])]),
 ], date1904=True)
+
+# Tables at their edges, on a sheet with one stray cell in its last row and column (a dense read of that sheet would
+# hold 17 billion cells): a small Table beside it, one with a totals row, one with a totals row and no header row, and
+# one that is a header row alone.
+workbook(os.path.join(OUT, "edges.xlsx"), [
+    ("Edges", [
+        (1, {"A": "k", "B": "v", "D": "item", "E": "cost", "G": "p", "H": 1, "J": "a", "K": "b"}),
+        (2, {"A": 1, "B": "one", "D": "x", "E": 10, "G": "q", "H": 2}),
+        (3, {"A": 2, "B": "two", "D": "y", "E": 20, "G": "Total", "H": 3}),
+        (4, {"D": "Total", "E": ("f", "SUM(E2:E3)", 30)}),
+        (1048576, {"XFD": 9}),
+    ], [
+        ("Small", "A1:B3", ["k", "v"]),
+        ("Totals", "D1:E4", ["item", "cost"], ' totalsRowCount="1"'),
+        ("NoHeader", "G1:H3", ["Column1", "Column2"], ' headerRowCount="0" totalsRowCount="1"'),
+        ("HeaderOnly", "J1:K1", ["a", "b"]),
+    ]),
+])
 
 # No Tables at all.
 workbook(os.path.join(OUT, "no-tables.xlsx"), [("Sheet1", [(1, ["a", "b"]), (2, [1, 2])], [])])

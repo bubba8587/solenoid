@@ -3,10 +3,11 @@
 //! § Excel workbooks). Only a Table is read, never a sheet or a range: a Table has exact edges and a header row. Each
 //! cell is the answer Excel saved with the file; a formula with no saved answer is an error naming the cell.
 
-use std::io::Cursor;
+use std::io::{BufReader, Cursor};
 use std::rc::Rc;
 
-use calamine::{CellErrorType, Data, Reader, Xlsx};
+use calamine::{CellErrorType, DataRef, Reader, Xlsx};
+use quick_xml::events::Event;
 use serde_json::json;
 
 use crate::binary::{Columnar, TAG_STR};
@@ -47,24 +48,140 @@ fn open(bytes: &[u8]) -> Result<Xlsx<Cursor<&[u8]>>, SolError> {
     Ok(wb)
 }
 
-/// Every named Table in the workbook, in the order the workbook lists them.
+/// A Table as its own part of the workbook states it (`xl/tables/tableN.xml`): its name, its column names, and the
+/// corners of its range, header and totals rows included. calamine keeps a Table's edges to itself and decodes the
+/// whole sheet to hand over its cells, so the part is read here and the cells are streamed (`read_table`).
+struct TablePart {
+    name: String,
+    columns: Vec<String>,
+    first: (u32, u32),
+    last: (u32, u32),
+    header_rows: u32,
+    totals_rows: u32,
+}
+
+impl TablePart {
+    /// The data rows: the first one's zero-based sheet row, and how many, the header and totals rows left out.
+    fn rows(&self) -> (u32, usize) {
+        let start = self.first.0.saturating_add(self.header_rows);
+        let end = (self.last.0 + 1).saturating_sub(self.totals_rows);
+        (start, end.saturating_sub(start) as usize)
+    }
+    fn width(&self) -> usize {
+        (self.last.1.saturating_sub(self.first.1) + 1) as usize
+    }
+}
+
+/// `B6` (or `$B$6`) as the zero-based (row, column).
+fn cell_ref(s: &str) -> Option<(u32, u32)> {
+    let s: String = s.chars().filter(|c| *c != '$').collect();
+    let split = s.find(|c: char| c.is_ascii_digit())?;
+    let (letters, digits) = s.split_at(split);
+    if letters.is_empty() || letters.len() > 3 || !letters.bytes().all(|b| b.is_ascii_alphabetic()) {
+        return None;
+    }
+    let col = letters.bytes().fold(0u32, |n, b| n * 26 + u32::from(b.to_ascii_uppercase() - b'A') + 1);
+    let row: u32 = digits.parse().ok().filter(|r| *r >= 1)?;
+    Some((row - 1, col - 1))
+}
+
+/// Every Table part in the workbook: each `.xml` entry whose root element is `table`, wherever the file keeps it. An
+/// entry that isn't one is left after its first element, so a sheet's own XML costs nothing here.
+fn table_parts(bytes: &[u8]) -> Vec<TablePart> {
+    let Ok(mut zip) = zip::ZipArchive::new(Cursor::new(bytes)) else { return Vec::new() };
+    let names: Vec<String> = zip
+        .file_names()
+        .flatten()
+        .filter(|n| n.to_ascii_lowercase().ends_with(".xml"))
+        .map(|n| n.into_owned())
+        .collect();
+    let mut out = Vec::new();
+    for entry in names {
+        let Ok(file) = zip.by_name(&entry) else { continue };
+        let mut xml = quick_xml::Reader::from_reader(BufReader::new(file));
+        let mut buf = Vec::new();
+        let mut part: Option<TablePart> = None;
+        loop {
+            buf.clear();
+            let (e, open) = match xml.read_event_into(&mut buf) {
+                Ok(Event::Start(e)) => (e, true),
+                Ok(Event::Empty(e)) => (e, false),
+                Ok(Event::Eof) | Err(_) => break,
+                Ok(_) => continue,
+            };
+            let attr = |key: &str| -> Option<String> {
+                e.attributes()
+                    .flatten()
+                    .find(|a| a.key.local_name().as_ref() == key)
+                    .and_then(|a| a.normalized_value(quick_xml::XmlVersion::Implicit1_0).ok().map(|v| v.into_owned()))
+            };
+            match (e.local_name().as_ref(), &mut part) {
+                ("table", None) => {
+                    let corners = attr("ref").and_then(|r| {
+                        let (a, b) = r.split_once(':').unwrap_or((r.as_str(), r.as_str()));
+                        Some((cell_ref(a)?, cell_ref(b)?))
+                    });
+                    let name = attr("displayName").or_else(|| attr("name"));
+                    let (Some((first, last)), Some(name), true) = (corners, name, open) else { break };
+                    if first.0 > last.0 || first.1 > last.1 {
+                        break;
+                    }
+                    let count = |key: &str, unset: u32| attr(key).and_then(|v| v.parse().ok()).unwrap_or(unset);
+                    part = Some(TablePart {
+                        name,
+                        columns: Vec::new(),
+                        first,
+                        last,
+                        header_rows: count("headerRowCount", 1),
+                        totals_rows: count("totalsRowCount", 0),
+                    });
+                }
+                // Some other document: not a Table part.
+                (_, None) => break,
+                ("tableColumn", Some(p)) => p.columns.push(attr("name").unwrap_or_default()),
+                _ => {}
+            }
+        }
+        out.extend(part);
+    }
+    out
+}
+
+/// The sheet each Table sits on, by the Table's name.
+fn table_sheets(wb: &Xlsx<Cursor<&[u8]>>) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for sheet in wb.sheet_names() {
+        for t in wb.table_names_in_sheet(&sheet) {
+            out.push((t.clone(), sheet.clone()));
+        }
+    }
+    out
+}
+
+fn part_of<'a>(parts: &'a [TablePart], name: &str) -> Result<&'a TablePart, SolError> {
+    parts
+        .iter()
+        .find(|p| p.name.eq_ignore_ascii_case(name))
+        .ok_or_else(|| sol_error(ErrorCode::Value, format!("Table {name}: the workbook doesn't say where it sits")))
+}
+
+/// Every named Table in the workbook, in the order the workbook lists them, read off the Tables' own parts: no sheet
+/// is decoded to list them.
 pub fn tables(bytes: &[u8]) -> Result<Vec<TableInfo>, SolError> {
-    let mut wb = open(bytes)?;
-    let names: Vec<String> = wb.table_names().into_iter().cloned().collect();
-    let mut out = Vec::with_capacity(names.len());
-    for name in names {
-        let t = wb.table_by_name(&name).map_err(|e| sol_error(ErrorCode::Value, format!("Table {name}: {e}")))?;
-        out.push(TableInfo {
-            name: t.name().to_string(),
-            sheet: t.sheet_name().to_string(),
-            columns: t.columns().to_vec(),
-            rows: t.data().height(),
-        });
+    let wb = open(bytes)?;
+    let parts = table_parts(bytes);
+    let sheets = table_sheets(&wb);
+    let mut out = Vec::new();
+    for name in wb.table_names() {
+        let part = part_of(&parts, name)?;
+        let sheet = sheets.iter().find(|(t, _)| t == name).map_or_else(String::new, |(_, s)| s.clone());
+        out.push(TableInfo { name: name.clone(), sheet, columns: part.columns.clone(), rows: part.rows().1 });
     }
     Ok(out)
 }
 
 /// A cell as the reader sorts it, before its column's type is settled.
+#[derive(Clone)]
 enum Cell {
     Empty,
     Num(f64),
@@ -218,53 +335,77 @@ pub fn read_table(bytes: &[u8], table: &str) -> Result<Vec<ReadColumn>, SolError
         ));
     };
     let is_1904 = wb.has_1904_epoch();
-    let t = wb.table_by_name(&name).map_err(|e| sol_error(ErrorCode::Value, format!("Table {name}: {e}")))?;
-    let data = t.data();
-    let (height, width) = (data.height(), t.columns().len());
+    let parts = table_parts(bytes);
+    let part = part_of(&parts, &name)?;
+    let Some((_, sheet)) = table_sheets(&wb).into_iter().find(|(t, _)| *t == name) else {
+        return Err(sol_error(
+            ErrorCode::Value,
+            format!("Table {name}: the workbook doesn't say which sheet it is on"),
+        ));
+    };
+    let ((row0, height), (col0, width)) = (part.rows(), (part.first.1, part.width()));
+    // Refused on the Table's own stated size, before a cell is decoded.
     if height.saturating_mul(width) > MAX_CELLS {
         return Err(sol_error(
             ErrorCode::Value,
-            format!("Table {name} has {} cells, over the {MAX_CELLS} a read takes", height * width),
+            format!("Table {name} has {} cells, over the {MAX_CELLS} a read takes", height.saturating_mul(width)),
         ));
     }
-    let (row0, col0) = data.start().unwrap_or((0, 0));
-    // A cell with no saved answer is either blank or a formula Excel never calculated; only the sheet's formulas tell.
-    let any_empty = data.used_cells().count() < height * width;
-    let formulas = if any_empty { wb.worksheet_formula(t.sheet_name()).ok() } else { None };
-    let formula_at = |r: u32, c: u32| -> Option<&str> {
-        formulas.as_ref().and_then(|f| f.get_value((r, c))).map(String::as_str).filter(|s| !s.is_empty())
+    let failed = |e: calamine::XlsxError| sol_error(ErrorCode::Value, format!("Table {name}: {e}"));
+    // The slot a sheet cell fills, when it sits inside the Table's data rows. Only those cells are kept, so a stray
+    // cell far down the sheet costs nothing.
+    let slot = |(r, c): (u32, u32)| -> Option<usize> {
+        let (i, j) = (r.checked_sub(row0)? as usize, c.checked_sub(col0)? as usize);
+        (i < height && j < width).then_some(j * height + i)
     };
-    let headers = make_headers(t.columns(), width);
+    let mut grid = vec![Cell::Empty; height * width];
+    // Whether the sheet saved an answer for the cell: one with none is blank, or a formula Excel never calculated.
+    let mut saved = vec![false; height * width];
+    {
+        let mut cells = wb.worksheet_cells_reader(&sheet).map_err(failed)?;
+        while let Some(cell) = cells.next_cell().map_err(failed)? {
+            let (row, col) = cell.get_position();
+            let Some(at) = slot((row, col)) else { continue };
+            saved[at] = !matches!(cell.get_value(), DataRef::Empty);
+            grid[at] = match cell.get_value() {
+                DataRef::Empty => Cell::Empty,
+                DataRef::Int(n) => Cell::Num(*n as f64),
+                DataRef::Float(n) => Cell::Num(*n),
+                DataRef::Bool(b) => Cell::Bool(*b),
+                DataRef::String(s) if s.is_empty() => Cell::Empty,
+                DataRef::String(s) => Cell::Text(s.clone()),
+                DataRef::SharedString("") => Cell::Empty,
+                DataRef::SharedString(s) => Cell::Text((*s).to_string()),
+                DataRef::DateTime(d) if d.is_duration() => Cell::Num(d.as_f64()),
+                DataRef::DateTime(d) => Cell::Date(excel_serial(d.as_f64(), is_1904)),
+                DataRef::DateTimeIso(s) | DataRef::DurationIso(s) => Cell::Text(s.clone()),
+                DataRef::Error(e) => Cell::Err(Rc::new(excel_error(e, &address(row, col)))),
+            };
+        }
+    }
+    if saved.iter().any(|s| !s) {
+        let mut cells = wb.worksheet_cells_reader(&sheet).map_err(failed)?;
+        while let Some(cell) = cells.next_formula().map_err(failed)? {
+            let (row, col) = cell.get_position();
+            let f = cell.get_value();
+            if let Some(at) = slot((row, col)).filter(|&at| !saved[at] && !f.is_empty()) {
+                grid[at] = Cell::Err(Rc::new(sol_error(
+                    ErrorCode::Uncalc,
+                    format!(
+                        "{} holds a formula (={f}) Excel never calculated. Open the workbook in Excel and save it.",
+                        address(row, col)
+                    ),
+                )));
+            }
+        }
+    }
+    let headers = make_headers(&part.columns, width);
+    let mut cells = grid.into_iter();
     let mut out = Vec::with_capacity(width);
     for (j, header) in headers.into_iter().enumerate() {
         let col = col0 + j as u32;
-        let cells: Vec<Cell> = (0..height)
-            .map(|i| {
-                let row = row0 + i as u32;
-                match data.get((i, j)).unwrap_or(&Data::Empty) {
-                    Data::Empty => match formula_at(row, col) {
-                        Some(f) => Cell::Err(Rc::new(sol_error(
-                            ErrorCode::Uncalc,
-                            format!(
-                                "{} holds a formula (={f}) Excel never calculated. Open the workbook in Excel and save it.",
-                                address(row, col)
-                            ),
-                        ))),
-                        None => Cell::Empty,
-                    },
-                    Data::Int(n) => Cell::Num(*n as f64),
-                    Data::Float(n) => Cell::Num(*n),
-                    Data::Bool(b) => Cell::Bool(*b),
-                    Data::String(s) if s.is_empty() => Cell::Empty,
-                    Data::String(s) => Cell::Text(s.clone()),
-                    Data::DateTime(d) if d.is_duration() => Cell::Num(d.as_f64()),
-                    Data::DateTime(d) => Cell::Date(excel_serial(d.as_f64(), is_1904)),
-                    Data::DateTimeIso(s) | Data::DurationIso(s) => Cell::Text(s.clone()),
-                    Data::Error(e) => Cell::Err(Rc::new(excel_error(e, &address(row, col)))),
-                }
-            })
-            .collect();
-        out.push(settle(header, cells, |i| address(row0 + i as u32, col)));
+        let column: Vec<Cell> = cells.by_ref().take(height).collect();
+        out.push(settle(header, column, |i| address(row0 + i as u32, col)));
     }
     Ok(out)
 }
