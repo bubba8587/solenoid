@@ -54,7 +54,8 @@ export function isTrustedSource(url: string): boolean {
   }
   if (u.protocol !== "https:" && u.protocol !== "http:") return false;
   const host = u.hostname.toLowerCase();
-  const port = u.port;
+  // An address on its scheme's own port names none, so an entry naming that port still matches it.
+  const port = u.port || (u.protocol === "https:" ? "443" : "80");
   return config.trustedSources.some((entry) => {
     const [name, entryPort] = entry.split(":");
     if (entryPort !== undefined && entryPort !== port) return false;

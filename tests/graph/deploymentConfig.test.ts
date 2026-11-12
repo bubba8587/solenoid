@@ -39,6 +39,13 @@ describe("a trusted source", () => {
     expect(isTrustedSource("https://team.sharepoint.company.com/x")).toBe(true);
     expect(isTrustedSource("https://files.company.com:8443/a.csv")).toBe(true);
     expect(isTrustedSource("https://files.company.com/a.csv")).toBe(false);
+    // An entry naming a scheme's own port matches an address that leaves it out, and no other port.
+    setDeploymentConfig(parseDeploymentConfig({ trustedSources: ["data.company.com:443"] }));
+    expect(isTrustedSource("https://data.company.com/a.csv")).toBe(true);
+    expect(isTrustedSource("https://data.company.com:443/a.csv")).toBe(true);
+    expect(isTrustedSource("http://data.company.com/a.csv")).toBe(false);
+    expect(isTrustedSource("https://data.company.com:8443/a.csv")).toBe(false);
+    setDeploymentConfig(parseDeploymentConfig({ trustedSources: ["portal.company.com", ".sharepoint.company.com", "files.company.com:8443"] }));
     expect(isTrustedSource("ftp://portal.company.com/x")).toBe(false);
     expect(isTrustedSource("not a url")).toBe(false);
   });

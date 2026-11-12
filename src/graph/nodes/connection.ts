@@ -329,15 +329,22 @@ export class ImportXmlNode extends GraphNode {
 /** Every file read and stacked into one table, a first column naming each row's file ([[B11]] maximalMerge):
  *  columns meet by name as Append's do, and a file that doesn't read is named in `failed` while the rest load.
  *  Null once `stale` says a newer read took over. */
-async function readFilesAsOne(folder: string, files: string[], stale: () => boolean, order: string, types: Record<string, FrameColType> = {}, tableName = ""): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[]; readTypes: Record<string, FrameColType> } | null> {
+async function readFilesAsOne(folder: string, files: string[], stale: () => boolean, order: string, types: Record<string, FrameColType> = {}, tableName = ""): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[]; readTypes: Record<string, FrameColType>; tables: XlsxTableInfo[] } | null> {
   const readTypes: Record<string, FrameColType> = {};
+  // Every Table the workbooks among the files hold, by name, for the card's picker.
+  const tables: XlsxTableInfo[] = [];
+  const workbookTable = (bytes: Uint8Array) => {
+    const book = readWorkbookTable(bytes, tableName);
+    for (const t of book.tables) if (!tables.some((k) => k.name.toLowerCase() === t.name.toLowerCase())) tables.push(t);
+    return workbookFrame(book);
+  };
   const frames: FrameValue[] = [];
   const read: Array<{ file: string; table: FrameValue }> = [];
   const failed: string[] = [];
   for (const rel of files) {
     try {
       const asRead = /\.parquet$/i.test(rel) ? await readParquetFrame(folder, rel)
-        : isWorkbookName(rel) ? workbookFrame(readWorkbookTable(await readFileBytes(folder, rel), tableName))
+        : isWorkbookName(rel) ? workbookTable(await readFileBytes(folder, rel))
           : csvToFrame(await readFileText(folder, rel), order);
       if (!isSolError(asRead)) for (const c of asRead.columns) readTypes[c.name] ??= c.type;
       // Each file is retyped from its own source text before stacking, which keeps no `raw`.
@@ -353,17 +360,17 @@ async function readFilesAsOne(folder: string, files: string[], stale: () => bool
     }
     if (stale()) return null;
   }
-  if (frames.length === 0) return { frame: solError("#REF!", `None of the ${files.length} files read: ${failed[0]}`), perFile: null, failed, readTypes };
+  if (frames.length === 0) return { frame: solError("#REF!", `None of the ${files.length} files read: ${failed[0]}`), perFile: null, failed, readTypes, tables };
   // The same files unstacked, a row each: its name and its table, for a transform that runs once per file.
   const perFile = cubeFromColumns([
     { name: "File", cells: read.map((r) => r.file), type: "string" },
     { name: "Table", cells: read.map((r) => r.table) },
   ]);
-  if (frames.length === 1) return { frame: frames[0], perFile, failed, readTypes };
+  if (frames.length === 1) return { frame: frames[0], perFile, failed, readTypes, tables };
   const stack = new AppendNode({ valueKeys: frames.map((_, i) => `f${i}`) });
   const out = (await (stack as unknown as { data(inputs: Record<string, unknown[]>): unknown }).data(Object.fromEntries(frames.map((f, i) => [`f${i}`, [f]])))) as { frame: unknown };
   const frame = isFrameRef(out.frame) ? await readFrame(out.frame) : out.frame;
-  return stale() ? null : { frame: frame as FrameValue | SolError, perFile, failed, readTypes };
+  return stale() ? null : { frame: frame as FrameValue | SolError, perFile, failed, readTypes, tables };
 }
 
 /** A workbook's read as one file of many: a pick asked for is that file's error. */
@@ -472,6 +479,7 @@ export class LocalFileNode extends GraphNode {
         if (files.length === 0) return fail(`No CSV, Parquet or Excel file matches ${name}`);
         const read = await readFilesAsOne(folder, files, stale, this.dateOrder, this.columnTypes, this.tableName);
         if (!read) return superseded;
+        this.xlsxTables = read.tables;
         this.readTypes = read.readTypes;
         if (isSolError(read.frame)) return fail(read.frame.message, "error", read.frame);
         this.lastKey = key;

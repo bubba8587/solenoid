@@ -9,7 +9,7 @@ use std::rc::Rc;
 use calamine::{CellErrorType, Data, Reader, Xlsx};
 use serde_json::json;
 
-use crate::binary::{Columnar, TAG_NULL, TAG_STR};
+use crate::binary::{Columnar, TAG_STR};
 use crate::date_serial::format_date_serial;
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::{make_headers, FrameCell, FrameColType};
@@ -280,15 +280,11 @@ pub fn table_columnar(bytes: &[u8], table: &str) -> Result<(Columnar, usize), So
         out.push_cells(&c.cells);
         if let Some(raw) = c.raw {
             out.schema.push(json!({ "name": c.name, "type": "string", "len": raw.len(), "raw": true }));
+            // A blank cell's source text is empty text, as a CSV's is: a picked type reads it as blank.
             for s in raw {
-                if s.is_empty() {
-                    out.tags.push(TAG_NULL);
-                    out.nums.push(0.0);
-                } else {
-                    out.tags.push(TAG_STR);
-                    out.nums.push(0.0);
-                    out.push_str(&s);
-                }
+                out.tags.push(TAG_STR);
+                out.nums.push(0.0);
+                out.push_str(&s);
             }
         }
     }

@@ -184,7 +184,8 @@ function WorkbookTablePick({ node }: { node: { id: string; tableName: string; xl
   const [table, setTable] = useNodeField(node, "tableName");
   const tables = node.xlsxTables;
   if (tables.length === 0 && !table) return null;
-  const known = tables.some((t) => t.name === table);
+  // A Table is matched ignoring case, as the read matches it.
+  const known = tables.some((t) => t.name.toLowerCase() === table.trim().toLowerCase());
   return (
     <label className="sol-conn__field" title="The Excel Table to read. Only named Tables are read: in Excel, select the data and press Ctrl+T to make one.">
       <span className="sol-conn__label">Table</span>

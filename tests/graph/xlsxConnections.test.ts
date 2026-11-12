@@ -8,8 +8,8 @@ import { setFsProvider, type FsProvider } from "../../src/graph/fileBridge";
 import { settingsStore } from "../../src/graph/settingsStore";
 import { connectionStore } from "../../src/graph/connectionStore";
 import { extractInit } from "../../src/graph/nodeInit";
-import { isSolError, type SolError } from "../../src/graph/errorValue";
-import type { FrameValue } from "../../src/graph/frame";
+import { isSolError, solError, type SolError } from "../../src/graph/errorValue";
+import { retypeColumns, type FrameValue } from "../../src/graph/frame";
 
 const FIXTURES = new URL("../../fixtures/xlsx/", import.meta.url);
 const book = (name: string) => new Uint8Array(readFileSync(new URL(name, FIXTURES)));
@@ -74,6 +74,23 @@ describe("Local File over a workbook", () => {
     expect(node.readTypes).toMatchObject({ amount: "number", calc: "number" });
   });
 
+  it("a picked type reads a blank cell as blank, whatever the type it leaves", async () => {
+    // `when` (Date) and `paid` (Boolean) each hold one blank cell; `calc` (Number) holds blanks and errors.
+    for (const [column, type, at] of [["when", "number", 3], ["when", "logical", 3], ["paid", "number", 5], ["paid", "date", 5], ["calc", "date", 1]] as const) {
+      const { node, out } = await read({ fileName: "sales.xlsx", tableName: "Sales", columnTypes: { [column]: type } });
+      expect(connectionStore.getState(node.id).status, `${column} as ${type}`).toBe("ok");
+      expect(col(out.frame as FrameValue, column).values[at], `${column} as ${type}`).toBeNull();
+    }
+    const { out } = await read({ fileName: "sales.xlsx", tableName: "Sales", columnTypes: { calc: "date" } });
+    expect((col(out.frame as FrameValue, "calc").values[2] as SolError).code).toBe("#UNCALC!");
+  });
+
+  it("a Text column's error cell stays the error under a picked type", () => {
+    const na = solError("#N/A", "C4 is #N/A in the workbook");
+    const f: FrameValue = { __frame: true, columns: [{ name: "note", type: "string", values: ["7", na, null] }] };
+    expect(retypeColumns(f, { note: "number" }).columns[0].values).toEqual([7, na, null]);
+  });
+
   it("a Table the workbook doesn't have is the card's error, naming the ones it has", async () => {
     const { out } = await read({ fileName: "sales.xlsx", tableName: "Orders" });
     expect(isSolError(out.frame) && (out.frame as SolError).message).toBe("No Table named \"Orders\". The workbook has: Sales, Regions");
@@ -84,6 +101,10 @@ describe("Local File over a workbook", () => {
     const f = out.frame as FrameValue;
     expect(f.columns[0]).toMatchObject({ name: "File", values: Array(11).fill("sales.xlsx") });
     expect(connectionStore.getState(node.id).message).toMatch(/^3 didn't read: dates1904\.xlsx \(No Table named "Sales"/);
+    // The picker lists every Table the matched workbooks hold, so a pattern's Table can be picked before any reads.
+    expect(node.xlsxTables.map((t) => t.name)).toEqual(expect.arrayContaining(["Sales", "Regions"]));
+    const fresh = await read({ fileName: "*.xlsx" });
+    expect(fresh.node.xlsxTables.map((t) => t.name)).toEqual(expect.arrayContaining(["Sales", "Regions"]));
   });
 });
 
