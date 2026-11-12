@@ -200,8 +200,20 @@ fn between_or_err(c: &mut Call) -> Result<V, V> {
             }
         }
     }
-    let lo = num_of(c.read("lo"))?.unwrap_or(f64::NEG_INFINITY);
-    let hi = num_of(c.read("hi"))?.unwrap_or(f64::INFINITY);
+    // An empty end is no limit. A cable that carries a blank is a value not there yet, as a blank parameter is: the
+    // answer is blank, where reading it as no limit would show a chance out to infinity.
+    let mut ends = [f64::NEG_INFINITY, f64::INFINITY];
+    for (end, key) in ends.iter_mut().zip(["lo", "hi"]) {
+        match num_of(c.read(key))? {
+            Some(n) => *end = n,
+            None if c.wired(key).is_some_and(|v| !v.is_empty()) => {
+                c.show("plotX", V::Null);
+                return Ok(V::Null);
+            }
+            None => {}
+        }
+    }
+    let [lo, hi] = ends;
     let (lo, hi) = if lo <= hi { (lo, hi) } else { (hi, lo) };
     let (s_lo, s_hi) = support(&op, &ps);
     if ps.iter().any(|p| !p.is_finite()) || s_lo.is_nan() || s_hi.is_nan() || s_lo > s_hi {
@@ -446,9 +458,11 @@ fn ab_test_or_err(c: &mut Call) -> Result<Option<[f64; 4]>, V> {
 
 // ─── Bootstrap ──────────────────────────────────────────────────────────────────
 
-/// The resamples drawn: 10,000, fewer for a long list so a pass stays near 2×10⁷ draws, never under 1,000.
+/// The resamples drawn: 10,000, fewer for a long list so a pass stays near 2×10⁷ draws, never under 200. Past 100,000
+/// values the floor holds and a pass costs more than the budget; a list that long has a tight interval, which 200
+/// resamples still place.
 fn resample_count(n: usize) -> usize {
-    (20_000_000 / n.max(1)).clamp(1_000, 10_000)
+    (20_000_000 / n.max(1)).clamp(200, 10_000)
 }
 /// The resampling seed an empty Seed field stands for: a fingerprint of the values (FNV-1a over each number's bits, in
 /// order), so the same values give the same interval on every pass and machine, and two cards with different values
@@ -677,6 +691,8 @@ mod tests {
         assert_eq!(median(&mut [4.0, 1.0, 3.0, 2.0]), 2.5);
         assert_eq!(percentile(&[1.0, 2.0, 3.0, 4.0, 5.0], 0.25), 2.0);
         assert_eq!(resample_count(100), 10_000);
-        assert_eq!(resample_count(1_000_000), 1_000);
+        assert_eq!(resample_count(20_000), 1_000);
+        assert_eq!(resample_count(50_000), 400);
+        assert_eq!(resample_count(1_000_000), 200);
     }
 }

@@ -50,6 +50,15 @@ describe("Probability Between", () => {
     expect(new ProbabilityBetweenNode().data({ mean: [null] }).result).toBeNull();
   });
 
+  it("an end wired to a blank blanks the answer too: only an empty field is no limit", () => {
+    const n = new ProbabilityBetweenNode();
+    expect(n.data({ lo: [null] }).result).toBeNull();
+    expect(n.plotX).toBeNull();
+    expect(n.data({ hi: [null] }).result).toBeNull();
+    // A wired number is that end, over the field's own.
+    expect(n.data({ lo: [-1.96], hi: [1.96] }).result).toBeCloseTo(0.9500042, 6);
+  });
+
   it("a family switch swaps the parameter rows and moves the handles", () => {
     const n = new ProbabilityBetweenNode();
     expect(n.keysDroppedBySwitch("t")).toEqual(["mean", "stdev"]);
@@ -131,6 +140,17 @@ describe("Bootstrap", () => {
     expect(code(dated.estimate)).toBe("#TYPE!");
     expect(isSolError(dated.estimate) && dated.estimate.message).toContain("holds dates");
     expect(n.data({ list: [[true, false, true, true]] }).estimate).toBe(0.75);
+  });
+
+  it("draws fewer resamples for a long list, 200 at the least", () => {
+    const drawn = (count: number) => {
+      const n = new BootstrapNode();
+      n.data({ list: [Array.from({ length: count }, (_, i) => (i * 7919) % 1000)] });
+      return n.plotY!.reduce((s, c) => s! + c!, 0);
+    };
+    expect(drawn(2_000)).toBe(10_000);
+    expect(drawn(30_000)).toBe(666);
+    expect(drawn(150_000)).toBe(200);
   });
 
   it("the op picks the statistic and names the output", () => {
