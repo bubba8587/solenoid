@@ -545,6 +545,25 @@ fn calc_fields(c: &Call) -> Vec<(String, Rc<crate::eval::LambdaV>)> {
     out
 }
 
+/// Every name a LAMBDA body could read as a column: its `[brackets]`, its `@` names and its bare names.
+fn body_names(a: &crate::excel_formula::Ast, out: &mut Vec<String>) {
+    use crate::excel_formula::Ast;
+    match a {
+        Ast::Name(n) | Ast::WholeCol(n) | Ast::AtCol(n) => out.push(n.clone()),
+        Ast::Call { args, .. } => args.iter().for_each(|x| body_names(x, out)),
+        Ast::Apply { func, args } => {
+            body_names(func, out);
+            args.iter().for_each(|x| body_names(x, out));
+        }
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => body_names(arg, out),
+        Ast::Bin { l, r, .. } => {
+            body_names(l, out);
+            body_names(r, out);
+        }
+        Ast::Num(..) | Ast::Str(_) | Ast::Bool(_) | Ast::Blank => {}
+    }
+}
+
 /// A calculated field's answer over a cell's rows: each parameter is its column's values in those rows, a date
 /// column's as dates. `@` names this row, and a pivot cell is many rows, so the LAMBDA reads whole lists.
 fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCell, bool) {
@@ -565,10 +584,15 @@ fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCel
             items
         }
     };
+    // A parameter naming no column hands the body its #NAME? as a value, so a body that reads it answers #NAME? and
+    // one that never does (a new LAMBDA card's `x`, left in place) is unharmed. One off a column only by letter case
+    // is a typo for it, refused at once with the hint.
     let mut args = Vec::with_capacity(lam.params.len());
     for p in &lam.params {
         match slice(p) {
-            V::Err(e) => return (FrameCell::Err(e), false),
+            V::Err(e) if case_twin(p, f.columns.iter().map(|k| k.name.as_str())).is_some() => {
+                return (FrameCell::Err(e), false);
+            }
             v => args.push(v),
         }
     }
@@ -718,9 +742,16 @@ fn pivot(c: &mut Call) -> Answer {
             for n in names_of(c.field("detailFields")) {
                 want(n);
             }
+            // A calculated field reads its parameters' columns, and the columns its body names with no parameter: a
+            // `[Column]`, or a bare name its card captured. Left out, they'd read as the card's empty slot, a 0.
             for (_, lam) in calc_fields(c) {
-                for p in &lam.params {
-                    want(p.clone());
+                let mut names = lam.params.clone();
+                names.extend(lam.captured.iter().flatten().cloned());
+                if let Some(body) = &lam.body {
+                    body_names(body, &mut names);
+                }
+                for n in names {
+                    want(n);
                 }
             }
             wanted

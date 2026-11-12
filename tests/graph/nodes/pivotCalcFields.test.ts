@@ -309,6 +309,21 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     expect((await run({ frame: lazy, calcs: [["MPG", MPG]] })).col("MPG")!.values).toEqual([25, 20, 22]);
   });
 
+  // The author's report, 2026-11-12: no parameters and bracketed columns over a lazy input gave #DIV/0! in every cell,
+  // the input read with none of the columns the body names, each then the card's empty slot, a 0.
+  it("a parameter naming no column is #NAME? where the body reads it, and harmless where it doesn't (a new card's x)", async () => {
+    expect((await run({ calcs: [["MPG", lambda("x", "SUM([Miles]) / SUM(Gallons)")]] })).col("MPG")!.values).toEqual([25, 20, 22]);
+    const used = (await run({ calcs: [["MPG", lambda("x", "SUM(x)")]] })).col("MPG")!.values[0];
+    expect(isSolError(used) && used.code).toBe("#NAME?");
+  });
+
+  it("a lazy input reads the columns the body names with no parameter: brackets, and bare names", async () => {
+    const lazy = planned(log, { kind: "distinct" });
+    for (const [params, expr] of [["", "SUM([Miles])/SUM([Gallons])"], ["", "SUM(Miles) / SUM(Gallons)"], ["Gallons", "SUM([Miles]) / SUM(Gallons)"]]) {
+      expect([params, expr, (await run({ frame: lazy, calcs: [["MPG", lambda(params, expr)]] })).col("MPG")!.values]).toEqual([params, expr, [25, 20, 22]]);
+    }
+  });
+
   it("several fields keep their order; a name a value already has is told apart; blank names and unwired slots", async () => {
     const two = await run({ values: ["Miles"], calcs: [["Miles", MPG], ["", lambda("Gallons", "SUM(Gallons)")], ["Nothing", undefined]] });
     expect(two.names).toEqual(["Plate", "Miles", "Miles2", "Calculated 2"]);

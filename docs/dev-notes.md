@@ -19,6 +19,11 @@ specific item.
 - A workbook formula with no saved answer is its own code, `#UNCALC!` (ERROR.TYPE 8, as Excel's #GETTING_DATA;
   `tree/specs/values/error-values.md`). Local File and Web Source fold All matching, Dates and Auto-refresh into Options, and an idle
   card's message replaces "Not connected". The demo vault holds `Data/sales-targets.xlsx` and reads binary files.
+- Pivot calculated fields over a lazy input (the author's `SUM([Mileage Driven])/SUM([Gallons])`, no parameters):
+  the card read only the parameters' columns, so a body's brackets and bare names read the empty slot's 0 and every
+  cell was `#DIV/0!`. It now reads every name the body uses (`body_names`, `backend_verbs.rs`). The unit tests had
+  called the card on a plain frame, which never takes that path: a test against a `planned` (lazy) input now guards it,
+  and fails without the fix. A parameter naming no column now only errors where the body reads it (a new card's `x`).
 - Seen, not touched: the table popup's footer Sum skips error cells (a column holding `#UNCALC!` still sums).
 - Self-hosting: `docs/self-hosting.md` is the proposal for the engineering team (SharePoint via Microsoft Graph, or
   same-origin hosting). Built: `solenoid.config.json` with `trustedSources`, hosts that skip the network prompt
