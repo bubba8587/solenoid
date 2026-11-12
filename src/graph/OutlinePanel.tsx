@@ -1,4 +1,4 @@
-// [[C88]] collapsedGroupCard, [[group-expand-push#Expanding a group nudges its neighbors aside, and collapsing puts them back]]
+// [[C88]] collapsedGroupCard, [[group-expand-push]]
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { getActiveEditor as getEditor, getActiveView as getView, subscribeActiveGraph } from "./activeGraph";
 import { selectNode, unselectAllNodes } from "./canvasCommands";

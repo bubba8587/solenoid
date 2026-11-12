@@ -740,7 +740,7 @@ describe("type-honest operators and well-formed numbers", () => {
   });
 });
 
-describe("closeParens ([[formula-language#Missing closing parentheses are added when a formula is committed]])", () => {
+describe("closeParens ([[formula-language#Syntax hints]])", () => {
   it("adds the missing closers at the end, counting only outside quoted text", () => {
     expect(closeParens(`IFS(@x > QUARTILE(x, 3), "top", TRUE, "rest"`)).toBe(`IFS(@x > QUARTILE(x, 3), "top", TRUE, "rest")`);
     expect(closeParens("ROUND(SUM(a, b), 2 ")).toBe("ROUND(SUM(a, b), 2)");

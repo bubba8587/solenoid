@@ -1,4 +1,4 @@
-// [[C22]] rowFormulaRefs, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], [[computed-columns#Names inside a row]], [[C22]], [[engineering#Nothing whole-table runs once per row]]
+// [[C22]] rowFormulaRefs, [[engineering#Performance]], [[computed-columns#Names inside a row]], [[C22]], [[engineering#Nothing whole-table runs once per row]]
 import { describe, expect, it } from "vitest";
 import { growthAt4x } from "./timing";
 import { computeColumnOnEngine } from "../../src/graph/frameBackend";

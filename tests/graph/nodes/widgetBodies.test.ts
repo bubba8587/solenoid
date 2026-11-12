@@ -53,7 +53,7 @@ describe("the fixed-output widgets", () => {
     expect(run(45010, 45001)).toEqual({ start: 45001, end: 45010 });
     expect(run(null, 45001)).toEqual({ start: null, end: 45001 });
     expect(run(45001, null)).toEqual({ start: 45001, end: null });
-    // A day before 1900 is a date ([[date-values#Days before 1900 are dates everywhere, as days after it are]]).
+    // A day before 1900 is a date ([[date-values#Days before 1900]]).
     expect(run(0, 45001)).toEqual({ start: 0, end: 45001 });
     expect(run(45001, -5)).toEqual({ start: -5, end: 45001 });
     expect(run()).toEqual({ start: null, end: null });

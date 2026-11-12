@@ -1,4 +1,4 @@
-// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]
+// [[engineering#Performance]]
 import { useLayoutEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@xyflow/react";

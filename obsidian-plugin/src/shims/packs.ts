@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[obsidian-plugin]]
 import type { PackFormat, PackUnit } from "../../../src/graph/formatAnnotationStore";
 
 export function allPacks(): { id: string; units?: PackUnit[]; formats?: PackFormat[] }[] {

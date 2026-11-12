@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[alert-node-alerts-hud#When it fires]]
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

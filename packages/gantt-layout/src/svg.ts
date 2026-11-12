@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[components#One design system governs every look, layout and word in the app]]
+// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[components#The design system]]
 
 import type { GanttPayload } from "./payload";
 import type { GanttColors, GridColumn } from "./frame";

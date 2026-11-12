@@ -1,4 +1,4 @@
-// [[C23]] calcModes, [[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]
+// [[C23]] calcModes, [[alert-node-alerts-hud#When it fires]]
 //! The compute pass's state between passes (`tree/specs/computation/compute-pass.md` § Entry order): calc mode, dirty
 //! flag, generation, rebuild depth and single flight; the host keeps the snapshot each transition answers.
 

@@ -1,4 +1,4 @@
-// [[save-format#A save loses nothing quietly]], [[group-expand-push#A node joins or leaves a group only when you put it there]], [[B18]] safeToShare
+// [[save-format#A save loses nothing quietly]], [[group-expand-push#Who is a member]], [[B18]] safeToShare
 import type { GraphEditor } from "./graphEditor";
 import { rebuildGroupMembership } from "./groupMembership";
 import { GraphConnection, GraphNode } from "./graphModel";

@@ -67,7 +67,7 @@ enum Class {
     Moves,
     /// Compares and hands back values from `At`: a date there comes back a date.
     Returns(At),
-    /// Compares its arguments as they are: a date with a date ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]] comparisonFunctions).
+    /// Compares its arguments as they are: a date with a date ([[formula-language#Scalar operators]] comparisonFunctions).
     Compares,
 }
 
@@ -143,7 +143,7 @@ type Copy = (std::rc::Weak<Vec<V>>, Reading, V);
 
 thread_local! {
     /// Long lists already read, by the list: a range function per row of a computed column is handed the same column
-    /// every row, and scanning it each time would be whole-table work per row ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+    /// every row, and scanning it each time would be whole-table work per row ([[engineering#Performance]] linearWork).
     static SEEN: std::cell::RefCell<rustc_hash::FxHashMap<usize, Seen>> = Default::default();
     /// SEEN's size after its last sweep of lists gone: it sweeps again once it doubles, so a sweep costs each entry
     /// once.
@@ -577,7 +577,7 @@ mod tests {
     }
 
     /// A long list's serial copy is made once, so a range function per row of a column reads one list, not a copy a row
-    /// ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+    /// ([[engineering#Performance]] linearWork).
     #[test]
     fn a_long_lists_serials_are_one_copy() {
         let d = dates(SCAN_ONCE * 2, 45000.0);

@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[standoffs#No layout action breaks a standoff you set]]
+// [[A1]] visualGraphCalculator, [[standoffs#The solver runs last]]
 
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 export type StandoffAnchor = "n" | "e" | "s" | "w" | "ne" | "nw" | "se" | "sw";

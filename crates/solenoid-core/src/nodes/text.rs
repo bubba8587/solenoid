@@ -761,7 +761,7 @@ fn cast_display(v: &V, target: &str) -> V {
     }
 }
 
-/// An InlineCast ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]] inlineCast): Cast's conversion to `target` over a card's result, cell by cell at any depth,
+/// An InlineCast ([[socket-lattice#The InlineCast]] inlineCast): Cast's conversion to `target` over a card's result, cell by cell at any depth,
 /// with Cast's defaults (no format, the default separators); a cell that won't convert is `#VALUE!`, a blank stays blank.
 pub(crate) fn inline_cast(v: &V, target: &str) -> V {
     let v = if target == "text" { v.clone() } else { super::list::strip_unit_cells(v) };

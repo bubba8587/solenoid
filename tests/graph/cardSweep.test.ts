@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]
+// [[B19]] spreadsheetHabits, [[engineering#Performance]]
 // Every catalog card fed long lists and extreme scalars on every input: none may run unbounded. Slow, so opt-in:
 // `SWEEP=1 npx vitest run tests/graph/cardSweep.test.ts`. A card that spins synchronously stalls the run itself rather
 // than failing it; `SWEEP_FROM=<catalog key>` resumes past it once it's fixed.

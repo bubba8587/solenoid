@@ -1498,7 +1498,7 @@ describe("CompositeNode manual refresh mode", () => {
   });
 });
 
-describe("Pipeline catalog preset ([[composite-nodes#Pipeline is a composite set up as one chain, not a new kind of node]])", () => {
+describe("Pipeline catalog preset ([[composite-nodes#Manual refresh and Pipeline]])", () => {
   it("hydrates into a manual-refresh Table→Result passthrough", async () => {
     const entry = FLAT_CATALOG.get("pipeline")!;
     const q = entry.create() as CompositeNode;

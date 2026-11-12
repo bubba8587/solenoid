@@ -39,7 +39,7 @@
   border-radius: 4px;
 }
 
-/* [[engineering#Content entering or leaving the app is guarded where it crosses]]: a picture held as text, sized to the row. */
+/* [[engineering#Untrusted content]]: a picture held as text, sized to the row. */
 .sol-cell-img {
   display: inline-block;
   height: 1.3em;

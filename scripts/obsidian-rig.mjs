@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[obsidian-plugin]]
 // A second, private Obsidian for checking the plugin against the real thing, on its own X display and
 // profile with a copy of the demo vault, so the author's Obsidian is never touched. It always tests this
 // repository's plugin build. Linux.

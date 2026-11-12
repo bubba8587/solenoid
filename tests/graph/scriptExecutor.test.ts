@@ -1,4 +1,4 @@
-// [[B17]] typedValueModel, [[script-sandbox#Script runs your own code, and only typed values come out]], [[script-sandbox#The time limit]]
+// [[B17]] typedValueModel, [[script-sandbox]], [[script-sandbox#The time limit]]
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // A stand-in worker that runs one call at a time: src "wait:N" answers N ms after it starts, "throw" raises an uncaught error.

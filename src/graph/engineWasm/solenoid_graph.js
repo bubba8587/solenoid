@@ -474,7 +474,7 @@ export class GraphCore {
     }
     /**
      * Reads the type of each `[id, output, type now]` in `keys` off the value the last pass landed there, keeping the
-     * last reading where the value has nothing to read ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]] emptyKeepsLastType). Whether the Type Settle should
+     * last reading where the value has nothing to read ([[socket-lattice#Requirements]] emptyKeepsLastType). Whether the Type Settle should
      * run again: a reading moved, or an output still shows a wildcard its reading would type.
      * @param {string} keys
      * @returns {boolean}
@@ -837,7 +837,7 @@ export function card_forget(ids) {
 }
 
 /**
- * The image a Record cell's text shows, if any ([[engineering#Content entering or leaving the app is guarded where it crosses]]).
+ * The image a Record cell's text shows, if any ([[engineering#Untrusted content]]).
  * @param {string} text
  * @returns {string | undefined}
  */

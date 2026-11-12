@@ -1,4 +1,4 @@
-// [[command-palette#The Command Palette is the menubar in searchable form]]
+// [[command-palette]]
 import { ISOLATE_ON } from "./isolateStore";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";

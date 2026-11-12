@@ -172,9 +172,9 @@ describe("[[save-format#A save loses nothing quietly]] — every own field is pe
     editStatus: "Edit Frame's status of each edit on the last run, for its list; the body works it out again each run",
     settled: "Edit Frame's edits its body found the table now gives, which its coreWatched drops from cellEdits",
     pairPlaceholders: "class-constant muted text for an empty pair field; never a value",
-    cleanSource: "The SVG Picker's memo of the last scrubbed markup; stringLiterals.source holds the persisted text ([[engineering#Content entering or leaving the app is guarded where it crosses]])",
-    columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]])",
-    nestedPicks: "A Note's nested cube-table picks from the Solenoid Properties plugin's data, this note's own; the vault is the source, Import Obsidian Note re-reads them with the note ([[frame-verbs#Each table in a Cube, nested or not, types its own columns]])",
+    cleanSource: "The SVG Picker's memo of the last scrubbed markup; stringLiterals.source holds the persisted text ([[engineering#Untrusted content]])",
+    columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[obsidian-plugin]])",
+    nestedPicks: "A Note's nested cube-table picks from the Solenoid Properties plugin's data, this note's own; the vault is the source, Import Obsidian Note re-reads them with the note ([[frame-verbs#The Cube value]])",
     resolved: "Write Tasks' Preview resolutions; re-derived by the next Preview, meaningless across loads",
     resolvedPath: "Write to Obsidian's last-resolved target path; re-read from the `path` input/literal on every compute",
     templateVars: "Report's last Knap render variables, for the overlay's live preview; rebuilt from the cables on every compute",
@@ -185,7 +185,7 @@ describe("[[save-format#A save loses nothing quietly]] — every own field is pe
     taskRows: "Write to Obsidian's Tasks rows as last planned from the wired rows; rebuilt on every compute",
     readTypes: "Local File's column types as the file read them, so picking one again drops the pick; re-read with the file",
     planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
-    held: "Delayed Pass's value from the last recalculation; a reopened document starts from Start ([[compute-pass#A Delayed Pass card hands on what its input held one recalculation earlier, so loops through it step]])",
+    held: "Delayed Pass's value from the last recalculation; a reopened document starts from Start ([[compute-pass#Delayed Pass]])",
     stepCount: "Delayed Pass's count of recalculations since it was added, opened or reset, for the card",
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
@@ -250,7 +250,7 @@ describe("[[save-format#A save loses nothing quietly]] — every own field is pe
     ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[C58]] tableInputRawText)",
     entryByOp: "Value Input's typed text per op this session, restored on switching back; only the shown op's text is saved ([[C28]] literalsIffEditable)",
     cachedSource: "List Input's typed text per item, for the popup's Source view; re-split from stringLiterals on every compute",
-    // ── runtime edge-detection ([[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]) ──
+    // ── runtime edge-detection ([[alert-node-alerts-hud#When it fires]]) ──
     alertKey: "effectsEdgeTriggered: the status the body last read, which raises an alert on a change",
     alertMessage: "effectsEdgeTriggered: what that status fires, shown by the body",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──

@@ -1,4 +1,4 @@
-// [[C44]] dateSerials, [[schedule-and-gantt#An unsupported imported field is named, never dropped and never a new column]]
+// [[C44]] dateSerials, [[schedule-and-gantt#Import at the border]]
 //! Microsoft Project XML (MSPDI, pj14) read.
 
 use crate::calendar::{CalendarSpec, Interval};

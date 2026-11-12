@@ -1,4 +1,4 @@
-// [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
+// [[motion-graphics]]
 // Peek: one state of a capture at rest, straight on, every card in frame; for looking at a capture before
 // a clip is written. The state is the URL's ?state= (the last one by default).
 import { front, restError, rig, showState } from "./kit.js";

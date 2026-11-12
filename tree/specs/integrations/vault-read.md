@@ -24,7 +24,7 @@ flowchart TD
 
 ## Which notes are read
 
-- **The vault** is the one [[D62]] demoVaultResolution resolves: a forced demo, else the vault set in Settings, else the demo vault when allowed. With no vault at all the Vault Folder node answers nothing and shows no error.
+- **The vault** is the one [[D62]] demoVaultResolution resolves: a forced demo, else the vault set in Settings, else the demo vault when allowed. With no vault at all the Vault Folder node answers nothing and shows no error. The demo vault is a small read-only vault of real notes, tasks and tables that the app ships, so the Obsidian nodes work before a vault of one's own is set up, and on the web ([[live-connections#The demo vault]]).
 - **The folder** is the Vault Folder node's Folder field, or the text cabled into its Folder socket, relative to the vault with leading and trailing slashes dropped. A blank folder reads the whole vault. A folder that resolves outside the vault is refused with `"<folder>" is not inside the vault`.
 - **The notes** are every `.md` file under the folder, down to six folders deep, with hidden files and folders (a name starting with a dot, so `.obsidian` and `.trash`) skipped, and every folder named `_types` skipped (an mdbase collection keeps its type definitions there, and they are not notes).
 - **The Filter** keeps the notes whose file name matches a pattern, ignoring case: `*` stands for any run of characters and `?` for exactly one. The pattern is matched against the whole file name including `.md`, so `2026-*` keeps `2026-03-01.md` and `2026-03-01` alone keeps nothing. A blank Filter keeps every note.
@@ -139,10 +139,3 @@ Tests:
 
 - `vaultCube.test.ts`: the file columns come first and the frontmatter keys follow in first-met order; `tags` merges frontmatter and inline tags, each once; `links` collects wikilinks from the body and the frontmatter; an inline tag is never all digits and never read from a code fence or a code span; a file name parses by the daily-notes format and by a custom one, and a name with no day is blank; an mdbase type and a `types.json` type each decide a column; with neither, a column is guessed and one mixed across rows is text; a list key is a list cell, rows of records a nested Cube, a list of lists a table; text a type cannot read is `NaN`; a date under a text type is the ISO text written.
 - `demoVault.test.ts`: the demo vault is read through the same file calls and refuses every write.
-
-## The app ships a read-only demo vault to try the vault nodes on
-
-The app ships a small read-only demo vault of real notes, tasks and tables, so the Obsidian nodes work before you set up a vault of your own, and on the web.
-
-- How it's built: [[live-connections#The demo vault]].
-- **Reopen if:** the web app can open a real vault.

@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]]
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#Packs]]
 
 import { HYPOTENUSE_ENTRY } from "./geometry";
 import { ReverseTextNode, SpellNumberNode, TimeZoneConvertNode, WorldClockNode, QrCodeNode } from "../nodeClasses";

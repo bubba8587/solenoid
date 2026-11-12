@@ -158,7 +158,7 @@ mindmap
 Tests:
 
 - `nodeOps.test.ts`: every op reachable; `formulaNodeCoverage.test.ts`: cards and formulas cover each other.
-- `sourceInvariants.test.ts`: every `OpSelect` and `OpToggle` binds the node's own `op`, no `ArgSelect` or `SegToggle` does and no picker carries the retired `arg` prop ([[C26]] opArgDistinct), and no component writes an op's catalog label into `node.label` ([[add-menu#A placed node is titled with what you picked in the Add menu]]).
+- `sourceInvariants.test.ts`: every `OpSelect` and `OpToggle` binds the node's own `op`, no `ArgSelect` or `SegToggle` does and no picker carries the retired `arg` prop ([[C26]] opArgDistinct), and no component writes an op's catalog label into `node.label` ([[add-menu#Naming a placed node]]).
 
 ## Reading inputs
 
@@ -200,7 +200,7 @@ Tests: `sourceInvariants.test.ts`: a file that retypes sockets in place referenc
 
 ### Frame input labels
 
-A Frame input's label names the columns it expects, in order, and an input that takes any columns gets a plain noun; the label never states the shape, which the socket already shows ([[components#One design system governs every look, layout and word in the app]]). The label is the only place a user can see what columns a node wants before wiring it up. This would reopen if a node could show its expected columns some other way before it is wired.
+A Frame input's label names the columns it expects, in order, and an input that takes any columns gets a plain noun; the label never states the shape, which the socket already shows ([[components#The design system]]). The label is the only place a user can see what columns a node wants before wiring it up. This would reopen if a node could show its expected columns some other way before it is wired.
 
 - **The label grammar.** A label that names columns lists their roles in the expected order, each a Title-case word, joined with `" + "` (`From + To + Value`, `Label + Value`); a standard group of columns may shorten to its standard initialism (`Date + OHLC`), never spaced-out single letters. An input that expects no particular columns is one plain Title-case noun (`Frame`, `Data`, `Series`). A label never carries the shape in brackets (`(2-D)`, `(list)`), which the socket and the Socket Legend already show. A role-labeled input declares its example in the class's static `frameHints` map under the input key (`frameHint.ts`), and the hint's column names equal the label's roles in order.
 - **Every role-labeled input shows a matching example table**. Its columns are the label's columns, in order, with a standard initialism spelled out (`OHLC` is Open, High, Low, Close). Every example, whether or not its label lists columns, is 3 to 5 full rows whose cells match the declared column types. The example is the label worked through, so the two are one promise: a labeled input with no example leaves the user guessing, and an example whose columns drift from the label shows a confidently wrong table, which is worse than none. That is why a test enforces it rather than care.

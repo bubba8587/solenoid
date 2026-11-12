@@ -1,4 +1,4 @@
-// [[script-sandbox#Script runs your own code, and only typed values come out]]
+// [[script-sandbox]]
 import { useMemo, useRef, type KeyboardEvent, type RefObject } from "react";
 import { highlightJs } from "../jsSyntax";
 import "./FormulaEditor.css";

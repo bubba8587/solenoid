@@ -335,7 +335,7 @@ function findCycle(g: SavedGraph): string[] | null {
   const indeg = new Map<string, number>();
   const adj = new Map<string, string[]>();
   const nameOf = new Map<string, string>();
-  // A cable into a Delayed Pass card carries last pass's value, so it closes no cycle ([[compute-pass#A Delayed Pass card hands on what its input held one recalculation earlier, so loops through it step]]).
+  // A cable into a Delayed Pass card carries last pass's value, so it closes no cycle ([[compute-pass#Delayed Pass]]).
   const delayed = new Set(g.nodes.filter((n) => n.type === "DelayedPassNode").map((n) => n.id));
   for (const n of g.nodes) { indeg.set(n.id, 0); nameOf.set(n.id, n.name ?? n.id); }
   for (const c of g.connections) {

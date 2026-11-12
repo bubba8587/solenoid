@@ -55,7 +55,7 @@ async function openGraph(browser, shot) {
   const zoom = shot.zoom ?? 1;
   await page.setViewport({ width: Math.round(w / zoom), height: Math.round(h / zoom), deviceScaleFactor: (shot.dpr ?? 2) * zoom,
     ...(shot.phone || shot.tablet ? { isMobile: true, hasTouch: true, isLandscape: !!shot.tablet } : {}) });
-  // A tablet is a touch device held sideways: the app runs its tablet layout for it ([[layout-chrome#A phone turned sideways runs the tablet layout, scaled to fit]]).
+  // A tablet is a touch device held sideways: the app runs its tablet layout for it ([[layout-chrome#Phones in landscape]]).
   if (shot.phone || shot.tablet) {
     // The phone model as shot-graph.mjs builds it: a mobile UA and (pointer: coarse) before the app loads.
     await page.setUserAgent(

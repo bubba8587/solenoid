@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[obsidian-plugin#Requirements]]
+// [[C17]] shareImpl, [[obsidian-plugin]], [[obsidian-plugin#Requirements]]
 import { describe, it, expect } from "vitest";
 import { cellToYaml, frameSourceFromYaml, listToYaml, coerceYaml, validateYaml, PROPERTY_KINDS } from "../../obsidian-plugin/src/yamlValue";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";

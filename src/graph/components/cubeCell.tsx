@@ -22,8 +22,8 @@ import "./ArrayChip.css";
 import { WebImage } from "./WebImage";
 import { isWebUrl } from "../webUrl";
 
-/** A text cell holding a picture ([[engineering#Content entering or leaving the app is guarded where it crosses]]): a web one waits for the network grant ([[B18]]
- *  safeToShare); a sparkline paints in the active palette ([[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]). */
+/** A text cell holding a picture ([[engineering#Untrusted content]]): a web one waits for the network grant ([[B18]]
+ *  safeToShare); a sparkline paints in the active palette ([[formula-language#Lists]]). */
 export function CellImage({ src, className = "sol-cell-img", alt = "" }: { src: string; className?: string; alt?: string }): ReactNode {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   if (isWebUrl(src)) return <WebImage className={className} src={src} alt={alt} />;

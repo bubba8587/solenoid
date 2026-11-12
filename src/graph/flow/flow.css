@@ -1,4 +1,4 @@
-/* [[B3]] sameNodeEverywhere, [[C88]] collapsedGroupCard (.sol-member-hidden), [[components#One design system governs every look, layout and word in the app]] */
+/* [[B3]] sameNodeEverywhere, [[C88]] collapsedGroupCard (.sol-member-hidden), [[components#The design system]] */
 
 /* flow.css loads after RF's stylesheet, so these override its `.react-flow__pane.draggable` rule. */
 .react-flow__pane.draggable { cursor: default; }

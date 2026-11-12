@@ -14,7 +14,7 @@ import { ConduitNode, conduitInKey, conduitOutKey, CONDUIT_MAX_LANES } from "./n
 type SocketFact = [key: string, now: SocketDataType, base: SocketDataType, kind: 0 | 1 | 2 | 3, rest?: SocketDataType];
 
 /** The outputs of these freshly computed cards whose type the value they carried may give, as the core's `readTypes`
- *  takes them: every passthrough output and every value-typed output, with its type now ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]]). */
+ *  takes them: every passthrough output and every value-typed output, with its type now ([[socket-lattice#Requirements]]). */
 export function readTypeKeys(nodes: readonly (GraphNode | undefined)[]): [string, string, SocketDataType][] {
   const keys: [string, string, SocketDataType][] = [];
   for (const n of nodes) {

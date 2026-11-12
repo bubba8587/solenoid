@@ -1,4 +1,4 @@
-// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]], [[frame-verbs#Reading CSV text]]
+// [[B18]] safeToShare, [[engineering#Untrusted content]], [[frame-verbs#Reading CSV text]]
 import { describe, it, expect } from "vitest";
 import { parseCsvRows, csvFieldSpans, joinCsvRows } from "../../src/graph/csv";
 

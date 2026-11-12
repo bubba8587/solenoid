@@ -133,7 +133,7 @@ fn comparison(c: &mut Call) -> Answer {
     let result = if matches!(a, V::Null) && matches!(b, V::Null) {
         V::Null
     } else {
-        // The card is its function ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]] comparisonFunctions), item by item.
+        // The card is its function ([[formula-language#Scalar operators]] comparisonFunctions), item by item.
         let name = crate::compare::card_function(&op);
         broadcast_el(&[a, b], |o| core_call(name, &[o[0].clone(), o[1].clone()]))
     };

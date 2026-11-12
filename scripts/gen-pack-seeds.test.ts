@@ -1,4 +1,4 @@
-// [[C79]] packActivationIsPresentation, [[vault-read#The app ships a read-only demo vault to try the vault nodes on]]
+// [[C79]] packActivationIsPresentation, [[vault-read#Which notes are read]]
 // Writes every pack's example seed (src/graph/seedGraphs/packs/pack-<id>.json) from the recipes below. A card is
 // made the way the Add menu makes it (its catalog entry's create(), or its class) and saved the way the app saves it
 // (savedNodeBody), so a preset carries exactly what the app would write. Run:

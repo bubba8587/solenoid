@@ -422,7 +422,7 @@ fn one_upper(c: char) -> char {
 }
 
 /// Each character's uppercase by `one_upper`, the first 2,048 code points (Latin, Greek, Cyrillic, …) from a table of
-/// std's own answers, built once: std's lookup is a search per char, slow in wasm ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// std's own answers, built once: std's lookup is a search per char, slow in wasm ([[engineering#Performance]] linearWork).
 fn upper_chars(s: &str) -> String {
     const SPAN: usize = 0x800;
     thread_local! {
@@ -1047,7 +1047,7 @@ fn exact_key(v: &V) -> Option<Option<ExactKey>> {
 }
 
 /// `xmatch_index` over one list of keys for many lookups: an exact match builds an index once, where a scan per
-/// lookup made a list of lookups quadratic ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork). Anything the index doesn't hold scans as before.
+/// lookup made a list of lookups quadratic ([[engineering#Performance]] linearWork). Anything the index doesn't hold scans as before.
 pub(crate) struct Matcher<K: AsRef<[V]>> {
     keys: K,
     mm: MatchMode,
@@ -1148,7 +1148,7 @@ thread_local! {
 }
 
 /// FORECAST.LINEAR's line through its known lists, `None` when they hold text, kept for the last long pair: a
-/// computed column forecasts each row from the same columns ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// computed column forecasts each row from the same columns ([[engineering#Performance]] linearWork).
 fn forecast_fit(ys: &V, xs: &V) -> Option<Option<(f64, f64)>> {
     // A scalar's length is `undefined`, so the fit finds no spread.
     let fit = || {
@@ -1226,7 +1226,7 @@ thread_local! {
 }
 
 /// One lookup into a long list, as a computed column makes row after row against the same column: the second call
-/// keeps the list's plan, indexed, so the rows after it don't each copy and scan the column ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork). An
+/// keeps the list's plan, indexed, so the rows after it don't each copy and scan the column ([[engineering#Performance]] linearWork). An
 /// entry holds its lists, so their addresses can't name others.
 fn lookup_plan(
     name: &str,
@@ -1471,7 +1471,7 @@ fn as_number_cmp(v: &V) -> f64 {
     }
 }
 
-/// Counted in the sorted list, cached by it: a computed column ranks each row in the same column ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// Counted in the sorted list, cached by it: a computed column ranks each row in the same column ([[engineering#Performance]] linearWork).
 fn excel_rank(value: f64, refs: &V, avg: bool, ascending: bool) -> V {
     if value.is_nan() {
         return value_err("RANK");
@@ -2147,7 +2147,7 @@ thread_local! {
 }
 
 /// A table's widest row, kept for the last long table: INDEX(column, @i) asks it of the same column row after row
-/// ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork). The entry holds its table, so the address can't name another.
+/// ([[engineering#Performance]] linearWork). The entry holds its table, so the address can't name another.
 fn width_of(grid: &Rc<Vec<V>>) -> usize {
     let measure = || grid.iter().map(|row| if let V::List(r) = row { r.len() } else { 1 }).max().unwrap_or(0);
     if grid.len() < 64 {
@@ -2730,7 +2730,7 @@ thread_local! {
 
 /// A list's numbers sorted, kept for the list they came from (the cache holds the list, so its address can't come
 /// back as another): PERCENTILE(col, @p) and kin, called once per row with a scalar that changes each row, miss the
-/// range memo, and re-sorting the column every row was n² log n ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// range memo, and re-sorting the column every row was n² log n ([[engineering#Performance]] linearWork).
 fn sorted_of(list: &V, reading: Reading) -> Sorted {
     let read = || -> Result<Vec<f64>, V> {
         Ok(sorted_nums(&match reading {
@@ -2966,7 +2966,7 @@ fn arg(a: &[V], i: usize) -> &V {
 
 /// `dispatch(name, ...args)`'s arms: every name `call_function`'s own match answers, declared once. A variant is its
 /// name with `.` spelled `_`, and a dotted name is written out beside it. A call finds its arm by one hash lookup rather
-/// than a chain of string compares ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// than a chain of string compares ([[engineering#Performance]] linearWork).
 macro_rules! arms {
     ($($arm:ident $(= $name:literal)?),* $(,)?) => {
         #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
@@ -3579,7 +3579,7 @@ fn text_answer(name: &str, (code, first): (ErrorCode, bool), a: &[V]) -> Option<
             _ => None,
         }
     }
-    // A computed column's rows pass the same column each time: its verdict is kept against it ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+    // A computed column's rows pass the same column each time: its verdict is kept against it ([[engineering#Performance]] linearWork).
     type Verdict = Option<(Rc<Vec<V>>, Option<bool>)>;
     thread_local! {
         static LAST: std::cell::RefCell<Verdict> = const { std::cell::RefCell::new(None) };
@@ -3643,7 +3643,7 @@ pub fn route(name: &str) -> Route {
 
 /// The body `name` answers over `a`, or the exception its JavaScript throws, which each caller answers its own way.
 /// What `call_function` looks up by a name, looked up once: a caller making many calls to one function (a card over
-/// a list's items) keeps it ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// a list's items) keeps it ([[engineering#Performance]] linearWork).
 #[derive(Clone)]
 pub struct Resolved {
     refused: Option<&'static Refused>,
@@ -6542,7 +6542,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             V::Num(rate)
         }
         "DB" => {
-            // [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
+            // [[engineering#Performance]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
             if to_num(arg(a, 3)) > 1e6 && to_num(arg(a, 3)) <= to_num(arg(a, 2)) {
                 return V::err(sol_error(ErrorCode::Domain, "DB needs a period of at most 1,000,000"));
             }
@@ -6580,7 +6580,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             V::Num(dep)
         }
         "DDB" => {
-            // [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
+            // [[engineering#Performance]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
             if to_num(arg(a, 3)) > 1e6 && to_num(arg(a, 3)) <= to_num(arg(a, 2)) {
                 return V::err(sol_error(ErrorCode::Domain, "DDB needs a period of at most 1,000,000"));
             }

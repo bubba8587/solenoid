@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[command-palette#The Command Palette is the menubar in searchable form]]
+// [[A1]] visualGraphCalculator, [[command-palette]]
 import { createNotifier } from "./storeKit";
 
 // Most-recently-used command labels; a run from the Command Palette or the menu bar records here.

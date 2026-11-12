@@ -12,7 +12,7 @@ export const DEFAULT_CUBE_TEXT = `[
   { "name": "B", "tags": [], "n": 2 }
 ]`;
 
-/** A Cube Input column: no `type` is untyped ([[frame-verbs#Each table in a Cube, nested or not, types its own columns]]); `expr` makes it a formula column. */
+/** A Cube Input column: no `type` is untyped ([[frame-verbs#The Cube value]]); `expr` makes it a formula column. */
 export interface CubeSourceColumn {
   name: string;
   type?: "number" | "string" | "date" | "logical";
@@ -129,7 +129,7 @@ export function parseCellText(text: string): unknown {
   return text;
 }
 
-/** What an editing cell holds ([[frame-verbs#Each table in a Cube, nested or not, types its own columns]]): a value, a list, a table (rows of values, the app's 2-D shape), a Frame or a Cube (records). */
+/** What an editing cell holds ([[frame-verbs#The Cube value]]): a value, a list, a table (rows of values, the app's 2-D shape), a Frame or a Cube (records). */
 export type CellKind = "value" | "list" | "table" | "frame" | "cube";
 
 /** Records are a Frame only where the cell is declared one (`isFrameAt`); otherwise a Cube. */

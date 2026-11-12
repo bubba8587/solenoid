@@ -1,4 +1,4 @@
-// [[touch-gestures#A gesture follows what touches the screen, not the device]] (IS_MOBILE is the one mobile gate), [[components#One design system governs every look, layout and word in the app]]
+// [[touch-gestures#Standing rules]] (IS_MOBILE is the one mobile gate), [[components#The design system]]
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { initAppTheme } from "./graph/appTheme";
@@ -37,7 +37,7 @@ else void loadDeploymentConfig();
 if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 
 // Mobile styling keys off these flags, never `pointer: coarse`, so a phone's "Request desktop site" gets the desktop layout.
-// A phone turned sideways swaps to the tablet layout and scales the page to fit it, as browser zoom would ([[layout-chrome#A phone turned sideways runs the tablet layout, scaled to fit]]).
+// A phone turned sideways swaps to the tablet layout and scales the page to fit it, as browser zoom would ([[layout-chrome#Phones in landscape]]).
 {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
   const portraitViewport = meta?.content ?? "";

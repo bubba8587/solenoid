@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[obsidian-plugin#What's new]]
+// [[obsidian-plugin]], [[obsidian-plugin#What's new]]
 // What changed in the plugin, newest first; the What's New tab shows the entry for the manifest's version.
 // Marketing copy (DESIGN.md section 7): casual is fine, em dashes and untrue claims are not.
 export interface PluginNote {

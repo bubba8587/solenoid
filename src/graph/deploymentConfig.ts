@@ -1,4 +1,4 @@
-// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]]
+// [[B18]] safeToShare, [[engineering#Untrusted content]]
 // A hosted copy's own settings (docs/self-hosting.md): `solenoid.config.json` beside index.html, which the company
 // serving the web build writes. The public build ships it empty. Read once at startup; the desktop app has none.
 

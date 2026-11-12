@@ -1,4 +1,4 @@
-//! [[C130]] rustCore, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork.
+//! [[C130]] rustCore, [[engineering#Performance]] linearWork.
 //! A frame's or a list's cells on the card wire in the columnar hand-off (`binary.rs`) when every cell is flat, a copy
 //! in place of JSON text (`tree/specs/computation/node-bodies.md` § The call).
 
@@ -51,7 +51,7 @@ thread_local! {
 }
 
 // A big value that crossed to JavaScript or from it is kept here under an id for as long as its JavaScript object
-// lives, so the same object crossing again sends the id alone, `{"__held": id}` on the card wire ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]
+// lives, so the same object crossing again sends the id alone, `{"__held": id}` on the card wire ([[engineering#Performance]]
 // linearWork; a value is never changed in place, so an object's identity is its content). JavaScript forgets an id
 // when the object is collected (`forget`). Ids only grow, so a forgotten one never names another value.
 

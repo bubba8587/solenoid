@@ -1,4 +1,4 @@
-// [[group-expand-push#Expanding a group nudges its neighbors aside, and collapsing puts them back]], [[C52]], [[standoffs#No layout action breaks a standoff you set]], [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]], [[standoffs#The constraint]],
+// [[group-expand-push]], [[C52]], [[standoffs#The solver runs last]], [[group-expand-push#LayoutFx]], [[standoffs#The constraint]],
 // [[auto-arrange-tidy#Align and distribute]]
 import { describe, it, expect } from "vitest";
 import { fuzzRuns, fuzzSeed } from "./fuzzDepth";

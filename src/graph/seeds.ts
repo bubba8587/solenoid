@@ -1,4 +1,4 @@
-// [[standoffs#No layout action breaks a standoff you set]] (the seed rule), [[vault-read#The app ships a read-only demo vault to try the vault nodes on]], [[C79]] packActivationIsPresentation
+// [[standoffs#The solver runs last]] (the seed rule), [[vault-read#Which notes are read]], [[C79]] packActivationIsPresentation
 import { useSyncExternalStore } from "react";
 import { loadGraph } from "./persistence";
 import type { SavedGraph } from "./persistence";

@@ -1,4 +1,4 @@
-// [[vault-read#The app ships a read-only demo vault to try the vault nodes on]], [[live-connections#The demo vault]], [[D62]] demoVaultResolution, [[vault-bridge#What every VaultBridgeFx holds to]]
+// [[vault-read#Which notes are read]], [[live-connections#The demo vault]], [[D62]] demoVaultResolution, [[vault-bridge#What every VaultBridgeFx holds to]]
 import { describe, it, expect, afterEach } from "vitest";
 import {
   DEMO_VAULT_ROOT,

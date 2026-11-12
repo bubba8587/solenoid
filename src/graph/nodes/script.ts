@@ -1,4 +1,4 @@
-// [[script-sandbox#Script runs your own code, and only typed values come out]], [[C24]] arraySemantics, [[C23]] calcModes
+// [[script-sandbox]], [[C24]] arraySemantics, [[C23]] calcModes
 import { GraphNode } from "../graphModel";
 import { keyedKindOf, readKeyed, type KeyedKind } from "../literalFields";
 import { trueAnyIn, resultOut, readInput } from "./shared";

@@ -1,14 +1,14 @@
-// [[group-expand-push#A node joins or leaves a group only when you put it there]], [[C88]] collapsedGroupCard, [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]]
+// [[group-expand-push#Who is a member]], [[C88]] collapsedGroupCard, [[group-expand-push#LayoutFx]]
 import { GraphNode } from "../graphModel";
 
 export class GroupNode extends GraphNode {
   label: string;
-  members: string[];      // the authoritative set ([[group-expand-push#A node joins or leaves a group only when you put it there]])
+  members: string[];      // the authoritative set ([[group-expand-push#Who is a member]])
   color: string;
   collapsed: boolean;
   width: number;
   height: number;
-  lockedPosition: boolean; // [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]]
+  lockedPosition: boolean; // [[group-expand-push#LayoutFx]]
 
   constructor(init?: {
     label?: string;

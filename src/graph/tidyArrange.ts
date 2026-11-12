@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]], [[standoffs#No layout action breaks a standoff you set]].
+// [[A1]] visualGraphCalculator, [[group-expand-push#LayoutFx]], [[standoffs#The solver runs last]].
 import type { View } from "./view";
 import { zoomAt } from "./zoomAt";
 import type { GraphEditor } from "./graphEditor";

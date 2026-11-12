@@ -1,4 +1,4 @@
-// [[engineering#Content entering or leaving the app is guarded where it crosses]]
+// [[engineering#Untrusted content]]
 import { useLayoutEffect, useRef } from "react";
 import type { SvgValue } from "../svgValue";
 import { elementName } from "../svgLayer";

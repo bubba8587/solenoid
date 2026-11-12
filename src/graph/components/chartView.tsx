@@ -161,7 +161,7 @@ function useSettledSize(width: number, height: number, heavy: boolean): { w: num
   return heavy ? settled : { w: width, h: height };
 }
 
-// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]: a resize of a heavy figure costs a transform per frame, and one redraw when it stops.
+// [[engineering#Performance]]: a resize of a heavy figure costs a transform per frame, and one redraw when it stops.
 export const ChartFigure = memo(function ChartFigure(props: FigureProps) {
   const { value, width, height } = props;
   const drawMs = useRef(0);

@@ -1,4 +1,4 @@
-// [[C70]] oneScheduleRule, [[schedule-and-gantt#An unsupported imported field is named, never dropped and never a new column]]
+// [[C70]] oneScheduleRule, [[schedule-and-gantt#Import at the border]]
 //! Primavera XER read: tab-separated `%T` tables, `%F` fields and `%R` rows.
 
 use crate::calendar::{CalendarSpec, Interval};

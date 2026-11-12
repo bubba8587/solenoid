@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]] (publishes --chrome-bottom)
+// [[A1]] visualGraphCalculator, [[components#The design system]] (publishes --chrome-bottom)
 import { useEffect, useRef, type RefObject } from "react";
 import { chromeZoomStore } from "./chromeZoom";
 

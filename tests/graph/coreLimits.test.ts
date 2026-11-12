@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], [[rust-core#Where it runs]], [[formula-language#The registry]]
+// [[C130]] rustCore, [[engineering#Performance]], [[rust-core#Where it runs]], [[formula-language#The registry]]
 import { it, expect } from "vitest";
 import { evaluateOnCore, callOnCore } from "../../src/graph/coreValues";
 import { isSolError } from "../../src/graph/errorValue";

@@ -1,4 +1,4 @@
-// [[equation-solver#The Equation node solves a relation for whichever variable is unwired]]
+// [[equation-solver]]
 
 import { GraphNode } from "../graphModel";
 import { numListIn, numListOut, logicalComboOut } from "./shared";

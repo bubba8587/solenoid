@@ -935,7 +935,7 @@
     },
     {
      "line": 382,
-     "text": "**Script** (`ScriptNode`, `nodes/script.ts`, [[script-sandbox#Script runs your own code, and only typed values come out]]; the bounded form of out-of-scope §4): a JavaScript function expression as a node. It is named Script, not Code, because CODE is the Exc",
+     "text": "**Script** (`ScriptNode`, `nodes/script.ts`, [[script-sandbox]]; the bounded form of out-of-scope §4): a JavaScript function expression as a node. It is named Script, not Code, because CODE is the Exc",
      "moved": 0,
      "why": "explains the Script node's name, no answer"
     }
@@ -2068,7 +2068,7 @@
     },
     {
      "line": 605,
-     "text": "// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]: a huge width answers at once, at Excel's text limit like REPT.",
+     "text": "// [[engineering#Performance]]: a huge width answers at once, at Excel's text limit like REPT.",
      "moved": 0,
      "why": "a comment comparing a card's limit to REPT's"
     }
@@ -2557,7 +2557,7 @@
     },
     {
      "line": 127,
-     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Performance]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
      "moved": 0,
      "why": "card loops on the core, no answer"
     }
@@ -3167,7 +3167,7 @@
    "tree/specs/computation/compute-pass.md:232: The midnight rollover (`volatileDates.ts`, armed once in `App.tsx`) sets one timer for a second past the next local midnight; when it fires, it calls `requestRecalc()` if the document holds a Today / ",
    "tree/specs/computation/excel-divergences.md:18: - DATE's year is literal: 26 is the year 26, never 1926. Date text needs a four-digit year. One reading of a year everywhere beats matching Excel's two-digit guess ([[C44]] dateSerials).",
    "tree/specs/computation/excel-divergences.md:19: - DATEDIF's `MD` is never negative; Excel's goes negative across a short month.",
-   "tree/specs/computation/excel-divergences.md:61: Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[date-values#Days before 1900 are dates everywhere, as days after it are]]; [[da",
+   "tree/specs/computation/excel-divergences.md:61: Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[date-values#Days before 1900]]; [[da",
    "tree/specs/computation/excel-divergences.md:71: - **A superset.** Solenoid also answers inputs Excel refuses (CHAR past 255, DATEVALUE's extra forms), and answers Excel's own inputs as Excel does.",
    "tree/specs/computation/excel-divergences.md:143: - **VALUE** is strict. It accepts a plain number, an optional `$` after the sign, thousands commas, a wrapping pair of parentheses for a negative, and any number of trailing `%` (each divides by 100).",
    "tree/specs/computation/excel-divergences.md:152: - **YEAR, MONTH, DAY, HOUR, MINUTE, SECOND** read Solenoid's serial through `serialToJsDate` and the UTC getters, the one serial model the Date Part node uses, not Formula.js's Date and 1900 conventio",
@@ -5861,7 +5861,7 @@
     },
     {
      "line": 61,
-     "text": "Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[date-values#Days before 1900 are dates everywhere, as days after it are]]; [[da",
+     "text": "Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[date-values#Days before 1900]]; [[da",
      "moved": 0
     },
     {
@@ -9901,7 +9901,7 @@
    "docs/node-coverage.md:45: - Producers: **Nest Join** (nests two Frames on a shared key into a Cube of sub-frames, tidyr's `nest_join`, the dual of a flat Join) and **Build Cube** (extensible `trueany` cells into one column, ea",
    "docs/node-coverage.md:63: - **`BooleanOpNode`**: AND, OR, XOR, NAND, NOR and XNOR as reducers over extensible operand rows, all emitting logical, so switching the op never swaps the socket. Operand inputs are `logicalcombo`, s",
    "docs/node-coverage.md:67: - **Type Check** (`IsTestNode`): an op dropdown of ISNUMBER, ISNULL, ISBLANK, ISERROR, ISNA, ISLOGICAL, ISTEXT and ISNONTEXT. The `islogical` op value keeps its name, and its label is ISBOOLEAN, Solen",
-   "docs/node-coverage.md:71: - **Comparison** is core (Logic); **Between and Sets** are the Sets pack's, beside Is In and Tally, and the pack is on by default ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]]). Each Comparison op is a function (IS, ",
+   "docs/node-coverage.md:71: - **Comparison** is core (Logic); **Between and Sets** are the Sets pack's, beside Is In and Tally, and the pack is on by default ([[formula-language#Scalar operators]]). Each Comparison op is a function (IS, ",
    "docs/node-coverage.md:85: - **Rank & Percentile**: one order-statistics node with LARGE / SMALL, RANK.EQ / AVG and PERCENTILE / QUARTILE / PERCENTRANK, including the INC and EXC forms, as ops. Each takes a list and one scalar ",
    "docs/node-coverage.md:86: - **Correlation** (`CorrelNode`): one card for every statistic of two paired lists, with nine ops: CORREL, RSQ, SPEARMAN, KENDALL, COVARIANCE.P, COVARIANCE.S, SLOPE, INTERCEPT, STEYX ([[B11]] maximalM",
    "docs/node-coverage.md:91: - **Transform** (each also a formula): DIFF (a Δ / % / ∇ gradient op toggle; a List / Grid mode, Grid going Down or Across), Shift (blank, or wrap like `numpy.roll`), Bin (digitize), EWMA, Convolve (a",
@@ -11024,7 +11024,7 @@
    "tree/specs/canvas/add-menu.md:335: *Exception:* a short parenthetical that tells apart two entries sharing a name stays (\"T.TEST (Welch)\", \"DATE (Build)\"), and so does a bare acronym that is the name people know (\"Growth Rate (CAGR)\").",
    "tree/specs/canvas/command-palette.md:18: - **Canvas operations with no menu home:** Isolate selection (I) and Expand or collapse groups (E). The palette presses them as synthetic keys (`fireMenuKey`), as the menus do Tidy (T) and Cleanup (C)",
    "tree/specs/canvas/command-palette.md:25: Tests: `fireMenuKey.test.ts`: a pressed key goes down on the document and is released a task later, and the menus' Tidy and Cleanup press T and C.",
-   "tree/specs/canvas/conduit-lane-faces.md:77: - Its header mirrors a card header, accented with a softened pin-1 red, and holds the Conduit's sequence number. A Conduit's default label is `Conduit N` after that number ([[add-menu#A placed node is titled with what you picked in the Add menu]]'s Co",
+   "tree/specs/canvas/conduit-lane-faces.md:77: - Its header mirrors a card header, accented with a softened pin-1 red, and holds the Conduit's sequence number. A Conduit's default label is `Conduit N` after that number ([[add-menu#Naming a placed node]]'s Co",
    "tree/specs/canvas/pointer-gestures.md:134: **Drawing.** The card rectangles are read once at the start: the lasso owns the pointer, so they are stable, and reading them per frame would force an O(N) reflow. Cards hidden in a collapsed group or",
    "tree/specs/canvas/react-flow-surface-contract.md:322: - **Letters**, matched by physical key (`e.code`): I toggles isolate on the selection, A opens the Add menu at the mouse, G groups the selection, T runs Tidy, C runs Cleanup, E expands or collapses gr",
    "tree/specs/computation/bordered-grid-fill.md:11: Grid fill is the Interpolate card's `grid` mode and the matrix form of the `INTERPOLATE` formula. It takes a table of Z values with some cells blank and returns the same table with the blanks filled. ",
@@ -11130,7 +11130,7 @@
    "tree/specs/computation/formula-language.md:560: - **Whole-list** (MEDIAN, PERCENTILE, MODE, RANK): the answer needs every value; parts don't combine.",
    "tree/specs/computation/formula-language.md:564: `op2(op, a, b)` runs per cell. Checks in order: an error in `a`, then in `b`, is the answer; a `null` on either side answers `null`; a complex operand goes to the complex table; a LAMBDA operand answe",
    "tree/specs/computation/formula-language.md:572: | `<` `>` `<=` `>=` | Two numbers numerically, those equal to 15 significant digits as equal (`0.1+0.2>0.3` is FALSE, `<=` TRUE); two strings by code point (`compare_text`, `jsnum.rs`, [[C59]] byteStr",
-   "tree/specs/computation/formula-language.md:574: **One comparison** ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]]). The six comparison operators, the functions IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST and BETWEEN, and the Comparison and Between cards all answer thr",
+   "tree/specs/computation/formula-language.md:574: **One comparison** ([[formula-language#Scalar operators]]). The six comparison operators, the functions IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST and BETWEEN, and the Comparison and Between cards all answer thr",
    "tree/specs/computation/formula-language.md:576: - An error answers first, then a blank on either side answers blank, as the operators always have ([[C24]] arraySemantics). So `ABOVE(x, 2)` with `x` blank is blank, and over a list a blank item is a ",
    "tree/specs/computation/formula-language.md:577: - A date compares only with a date; a date against anything else is `#TYPE!` \"A date compares only with a date…\" for every operator, `=` included ([[D115]] datesArePoints).",
    "tree/specs/computation/formula-language.md:579: - Text against text, numbers and logicals follow the table above. Two values of different kinds are unequal and unordered (`#TYPE!`).",
@@ -11197,7 +11197,7 @@
    "tree/specs/computation/formula-language.md:984: - **DECOMPOSE(list, period, component, [model])**, **SAVGOL(list, window, order)**, **LOWESS(list, [frac])** (default 2/3), **GAUSSIANSMOOTH(data, sigma)**, **MEANSMOOTH(data, [size])**, **MEDIANSMOOT",
    "tree/specs/computation/formula-language.md:985: - **SHUFFLE(list)** is volatile: a fresh permutation each evaluation, while the node holds its keys until the next recalculation.",
    "tree/specs/computation/formula-language.md:986: - **RANDSAMPLE(list, [count], [weights])** draws `count` items with replacement (blank: the list's length), so an item can repeat; with weights, one non-negative number per item, each draw picks an it",
-   "tree/specs/computation/formula-language.md:988: - **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]), which a table cell shows as the picture ([[engineering#Content entering or leaving the app is guarded where it crosses]] untru",
+   "tree/specs/computation/formula-language.md:988: - **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#Lists]]), which a table cell shows as the picture ([[engineering#Untrusted content]] untru",
    "tree/specs/computation/formula-language.md:992: - `formulaTier3.test.ts`: each list function answers what its card answers (REVERSE, SLICE in both forms, NTHELEMENT, INTERLEAVE, PADLEFT and PADRIGHT, DIFF, NORMALIZE, LENGTH, ARGMAX, ARGMIN, ARGSORT",
    "tree/specs/computation/formula-language.md:993: - `formulaReviewFixes.test.ts`: CONTAINS with a blank needle is blank, a blank SLICE, NTHELEMENT or PADLEFT setting is `#SYNTAX!`, FILLVALUE fills with missing, DIFF's missing neighbour makes a missin",
    "tree/specs/computation/formula-language.md:994: - `dispatchThrow.test.ts`: NTILE and GAUSSIANSMOOTH refuse a count that would loop or allocate past their limits.",
@@ -11372,11 +11372,11 @@
    "tree/specs/documents/table-popup.md:44: - **`FrameRefChip`** takes a lazy frame ref and collects a head-N preview (`collectPreview`), never the whole frame, so hovering a million-row output stays cheap. While it waits, or when the handle wa",
    "tree/specs/documents/table-popup.md:60: - A `NaN` number is dirty data from an import, not the `#N/A` error: it prints as `NaN`, tinted, with the \"Not a number\" tooltip. Infinities print as `∞` and `-∞`; other numbers print in the General s",
    "tree/specs/documents/table-popup.md:115: - **Labels.** Column heads show the header names, else spreadsheet letters (A to Z, then AA, AB and on). Rows are numbered from 1. The header shows `R×C` (or `N items` for a list), plus ` · first 1,00",
-   "tree/specs/documents/table-popup.md:164: **Picture cells** ([[engineering#Content entering or leaving the app is guarded where it crosses]], [[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]). A long encoded picture address is unreadable as text, so a text cell whose text is a `data:image/` address (`cellImageSrc`) s",
+   "tree/specs/documents/table-popup.md:164: **Picture cells** ([[engineering#Untrusted content]], [[formula-language#Lists]]). A long encoded picture address is unreadable as text, so a text cell whose text is a `data:image/` address (`cellImageSrc`) s",
    "tree/specs/documents/table-popup.md:218: | Title | with no name pair, the best-scoring remaining text column that isn't web addresses: a name-like header (`Name`, `Title`, `Product`, `Customer`, `City`…, but not a Last or Middle Name without",
    "tree/specs/documents/table-popup.md:233: **The filter** sits in the popup's header, between the title and the dims, in the shared search field (`SearchField`): one place in Grid and Cards, so switching views never moves it. It keeps rows who",
-   "tree/specs/documents/table-popup.md:237: **An authored card layout** ([[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]). A popup whose state carries `cardLayout` (the Frame Input's) draws every card to it instead of to the plan's parts (`LaidOutCard` in `AutoCard.tsx`)",
-   "tree/specs/documents/table-popup.md:280: - **Details** ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]). With columns in the Pivot's Details zone (Configure Fields, under the other zones), each leaf row carries a disclosure chevron beside its own label (after any fold ",
+   "tree/specs/documents/table-popup.md:237: **An authored card layout** ([[table-popup#The Cards view]]). A popup whose state carries `cardLayout` (the Frame Input's) draws every card to it instead of to the plan's parts (`LaidOutCard` in `AutoCard.tsx`)",
+   "tree/specs/documents/table-popup.md:280: - **Details** ([[table-popup#The Pivot view]]). With columns in the Pivot's Details zone (Configure Fields, under the other zones), each leaf row carries a disclosure chevron beside its own label (after any fold ",
    "tree/specs/documents/table-popup.md:284: - **The render cap.** At most 1,000 body rows draw, as in the Grid, plus a grand total at the bottom, and a last row says `First 1,000 of N rows`. Copy and Export still read the whole frame.",
    "tree/specs/documents/table-popup.md:334: - **Markdown** is a pipe table: the header names (`Col N` when there are none, `Value` for a list), a `---` separator row, then the rows, with `|` escaped as `\\|` and line breaks turned into spaces. A",
    "tree/specs/documents/table-popup.md:353: A list is one row of N cells. The footer's Row and Column switch lays it across a row or down a column. The switch is display-only: the value stays the flat row, and Copy, the CSV view and Markdown st",
@@ -11401,7 +11401,7 @@
    "tree/specs/values/date-values.md:63: - **The criteria family** (the IFS functions, COUNTIF, AVERAGEIF) is handed its arguments with their dates kept, never as serials: its kernel compares a date criterion with date cells and refuses a nu",
    "tree/specs/values/date-values.md:64: - **Spreads** (STDEV, VAR and their forms, AVEDEV, DEVSQ, IQR, MAD, PTP, SEM) answer a plain number of days (VAR in days squared); dates beside plain numbers are #TYPE!.",
    "tree/specs/values/date-values.md:65: - **Counts** (COUNT, COUNTA, COUNTBLANK, COUNTIF(S), COUNTDISTINCT, RANK, PERCENTRANK, XMATCH, ROWS, COLUMNS, ARGSORT, ARGMIN, ARGMAX, ISIN, TALLY, WHICH) read dates as their days and answer a number.",
-   "tree/specs/values/date-values.md:66: - **Compares** (IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN) takes its dates as dates; the comparison kernel compares a date only with a date ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]]).",
+   "tree/specs/values/date-values.md:66: - **Compares** (IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN) takes its dates as dates; the comparison kernel compares a date only with a date ([[formula-language#Scalar operators]]).",
    "tree/specs/values/date-values.md:69: - **Moves** (IF, IFS, SWITCH, CHOOSE, IFERROR, IFNA, INDEX, TAKE, DROP, the reshapes and stacks, FILTER, the IS functions, TYPE, the LAMBDA helpers and kin) passes a date through as itself.",
    "tree/specs/values/date-values.md:70: - **Returns** (SORT, SORTBY, UNIQUE over their first; XLOOKUP over its return array; the set functions over all) compares by days and hands back dates where it was given dates; dates beside plain numb",
    "tree/specs/values/date-values.md:84: Mixed kinds stay refused ([[C137]] datesNeverSerials): a list or table that would hold dates and another kind answers #TYPE!. The cases the tests hold:",
@@ -14402,7 +14402,7 @@
     },
     {
      "line": 71,
-     "text": "- **Comparison** is core (Logic); **Between and Sets** are the Sets pack's, beside Is In and Tally, and the pack is on by default ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]]). Each Comparison op is a function (IS, ",
+     "text": "- **Comparison** is core (Logic); **Between and Sets** are the Sets pack's, beside Is In and Tally, and the pack is on by default ([[formula-language#Scalar operators]]). Each Comparison op is a function (IS, ",
      "moved": 0
     },
     {
@@ -21579,7 +21579,7 @@
    "tree/specs/canvas/conduit-lane-faces.md": [
     {
      "line": 77,
-     "text": "- Its header mirrors a card header, accented with a softened pin-1 red, and holds the Conduit's sequence number. A Conduit's default label is `Conduit N` after that number ([[add-menu#A placed node is titled with what you picked in the Add menu]]'s Co",
+     "text": "- Its header mirrors a card header, accented with a softened pin-1 red, and holds the Conduit's sequence number. A Conduit's default label is `Conduit N` after that number ([[add-menu#Naming a placed node]]'s Co",
      "moved": 0
     }
    ],
@@ -21788,7 +21788,7 @@
     },
     {
      "line": 155,
-     "text": "- **Reading.** The formula reads the cube as the Computed Column node reads one (`cube_row_table`), after the typed columns are read by their types ([[frame-verbs#Each table in a Cube, nested or not, types its own columns]]), so `SPARKLINE(@history)`",
+     "text": "- **Reading.** The formula reads the cube as the Computed Column node reads one (`cube_row_table`), after the typed columns are read by their types ([[frame-verbs#The Cube value]]), so `SPARKLINE(@history)`",
      "moved": 0,
      "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
     }
@@ -22159,7 +22159,7 @@
     },
     {
      "line": 574,
-     "text": "**One comparison** ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]]). The six comparison operators, the functions IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST and BETWEEN, and the Comparison and Between cards all answer thr",
+     "text": "**One comparison** ([[formula-language#Scalar operators]]). The six comparison operators, the functions IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST and BETWEEN, and the Comparison and Between cards all answer thr",
      "moved": 0
     },
     {
@@ -22505,7 +22505,7 @@
     },
     {
      "line": 988,
-     "text": "- **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]), which a table cell shows as the picture ([[engineering#Content entering or leaving the app is guarded where it crosses]] untru",
+     "text": "- **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#Lists]]), which a table cell shows as the picture ([[engineering#Untrusted content]] untru",
      "moved": 0
     },
     {
@@ -23454,7 +23454,7 @@
     },
     {
      "line": 164,
-     "text": "**Picture cells** ([[engineering#Content entering or leaving the app is guarded where it crosses]], [[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]). A long encoded picture address is unreadable as text, so a text cell whose text is a `data:image/` address (`cellImageSrc`) s",
+     "text": "**Picture cells** ([[engineering#Untrusted content]], [[formula-language#Lists]]). A long encoded picture address is unreadable as text, so a text cell whose text is a `data:image/` address (`cellImageSrc`) s",
      "moved": 0
     },
     {
@@ -23469,12 +23469,12 @@
     },
     {
      "line": 237,
-     "text": "**An authored card layout** ([[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]). A popup whose state carries `cardLayout` (the Frame Input's) draws every card to it instead of to the plan's parts (`LaidOutCard` in `AutoCard.tsx`)",
+     "text": "**An authored card layout** ([[table-popup#The Cards view]]). A popup whose state carries `cardLayout` (the Frame Input's) draws every card to it instead of to the plan's parts (`LaidOutCard` in `AutoCard.tsx`)",
      "moved": 0
     },
     {
      "line": 280,
-     "text": "- **Details** ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]). With columns in the Pivot's Details zone (Configure Fields, under the other zones), each leaf row carries a disclosure chevron beside its own label (after any fold ",
+     "text": "- **Details** ([[table-popup#The Pivot view]]). With columns in the Pivot's Details zone (Configure Fields, under the other zones), each leaf row carries a disclosure chevron beside its own label (after any fold ",
      "moved": 0
     },
     {
@@ -23617,7 +23617,7 @@
     },
     {
      "line": 66,
-     "text": "- **Compares** (IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN) takes its dates as dates; the comparison kernel compares a date only with a date ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]]).",
+     "text": "- **Compares** (IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN) takes its dates as dates; the comparison kernel compares a date only with a date ([[formula-language#Scalar operators]]).",
      "moved": 0
     },
     {
@@ -32445,7 +32445,7 @@
    "tree/specs/computation/formula-language.md:738: - `nodes/tableLambda.test.ts`: a LAMBDA wired into REDUCE reads `acc` and `value` by name whichever is declared first, and a parameter the card doesn't offer is `#VALUE!` naming the card's variables.",
    "tree/specs/computation/formula-language.md:745: | `#SYNTAX!` | The formula does not parse (Expression and LAMBDA nodes). |",
    "tree/specs/computation/formula-language.md:749: | `#VALUE!` | Applying a non-lambda; lambda arity mismatch; bad LAMBDA parameters or no body; an unapplied lambda as the result; a host without a lambda; a Formula.js-style `#VALUE!`, `#NULL!` or unre",
-   "tree/specs/computation/formula-language.md:776: **Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
+   "tree/specs/computation/formula-language.md:776: **Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#The InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
    "tree/specs/computation/formula-language.md:782: - `formulaLambda.test.ts`: a LAMBDA's parameters and an eta name grow no socket.",
    "tree/specs/computation/formula-language.md:791: | the core's `engine_formula_names` (its `rows`) | every `@` and bracket reference name, excluding a name that is a parameter of an enclosing LAMBDA literal (a computed column's dependency feed) |",
    "tree/specs/computation/formula-language.md:792: | `atColNames(expr)` | identifier-shaped `@name` references only (the LAMBDA node's capture sockets) |",
@@ -32464,7 +32464,7 @@
    "tree/specs/computation/formula-language.md:939: - `formulaTier1.test.ts`: FORECAST.LINEAR answers the card's line and `#DIV/0!` for Xs with no variance, and TREND and GROWTH with `const` FALSE fit through the origin and through 1.",
    "tree/specs/computation/formula-language.md:943: - `logicals_in_aggregates.rs` (solenoid-core): every aggregate reads TRUE as 1 and FALSE as 0, typed in or inside a list ([[D108]] aggregatesCountLogicals).",
    "tree/specs/computation/formula-language.md:949: - **VDB** switches to straight-line when that is the larger charge, Excel's default; a `no_switch` of TRUE stays on declining balance to the end, as Excel's. `factor` defaults to 2. A negative cost or",
-   "tree/specs/computation/formula-language.md:988: - **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]), which a table cell shows as the picture ([[engineering#Content entering or leaving the app is guarded where it crosses]] untru",
+   "tree/specs/computation/formula-language.md:988: - **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#Lists]]), which a table cell shows as the picture ([[engineering#Untrusted content]] untru",
    "tree/specs/computation/formula-language.md:1008: - **TOCOL(array, [ignore], [scan_by_column])** stacks the cells into a one-column table and **TOROW** (same arguments) lines them up as a list (a row) ([[D85]] columnsStayColumns). Both read row by ro",
    "tree/specs/computation/formula-language.md:1010: - **SORT(array, [sort_index], [sort_order], [by_col])**, **SORTBY(array, by_array1, [sort_order1], …)**, **FILTER(array, include, [if_empty])** and **UNIQUE(array, [by_col], [exactly_once])** take a l",
    "tree/specs/computation/formula-language.md:1019: - `listSortOrder.test.ts`: SORT orders text by character code and mixed kinds numbers, text, FALSE and TRUE with blanks, errors and NaN last, and SORTBY takes text keys and a sort order, as the Sort c",
@@ -32504,7 +32504,7 @@
    "tree/specs/computation/rust-core.md:66: | REDUCE, BYROW and BYCOL's unit wrapper ([[unit-flow]] § LAMBDA hosts) over an inline formula: the cells' one dimension, the display unit they share, the fold on the stripped magnitudes, the point we",
    "tree/specs/computation/rust-core.md:76: The core is the only evaluator. A reading it doesn't make is an answer, never a hand-off: text outside the date reader's closed list of shapes is not a date (DATEVALUE answers an error, a criterion co",
    "tree/specs/computation/rust-core.md:123: - **A function call costs about 1,100 to 2,000 instructions a row** (`ABS(@value)` 1,140, `PROPER(@key)` 1,820, `ROUND(@value, 2)` 2,000), against about 490 for an operator (`@value * 1.2`), counted n",
-   "tree/specs/computation/rust-core.md:127: - **A card mapping a body over a list runs its loop on the core** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+   "tree/specs/computation/rust-core.md:127: - **A card mapping a body over a list runs its loop on the core** ([[engineering#Performance]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
    "tree/specs/computation/schedule-and-gantt.md:33: | Complete (`% complete`, `percent complete`, `done`, `progress`) | number, optional | 0 to 100. Drawn as the bar's fill. With a status date it drives the remaining work. A done checkbox reads TRUE as",
    "tree/specs/computation/script-sandbox.md:48: c -->|yes| args[\"each argument to plain JS<br>(a Frame as rows, a Cube as<br>nested rows; a LAMBDA is #TYPE!)\"]",
    "tree/specs/computation/script-sandbox.md:75: - A LAMBDA, a chart or a document has no script form: `#TYPE!` \"A script reads data values; a lambda has no script form\" (or a chart, a document), before the run.",
@@ -32552,7 +32552,7 @@
    "tree/specs/values/socket-lattice.md:105: 3. **The bridge is built by the same predicate.** `logical ↔ number` is the one cross-family bridge (0 and 1 for FALSE and TRUE, as in Excel, and the multiply-by-a-condition idiom). It is mirrored thr",
    "tree/specs/values/socket-lattice.md:116: 6. **Element-agnostic 2-D inputs use the grid socket** (`anyTableIn`), not the scalar-circle `any`: TRANSPOSE, HSTACK, CHOOSEROWS and CHOOSECOLS, reshape-flatten, and the MAP, BYROW and REDUCE values.",
    "tree/specs/values/type-propagation-on-in-place-socket-retype.md:18: - the **InlineCast** on the Formula card and the LAMBDA helpers (`InlineCast`);",
-   "tree/specs/values/type-propagation-on-in-place-socket-retype.md:62: A formula or LAMBDA card's result takes the type it computed, and its InlineCast casts it ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]; [[formula-language]] § Result socket). The output socket swaps at the node's own dimensi",
+   "tree/specs/values/type-propagation-on-in-place-socket-retype.md:62: A formula or LAMBDA card's result takes the type it computed, and its InlineCast casts it ([[socket-lattice#The InlineCast]]; [[formula-language]] § Result socket). The output socket swaps at the node's own dimensi",
    "tree/specs/values/type-propagation-on-in-place-socket-retype.md:74: **MUST:** when a node changes the type of one of its own inputs or outputs in place, everything wired to it is updated to match, never left working by the old type. No wiring event fires in this case,",
    "tree/specs/values/type-propagation-on-in-place-socket-retype.md:87: An FC resolves the family it offers controls for the same way from every family-less rung: wired out into `anydata`, `anylist` or `anytable` it stays provisional exactly as it does into `trueany`, nev",
    "tree/specs/values/type-propagation-on-in-place-socket-retype.md:131: **MUST:** a class with a `trueany` output either declares `passthrough()` or is listed with the reason its type resolves another way: the FC is the resolver, Conduit lanes resolve through `conduitTrac",
@@ -37064,7 +37064,7 @@
     },
     {
      "line": 776,
-     "text": "**Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
+     "text": "**Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#The InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
      "moved": 0
     },
     {
@@ -37164,7 +37164,7 @@
     },
     {
      "line": 988,
-     "text": "- **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]), which a table cell shows as the picture ([[engineering#Content entering or leaving the app is guarded where it crosses]] untru",
+     "text": "- **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#Lists]]), which a table cell shows as the picture ([[engineering#Untrusted content]] untru",
      "moved": 0
     },
     {
@@ -37384,7 +37384,7 @@
     },
     {
      "line": 127,
-     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Performance]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
      "moved": 0
     }
    ],
@@ -37660,7 +37660,7 @@
     },
     {
      "line": 62,
-     "text": "A formula or LAMBDA card's result takes the type it computed, and its InlineCast casts it ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]; [[formula-language]] § Result socket). The output socket swaps at the node's own dimensi",
+     "text": "A formula or LAMBDA card's result takes the type it computed, and its InlineCast casts it ([[socket-lattice#The InlineCast]]; [[formula-language]] § Result socket). The output socket swaps at the node's own dimensi",
      "moved": 0
     },
     {
@@ -39523,7 +39523,7 @@
    "tree/specs/computation/formula-language.md:730: - REDUCE's and SCAN's Initial input takes a scalar, not a list, so a wired number seeds the fold as itself rather than as a one-item list that would broadcast every step into a list.",
    "tree/specs/computation/formula-language.md:736: - `nodes/tableLambda.test.ts`: the LAMBDA node emits a callable value binding its parameters by position; SCAN and REDUCE seed from a scalar Initial socket; the card names the variables a lambda used ",
    "tree/specs/computation/formula-language.md:763: **Variables.** `extractVariables(expr)` walks the AST and collects every bare `name` that is not a constant, in first-appearance order without duplicates, from operator operands, call arguments, appli",
-   "tree/specs/computation/formula-language.md:776: **Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
+   "tree/specs/computation/formula-language.md:776: **Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#The InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
    "tree/specs/computation/formula-language.md:924: - **SLOPE, INTERCEPT, STEYX, RSQ** take Excel's order, known Ys first, and **FORECAST.LINEAR(x, known_ys, known_xs)** runs the node's `linear_fit` (zero-variance Xs are `#DIV/0!`). **PERCENTRANK(array",
    "tree/specs/computation/formula-language.md:925: - **The tests beyond Excel's four** run the Hypothesis Test node's kernels: ANOVA and KRUSKAL take each group as a separate list argument (the node reads a matrix's columns); MANNWHITNEY, WILCOXON and",
    "tree/specs/computation/formula-language.md:926: - **PROB(range, probabilities, lower, [upper])**: an omitted upper limit means exactly the lower limit.",
@@ -39600,7 +39600,7 @@
    "tree/specs/computation/rust-core.md:55: | The evaluator (`Eval`): operators, broadcasting, argument roles, the IFERROR family, `route_call`'s ladder, LAMBDA values, MAP BYROW BYCOL REDUCE SCAN MAKEARRAY GROUPBY | `eval.rs` | 18k frozen form",
    "tree/specs/computation/rust-core.md:62: | Frame computations no formula shares: headers, Describe, Correlation Matrix, Reconcile, Nest's grouping, XLOOKUP over a frame, Get Row, Get and Add Column's naming, Build and Split Frame, Frame from",
    "tree/specs/computation/rust-core.md:67: | List bodies over values with a unit (`UNIT_READY`): the ones that move cells without reading them, the shapers SORT, SORTBY, UNIQUE, TAKE and DROP (a unit cell sorts after the logicals and ties with",
-   "tree/specs/computation/rust-core.md:127: - **A card mapping a body over a list runs its loop on the core** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+   "tree/specs/computation/rust-core.md:127: - **A card mapping a body over a list runs its loop on the core** ([[engineering#Performance]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
    "tree/specs/documents/inline-literal-maps.md:52: - `ROWS`: inputs a card names by key, a numbered row included: the criteria rows of Filter, Frame Filter and SUMIFS (`text`), Expect's Min and Max (`bound`) and In list (`csv`), Is Close's A and B and",
    "tree/specs/documents/save-format.md:390: 10. **Format Controllers, types and Convert**: every constructed Format Controller docks to its host, which only records the dock. A Format Controller whose saved `hostNodeId` names no node in its gra",
    "tree/specs/floors/engineering.md:31: A typed-in list breaks without a sound: leave a name off and nothing errors, the name just behaves differently. Ten functions (`T.TEST`, `F.TEST`, `Z.TEST`, `CHISQ.TEST`, `SUMX2MY2`, `SUMX2PY2`, `SUMX",
@@ -46947,7 +46947,7 @@
     },
     {
      "line": 776,
-     "text": "**Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
+     "text": "**Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#The InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
      "moved": 0
     },
     {
@@ -47338,7 +47338,7 @@
     },
     {
      "line": 127,
-     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Performance]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
      "moved": 0
     }
    ],
@@ -47359,7 +47359,7 @@
    "tree/specs/documents/table-popup.md": [
     {
      "line": 407,
-     "text": "- **Column types** ([[frame-verbs#Each table in a Cube, nested or not, types its own columns]]). Every table level's headers have the type button beside the name. On the root it cycles None (`–`), Number, Text, Date, Boolean and Formula (`Fx`), and a",
+     "text": "- **Column types** ([[frame-verbs#The Cube value]]). Every table level's headers have the type button beside the name. On the root it cycles None (`–`), Number, Text, Date, Boolean and Formula (`Fx`), and a",
      "moved": 0,
      "why": "a computed column's row or column reference, outside the syntax Excel and Solenoid share"
     }
@@ -50432,7 +50432,7 @@
    "tree/specs/computation/node-bodies.md:157: | Logic | Comparison, Between, Is Close, IF, Boolean Op, NOT, CHOOSE, SWITCH, IFS, ISEVEN/ISODD | `nodes/logic.rs` |",
    "tree/specs/computation/node-bodies.md:168: | Leftovers | the table cards that keep a unit (Table Input, Transpose, Stack, Reshape, Select, Take/Drop, EXPAND, Set Cell), IFERROR, the IS tests, Fuzzy Match, Find Peaks, Triangle Solver | their fa",
    "tree/specs/computation/rust-core.md:55: | The evaluator (`Eval`): operators, broadcasting, argument roles, the IFERROR family, `route_call`'s ladder, LAMBDA values, MAP BYROW BYCOL REDUCE SCAN MAKEARRAY GROUPBY | `eval.rs` | 18k frozen form",
-   "tree/specs/computation/rust-core.md:127: - **A card mapping a body over a list runs its loop on the core** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+   "tree/specs/computation/rust-core.md:127: - **A card mapping a body over a list runs its loop on the core** ([[engineering#Performance]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
    "tree/specs/documents/inline-literal-maps.md:79: - **The canvas** asks one function (`emptyFieldShown` in `emptySlots.ts`, with the card's op): the core's declaration over wasm (`coreEmptyField`), else the setting's role. The row host draws `shown` ",
    "tree/specs/documents/inline-literal-maps.md:124: A card's wildcard rows take keyed values when the core's table names it a keyed card (`KEYED` in `nodes/fields.rs`). The value selectors are, since their wildcard rows are value branches, and so are t",
    "tree/specs/documents/inline-literal-maps.md:130: **The kind shows before the text is read** ([[C10]] socketLattice: text becomes another kind only where the type shows on screen). The keyed field (`KeyedField`) keeps the text exactly as keyed in `st",
@@ -53041,7 +53041,7 @@
     },
     {
      "line": 127,
-     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Performance]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
      "moved": 0
     }
    ],
@@ -54074,7 +54074,7 @@
    "tree/specs/canvas/add-menu.md:161: `scoreLeaf(query, row)` returns a score, higher is better, or null when the row does not match. `searchLeaves` drops the nulls, sorts the rest best first, and keeps one row per thing placed: an alias ",
    "tree/specs/canvas/add-menu.md:166: - The **word list**: the family name's words, the words of the label, the label with any leading op glyph stripped (\"+ Add\" becomes \"Add\"), the type words, `keywords`, the card's tags, the category pa",
    "tree/specs/canvas/add-menu.md:199: Finally, when the whole query has 4 or more characters and is within one edit of the label, the stripped label or an Excel name, the bonus is at least 200. A typo of the name itself (\"sunm\" for SUM) t",
-   "tree/specs/canvas/add-menu.md:266: - The title a placed node shows ([[add-menu#A placed node is titled with what you picked in the Add menu]]) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated \"Host: Op\" search rows), else t",
+   "tree/specs/canvas/add-menu.md:266: - The title a placed node shows ([[add-menu#Naming a placed node]]) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated \"Host: Op\" search rows), else t",
    "tree/specs/canvas/add-menu.md:267: - A leaf name is a title, so it carries no glyph prefix (\"+ Add\") and no hint (\"ROUND to N digits\"), and an \"X / Y\" row that creates only X is split into two leaves (`leafOps`).",
    "tree/specs/canvas/add-menu.md:285: | **Excel names** | `NODE_EXCEL[type]` | Inspector Excel rows; the description's closing \"Excel: X.\"; and Add-menu search, as a row that shows the name before an arrow (\"ROWS → Table Size\", or \"NORM.D",
    "tree/specs/computation/equation-solver.md:86: - `u^n = O` becomes `u = O^(1/n)`, and `b^u = O` becomes `u = LN(O)/LN(b)`; `POWER` inverts the same way;",
@@ -54129,7 +54129,7 @@
    "tree/specs/computation/formula-language.md:1251: - The discrete CDFs are 1 above their support and 0 below it, not blank: BINOM and POISSON above the top, and HYPGEOM beyond `min(n, M)`. Invalid parameters have no distribution at all and are `#DOMAI",
    "tree/specs/computation/formula-language.md:1257: - `nodes/distributions.test.ts`: an inverse form swaps the first input between x and probability; a distribution switch keeps the shared parameters, relabels them and swaps the rest; a form switch dro",
    "tree/specs/computation/node-bodies.md:156: | Scalar | Arithmetic, Math Function, Base Convert, Clamp, MROUND, ROUND, GCD, Two-Input Math, SUMPRODUCT, SERIESSUM, MULTINOMIAL, Bessel | `nodes/scalar.rs` |",
-   "tree/specs/computation/rust-core.md:127: - **A card mapping a body over a list runs its loop on the core** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+   "tree/specs/computation/rust-core.md:127: - **A card mapping a body over a list runs its loop on the core** ([[engineering#Performance]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
    "tree/specs/documents/inline-literal-maps.md:78: - **Every other field** declares it in the core's table (`EMPTY` in `nodes/fields.rs`, `empty_of(card class, op, key)`), keyed by card class and input, a key matching a numbered row of itself as `ROWS",
    "tree/specs/floors/engineering.md:31: A typed-in list breaks without a sound: leave a name off and nothing errors, the name just behaves differently. Ten functions (`T.TEST`, `F.TEST`, `Z.TEST`, `CHISQ.TEST`, `SUMX2MY2`, `SUMX2PY2`, `SUMX",
    "tree/specs/floors/engineering.md:53: `some` reports a node as covered while most of its names still fail. It once hid ten names (the seven B-suffixed text functions, `ERF.PRECISE`, `ERFC.PRECISE` and `VALUETOTEXT`), each declared against",
@@ -58585,7 +58585,7 @@
     },
     {
      "line": 266,
-     "text": "- The title a placed node shows ([[add-menu#A placed node is titled with what you picked in the Add menu]]) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated \"Host: Op\" search rows), else t",
+     "text": "- The title a placed node shows ([[add-menu#Naming a placed node]]) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated \"Host: Op\" search rows), else t",
      "moved": 0
     },
     {
@@ -59001,7 +59001,7 @@
     },
     {
      "line": 127,
-     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
+     "text": "- **A card mapping a body over a list runs its loop on the core** ([[engineering#Performance]]). A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list live",
      "moved": 0
     }
    ],
@@ -61923,7 +61923,7 @@
    "tree/specs/computation/excel-divergences.md:22: - The IM* functions answer tagged complex values, zip lists pairwise, and answer IMARGUMENT(0) as 0; unparseable complex text is `#VALUE!` rather than `#NUM!`.",
    "tree/specs/computation/excel-divergences.md:41: - **GCD** of nothing is 0 and **LCM** of nothing is 1, where Excel answers `#VALUE!`.",
    "tree/specs/computation/excel-divergences.md:43: SUM and COUNT of nothing are 0 and AVERAGE of nothing blank, as before. AND, OR and XOR of nothing stay `#VALUE!`, as in Excel.",
-   "tree/specs/computation/excel-divergences.md:61: Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[date-values#Days before 1900 are dates everywhere, as days after it are]]; [[da",
+   "tree/specs/computation/excel-divergences.md:61: Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[date-values#Days before 1900]]; [[da",
    "tree/specs/computation/excel-divergences.md:70: - **How a refusal reads.** On an input Excel refuses, any refusal is parity: a different error code (`#DOMAIN!` for `#NUM!`, `#TYPE!` for `#VALUE!`), or a blank where Excel errors.",
    "tree/specs/computation/excel-divergences.md:102: - **BESSELJ, BESSELI, BESSELK, BESSELY** answer as Formula.js's bessel.js does, whose polynomial fits Excel shares: Excel documents `BESSELJ(1.9, 2)` as 0.329925829, bessel.js's answer, where the exac",
    "tree/specs/computation/excel-divergences.md:110: - **IFS** reads each test with `if_test`, IF's reading, which the IFS card shares: text is `#VALUE!`, even `\"TRUE\"` ([[C10]] socketLattice). Formula.js takes any truthy JavaScript value, so `IFS(\"FALS",
@@ -61975,7 +61975,7 @@
    "tree/specs/computation/formula-language.md:738: - `nodes/tableLambda.test.ts`: a LAMBDA wired into REDUCE reads `acc` and `value` by name whichever is declared first, and a parameter the card doesn't offer is `#VALUE!` naming the card's variables.",
    "tree/specs/computation/formula-language.md:749: | `#VALUE!` | Applying a non-lambda; lambda arity mismatch; bad LAMBDA parameters or no body; an unapplied lambda as the result; a host without a lambda; a Formula.js-style `#VALUE!`, `#NULL!` or unre",
    "tree/specs/computation/formula-language.md:774: 4. A body that raises answers `#VALUE!` \"The formula failed to evaluate\".",
-   "tree/specs/computation/formula-language.md:776: **Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
+   "tree/specs/computation/formula-language.md:776: **Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#The InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
    "tree/specs/computation/formula-language.md:854: - **IF(test, [then], [else])** reads its test with `if_test`, which the IF card shares: a blank test answers blank; a number test is true when nonzero; text, even `\"TRUE\"`, is `#VALUE!` ([[C10]] socke",
    "tree/specs/computation/formula-language.md:855: - **IFS(test1, value1, …)** reads each test with `if_test`, as the IFS card does, and answers the value of the first true one. A blank test before any true one answers blank, an unreadable test is `#V",
    "tree/specs/computation/formula-language.md:856: - **CHOOSE(index, v1, …)** runs the Choose node's rule: a blank index is `#SYNTAX!` (a required setting, [[input-roles]]), a fractional index truncates (`CHOOSE(2.7, …)` is the second), an index outsi",
@@ -61999,7 +61999,7 @@
    "tree/specs/computation/formula-language.md:978: - **LINSPACE, REPEAT, GEOMETRIC, RANGE, PADLEFT, PADRIGHT** check their count at the formula boundary, as their cards do at theirs: a non-finite count is `#VALUE!`, and one above `MAX_GENERATED` is `#",
    "tree/specs/computation/formula-language.md:979: - **RUNNING(op, list, [window])** is the Running node's one name, the aggregator a text argument, as SORT carries its direction ([[C26]] opArgDistinct). The op is SUM, AVERAGE (or AVG), MIN, MAX, MEDI",
    "tree/specs/computation/formula-language.md:986: - **RANDSAMPLE(list, [count], [weights])** draws `count` items with replacement (blank: the list's length), so an item can repeat; with weights, one non-negative number per item, each draw picks an it",
-   "tree/specs/computation/formula-language.md:988: - **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]), which a table cell shows as the picture ([[engineering#Content entering or leaving the app is guarded where it crosses]] untru",
+   "tree/specs/computation/formula-language.md:988: - **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#Lists]]), which a table cell shows as the picture ([[engineering#Untrusted content]] untru",
    "tree/specs/computation/formula-language.md:992: - `formulaTier3.test.ts`: each list function answers what its card answers (REVERSE, SLICE in both forms, NTHELEMENT, INTERLEAVE, PADLEFT and PADRIGHT, DIFF, NORMALIZE, LENGTH, ARGMAX, ARGMIN, ARGSORT",
    "tree/specs/computation/formula-language.md:1001: - **HSTACK**, **VSTACK** and **XSTACK(axis, …)** (axis `\"v\"` or `\"h\"`, else `#VALUE!`) share the Stack node's kernels: a blank input drops, no inputs answer blank, and ragged edges pad with `#N/A` ([[",
    "tree/specs/computation/formula-language.md:1008: - **TOCOL(array, [ignore], [scan_by_column])** stacks the cells into a one-column table and **TOROW** (same arguments) lines them up as a list (a row) ([[D85]] columnsStayColumns). Both read row by ro",
@@ -64524,7 +64524,7 @@
     },
     {
      "line": 61,
-     "text": "Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[date-values#Days before 1900 are dates everywhere, as days after it are]]; [[da",
+     "text": "Excel has no dates before 1 January 1900: it refuses a negative date in TEXT, EDATE, the coupon functions and the rest. Solenoid takes them everywhere, from 01-Jan-0001 ([[date-values#Days before 1900]]; [[da",
      "moved": 0
     },
     {
@@ -64801,7 +64801,7 @@
     },
     {
      "line": 776,
-     "text": "**Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
+     "text": "**Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#The InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
      "moved": 0
     },
     {
@@ -64921,7 +64921,7 @@
     },
     {
      "line": 988,
-     "text": "- **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]), which a table cell shows as the picture ([[engineering#Content entering or leaving the app is guarded where it crosses]] untru",
+     "text": "- **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[formula-language#Lists]]), which a table cell shows as the picture ([[engineering#Untrusted content]] untru",
      "moved": 0
     },
     {
@@ -65890,7 +65890,7 @@
    "tree/specs/computation/formula-language.md:736: - `nodes/tableLambda.test.ts`: the LAMBDA node emits a callable value binding its parameters by position; SCAN and REDUCE seed from a scalar Initial socket; the card names the variables a lambda used ",
    "tree/specs/computation/formula-language.md:738: - `nodes/tableLambda.test.ts`: a LAMBDA wired into REDUCE reads `acc` and `value` by name whichever is declared first, and a parameter the card doesn't offer is `#VALUE!` naming the card's variables.",
    "tree/specs/computation/formula-language.md:763: **Variables.** `extractVariables(expr)` walks the AST and collects every bare `name` that is not a constant, in first-appearance order without duplicates, from operator operands, call arguments, appli",
-   "tree/specs/computation/formula-language.md:776: **Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
+   "tree/specs/computation/formula-language.md:776: **Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#The InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
    "tree/specs/computation/formula-language.md:1000: - **COLUMNS** and **ROWS** share the Table Info node's reading of a shape: a list is a row, so COLUMNS counts it and ROWS is 1; a scalar is 1 × 1; a blank is unknown.",
    "tree/specs/computation/formula-language.md:1001: - **HSTACK**, **VSTACK** and **XSTACK(axis, …)** (axis `\"v\"` or `\"h\"`, else `#VALUE!`) share the Stack node's kernels: a blank input drops, no inputs answer blank, and ragged edges pad with `#N/A` ([[",
    "tree/specs/computation/formula-language.md:1002: - **EXPAND(array, rows, [cols], [pad_with])** grows the array; a blank row or column count keeps that axis's size ([[input-roles]]), and an omitted `pad_with` pads with blank, where Excel pads with `#",
@@ -68419,7 +68419,7 @@
     },
     {
      "line": 776,
-     "text": "**Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
+     "text": "**Result socket.** The result's type is what the formula computed, read off its values ([[socket-lattice#The InlineCast]], [[D114]] dateIsAKind, [[C136]] typesKnownAfterCalc): a number, a date, text or a logical; a",
      "moved": 0
     },
     {

@@ -469,14 +469,14 @@ export class PivotNode extends GraphNode {
   rowSort = 0;
   colSort = 0;
   relativeTo = 0;
-  /** The totals are the Pivot view's, never the Frame's ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]); on, they also go out as Row Totals and
+  /** The totals are the Pivot view's, never the Frame's ([[table-popup#The Pivot view]]); on, they also go out as Row Totals and
    *  Column Totals. */
   exportTotals = false;
   // Per field, the value keys to hide; ANDed with the wired `filter` mask.
   filterExclude: Record<string, string[]> = {};
   /** How the popup's Pivot view draws the output; display only. */
   pivotView: PivotViewOptions;
-  /** Columns the Pivot view lists under each row group; display only ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]). */
+  /** Columns the Pivot view lists under each row group; display only ([[table-popup#The Pivot view]]). */
   detailFields: string[] = [];
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
@@ -2007,7 +2007,7 @@ export class DescribeNode extends GraphNode {
     return ctx.wired("frame") ? shapeOnCore("describeFrame", [{ columns: [] }]) : null;
   }
 
-  /** The Dashboard view's tiles, which the body shows beside its summary; they ride beside the frame ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]). */
+  /** The Dashboard view's tiles, which the body shows beside its summary; they ride beside the frame ([[table-popup#The Pivot view]]). */
   describeTiles?: DescribeTile[];
   static coreWatch = "describeTiles";
   coreWatched(): void {

@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]]
 import { isSolError } from "./errorValue";
 import { frameRowCount, type FrameCell, type FrameColType, type FrameValue } from "./frame";
 import type { AggOp } from "./frameOps";
@@ -13,7 +13,7 @@ interface PivotAxisItem {
   kind: PivotItemKind;
   tuple: FrameCell[];
   fill: number;
-  /** A row leaf's source rows, in source order, kept only when the Pivot has Details ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]). */
+  /** A row leaf's source rows, in source order, kept only when the Pivot has Details ([[table-popup#The Pivot view]]). */
   sources?: number[];
 }
 
@@ -36,7 +36,7 @@ export interface PivotLayout {
   cols: (PivotAxisItem & { value: number })[];
   details?: PivotDetailColumn[];
   /** The totals, which a PIVOTBY card keeps out of its Frame: each total row's cells across every view column, each
-   *  total column's cells down every view row, by their place among `rows` and `cols` ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]). */
+   *  total column's cells down every view row, by their place among `rows` and `cols` ([[table-popup#The Pivot view]]). */
   totals?: PivotTotalCells;
   /** Each wired calculated field's name by its id, on the pivot or dragged out of it, typed or wired alike. */
   calcNames?: Record<string, string>;

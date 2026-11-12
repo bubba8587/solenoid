@@ -288,7 +288,7 @@ flowchart LR
   - A direct card's inputs are core values; a JavaScript card's are objects.
   - Converting is the card wire (`nodeWire.ts`: `toCore`, `fromCore`, and `fromCoreBin` for a big flat frame or list, which crosses as buffers, [[node-bodies#The call]]): one host call per value converted, never per cell, and a big value once. The same JavaScript object crossing again goes as the id the core keeps it under.
   - An output that is one of the card's inputs as it came is that very cell.
-  - Errors keep their origin on the wire ([[error-values#An error remembers the node where it started]]).
+  - Errors keep their origin on the wire ([[error-values#Producers and provenance]]).
 - **The boundary on core values** (`boundary_core.rs`, held natively to every frozen arrival and tagging case, `tests/boundary_core.rs`). What only the app knows stays a host call, made only when a value needs it: a lazy frame's collect, a frame ref's format picks.
 - **What the core keeps per card.**
   - **Its call** (`coreHeader`): class, saved fields but the ones only the canvas reads (`VIEW_FIELDS`, `nodeInit.ts`: a resize, fold or recolor leaves the call as it stands, and no body on the core reads one), literal maps, sockets, outputs, adopted types, the boundary's keys, its typed list literals read, which cached fields the object has, and its frame format picks.
@@ -301,7 +301,7 @@ flowchart LR
   - The tests' audit (`auditNamedEdits`, `tests/setup/graphEngine.ts`) makes every full clear re-read each unnamed card's call too, and fails a test whose card read differently.
   - A class's `static coreFields` are read on every call.
 - **The fields a body sets for its component** (`cachedResult` and the rest) live on the Rust node.
-  - The object reads each through an accessor installed the first time the body shows it (`GraphEditor.adopt`), converted when read, so a field no component reads never crosses ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]).
+  - The object reads each through an accessor installed the first time the body shows it (`GraphEditor.adopt`), converted when read, so a field no component reads never crosses ([[engineering#Performance]]).
   - A standard box's read (`previewed`, `listPreview.ts`) of a big list or frame (10,000 rows or more) takes the first 4 rows the core keeps for it (`shownPreview`): a table's first 4 columns too, while a frame keeps every column. The preview is tagged with the list's length and a table's width; the chip counts by them, and the popup, a copy, an inline list and a full table read it whole (`fullList`).
   - A frame verb's box is its own 100-row preview already (`collectPreview`; the frame backend keeps the whole).
   - Every other read takes the field whole.

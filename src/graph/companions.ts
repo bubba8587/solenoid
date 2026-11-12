@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]]
+// [[B15]] leanCore, [[composite-nodes#Packs]]
 // A card's companions land to its left, stacked top down, each cabled into the input it names.
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";

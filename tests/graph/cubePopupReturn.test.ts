@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
+// [[C10]] socketLattice, [[frame-verbs#The Cube value]]
 import { describe, it, expect, afterEach } from "vitest";
 import { cubePopup, gridPosOf } from "../../src/graph/cubePopupStore";
 

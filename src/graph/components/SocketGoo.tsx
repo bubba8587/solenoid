@@ -1,4 +1,4 @@
-// [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § Card sections, the fold's liquid merge)
+// [[components#The design system]] (DESIGN.md § Card sections, the fold's liquid merge)
 import { clamp } from "../nodes/mathUtils";
 import { useId, useLayoutEffect, useRef } from "react";
 import { socketRingColor } from "./SocketComponent";

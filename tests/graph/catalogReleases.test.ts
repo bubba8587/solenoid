@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[add-menu#The Add menu reaches every node, in a shape the author designs by hand]]
+// [[A1]] visualGraphCalculator, [[add-menu]]
 // Each card says the release that brought it and the last that reworked it; no `added` is 1.5 or earlier.
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";

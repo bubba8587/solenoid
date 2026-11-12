@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
+// [[A1]] visualGraphCalculator, [[components#The design system]]
 // Chrome 150's focusgroup attribute (declarative arrow-key navigation inside a composite widget), not yet in React's types.
 import "react";
 

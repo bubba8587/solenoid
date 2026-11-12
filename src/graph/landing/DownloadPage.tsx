@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[B2]] webTryDesktopFull, [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § Voice)
+// [[B3]] sameNodeEverywhere, [[B2]] webTryDesktopFull, [[components#The design system]] (DESIGN.md § Voice)
 import { useEffect } from "react";
 import { GITHUB_URL, SiteHeader, SiteFooter, DownloadLink, HOME_HREF } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";

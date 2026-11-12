@@ -1,4 +1,4 @@
-// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], [[C130]] rustCore, [[graph-core#Performance]]
+// [[engineering#Performance]], [[C130]] rustCore, [[graph-core#Performance]]
 // Timing, not a check: `BENCH=1 npx vitest run tests/graph/passBench.test.ts` prints the table.
 import { describe, it } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

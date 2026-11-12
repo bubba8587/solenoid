@@ -1,4 +1,4 @@
-// [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C44]] dateSerials
+// [[composite-nodes#Packs]], [[C44]] dateSerials
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";

@@ -1,4 +1,4 @@
-// [[obsidian-plugin#A note can opt in to read in Obsidian as its Note card does, chips included]]
+// [[obsidian-plugin#Knap notes]]
 import { embedBareVariables, hasKnapSyntax, renderKnap } from "../../src/graph/knapTemplate";
 import { guessScalarText } from "../../src/graph/scalarText";
 

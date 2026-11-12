@@ -1,4 +1,4 @@
-// [[C70]] oneScheduleRule, [[schedule-and-gantt#An unsupported imported field is named, never dropped and never a new column]]
+// [[C70]] oneScheduleRule, [[schedule-and-gantt#Import at the border]]
 //! What the plan-file readers share: the file a reader returns, how a file's
 //! format is told, dates, unique names and the weekend codes.
 

@@ -197,7 +197,7 @@ The minimap and the socket legend are `display: none` on mobile (`mobile.css`), 
 
 ### Phones in landscape
 
-Serves [[#A phone turned sideways runs the tablet layout, scaled to fit]] landscapePhoneIsTablet. A phone (`IS_PHONE`: coarse and a mobile user agent) turned sideways runs the tablet layout, scaled down to fit:
+A phone (`IS_PHONE`: coarse and a mobile user agent) turned sideways runs the tablet layout (the desktop chrome with the touch action buttons), with the whole page scaled down so that layout fits its short screen. Turned back to portrait it returns to the phone layout at full size. Rotating switches the layout live, with no reload:
 
 - The orientation is the screen's (`screen.orientation`, else `orientationchange`), never the viewport's shape, since the on-screen keyboard makes a portrait viewport wider than it is tall. `isMobile()` flips on rotation and `deviceModeStore` notifies; `main.tsx` toggles `html.is-mobile` / `html.is-tablet` and rewrites the viewport meta, and render-time readers subscribe through `useIsMobile()` (`useDeviceMode.ts`). Nothing reloads.
 - The scale is the viewport meta's `initial-scale`, pinned with equal `minimum-scale` and `maximum-scale`, so the browser lays the page out wider and draws it smaller, exactly as its own zoom would, and pointer coordinates stay true.
@@ -226,7 +226,7 @@ Tests: `landscapePhoneScale.test.ts`: a Galaxy S25+ at 0.756, a short screen's h
   - re-centers `.solenoid-cmdpalette` on the canvas, at a width of `clamp(340px, 42% of the canvas, 480px)`.
   The header, the status bar and the left navigator are full-width or left-anchored and untouched.
 - **Inspector docked** (desktop and tablet): `html.sol-inspector-docked` (`inspectorStore.ts`), the same push scaled to `--inspector-w: 340px` (`InspectorPanel.css`). The canvas wrapper shrinks; the nav pill, HUD stack and socket legend shift; the command palette re-centers on the canvas. It is the report dock's full set, kept in step. The two right docks are mutually exclusive: the one opened last takes the slot and the other closes, because side by side they would take too much of the screen. So their squeeze rules never stack.
-- **What the Inspector shows** ([[#The Inspector is a static reference, never live values]]): static reference for the selected node as it is set up, its Function Reference entry (with Open in Reference for the card's full page) and a plain-English list of its inputs and outputs and the type each takes, with any per-socket `socketDocs` sentence. It never shows live values or live connections; live values show on the node and its popups, and live connections on the canvas and the Cable inspector.
+- **What the Inspector shows**: static reference for the selected node as it is set up, its Function Reference entry (with Open in Reference for the card's full page) and a plain-English list of its inputs and outputs and the type each takes, with any per-socket `socketDocs` sentence. It never shows live values or live connections; live values show on the node and its popups, and live connections on the canvas and the Cable inspector.
 - **Presenting**: `html.solenoid-presenting` (`PresentationOverlay.tsx`) hides nearly all chrome: the header, nav pill, status bar, navigator and its open-pill, legend, minimap, mobile bar and HUD (`PresentationOverlay.css`). The canvas is the slide.
 - **Drilled into a composite**: `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app frame stays. It hides the main minimap (the drill-in host renders its own); the Navigator stays and lists the open level ([[outline-panel#Composites]]), the strip stepping right of it on desktop, open panel or collapsed pill, and hiding under its sheet on a phone (`compositeEditor.css`). The drill-in adds a top-left breadcrumb strip (`.solenoid-composite-editor__strip`, `top: 74px` on desktop; on mobile flush at `--chrome-top` and the left edge, with only a bottom and right border) with a run-controls panel tucked under it (`top: 120px`; on mobile the panel is the strip's second row). Its backdrop is z-index 4, above the canvas and below the chrome, so the app frame stays usable. The covered main canvas stops painting ([[html-in-canvas#The GPU texture budget]]).
 
@@ -284,15 +284,3 @@ Rule of thumb: floating canvas pills take 5 to 7, corner panels 100 to 110, moda
 
 `LABEL_MAX_HEIGHT = 60` (`nodeKit.tsx`): the label textarea's maximum height is 4 lines (4 × a 13px line height) plus 6px of symmetric padding, 58, plus a 2px buffer. It must stay in step with the 4-line clamp on `.solenoid-node__label-display`, or an editing title and the static title disagree in height.
 
-## The Inspector is a static reference, never live values
-
-The Inspector shows reference material for the selected node as it is set up: what it does and what each input and output takes. It never shows live values or live connections.
-
-- **Reopen if:** a workflow needs a live readout that the node and the Cable inspector can't give.
-
-## A phone turned sideways runs the tablet layout, scaled to fit
-
-A touch phone in landscape gets the tablet layout (the desktop chrome with the touch action buttons), with the whole page scaled down so that layout fits its short screen. Turned back to portrait it returns to the phone layout at full size. Rotating switches live; no reload.
-
-- How it's built: [[layout-chrome#Phones in landscape]].
-- **Reopen if:** the phone layout grows a landscape arrangement of its own.

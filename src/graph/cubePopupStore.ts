@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[frame-verbs#The Cube value]]
 import { createValueStore } from "./storeKit";
 import { recordsToCube, frameCellFromRecords, type CubeValue, type FrameValue, type CubeCell, type FrameColType } from "./frame";
 import { getAtPath, type CubePath, type CubeRecord, type CubeSource } from "./literalEditors";

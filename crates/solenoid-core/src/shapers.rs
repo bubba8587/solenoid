@@ -138,7 +138,7 @@ fn compared_order(keys: &[(Vec<V>, bool)], n: usize) -> Vec<usize> {
 
 /// `sorted_index_by_keys` for one key of numbers (and what sorts last), the order it gives, sorting plain pairs: each
 /// position's (sorts last, number, position) under a total order, -0 read as 0 as `a - b` reads it, ties by position
-/// as a stable sort keeps them ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork). `None` where a key isn't a number.
+/// as a stable sort keeps them ([[engineering#Performance]] linearWork). `None` where a key isn't a number.
 fn numeric_order(vals: &[V], n: usize, desc: bool) -> Option<Vec<usize>> {
     let mut keyed = Vec::with_capacity(n);
     for i in 0..n {
@@ -349,7 +349,7 @@ fn unique(a: &[V]) -> V {
     let (m, list) = as_rows_of(v);
     let by_col = truthy(arg(a, 1));
     // Every row's key parts (or every column's, across the rows) in one run, `starts` marking where each begins: no
-    // row of its own per column of a list ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork). A column reads a cell a short row lacks as blank,
+    // row of its own per column of a list ([[engineering#Performance]] linearWork). A column reads a cell a short row lacks as blank,
     // and stops at the first row's width, as `transpose` does.
     let width = m.first().map_or(0, Vec::len);
     let n = if by_col { width } else { m.len() };
@@ -404,7 +404,7 @@ fn sort(a: &[V]) -> V {
     let by_col = truthy(arg(a, 3));
     if by_col && m.iter().all(|r| r.len() == m[0].len()) && !m[0].is_empty() {
         // Across columns of an even grid (a list is one row): the columns move as row `k` orders them, each row
-        // permuted in place of building one small row per column ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+        // permuted in place of building one small row per column ([[engineering#Performance]] linearWork).
         if !(index.fract() == 0.0 && index >= 1.0 && index <= m.len() as f64) {
             return V::err(sol_error(
                 ErrorCode::Value,

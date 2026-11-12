@@ -1,4 +1,4 @@
-// [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
+// [[motion-graphics]]
 // The three.js player: builds a capture's pieces (export.py → pieces.json) as flat meshes in CSS paint order
 // and renders frames of a clip. Units are flow px (x right, y up = -flow y, z toward the camera). Each output
 // frame averages `samples` renders with the camera jittered across its aperture and time across the shutter,

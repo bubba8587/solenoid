@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[group-expand-push#A node joins or leaves a group only when you put it there]], [[save-format#A save loses nothing quietly]]
+// [[A1]] visualGraphCalculator, [[group-expand-push#Who is a member]], [[save-format#A save loses nothing quietly]]
 // A deleted card leaves every group that held it, so neither the group nor the save written from it names a card
 // that is gone (the save had carried the dead card's per-load id where a name belongs).
 import { it, expect, vi } from "vitest";

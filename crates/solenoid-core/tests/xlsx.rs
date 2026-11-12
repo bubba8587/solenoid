@@ -1,4 +1,4 @@
-//! [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]]: an Excel workbook's named Tables against the hand-built workbooks in
+//! [[B18]] safeToShare, [[engineering#Untrusted content]]: an Excel workbook's named Tables against the hand-built workbooks in
 //! `fixtures/xlsx/` (`scripts/xlsx-fixtures.py`; `tree/specs/computation/live-connections.md` § Excel workbooks).
 
 use solenoid_core::error_value::ErrorCode;

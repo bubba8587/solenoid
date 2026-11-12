@@ -217,7 +217,7 @@ Tests:
 
 Local File reads a Microsoft Project XML (MSPDI), GanttProject `.gan` or Primavera XER file (`planFileToPlan`) and emits its tasks as a tasks cube on the `plan` socket (`planToCube`); `frame` is blank, since a flat Frame could hold neither the nesting nor the links except as grammar text ([[#Link grammar stays at the border]]). A CSV whose Predecessors column (`predecessor`, `depends on`, `after`) uses the row-number grammar in every filled cell, Smartsheet's export, also comes out as a plan (`csvPlanToCube`): each token resolves through the row-to-name list to a task name. A CSV that is not a plan gives a null plan and stays a frame.
 
-In the cube, a task whose dependencies are all FS with lag 0 gets a list of names; any typed, lagged or elapsed dependency makes the cell a nested Frame of Task, Type, Lag (and Elapsed). Optional columns (Start, Finish, Deadline, Manual, Complete, Actual start, ALAP, Elapsed, Weekend, Hours, Holidays, Project, Tasks) appear only when some task uses them. A field the reader cannot model is named in `unsupported` and shown on the card as "Not carried over: …", never dropped and never a new column ([[#An unsupported imported field is named, never dropped and never a new column]]). The per-format rules (link codes, constraint mapping, calendars) are in the scheduling crate's README. The list of what an import must name is the correctness list in `docs/v2.0/25-gantt.md` § 3.2.
+In the cube, a task whose dependencies are all FS with lag 0 gets a list of names; any typed, lagged or elapsed dependency makes the cell a nested Frame of Task, Type, Lag (and Elapsed). Optional columns (Start, Finish, Deadline, Manual, Complete, Actual start, ALAP, Elapsed, Weekend, Hours, Holidays, Project, Tasks) appear only when some task uses them. When an imported plan holds something a schedule can't express, the import still brings the plan in and names on the node what it left out: a field the reader cannot model is named in `unsupported` and shown on the card as "Not carried over: …". Nothing is dropped silently, and nothing becomes a new column. The per-format rules (link codes, constraint mapping, calendars) are in the scheduling crate's README. The list of what an import must name is the correctness list in `docs/v2.0/25-gantt.md` § 3.2.
 
 ### Link grammar stays at the border
 
@@ -294,10 +294,3 @@ Precision is an engine mode, chosen on the card, never a display snap ([[C70]] o
 Finish is inclusive on the cell in both modes: a cell is the value, Get Column returns what the engine wrote, and there is no internal and display split. In Minutes mode a finish at midnight shows on the previous day, so a finish of 00:00 on a 24-hour calendar lands on the right day. The figure adds one day when it draws a bar's end.
 
 Tests: `nodes/schedule.test.ts`: in Minutes an FS successor starts the same afternoon, and the date columns carry the datetime format so their cells read with a time, while Days reads date-only.
-
-## An unsupported imported field is named, never dropped and never a new column
-
-When an imported plan holds something a schedule can't express, the import still brings the plan in and names on the node what it left out. Nothing is dropped silently, and nothing becomes a new column.
-
-- How it's built: [[schedule-and-gantt#Import at the border]].
-- **Reopen if:** something left out turns out common enough to earn a column.

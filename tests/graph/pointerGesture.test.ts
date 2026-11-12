@@ -1,4 +1,4 @@
-// [[B20]], [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]], [[touch-gestures#A gesture follows what touches the screen, not the device]], [[pointer-gestures#What counts as a finger: the census]]
+// [[B20]], [[touch-gestures#Standing rules]], [[pointer-gestures#What counts as a finger: the census]]
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   installPointerCensus, resetPointerCensus, isPinching, touchCount,

@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C24]] arraySemantics, [[error-values#An error remembers the node where it started]], [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork
+// [[C130]] rustCore, [[C24]] arraySemantics, [[error-values#Producers and provenance]], [[engineering#Performance]] linearWork
 //! A card the engine calls in Rust (`tree/specs/computation/graph-core.md` § Direct calls): what the core keeps for it,
 //! and the call through the boundary on core values (`boundary_core.rs`) into its body (`solenoid_core::nodes`).
 

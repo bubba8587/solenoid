@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]]
 import { frameRowCount, type FrameColType } from "./frame";
 import { frameSidecar } from "./frameSidecar";
 import type { FormatAnnotation } from "./formatAnnotationStore";

@@ -1,4 +1,4 @@
-//! [[C69]] ganttPackages, [[schedule-and-gantt#An unsupported imported field is named, never dropped and never a new column]].
+//! [[C69]] ganttPackages, [[schedule-and-gantt#Import at the border]].
 //! The plan-file readers (`solenoid_schedule`) in the JSON the app's import reads: a file's tasks in `PlanTask`'s shape
 //! (`src/graph/planTypes.ts`), and a cell's predecessor text.
 

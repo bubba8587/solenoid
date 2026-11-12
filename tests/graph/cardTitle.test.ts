@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface, [[add-menu#A placed node is titled with what you picked in the Add menu]], [[add-menu#Naming a placed node]]
+// [[B16]] oneFormulaSurface, [[add-menu#Naming a placed node]]
 import { describe, expect, it } from "vitest";
 import { FLAT_CATALOG, nodeDisplayName } from "../../src/graph/catalogUtils";
 

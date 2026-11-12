@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
+// [[A1]] visualGraphCalculator, [[components#The design system]]
 import { isDesktop, isAndroidApp } from "./fileBridge";
 
 /** iOS Safari has no Fullscreen API for arbitrary elements, so callers hide the affordance. */

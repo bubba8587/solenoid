@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], [[react-flow-surface-contract#Selection]]
+// [[B19]] spreadsheetHabits, [[engineering#Performance]], [[react-flow-surface-contract#Selection]]
 import { describe, expect, it } from "vitest";
 import { mirrorSelection, type SelectionState } from "../../../src/graph/flow/selectionMirror";
 

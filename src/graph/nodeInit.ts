@@ -80,7 +80,7 @@ function inheritedInitKeys(proto: object | null): number[] {
 export function extractInit(src: GraphNode): Record<string, unknown> {
   const n = src as unknown as Record<string, unknown>;
   const init: Record<string, unknown> = {};
-  // The saved names the card has, own or inherited, in their order ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]: a call reads it every pass).
+  // The saved names the card has, own or inherited, in their order ([[engineering#Performance]]: a call reads it every pass).
   const at = [...inheritedInitKeys(Object.getPrototypeOf(n) as object | null)];
   for (const k of Object.getOwnPropertyNames(n)) {
     const i = INIT_INDEX.get(k);

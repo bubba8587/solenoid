@@ -1,4 +1,4 @@
-// [[command-palette#The Command Palette is the menubar in searchable form]]
+// [[command-palette]]
 import type { ReactNode } from "react";
 import { CableShapeSelector } from "./CableShapeSelector";
 import type { Menu, MenuIcon, MenuItem } from "./menuModel";

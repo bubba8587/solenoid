@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
+// [[A1]] visualGraphCalculator, [[components#The design system]]
 import { useLayoutEffect, type RefObject } from "react";
 import { measureThenWrite, observeResize } from "./layoutBatch";
 

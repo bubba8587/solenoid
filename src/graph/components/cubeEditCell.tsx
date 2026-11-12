@@ -1,4 +1,4 @@
-// [[C28]] literalsIffEditable, [[B19]] spreadsheetHabits, [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
+// [[C28]] literalsIffEditable, [[B19]] spreadsheetHabits, [[frame-verbs#The Cube value]]
 import { useEffect, useState, type ReactNode } from "react";
 import type * as React from "react";
 import { cubePopup, type CubeEditBinding, type DrillView, type CellRef } from "../cubePopupStore";
@@ -95,7 +95,7 @@ function InlineCell({ value, shown, onCommit }: { value: unknown; shown?: string
 
 type ColType = NonNullable<CubeSourceColumn["type"]>;
 
-/** A column's declared type in the table at `tablePath`: the top level's column list, or that one nested table's own picks ([[frame-verbs#Each table in a Cube, nested or not, types its own columns]]). */
+/** A column's declared type in the table at `tablePath`: the top level's column list, or that one nested table's own picks ([[frame-verbs#The Cube value]]). */
 function columnTypeIn(edit: CubeEditBinding, tablePath: CubePath, column: string): ColType | undefined {
   const src = edit.source();
   if (tablePath.length === 0) {
@@ -184,7 +184,7 @@ function redeclare(n: NestedTables, cellPath: CubePath, from: CellKind, to: Cell
   return to === "frame" ? withFrame(cleared, cellPath, true) : kept ? withFrame(cleared, cellPath, false) : cleared;
 }
 
-/** One editing cell: a value types in place, anything else is a chip to drill into, and the edge menu switches between them ([[frame-verbs#Each table in a Cube, nested or not, types its own columns]]). */
+/** One editing cell: a value types in place, anything else is a chip to drill into, and the edge menu switches between them ([[frame-verbs#The Cube value]]). */
 function EditCell({ edit, cellPath, crumb, from, type, item, source, kinds = true }: {
   edit: CubeEditBinding; cellPath: CubePath; crumb: string; from: CellRef; type?: ColType; item: boolean; source: boolean;
   /** A table's or a Frame's cell stays a value: no menu. */

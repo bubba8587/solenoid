@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
+// [[C10]] socketLattice, [[frame-verbs#The Cube value]]
 // What is declared for each table nested in a Cube's cells, keyed by where it sits: whether it is a Frame, and its
 // columns' types. Pure JSON, so Cube Input's source and the Solenoid Properties plugin's store hold it as it is.
 import type { FrameColType } from "./frame";

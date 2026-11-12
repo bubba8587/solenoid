@@ -1,4 +1,4 @@
-// [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
+// [[motion-graphics]]
 // Reads a graph off the live app as a vector scene for the motion engine (engine.py): every card's boxes,
 // borders, SVG shapes (frames, sockets, icons, CSS-mask icons), slider parts and glyphs, in flow px, in paint
 // order, each tagged with the element that drew it, so a clip can take a card apart and build it back up from

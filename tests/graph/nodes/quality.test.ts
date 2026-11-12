@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[alert-node-alerts-hud#An alert fires when its status changes, and never on load]], [[alert-node-alerts-hud#When it fires]]
+// [[A1]] visualGraphCalculator, [[alert-node-alerts-hud#When it fires]]
 import { describe, it, expect } from "vitest";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
 import { alertStore } from "../../../src/graph/alertStore";
@@ -210,7 +210,7 @@ describe("Expect reads values as they're shown: units, Cubes and the allowlist b
   });
 });
 
-describe("Expect's range takes the kind of value it checks ([[date-values#A range check bounds a date by dates and a number by numbers]])", () => {
+describe("Expect's range takes the kind of value it checks ([[date-values#Cards]])", () => {
   type Conn = { source: GraphNode; sourceOutput: string; target: GraphNode; targetInput: string };
   const source = (type: SocketDataType) => {
     const n = new GraphNode("Src");

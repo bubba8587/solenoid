@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[obsidian-plugin]]
 import { themeVars, type ThemeMode } from "../../src/graph/themeVars";
 import { DEFAULT_ACCENT } from "./lookTokens";
 

@@ -226,11 +226,11 @@ One pass, fully live, on every outer pass that reaches the card.
 
 One pass, identical to Single, but always heavy: it computes only on Refresh. `insideOnly` never applies in `manual` or `pipeline` (`refreshes()`).
 
-Pipeline is a run mode that computes as Manual refresh does, plus one chain and its step list, and a catalog preset, not a class ([[#Pipeline is a composite set up as one chain, not a new kind of node]]). The `pipeline` catalog entry creates a `CompositeNode` labeled `Pipeline` with `runMode: "pipeline"`, one exposed basic input port `table` (label Table, marker `qin`) and one output port `result` (label Result, marker `qout`), and a pending internal snapshot of the two markers at (0, 0) and (420, 0) joined by a cable. Every add path hydrates a created composite right after `create()`, because Pipeline ships its internals as a pending snapshot.
+Pipeline, Solenoid's answer to Power Query, is an ordinary composite set up in advance, not a new kind of node: a run mode that computes as Manual refresh does, plus one chain and its step list, and a catalog preset, not a class. Its steps are the usual Frame nodes inside it, and it runs on Refresh. The name is industrial, beside Solenoid, Conduit and Cable; "power query" stays a search keyword. The `pipeline` catalog entry creates a `CompositeNode` labeled `Pipeline` with `runMode: "pipeline"`, one exposed basic input port `table` (label Table, marker `qin`) and one output port `result` (label Result, marker `qout`), and a pending internal snapshot of the two markers at (0, 0) and (420, 0) joined by a cable. Every add path hydrates a created composite right after `create()`, because Pipeline ships its internals as a pending snapshot.
 
-**One chain.** `pipelineChain()` walks the internal cables from the first input port's marker to the first output port's marker: each card it reaches must feed exactly one card, and the walk ends at the Result marker. It answers the steps in order and the first fault, `{ kind, node }`: `unwired` (the Table marker feeds nothing), `dead-end` (a card feeds nothing), `branch` (a card feeds two or more), `cycle`, or `off-chain` (a card the walk never reached that isn't an input marker: side inputs come in through the Pipeline's own input ports, whose markers may feed any step). A fault leaves the pass as it is; the card names the card that breaks the chain.
+**One chain.** `pipelineChain()` walks the internal cables from the first input port's marker to the first output port's marker: each card it reaches must feed exactly one card, and the walk ends at the Result marker. So the table runs from the Table marker through each step to the Result marker, every step's table fed by the step before, and a step's other inputs (a Join's right table, a threshold) come in through the Pipeline's own input ports. It answers the steps in order and the first fault, `{ kind, node }`: `unwired` (the Table marker feeds nothing), `dead-end` (a card feeds nothing), `branch` (a card feeds two or more), `cycle`, or `off-chain` (a card the walk never reached that isn't an input marker: side inputs come in through the Pipeline's own input ports, whose markers may feed any step). A fault leaves the pass as it is; the card names the card that breaks the chain.
 
-**The step list** (`PipelineSteps`, `CompositeNode.tsx`, shown in the `pipeline` run mode) reads the chain on every render: each step numbered with its display name, in a list that scrolls past about seven steps (216px, `nowheel`). A step's row selects it (the first step until another is picked; view state, not saved), drawn as a selected Navigator group row is, a ring and a tint, in the card's own accent. A folded **Preview** section (closed by default, its fold saved as any card section's) shows the selected step's table (`FrameDisplay`, which opens the full popup). The list only reads the graph: nothing on the card reorders, skips or adds a step.
+**The step list** (`PipelineSteps`, `CompositeNode.tsx`, shown in the `pipeline` run mode) reads the chain on every render: each step numbered with its display name, in a list that scrolls past about seven steps (216px, `nowheel`). A step's row selects it (the first step until another is picked; view state, not saved), drawn as a selected Navigator group row is, a ring and a tint, in the card's own accent. A folded **Preview** section (closed by default, its fold saved as any card section's) shows the selected step's table (`FrameDisplay`, which opens the full popup). The graph stays the source of truth: the list only reads the chain, and nothing on the card reorders, skips or adds a step; the cables inside decide the order.
 
 ### Scenarios
 
@@ -264,7 +264,7 @@ Config: `byRowPortId` (`""` = unset), `byRowLive` (false).
 | any other value | itself, as one row |
 
 - No rows, or an unknown port, runs one plain pass. Otherwise one pass per row with that row as the port's override; each output is an array, one entry per row.
-- Cap: `BY_ROW_MAX_ROWS = 500`. By-Row is the one heavy mode whose pass count comes from the data rather than a typed number, and every pass recomputes the whole inside, so a huge wired Frame would freeze the Solve; the cut-short series still looks plausible, so the cap warns loudly rather than dropping rows silently. Rows past it are dropped from the tail. When the total exceeds the cap, the composite fires a warning alert (Alerts HUD and toast) "`<name>`: By-Row ran the first 500 of `<total>` rows (the rest were skipped)", where name is the trimmed label or `Composite`. It fires only when the total differs from the last capped total (`lastByRowCapTotal`, transient) and never while a graph rebuild is open ([[alert-node-alerts-hud#An alert fires when its status changes, and never on load]], [[alert-node-alerts-hud]]). A run under the cap resets the edge.
+- Cap: `BY_ROW_MAX_ROWS = 500`. By-Row is the one heavy mode whose pass count comes from the data rather than a typed number, and every pass recomputes the whole inside, so a huge wired Frame would freeze the Solve; the cut-short series still looks plausible, so the cap warns loudly rather than dropping rows silently. Rows past it are dropped from the tail. When the total exceeds the cap, the composite fires a warning alert (Alerts HUD and toast) "`<name>`: By-Row ran the first 500 of `<total>` rows (the rest were skipped)", where name is the trimmed label or `Composite`. It fires only when the total differs from the last capped total (`lastByRowCapTotal`, transient) and never while a graph rebuild is open ([[alert-node-alerts-hud#When it fires]], [[alert-node-alerts-hud]]). A run under the cap resets the edge.
 - Under the toggle the card says what the last run made: `3 runs`, or `ran the first 500 of 812` where the cap cut it short (`byRowLastRuns`).
 - The editor is a "For each" picker over the exposed inputs, with `— none`; with none exposed it reads `— expose an input to iterate`.
 
@@ -455,7 +455,7 @@ The constructor copies ports, scenarios, overrides, data-table lists and configs
 4. Restore the snapshot's side tables onto the new ids (`restoreSideTables`, shared with the main load; additive, and a comment whose id is taken, as on a second paste, gets a fresh one). Remap every port's `internalNodeId` from the saved id to the new id (every node gets a fresh id on construction). A port whose marker was not built keeps the stale id.
 5. Clear `_hydrating`, dock every internal Format Controller (`dockSelf`, which only registers the dock; one whose host is gone loads free, [[save-format]]), then run `settleInternalTypes()` once, whose reconcile settles the wildcards before it types the FCs. So a drill-in's open and every undo restore (both hydrate) come up with docks and FC types settled.
 
-Hydration happens on document load (after the outer cables, with the same registry), on add from the Add menu, on paste (each pasted composite clone), on drill-in open, and on unpack. A pack switched off still has its classes registered, so its nodes inside a composite construct normally ([[C79]] packActivationIsPresentation); only a type no build registers takes the Placeholder path. A formula pack node inside is a core Expression and always loads ([[#A pack node is a ready-made formula unless it says it needs custom code]]).
+Hydration happens on document load (after the outer cables, with the same registry), on add from the Add menu, on paste (each pasted composite clone), on drill-in open, and on unpack. A pack switched off still has its classes registered, so its nodes inside a composite construct normally ([[C79]] packActivationIsPresentation); only a type no build registers takes the Placeholder path. A formula pack node inside is a core Expression and always loads ([[#Packs]]).
 
 `restoreInternal(snapshot, reg)` (drill-in undo) forgets every internal node's store entries at every depth (the snapshot restores them under the new ids), removes every internal connection and node, clears `internalPositions`, translates every port's `internalNodeId` to its saved id (the snapshot's language), forgets the saved-id map, parks the snapshot as pending and hydrates it.
 
@@ -505,7 +505,12 @@ Tests:
 
 ## Packs
 
-When a pack node needs more than one formula, it becomes a composite ([[C77]] compositeIsSubgraph, `docs/pack-architecture.md`). Composite ports have two settings that are stored but not used yet: `exposure: "hidden"` and `tier: "advanced"`. A hidden port gets no socket on the card and ignores any wired value, and a port's tier is saved with it. But nothing in the app creates a hidden port or reads the tier, and no pack can declare a composite yet. So every port the app creates is exposed and basic. When packs do lock their insides, locked will be the unmarked default, and only ports the user can promote will get a visual mark ([[#Packs stay easy to read: only the exception gets a mark]]). For now, a composite card has no locked state at all. An input's limit, like a minimum value, is a setting on that input. A simple pack node never enforces a limit by hiding extra nodes inside itself. A one-formula pack node behaves like a composite with one node inside. So when it grows into a real composite, it looks the same, its input limits attach the same way, and its errors show the same way.
+A pack node is a ready-made formula by default, written as data rather than code. A pack marks each node that needs custom code instead. Packs never make the canvas harder to read: locked is the silent default, and only what the user can change gets a mark.
+
+- A physical constant in a preset is a Physics Constant card cabled into a named variable, never digits in the formula text, so a reader sees what the number is and where it comes from.
+- Every input of a preset says what it is (a variable description).
+
+When a pack node needs more than one formula, it becomes a composite ([[C77]] compositeIsSubgraph, `docs/pack-architecture.md`). Composite ports have two settings that are stored but not used yet: `exposure: "hidden"` and `tier: "advanced"`. A hidden port gets no socket on the card and ignores any wired value, and a port's tier is saved with it. But nothing in the app creates a hidden port or reads the tier, and no pack can declare a composite yet. So every port the app creates is exposed and basic. When packs do lock their insides, locked will be the unmarked default, and only ports the user can promote will get a visual mark. For now, a composite card has no locked state at all. An input's limit, like a minimum value, is a setting on that input. A simple pack node never enforces a limit by hiding extra nodes inside itself. A one-formula pack node behaves like a composite with one node inside. So when it grows into a real composite, it looks the same, its input limits attach the same way, and its errors show the same way.
 
 ## Refused and not built
 
@@ -513,28 +518,3 @@ When a pack node needs more than one formula, it becomes a composite ([[C77]] co
 - Markers cannot be added from the Add menu, copied, or deleted from the drill-in.
 - A heavy composite never solves without Solve or Refresh.
 - By-Row caps at 500 rows. Scenarios, Data Table and Monte Carlo have no cap beyond their configuration.
-
-## Packs stay easy to read: only the exception gets a mark
-
-Packs never make the canvas harder to read: locked is the silent default, and only what the user can change gets a mark.
-
-- How it's built: `docs/pack-architecture.md`.
-- **Reopen if:** people can't tell what is locked without a mark on each item.
-
-## Pipeline is a composite set up as one chain, not a new kind of node
-
-Pipeline, Solenoid's answer to Power Query, is an ordinary composite set up in advance, in its own run mode: its steps are the usual Frame nodes inside it, and it runs when you press Refresh. Its inside is **one chain**: the table runs from the Table marker through each step to the Result marker, every step's table fed by the step before; a step's other inputs (a Join's right table, a threshold) come in through the Pipeline's own input ports. A branch, a dead end or a card off the chain is an error that names the card. The outside lists the steps in chain order, numbered, and previews the table after the step picked.
-
-**The graph stays the source of truth** (the author, 2026-11-06): the step list only reads the chain. Nothing on the outside reorders, skips or adds a step; the cables inside decide the order.
-
-- How it's built: [[composite-nodes#Manual refresh and Pipeline]].
-- The name is industrial, beside Solenoid, Conduit and Cable; "power query" stays a search keyword.
-- **Reopen if:** people need to hold a step's result, or need something one chain can't express.
-
-## A pack node is a ready-made formula unless it says it needs custom code
-
-A pack node is a ready-made formula by default, written as data rather than code. A pack marks each node that needs custom code instead.
-
-- A physical constant in a preset is a Physics Constant card cabled into a named variable, never digits in the formula text, so a reader sees what the number is and where it comes from.
-- Every input of a preset says what it is (a variable description).
-- How it's built: `docs/pack-architecture.md`.

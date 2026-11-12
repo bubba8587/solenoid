@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet, [[obsidian-plugin#A note can opt in to read in Obsidian as its Note card does, chips included]], [[obsidian-plugin#Knap notes]]
+// [[B1]] obsidianBet, [[obsidian-plugin#Knap notes]]
 import { describe, it, expect } from "vitest";
 import { renderKnapNote, renderKnapUnits, knapUnits, knapVariables, isKnapNote, bodyStartLine } from "../../obsidian-plugin/src/knapNote";
 import { bareTags } from "../../src/graph/knapTemplate";

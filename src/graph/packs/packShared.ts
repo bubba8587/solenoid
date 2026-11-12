@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C79]] packActivationIsPresentation
+// [[B15]] leanCore, [[composite-nodes#Packs]], [[C79]] packActivationIsPresentation
 // A pack file may import only this module, its <id>Formulas.ts, ../nodeClasses and type-only app seams, never core internals;
 // <id>Formulas.ts imports only graph-free kernels ([[C17]] shareImpl).
 

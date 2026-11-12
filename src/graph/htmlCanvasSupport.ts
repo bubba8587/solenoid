@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]]
+// [[A1]] visualGraphCalculator, [[html-in-canvas]]
 /** The shipped API: the canvas's `content` attribute (155 renamed `layoutsubtree`) and the 2D context's `drawElementImage`. */
 export function supportsHtmlInCanvas(): boolean {
   try {

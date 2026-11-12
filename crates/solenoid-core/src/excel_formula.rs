@@ -658,7 +658,7 @@ fn num_of(v: &V) -> V {
 
 /// Two numbers Excel's comparisons read as one: equal to 15 significant digits
 /// (`0.1+0.2=0.3` and `1E+15+0.4=1E+15` are TRUE, `0.1+0.2>0.3` FALSE). Exact equality answers first, and only a pair
-/// already within 1e-14 of each other is rounded, so a comparison over a column stays cheap ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// already within 1e-14 of each other is rounded, so a comparison over a column stays cheap ([[engineering#Performance]] linearWork).
 pub fn same_to_15(x: f64, y: f64) -> bool {
     if x == y {
         return true;

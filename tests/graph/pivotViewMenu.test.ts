@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]], [[table-popup#The Pivot view]]
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]]
 // The Pivot view's right-click menu acts on the card's settings: each item checked against the setting it writes.
 import { describe, it, expect } from "vitest";
 import { pivotFrame } from "./coreVerbs";

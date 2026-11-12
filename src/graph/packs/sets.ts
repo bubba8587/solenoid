@@ -1,4 +1,4 @@
-// [[C51]] formulaNaming, [[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]]
+// [[C51]] formulaNaming, [[formula-language#Scalar operators]]
 import { BetweenNode, IsInNode, SetsNode, TallyNode } from "../nodeClasses";
 import type { Pack } from "./packShared";
 import { SETS_PACK_FORMULAS } from "./setsFormulas";

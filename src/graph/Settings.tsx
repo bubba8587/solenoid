@@ -1,4 +1,4 @@
-// [[command-palette#The Command Palette is the menubar in searchable form]]
+// [[command-palette]]
 import { SearchField } from "./components/SearchField";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";

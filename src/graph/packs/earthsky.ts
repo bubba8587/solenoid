@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C51]] formulaNaming, [[C17]] shareImpl
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#Packs]], [[C51]] formulaNaming, [[C17]] shareImpl
 // Angles are in degrees at every socket (each formula converts to radians itself); distances in meters.
 
 import { SolarPositionNode, SunriseSunsetNode, MoonPhaseNode } from "../nodeClasses";

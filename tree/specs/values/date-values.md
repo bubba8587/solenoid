@@ -64,14 +64,14 @@ The classes:
 - **The criteria family** (the IFS functions, COUNTIF, AVERAGEIF) is handed its arguments with their dates kept, never as serials: its kernel compares a date criterion with date cells and refuses a number against dates ([[D123]] typedCriteria, [[formula-language#Criteria]]). Its class still decides the answer: a date for MIN, MAX and AVERAGE of dates, #TYPE! for a SUMIFS of dates.
 - **Spreads** (STDEV, VAR and their forms, AVEDEV, DEVSQ, IQR, MAD, PTP, SEM) answer a plain number of days (VAR in days squared); dates beside plain numbers are #TYPE!.
 - **Counts** (COUNT, COUNTA, COUNTBLANK, COUNTIF(S), COUNTDISTINCT, RANK, PERCENTRANK, XMATCH, ROWS, COLUMNS, ARGSORT, ARGMIN, ARGMAX, ISIN, TALLY, WHICH) read dates as their days and answer a number.
-- **Compares** (IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN) takes its dates as dates; the comparison kernel compares a date only with a date ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]]).
+- **Compares** (IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN) takes its dates as dates; the comparison kernel compares a date only with a date ([[formula-language#Scalar operators]]).
 - **Sums** (SUMIFS) refuses a date in the range it adds, and takes dates in its criteria ranges.
 - **Text** (CONCAT, TEXTJOIN, LEN, LEFT, SUBSTITUTE, the regex and padding functions and kin) reads a date as its text.
 - **Moves** (IF, IFS, SWITCH, CHOOSE, IFERROR, IFNA, INDEX, TAKE, DROP, the reshapes and stacks, FILTER, the IS functions, TYPE, the LAMBDA helpers and kin) passes a date through as itself.
 - **Returns** (SORT, SORTBY, UNIQUE over their first; XLOOKUP over its return array; the set functions over all) compares by days and hands back dates where it was given dates; dates beside plain numbers there are #TYPE!.
 - **Unlisted:** SUM, PRODUCT, SUMPRODUCT and every function in no class answer #POINT! "… takes no date. Cast to Number for its serial" for a date argument, so a new function can't let a serial out.
 
-A long list is read once per list, not once per row (`date_values.rs`), so a range function per row of a computed column stays linear ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]):
+A long list is read once per list, not once per row (`date_values.rs`), so a range function per row of a computed column stays linear ([[engineering#Performance]]):
 
 - **What is read once.** Whether the list holds a date or a plain number (`SEEN`, swept of gone lists each time it doubles), and its serial, text and date copies (`COPIES`, the few used last).
 - **Why the copies matter.** A copy keeps one address across rows. The range memo and the lookup indexes know a list by its address, so they hit as they do for a number column, and a kept answer re-stamped as dates is the same list each time.
@@ -102,7 +102,7 @@ Tests:
 
 ## Days before 1900
 
-A day before 1900 is a date like any other ([[#Days before 1900 are dates everywhere, as days after it are]] datesBefore1900):
+A day before 1900 is a date like any other, where Excel, which has no dates before 1900, refuses it:
 
 - **Its serial is negative**, and every function, card, display, sort and typed entry takes it.
 - **The range** runs from 01-Jan-0001 (`FIRST_SERIAL`, `date_serial.rs`) to 31-Dec-9999 (`END_SERIAL` is the day after).
@@ -150,7 +150,7 @@ A card body reads and answers dates as the formulas do ([[D114]] dateIsAKind):
 - A wildcard output shows dates because its value holds them: the Type Settle reads every output's type off its value after a run ([[socket-lattice]] req. 9), so no card names a date family it produced.
 - Frame Filter and List Filter compare a date as a day: a wired date, a date typed on a Date column, and each item of a list of dates against a wired date.
 - A date card and the formula of the same name answer alike ([[C17]] shareImpl).
-- Expect's range check bounds a date by dates and a number by numbers ([[#A range check bounds a date by dates and a number by numbers]] rangeBoundsTakeTheValuesKind). Its Min and Max sockets turn `date` when the value checked is a date (`ExpectNode.settleFollowers`, [[type-propagation-on-in-place-socket-retype]]). Then:
+- A range check's bounds take the kind of the value checked: Expect's In range bounds a date by dates and a number by numbers, never comparing a date by its serial. Its Min and Max sockets turn `date` when the value checked is a date (`ExpectNode.settleFollowers`, [[type-propagation-on-in-place-socket-retype]]). Then:
   - a bound is typed on the card as a date, or wired;
   - the bounds are inclusive;
   - a bound left blank is no bound, so the number bounds the card also keeps never read as days;
@@ -177,13 +177,3 @@ A formula's or card's answer is typed by its values, so these are gone:
 - the wired-source-type relay for tables;
 - Cast's and Script's source-socket sniffing;
 - the display hand-offs that formatted a number as a date by its source socket (peeks, Report and Note refs, exports, templates).
-
-## A range check bounds a date by dates and a number by numbers
-
-Where a card checks that a value lies between a Min and a Max (Expect's In range), the bounds take the kind of the value checked: a date is checked against dates, typed as dates on the card or wired, and a number against numbers. A date checked against number bounds, or a number against date bounds, is #TYPE!, never compared by its serial.
-
-- Reopen if: text should be range-checked too, bounded by text in the order the sorts use.
-
-## Days before 1900 are dates everywhere, as days after it are
-
-A date before 1 January 1900 is a date like any other: every function, card, display and sort takes it, where Excel, which has no dates before 1900, refuses it.

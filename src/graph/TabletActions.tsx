@@ -1,4 +1,4 @@
-// [[touch-gestures#A gesture follows what touches the screen, not the device]]
+// [[touch-gestures#Standing rules]]
 import { useSyncExternalStore } from "react";
 import { deleteSelected } from "./canvasCommands";
 import { touchSelectStore } from "./touchSelectStore";

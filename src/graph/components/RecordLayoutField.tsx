@@ -1,4 +1,4 @@
-// [[B11]] maximalMerge, [[B19]] spreadsheetHabits, [[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]
+// [[B11]] maximalMerge, [[B19]] spreadsheetHabits, [[table-popup#The Cards view]]
 import { useLayoutEffect, useRef, useState } from "react";
 import { usePendingDraft } from "../draftFlush";
 import { FieldResizeGrip } from "./FieldResizeGrip";
@@ -8,7 +8,7 @@ export function RecordLayoutField({ value, wired, onCommit, onSuggest, placehold
   value: string;
   wired?: boolean;
   onCommit: (next: string) => void;
-  /** The layout read from the data ([[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]): Suggest, shown inside the field while it is empty, commits it. */
+  /** The layout read from the data ([[table-popup#The Cards view]]): Suggest, shown inside the field while it is empty, commits it. */
   onSuggest?: () => string | Promise<string>;
   placeholder?: string;
 }) {

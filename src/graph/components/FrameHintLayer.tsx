@@ -1,4 +1,4 @@
-// [[components#One design system governs every look, layout and word in the app]]
+// [[components#The design system]]
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { frameHintStore, type FrameHint } from "../frameHint";
 import { formatFrameCell } from "../frame";

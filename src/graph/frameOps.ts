@@ -33,7 +33,7 @@ export interface PivotSpec {
   colSort?: number;
   relativeTo?: number;
   filter?: ReadonlyArray<boolean | null>;
-  /** Columns the Pivot view lists under each row group ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]); the output never changes with them. */
+  /** Columns the Pivot view lists under each row group ([[table-popup#The Pivot view]]); the output never changes with them. */
   details?: readonly string[];
 }
 

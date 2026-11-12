@@ -93,7 +93,7 @@ export class AlertNode extends GraphNode {
   }
 }
 
-/** The body's status changed ([[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]): raise what it fires (`alertMessage`), unless the graph
+/** The body's status changed ([[alert-node-alerts-hud#When it fires]]): raise what it fires (`alertMessage`), unless the graph
  *  is rebuilding. */
 export function raiseWatched(node: GraphNode & { alertMessage: string | null }, fallback: string): void {
   if (!node.alertMessage || isGraphRebuilding()) return;

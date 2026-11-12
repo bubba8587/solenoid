@@ -1,4 +1,4 @@
-// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], [[D99]] rustIsSpec, [[rust-core#Follow-ups]]: timing, not a check (`BENCH=1` prints the table).
+// [[engineering#Performance]], [[D99]] rustIsSpec, [[rust-core#Follow-ups]]: timing, not a check (`BENCH=1` prints the table).
 import { describe, it } from "vitest";
 import { TextTransformNode } from "../../src/graph/nodes/text";
 import { RoundNNode } from "../../src/graph/nodes/scalar";

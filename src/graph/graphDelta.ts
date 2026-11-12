@@ -237,7 +237,7 @@ export async function applyGraphDelta(target: SavedGraph): Promise<SavedGraph | 
       .filter((sn) => (editor.getNode(live.get(sn.id)!) as { selected?: boolean } | undefined)?.selected === true)
       .map((sn) => sn.id));
     const swapped = new Map<string, string>();
-    // Every cable on a card that goes, found in one walk ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]), removed before the cards.
+    // Every cable on a card that goes, found in one walk ([[engineering#Performance]]), removed before the cards.
     for (const c of editor.getConnections().filter((c) => gone.has(c.source) || gone.has(c.target))) {
       await editor.removeConnection(c.id);
       if (!gone.has(c.target)) dirty.add(c.target);

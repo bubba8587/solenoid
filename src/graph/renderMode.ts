@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]]
+// [[A1]] visualGraphCalculator, [[html-in-canvas]]
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";

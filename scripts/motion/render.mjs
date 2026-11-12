@@ -1,4 +1,4 @@
-// [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
+// [[motion-graphics]]
 // Renders a motion clip with the three.js player in headless Chromium (software WebGL), frames piped straight
 // into ffmpeg. The capture must be exported first (export.py → pieces.json).
 //   node scripts/motion/render.mjs <capture dir> <clip> [--out file.mp4] [--samples 16] [--scale 100]

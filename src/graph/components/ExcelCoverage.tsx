@@ -33,7 +33,7 @@ interface XlEntry {
 }
 
 /** A row's parity mark, closing the row: = where the card answers as Excel does, ⚠ where it differs. Where the
- *  function has a record, the mark opens the cases behind it ([[function-records#Each function keeps one record of its cases, Excel's computed answers beside Solenoid's]]). */
+ *  function has a record, the mark opens the cases behind it ([[function-records]]). */
 function ParityMark({ same, name }: { same: boolean; name?: string }) {
   const icon = same ? <EqualIcon size={14} strokeWidth={2.2} /> : <TriangleAlertIcon size={13} />;
   const cls = `fr-xl__parity fr-xl__parity--${same ? "same" : "differs"}`;

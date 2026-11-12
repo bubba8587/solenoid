@@ -924,7 +924,7 @@ fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
             return answer(Cv::V(e));
         }
     };
-    // The totals are the Pivot view's, never the Frame's ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]] pivotView): the output is the leaf rows by the leaf
+    // The totals are the Pivot view's, never the Frame's ([[table-popup#The Pivot view]] pivotView): the output is the leaf rows by the leaf
     // columns, the totals ride on its layout, and Export totals hands them on as their own Frames.
     let split = split_pivot_totals(&to_core(f), &out, &layout);
     let wire = |core: &crate::frame::FrameValue| {

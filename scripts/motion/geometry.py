@@ -1,4 +1,4 @@
-# [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
+# [[motion-graphics]]
 """The capture's pieces as flat geometry, in flow px (y down): every box, border ring, SVG fill and stroke,
 slider part and glyph as a polygon the way the browser rasterizes it (CSS radii and border splits, SVG caps,
 joins, miter limits and clips, glyph outlines from the app's own fonts at Chrome's pen positions), then

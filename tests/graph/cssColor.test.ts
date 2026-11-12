@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]], [[palette-and-theme#Color math for canvas renderers]]
+// [[A1]] visualGraphCalculator, [[components#The design system]], [[palette-and-theme#Color math for canvas renderers]]
 import { describe, it, expect } from "vitest";
 import { parseColor } from "../../src/graph/cssColor";
 

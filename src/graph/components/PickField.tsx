@@ -1,4 +1,4 @@
-// [[components#One design system governs every look, layout and word in the app]]: the one field a card picks a file or folder with. It shows the pick and opens `chooseFile`
+// [[components#The design system]]: the one field a card picks a file or folder with. It shows the pick and opens `chooseFile`
 // (the operating system's dialog on desktop, the app's FilePicker elsewhere) on click.
 import "./PickField.css";
 

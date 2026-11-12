@@ -1,4 +1,4 @@
-// [[C52]] visibleSelection, [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]], [[standoffs#No layout action breaks a standoff you set]]
+// [[C52]] visibleSelection, [[group-expand-push#LayoutFx]], [[standoffs#The solver runs last]]
 
 import type { View } from "./view";
 import { GroupNode, ConduitNode } from "./nodeClasses";

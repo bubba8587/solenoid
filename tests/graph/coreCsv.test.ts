@@ -1,4 +1,4 @@
-// [[engineering#Content entering or leaving the app is guarded where it crosses]], [[D99]] rustIsSpec, [[frame-verbs#Reading CSV text]]
+// [[engineering#Untrusted content]], [[D99]] rustIsSpec, [[frame-verbs#Reading CSV text]]
 import { it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";

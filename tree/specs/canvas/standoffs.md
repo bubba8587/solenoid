@@ -9,7 +9,7 @@ tags: [spec, canvas]
 
 Serves [[A1]] visualGraphCalculator; the layer's stacking is [[react-flow-surface-contract#Stacking]]. It covers what the system does and blocks, and the decision each behavior serves.
 
-A standoff is an arrangement constraint the user declares between two items on the canvas: "keep these two between this distance and that distance, in this direction." It draws as a pale, thick bar between the two items. Standoffs are a main-canvas feature; the composite drill-in has none. Wrap as Composite removes a standoff it would split across the boundary, and one with both ends wrapped rides in the composite's snapshot, unshown, until Unpack brings it back ([[composite-nodes]]).
+A standoff is an arrangement constraint the user declares between two items on the canvas: "keep these two between this distance and that distance, in this direction." It draws as a pale, thick bar between the two items. No layout action leaves a standoff broken: items tied by standoffs move as one block. Standoffs are a main-canvas feature; the composite drill-in has none. Wrap as Composite removes a standoff it would split across the boundary, and one with both ends wrapped rides in the composite's snapshot, unshown, until Unpack brings it back ([[composite-nodes]]).
 
 ## What a standoff links
 
@@ -62,7 +62,7 @@ Code: `solveStandoffs` in `standoffSolver.ts`; the canvas registers the live set
 - Position-locked groups are always pinned (`withLockedGroupsPinned`).
 - A settle can be scoped with `touching`: only the clusters holding one of those ids solve (`standoffsTouching`). Every LayoutFx scopes its `forceLock` solve to what it moved, so an unrelated unlocked slant survives it.
 
-The solver runs as the last step after every pass that affects layout ([[#No layout action breaks a standoff you set]]):
+The solver runs as the last step after every pass that affects layout, so that no layout action leaves a standoff broken:
 
 | Pass | When and how |
 |---|---|
@@ -81,7 +81,7 @@ flowchart LR
     drag["a live drag"] --> band["a band-only solve,<br>the dragged items pinned"]
 ```
 
-Every pass in the table except the live drag and toolbar edits is a LayoutFx, so it then ends with the No-Overlap Pass ([[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]]). It moves each standoff cluster as one unit, so it never breaks a band; only the members' own boxes collide, never the cluster's bounding box.
+Every pass in the table except the live drag and toolbar edits is a LayoutFx, so it then ends with the No-Overlap Pass ([[group-expand-push#LayoutFx]]). It moves each standoff cluster as one unit, so it never breaks a band; only the members' own boxes collide, never the cluster's bounding box.
 
 Tests:
 
@@ -107,7 +107,7 @@ Without qualifying clusters none of this runs, so a graph with no standoffs tidi
 
 Code: `StandoffLayer.tsx`, `StandoffLayer.css`.
 
-`StandoffLayer` draws the bars in an SVG inside React Flow's viewport portal (through `ViewportLayer`, [[react-flow-surface-contract#World-coordinate overlays]]), so they move with the camera. The main canvas mounts it (the host's `standoffs` hook); the layer redraws on standoff changes and on collapse changes, and each bar redraws when React Flow reports a move or a new measure of one of its two cards (`endsKey`, a selector on RF's node lookup). On this controlled flow a card moves or is measured only through a new `nodes` array, so the selector reuses its key while the array is unchanged and a camera frame builds none ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]).
+`StandoffLayer` draws the bars in an SVG inside React Flow's viewport portal (through `ViewportLayer`, [[react-flow-surface-contract#World-coordinate overlays]]), so they move with the camera. The main canvas mounts it (the host's `standoffs` hook); the layer redraws on standoff changes and on collapse changes, and each bar redraws when React Flow reports a move or a new measure of one of its two cards (`endsKey`, a selector on RF's node lookup). On this controlled flow a card moves or is measured only through a new `nodes` array, so the selector reuses its key while the array is unchanged and a camera frame builds none ([[engineering#Performance]]).
 
 - Each bar is a 9px line between the two anchor points of the items' live boxes, with a small cap circle at each end. A wider invisible line (18px) is the hit target.
 - **Stacking.** [[react-flow-surface-contract#Stacking]] places the bars at −3 in the stacking ladder, below groups (−2), Conduits (−1) and ordinary nodes (0). `nodeZIndex` in `flowModel.ts` stamps the nodes (groups −2, Conduits −1, the rest 0); the standoff SVG sets its own `z-index: -3` in `StandoffLayer.css`. Both sit in the viewport's stacking context, so a card dragged over a bar covers it even though the viewport portal comes after the node layer in the DOM.
@@ -141,9 +141,3 @@ Re-bake seeds with `scripts/tune-seeds.mjs` after editing. It expands every grou
 
 Tests: `seeds.test.ts`: every seed standoff's ends name nodes the seed has, every group's box holds exactly its members' centers, and no other card's center sits inside an expanded group's box.
 
-## No layout action breaks a standoff you set
-
-A standoff is a spacing you set between two things, and no layout action leaves it broken. Things tied by standoffs move as one block.
-
-- How it's built: [[standoffs]].
-- **Reopen if:** standoffs need to tie group members or conduits.

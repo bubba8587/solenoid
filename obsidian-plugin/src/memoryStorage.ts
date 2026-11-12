@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[obsidian-plugin]]
 const cells = new Map<string, string>();
 
 export const memoryStorage: Storage = {

@@ -93,7 +93,7 @@ describe("Input Switch (CableSwitchNode)", () => {
   });
 });
 
-describe("Input Switch names its inputs by their source cards ([[add-menu#A placed node is titled with what you picked in the Add menu]])", () => {
+describe("Input Switch names its inputs by their source cards ([[add-menu#Naming a placed node]])", () => {
   it("stamps each wired input with its source card's header name before a pass", async () => {
     const { GraphEditor } = await import("../../../src/graph/graphEditor");
     const { GraphConnection } = await import("../../../src/graph/graphModel");

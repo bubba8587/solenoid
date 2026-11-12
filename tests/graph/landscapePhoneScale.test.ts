@@ -1,4 +1,4 @@
-// [[B20]], [[layout-chrome#A phone turned sideways runs the tablet layout, scaled to fit]], [[layout-chrome#Phones in landscape]]
+// [[B20]], [[layout-chrome#Phones in landscape]]
 import { describe, it, expect } from "vitest";
 import { landscapePhoneScale } from "../../src/graph/coarse";
 

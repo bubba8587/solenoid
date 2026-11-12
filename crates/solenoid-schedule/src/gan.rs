@@ -1,4 +1,4 @@
-// [[C70]] oneScheduleRule, [[schedule-and-gantt#An unsupported imported field is named, never dropped and never a new column]]
+// [[C70]] oneScheduleRule, [[schedule-and-gantt#Import at the border]]
 //! GanttProject `.gan` read: the data sits in attributes, tasks nest by element,
 //! and a link sits under its predecessor.
 

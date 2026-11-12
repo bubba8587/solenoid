@@ -115,6 +115,10 @@ recharts is the largest optional dependency, and most documents never draw a cha
 
 Tests: `sourceInvariants.test.ts`: exactly one file under `src/` imports from `recharts`, `components/chartRender.tsx`, and nothing imports `pele` or `elkjs` statically.
 
+## Untrusted content
+
+**MUST:** content entering or leaving the app is made safe at the one place it crosses, so every new way in or out gets the guard. A shared `.solenoid` file can carry anything, so nothing it brings in is trusted. The seams and their guards are listed in [[reports-and-notes#What is sanitized, and where]]: rendered markdown, the webpage export, SVG, links, file links and the vault write, plus CSV formula-injection escaping on every export ([[table-popup]]). The network gate, which every fetch path asks before reaching out for a foreign document, is [[live-connections#The network gate]].
+
 ## Comments
 
 A comment is a copy of knowledge that has a better home, and copies drift. A reason that governs code belongs in the leaf the code cites, where `trace` and `blast` find it; in a comment it is found only by someone who opens that file. When a comment is reviewed, the default outcome is deletion. DTE's own B38 commentsMigrate makes the same split: the why goes to the leaf, the how to the spec, and only what the code does stays in the code.
@@ -127,7 +131,7 @@ A comment is a copy of knowledge that has a better home, and copies drift. A rea
 
 ## Performance
 
-Serves [[#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork. Each rule names the shape that broke it, since every one of these passed its tests on 20 rows.
+Work on a Frame or list costs time in proportion to its size, never its size squared, and drawing it costs no more than what fits on screen. Speed never buys a different answer. Each rule below names the shape that broke it, since every one of these passed its tests on 20 rows.
 
 ### Nothing whole-table runs once per row
 
@@ -165,16 +169,3 @@ The one exception runs the other way: a typed input reaches its node as a fresh 
 
 **MUST:** a change made for speed shows the old and new outputs agree, through the shared fixture corpus ([[frame-verbs]]) or a test that compares the fast path against the plain one, and its commit states a before-and-after measurement at a size that shows the difference. A performance test that pins a time bound sets it loose enough for a slow CI machine and tight enough that the quadratic version fails (`rangeCallMemo.test.ts`: 20k rows under 2 s).
 
-## Content entering or leaving the app is guarded where it crosses
-
-Content entering or leaving the app is made safe at the one place it crosses, so every new way in or out gets the guard.
-
-- How it's built: [[reports-and-notes#What is sanitized, and where]], with the network gate in [[live-connections#The network gate]].
-- **Reopen if:** something needs to run untrusted script on purpose.
-
-## Table work grows with the rows, never with rows squared, and drawing stops at the screen
-
-Work on a Frame or list costs time in proportion to its size, never its size squared, and drawing it costs no more than what fits on screen. Speed never buys a different answer.
-
-- How it's built: [[engineering#Performance]].
-- **Reopen if:** an exact answer at some size can only be had by work that grows faster than the data, and the answer is worth the wait.

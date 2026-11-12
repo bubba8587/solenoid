@@ -1,4 +1,4 @@
-// [[C28]], [[add-menu#The Add menu reaches every node, in a shape the author designs by hand]], [[save-format#A save loses nothing quietly]], [[B18]] safeToShare, [[C10]] socketLattice, [[socket-lattice#Each port owns its socket instance]], [[socket-lattice#Date-valued ports are date-typed]], [[type-propagation-on-in-place-socket-retype#A trueany output declares its passthrough]]
+// [[C28]], [[add-menu]], [[save-format#A save loses nothing quietly]], [[B18]] safeToShare, [[C10]] socketLattice, [[socket-lattice#Each port owns its socket instance]], [[socket-lattice#Date-valued ports are date-typed]], [[type-propagation-on-in-place-socket-retype#A trueany output declares its passthrough]]
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";

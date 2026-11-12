@@ -91,7 +91,7 @@ thread_local! {
     static PARSED: RefCell<HashMap<String, Parsed>> = RefCell::new(HashMap::new());
 }
 
-/// A code's sections, read once per code: TEXT over a column reads the same code on every row ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// A code's sections, read once per code: TEXT over a column reads the same code on every row ([[engineering#Performance]] linearWork).
 fn sections_of(code: &str) -> Parsed {
     PARSED.with(|m| {
         if let Some(p) = m.borrow().get(code) {
@@ -261,7 +261,7 @@ pub fn format_number(x: f64, code: &str) -> Result<String, FormatError> {
     if section.toks.is_empty() {
         return Ok(String::new());
     }
-    // A calendar day is the value's own, whichever section shows it: a day before 1900 is a date ([[date-values#Days before 1900 are dates everywhere, as days after it are]]
+    // A calendar day is the value's own, whichever section shows it: a day before 1900 is a date ([[date-values#Days before 1900]]
     // datesBefore1900), not a number to show unsigned.
     let calendar = section.toks.iter().any(|t| matches!(t, Tok::Date(b'y' | b'd', ..)));
     let v = if signed || (calendar && section.is_date()) { x } else { x.abs() };
@@ -917,7 +917,7 @@ mod tests {
         assert_eq!(f(-5.0, "[>10]0;[<0]-0"), "-5");
         assert!(format_number(5.0, "[>10]0;[<0]0").is_err());
         assert!(format_number(45000.0, "0.00 yyyy").is_err());
-        // Excel refuses a day before 1900; Solenoid shows it ([[date-values#Days before 1900 are dates everywhere, as days after it are]] datesBefore1900).
+        // Excel refuses a day before 1900; Solenoid shows it ([[date-values#Days before 1900]] datesBefore1900).
         assert_eq!(f(-1.0, "dd-mmm-yyyy"), "29-Dec-1899");
         assert_eq!(f(-1.0, "yyyy;yyyy"), "1899");
         assert_eq!(f(-0.001, "0"), "0");

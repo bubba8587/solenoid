@@ -127,7 +127,7 @@ interface RecordDeck {
   formats: (FormatAnnotation | null)[];
   chipCols: number[];
   plan: CardPlan;
-  /** The authored card layout's placements ([[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]); none draws the inferred cards. */
+  /** The authored card layout's placements ([[table-popup#The Cards view]]); none draws the inferred cards. */
   layout?: RecordPlacement[];
   rows: (number | string | null)[][];
   /** Each drawn row's 1-based number in the frame. */

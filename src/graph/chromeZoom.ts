@@ -1,4 +1,4 @@
-// [[B20]], [[layout-chrome#A phone turned sideways runs the tablet layout, scaled to fit]]
+// [[B20]], [[layout-chrome#Phones in landscape]]
 import { useSyncExternalStore } from "react";
 import { IS_COARSE, IS_PHONE, deviceModeStore, isMobile, landscapePhoneScale } from "./coarse";
 import "./chromeZoom.css";

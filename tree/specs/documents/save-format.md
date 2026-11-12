@@ -56,7 +56,7 @@ The top-level object. Optional fields are omitted when empty, never written as e
 | `frameFormats` | `FrameColumnFormat[]`? | Per-column display formats on a Frame: `{ nodeId, column, ann }`, where `ann` is a Format Controller annotation object ([[format-model]]). |
 | `palette` | `{ base?, overrides? }`? | The document's palette choice layered over the app-wide one. `overrides` maps slot id to hex. |
 | `reportPalette` | `{ base?, overrides? }`? | The same, scoped to report and export surfaces. |
-| `meta` | `{ author?, tags?, foreign?, networkAllowed? }`? | Document properties. `foreign` and `networkAllowed` carry the per-document network permission ([[engineering#Content entering or leaving the app is guarded where it crosses]]). The document title is not here; it is the library name. |
+| `meta` | `{ author?, tags?, foreign?, networkAllowed? }`? | Document properties. `foreign` and `networkAllowed` carry the per-document network permission ([[engineering#Untrusted content]]). The document title is not here; it is the library name. |
 | `savedAt` | number? | Epoch ms of the disk write that produced this file. Stamped only by the file-write path, never by `serializeGraph`, so autosaves, undo snapshots and seeds stay stable. |
 | `packs` | string[]? | Ids of the packs active at save time, a provenance record. Nothing reads it on load. |
 
@@ -127,7 +127,7 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
    - `funcs`, `fieldTypes`: shallow copies.
    - `filterExclude`: each array copied.
    - `pivotView` (Pivot): only the options that differ from the defaults (`savedPivotView`, `pivotLayout.ts`); omitted when none do, and read back with every missing or unknown option at its default (`readPivotView`).
-   - `detailFields` (Pivot): the Details columns ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]), a copied array; omitted when empty.
+   - `detailFields` (Pivot): the Details columns ([[table-popup#The Pivot view]]), a copied array; omitted when empty.
    - `condConfig`: only rows `k` whose `value<k>` or `column<k>` input still exists.
    - `keyOrder` (List Sort): only key rows `k` whose `key<k>` input still exists; omitted when none remain.
    - `titles`, `selectedKeys`: only keys that are live inputs; omitted when none remain.

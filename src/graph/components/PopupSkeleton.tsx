@@ -1,4 +1,4 @@
-// [[components#One design system governs every look, layout and word in the app]]
+// [[components#The design system]]
 import { useEffect, useState } from "react";
 
 /**

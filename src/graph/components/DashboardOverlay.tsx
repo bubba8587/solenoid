@@ -42,7 +42,7 @@ import { isEnter } from "../enterKey";
 const GAP = 12;
 
 /** A box's rendered contents as static markup, canvases as pictures: edit mode shows this, so nothing re-renders
- *  or re-measures under a drag. It is the app's own render, already sanitized at its seams ([[engineering#Content entering or leaving the app is guarded where it crosses]]). */
+ *  or re-measures under a drag. It is the app's own render, already sanitized at its seams ([[engineering#Untrusted content]]). */
 type Snapshot = { html: string; w: number; h: number };
 
 function snapshotOf(el: HTMLElement): Snapshot {
@@ -252,7 +252,7 @@ function EditGrid({ edit, setEdit, box }: {
             layout={edit.layout}
             gridConfig={{ cols: edit.cols, rowHeight: edit.rowHeight, margin: [GAP, GAP], containerPadding: [GAP, GAP] }}
             // On touch a box moves by its label bar, so a swipe across its body still scrolls the grid, and resizes
-            // by one finger-sized corner ([[touch-gestures#A gesture follows what touches the screen, not the device]]).
+            // by one finger-sized corner ([[touch-gestures#Standing rules]]).
             dragConfig={IS_COARSE ? { handle: ".dashboard-box__label", threshold: 6 } : undefined}
             resizeConfig={{ handles: IS_COARSE ? ["se"] : ["se", "e", "s"] }}
             onLayoutChange={(layout) => setEdit((e) => e && { ...e, layout: [...layout] })}

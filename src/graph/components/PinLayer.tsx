@@ -1,4 +1,4 @@
-// [[C88]] collapsedGroupCard (mirrors the group readout), [[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]
+// [[C88]] collapsedGroupCard (mirrors the group readout), [[alert-node-alerts-hud#When it fires]]
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
 import { isMobile } from "../coarse";
 import { pinStore } from "../pinStore";

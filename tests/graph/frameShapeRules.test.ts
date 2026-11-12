@@ -269,7 +269,7 @@ describe("a wired config socket makes the shape unknown", () => {
     const p = new PivotNode({ rowTotalDepth: -1 });
     p.stringLiterals.rowFields = "Year, Qtr";
     p.stringLiterals.values = "Qty";
-    // The totals are the Pivot view's, so the card's keys keep their types ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]).
+    // The totals are the Pivot view's, so the card's keys keep their types ([[table-popup#The Pivot view]]).
     expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:number", "Qtr:number", "Qty:number"]);
   });
 

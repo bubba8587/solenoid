@@ -1,4 +1,4 @@
-// [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
+// [[motion-graphics]]
 // Write a formula, 15.5 s: the same order total built twice. In the spreadsheet the formula is typed with cell
 // addresses, each reference boxed in its color as it is typed. In Solenoid it is typed with names, a socket
 // appearing for each, and then each input is wired to its name; the total lands once the last one is in.

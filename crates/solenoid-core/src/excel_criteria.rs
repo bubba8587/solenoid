@@ -643,7 +643,7 @@ fn with_time(days: i64, after: &[u8]) -> Option<DateReading> {
 
 /// chrono-node's `ENMonthNameLittleEndianParser`: a day of one or two digits with an optional ordinal and `of`, a
 /// month name, a four-digit year, each pair parted by `-`, `/` or spaces, then [`with_time`]. A day the month lacks is
-/// no date. None for anything else. A year below 1000 reads as a date before then shows (`04-Jul-0426`, [[date-values#Days before 1900 are dates everywhere, as days after it are]]
+/// no date. None for anything else. A year below 1000 reads as a date before then shows (`04-Jul-0426`, [[date-values#Days before 1900]]
 /// datesBefore1900), where chrono takes years from 1000.
 fn month_name_little_endian(t: &str) -> Option<DateReading> {
     let b = t.as_bytes();
@@ -1176,7 +1176,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
         return V::Num(n as f64);
     }
     // One comparison on a range of numbers matches a run of its sorted cells: the aggregate is read off the run
-    // ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+    // ([[engineering#Performance]] linearWork).
     if let (Some(vals), [(range, _)], [c], [f]) = (values, pairs, &crits[..], &facts[..])
         && vals.len() == range.len()
         && let Some(t) = f.tally.as_ref()
@@ -1210,7 +1210,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
         n = n.min(v.len());
     }
     // Where an `=` criterion's tally names its rows, only those can match; they go in row order, so a sum adds as the
-    // scan would ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+    // scan would ([[engineering#Performance]] linearWork).
     let narrowest =
         facts.iter().zip(&crits).filter_map(|(f, c)| f.tally.as_ref()?.rows(c)).min_by_key(|rows| rows.len());
     let candidates: Box<dyn Iterator<Item = usize>> = match narrowest {
@@ -1231,7 +1231,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
             _ => {}
         }
     }
-    // Rounded once, so a sorted run's sum (`Rolled`) answers the same ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+    // Rounded once, so a sorted run's sum (`Rolled`) answers the same ([[engineering#Performance]] linearWork).
     let total = || crate::exact_sum::exact_sum(&kept);
     match kind {
         Kind::Count => V::Num(count as f64),
@@ -1245,7 +1245,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
 }
 
 /// What every criterion on a range reads of it, kept by the range: a computed column counts each row in the same column
-/// ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork). The tally comes on the range's second call, so a single call doesn't sort what it reads once.
+/// ([[engineering#Performance]] linearWork). The tally comes on the range's second call, so a single call doesn't sort what it reads once.
 struct Facts {
     from: Rc<Vec<V>>,
     holds: Holds,
@@ -1303,7 +1303,7 @@ fn rolled_in(kept: &std::cell::RefCell<Vec<Rc<Rolled>>>, sorted: &Sorted, values
     r
 }
 
-/// An `=` criterion's groups, each sorted by `by` ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork): a per-group running total reads its group's
+/// An `=` criterion's groups, each sorted by `by` ([[engineering#Performance]] linearWork): a per-group running total reads its group's
 /// run, not every row of the group.
 struct Grouped {
     by: Rc<Vec<V>>,

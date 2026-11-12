@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C71]] noBarEditing, [[components#One design system governs every look, layout and word in the app]], [[C118]] formatTravelsWithValue
+// [[C69]] ganttPackages, [[C71]] noBarEditing, [[components#The design system]], [[C118]] formatTravelsWithValue
 
 export const ganttStyles = `
 .solenoid-gantt {

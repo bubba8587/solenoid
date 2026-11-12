@@ -1,4 +1,4 @@
-/* [[touch-gestures#A gesture follows what touches the screen, not the device]], [[components#One design system governs every look, layout and word in the app]] */
+/* [[touch-gestures#Standing rules]], [[components#The design system]] */
 
 html.is-mobile {
   .solenoid-mobile-bar { display: flex; }

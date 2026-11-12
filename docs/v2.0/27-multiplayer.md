@@ -183,7 +183,7 @@ so a card glides on everyone's screen before it lands), and the open popup and f
 (`node, rowId, colId`), drawn as a colored cell outline and a "being edited by" badge on the card.
 A top-bar avatar row shows who is here. Follow-a-person and cursors on every surface are later.
 
-**Trust.** Joining a room is opening a document someone else wrote ([[engineering#Content entering or leaving the app is guarded where it crosses]]
+**Trust.** Joining a room is opening a document someone else wrote ([[engineering#Untrusted content]]
 untrustedContentSeams, [[B18]] safeToShare): it opens as foreign, scripts and fetches held
 until allowed. The live case adds one rule: **a card a peer adds arrives foreign**
 (`foreignCardStore`), so a Script or Web Source pushed into a session mid-edit waits for each

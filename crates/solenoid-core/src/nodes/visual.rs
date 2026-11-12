@@ -862,7 +862,7 @@ fn chart(c: &mut Call) -> Answer {
     let num_col = |col: &Column| -> Vec<V> { col.values.iter().map(|v| finite(v).map_or(V::Null, V::Num)).collect() };
     let refs_shown = if refs.is_empty() { Cv::NULL } else { whole(Json::Array(refs.clone())) };
     let mut v = V::Null;
-    // A date has no height: plotted by position it would draw its serial ([[C137]] datesNeverSerials), refused until a chart draws a date axis for values ([[chart-figures#A Chart refuses dates as values until it can draw a date axis for them]] chartDatesHeld).
+    // A date has no height: plotted by position it would draw its serial ([[C137]] datesNeverSerials), refused until a chart draws a date axis for values ([[chart-figures#Chart]] chartDatesHeld).
     let lone_dates = match &raw {
         Cv::V(v @ (V::List(_) | V::Date(_))) => crate::date_values::holds_date(v),
         Cv::Frame(f) => f.columns.len() == 1 && f.columns[0].ty == FrameColType::Date,
@@ -1669,7 +1669,7 @@ type Flows = (Vec<String>, Vec<String>, Vec<f64>);
 
 /// A flow that would close a loop is dropped and counted.
 fn acyclic_flows((sources, targets, values): Flows) -> (Flows, usize) {
-    // Names as indices and one stamped visit list, and no walk where nothing can reach the source ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+    // Names as indices and one stamped visit list, and no walk where nothing can reach the source ([[engineering#Performance]] linearWork).
     let mut ids: HashMap<String, usize> = HashMap::new();
     let mut adj: Vec<Vec<usize>> = Vec::new();
     let mut fed: Vec<bool> = Vec::new();
@@ -2165,7 +2165,7 @@ fn chart_cuts(chart: &Json, by_x: bool) -> Json {
 }
 
 /// The curves' segments, and their carried-on ends, bucketed by the stretch of x each spans, so a point looks only at
-/// the segments above or near it ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork). A segment too wide to bucket (an end running out of the plot)
+/// the segments above or near it ([[engineering#Performance]] linearWork). A segment too wide to bucket (an end running out of the plot)
 /// is looked at always.
 #[derive(Default)]
 struct SegIndex {

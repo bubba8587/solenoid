@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#The app never uses the browser's own pop-up boxes]]
+// [[A1]] visualGraphCalculator, [[components#The rules]]
 
 import { createNotifier } from "./storeKit";
 

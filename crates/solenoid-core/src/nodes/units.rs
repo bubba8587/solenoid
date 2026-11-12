@@ -92,7 +92,7 @@ pub fn any_dimensioned(args: &[&V]) -> bool {
 }
 
 /// One of Arithmetic's ops on two cells, either or both with a unit.
-/// Arithmetic's `op`, read once per call rather than per item ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// Arithmetic's `op`, read once per call rather than per item ([[engineering#Performance]] linearWork).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ArithOp {
     Add,

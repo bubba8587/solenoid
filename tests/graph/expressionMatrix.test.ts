@@ -56,7 +56,7 @@ describe("the connect-time gate ([[C10]] socketLattice acceptance)", () => {
   });
 });
 
-describe("the result socket takes the rank and family of the value it carried ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]])", () => {
+describe("the result socket takes the rank and family of the value it carried ([[socket-lattice#Requirements]])", () => {
   it("a matrix answer types it a table, a scalar a list; an error keeps the last type", async () => {
     const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();

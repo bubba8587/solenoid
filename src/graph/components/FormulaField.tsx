@@ -1,4 +1,4 @@
-// [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]] (`locked`)
+// [[composite-nodes#Packs]] (`locked`)
 import { flattenFormula } from "../formulaLayout";
 import { useMemo } from "react";
 import { highlightFormula } from "../formulaSyntax";

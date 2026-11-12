@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C51]] formulaNaming, [[C17]] shareImpl
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#Packs]], [[C51]] formulaNaming, [[C17]] shareImpl
 // Trig is in RADIANS, per the core Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";

@@ -59,9 +59,11 @@ A Note and a Report are documents, not VaultBridge Nodes: they reach a vault thr
 | **Note Read** | one note's frontmatter and body | `noteFrontmatter.ts`, `obsidianMarkdown.ts`, `nodes/obsidian.ts` | [[reports-and-notes#Frontmatter becomes output sockets]] |
 | **Type Read-Back** | the column types a vault declares: `.obsidian/types.json`, an mdbase schema, and the plugin's own picks | `obsidianTypes.ts`, `mdbaseTypes.ts`, `vaultTypes.ts`, `pluginColumnTypes.ts`, `pluginDataPath.ts` | [[obsidian-plugin#What Solenoid reads back]], [[obsidian-plugin#The app reads the picks]] |
 | **Note Write** | a document as markdown Obsidian renders, its pictures as assets, one note per page | `obsidianWrite.ts` (`writeDocumentToVault`) | [[reports-and-notes#Write to Obsidian]] |
-| **Property Patch** | changes only the frontmatter keys it targets in an existing note ([[#Writing a note's properties changes only what it targets]]) | `frontmatterPatch.ts` | [[reports-and-notes#Write to Obsidian]] |
-| **Task Mark** | sets the mark of a checklist item in a note's body, one character and nothing else ([[#Writing a note's properties changes only what it targets]]) | `noteBody.ts` (`planTaskMark`, `setTaskMarks`) | [[reports-and-notes#Write to Obsidian]] |
+| **Property Patch** | changes only the frontmatter keys it targets in an existing note ([[#What every VaultBridgeFx holds to]]) | `frontmatterPatch.ts` | [[reports-and-notes#Write to Obsidian]] |
+| **Task Mark** | sets the mark of a checklist item in a note's body, one character and nothing else ([[#What every VaultBridgeFx holds to]]) | `noteBody.ts` (`planTaskMark`, `setTaskMarks`) | [[reports-and-notes#Write to Obsidian]] |
 | **TaskNotes API** | the TaskNotes plugin's local HTTP API, read and write | `taskNotesApi.ts`, `nodes/taskNotes.ts` | [[tasknotes]] |
+
+**A new property's type.** When Write to Obsidian adds a property a vault has no type for, it registers the Solenoid Properties type that matches the column: a list, a matrix, a Frame, a Cube or a complex number gets its Solenoid type, and a plain number, text, date or true/false keeps Obsidian's own (`docs/node-coverage.md` § Write to Obsidian, Properties target). It assumes the plugin is installed. Obsidian's own tags, aliases and cssclasses are never retyped. In a vault without the plugin, a Solenoid type shows as unknown.
 
 `obsidianLinks.ts` builds the `obsidian://` links a card opens a note with. On the web, and whenever "Use demo vault" is on, the reads go to the read-only demo vault instead ([[live-connections#The demo vault]], [[D62]] demoVaultResolution).
 
@@ -69,24 +71,10 @@ A Note and a Report are documents, not VaultBridge Nodes: they reach a vault thr
 
 - **Writes happen only on Run.** Write to Obsidian and Write Tasks load disarmed and write nothing on their own ([[B18]] safeToShare); a write refuses against the demo vault.
 - **Nothing leaves the vault.** A write drops empty, `.` and `..` path segments, and Vault Folder refuses a folder outside the vault.
-- **A write changes only what it targets** ([[#Writing a note's properties changes only what it targets]]).
+- **A write changes only what it targets.** When Solenoid writes a note's properties or a checklist item's mark, it changes only what it means to change, leaves every other character as it was, and writes the way Obsidian does.
 
 Tests:
 
 - `taskNotesWrite.test.ts`: Write Tasks loads disarmed, refuses to run while disarmed or with nothing to write without touching the network, and refuses Preview and Run while its reader shows the demo, so demo paths never reach a real server.
 - `catalogRegistry.test.ts`: no card persists an `enabled` arm flag, and none constructs armed.
 - `demoVault.test.ts`: the demo vault is read-only, every writer throwing.
-
-## Write to Obsidian types a new property with the Solenoid Properties types
-
-When Write to Obsidian adds a property a vault has no type for, it registers the Solenoid Properties type that matches the column: a list, a matrix, a Frame, a Cube or a complex number gets its Solenoid type, and a plain number, text, date or true/false keeps Obsidian's own. It assumes the plugin is installed. Obsidian's own tags, aliases and cssclasses are never retyped.
-
-- How it's built: `docs/node-coverage.md` § Write to Obsidian, Properties target.
-- **Reopen if:** people write to vaults without the plugin often enough that a Solenoid type showing as unknown costs more than it gives.
-
-## Writing a note's properties changes only what it targets
-
-When Solenoid writes a note's properties, it changes only what it means to change, leaves every other character as it was, and writes the way Obsidian does.
-
-- How it's built: [[reports-and-notes#Write to Obsidian]].
-- **Reopen if:** a write needs to restructure a note beyond its properties.

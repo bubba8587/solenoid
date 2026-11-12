@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]], [[table-popup#The Pivot view]], [[frame-verbs#pivot]]
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]], [[frame-verbs#pivot]]
 import { describe, it, expect } from "vitest";
 import { pivotFrame } from "./coreVerbs";
 import { frameRowCount, type FrameValue, type FrameCell } from "../../src/graph/frame";
@@ -185,7 +185,7 @@ describe("saved folds", () => {
   });
 });
 
-describe("Details ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]])", () => {
+describe("Details ([[table-popup#The Pivot view]])", () => {
   const withDetails = { ...(spec(2) as object), details: ["Rep", "Amt"] } as never;
 
   it("records each leaf's source rows and leaves the output as it was", () => {

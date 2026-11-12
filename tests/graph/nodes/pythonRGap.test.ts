@@ -455,7 +455,7 @@ describe("Forecast (ETS) — Holt–Winters", () => {
     expect(ev("FORECAST.ETS.SEASONALITY(v)", { v: [3, 5, 7, 9, 11, 13, 15, 17] })).toBe(0);
     expect(isSolError(ev("FORECAST.ETS(t, v, tl)", { t: 45000, v: y, tl: timeline }))).toBe(true); // target not past the end
   });
-  it("a target too far past the timeline is refused at once, and a NaN horizon is an error, not undefined ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]])", () => {
+  it("a target too far past the timeline is refused at once, and a NaN horizon is an error, not undefined ([[engineering#Performance]])", () => {
     const timeline = y.map((_, i) => 45000 + i);
     const t0 = performance.now();
     for (const t of [1e308, Infinity]) {
@@ -602,7 +602,7 @@ describe("text tier 2: UNACCENT / SLUGIFY / Pad Text / Truncate Text", () => {
     expect(ev('PADTEXT("7", 3, "left", "0")')).toBe("007");
     expect(ev('PADTEXT("ab", 4)')).toBe("ab  ");
     expect((ev('PADTEXT("ab", 4, "middle")') as { code?: string }).code).toBe("#DOMAIN!");
-    // [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]: a huge width answers at once, at Excel's text limit like REPT.
+    // [[engineering#Performance]]: a huge width answers at once, at Excel's text limit like REPT.
     expect((ev('PADTEXT("ab", 1e12)') as { code?: string }).code).toBe("#VALUE!");
     expect((ev('PADTEXT("ab", 32767)') as string).length).toBe(32767);
     expect(ev('TRUNCATETEXT("abcdefgh", 5, "..")')).toBe("abc..");

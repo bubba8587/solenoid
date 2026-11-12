@@ -188,7 +188,7 @@ describe("a step that would mix dates with another kind refuses with #TYPE!", ()
     fromZero.literals = { initial: 0 };
     expect(typeError(await run(fromZero, [[table(), "table"]], (c) => c.cachedResult))).toBe(true);
   });
-  it("an InlineCast runs Cast: Number gives a date's serials, Text formats it, Date reads numbers as days ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]])", async () => {
+  it("an InlineCast runs Cast: Number gives a date's serials, Text formats it, Date reads numbers as days ([[socket-lattice#The InlineCast]])", async () => {
     const cast = async (castTo: "number" | "text" | "date" | "logical", expr: string, src: () => GraphNode) => {
       const n = new ExpressionNode({ expr, castTo });
       const got = await run(n, [[src(), "d"]], (c) => c.cachedResult);

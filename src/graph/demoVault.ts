@@ -1,4 +1,4 @@
-// [[vault-read#The app ships a read-only demo vault to try the vault nodes on]], [[D62]]
+// [[vault-read#Which notes are read]], [[D62]]
 import type { FsProvider } from "./fileBridge";
 import { settingsStore } from "./settingsStore";
 

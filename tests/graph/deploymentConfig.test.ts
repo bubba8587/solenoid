@@ -1,4 +1,4 @@
-// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]], docs/self-hosting.md
+// [[B18]] safeToShare, [[engineering#Untrusted content]], docs/self-hosting.md
 // A hosted copy's solenoid.config.json: the hosts it vouches for skip the network prompt, and nothing else does.
 import { afterEach, describe, expect, it } from "vitest";
 import {

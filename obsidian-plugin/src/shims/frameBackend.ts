@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[obsidian-plugin]]
 import type { SolError } from "../../../src/graph/errorValue";
 import type { FrameColType, FrameValue } from "../../../src/graph/frame";
 import type { FrameOp } from "../../../src/graph/frameOps";

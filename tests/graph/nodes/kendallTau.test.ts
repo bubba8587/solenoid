@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]
+// [[B19]] spreadsheetHabits, [[engineering#Performance]]
 import { it, expect } from "vitest";
 import { coreFunction } from "../coreFunction";
 

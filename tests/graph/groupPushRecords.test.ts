@@ -1,4 +1,4 @@
-// [[group-expand-push#Expanding a group nudges its neighbors aside, and collapsing puts them back]], [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]], [[group-expand-push#Records and restore]], [[group-expand-push#Entry points]]
+// [[group-expand-push]], [[group-expand-push#LayoutFx]], [[group-expand-push#Records and restore]], [[group-expand-push#Entry points]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -333,7 +333,7 @@ describe("collapse and the selection ([[C52]] visibleSelection)", () => {
   });
 });
 
-// [[standoffs#No layout action breaks a standoff you set]], [[standoffs#The solver runs last]]
+// [[standoffs#The solver runs last]]
 describe("standoffs across a collapse round trip", () => {
   async function setup() {
     const editor = new GraphEditor<Schemes>();

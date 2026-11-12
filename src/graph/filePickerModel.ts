@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]: what the app's file picker shows (`FilePicker.tsx`), kept apart from its drawing so it can be
+// [[A1]] visualGraphCalculator, [[components#The design system]]: what the app's file picker shows (`FilePicker.tsx`), kept apart from its drawing so it can be
 // tested: the folder tree its paths make, a folder's entries, a search's ranked matches, a file's preview, recent picks.
 
 export type Entry = { kind: "folder"; path: string; name: string; count: number } | { kind: "file"; path: string; name: string; folder: string };
@@ -111,7 +111,7 @@ export async function relist(key: string, load: () => Promise<string[]>): Promis
   return paths;
 }
 
-/** The rows a list draws at most: past it a search narrows ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], drawing stops at the screen). */
+/** The rows a list draws at most: past it a search narrows ([[engineering#Performance]], drawing stops at the screen). */
 export const ROW_CAP = 300;
 
 function merge(ranges: [number, number][]): [number, number][] {

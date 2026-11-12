@@ -21,7 +21,7 @@ pub struct Socket {
     pub now: String,
     pub base: String,
     pub kind: Kind,
-    /// An output typed by the value it carries, with no passthrough to type it ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]] emptyKeepsLastType).
+    /// An output typed by the value it carries, with no passthrough to type it ([[socket-lattice#Requirements]] emptyKeepsLastType).
     pub valued: bool,
     /// The type an adoptive input shows with no cable: a keyed slot's kind (`keyedRestType`), else its base.
     pub rest: Option<String>,
@@ -58,7 +58,7 @@ pub struct Node {
     pub lanes: Option<Vec<(String, String)>>,
     pub error_only: bool,
     /// Each output's type as its last carried value read (`Val::socket_type`, `""` a mix of families), kept through
-    /// an answer with nothing to read ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]] emptyKeepsLastType).
+    /// an answer with nothing to read ([[socket-lattice#Requirements]] emptyKeepsLastType).
     pub read: HashMap<String, String>,
 }
 
@@ -317,7 +317,7 @@ fn adoption_once(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
                 None => forwarded,
             };
             // Once a calculation has run nothing is unknown ([[C136]] typesKnownAfterCalc): where the wiring leaves a
-            // wildcard, the value the output last carried types it ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]] emptyKeepsLastType).
+            // wildcard, the value the output last carried types it ([[socket-lattice#Requirements]] emptyKeepsLastType).
             let resolved = if crate::lattice::is_wildcard_rung(&resolved) {
                 nodes[i]
                     .read

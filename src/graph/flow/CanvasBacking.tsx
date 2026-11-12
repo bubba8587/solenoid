@@ -1,4 +1,4 @@
-// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]. The canvas color and dot grid, under every card (react-flow-surface-contract § The dot grid).
+// [[engineering#Performance]]. The canvas color and dot grid, under every card (react-flow-surface-contract § The dot grid).
 import { memo, useId } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";
 import { DOT_SPACING } from "../gridSnapStore";

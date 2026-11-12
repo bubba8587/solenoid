@@ -1,4 +1,4 @@
-// [[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]], [[C45]] excelComparisons, [[C17]] shareImpl, [[formula-language#Scalar operators]]
+// [[formula-language#Scalar operators]], [[C45]] excelComparisons, [[C17]] shareImpl, [[formula-language#Scalar operators]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { BetweenNode, ComparisonNode, type ComparisonOp } from "../../src/graph/nodes/logic";

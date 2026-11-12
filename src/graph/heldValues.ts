@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]
+// [[C130]] rustCore, [[engineering#Performance]]
 // A big frame or list that crossed to or from the core is kept there under an id while its JavaScript object lives
 // (`nodes/columnar.rs` `keep`); a value never changes in place once a card made it, so its identity is its content.
 import { onWasmEngineReset, wasmCardForget } from "./engineWasm";

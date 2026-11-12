@@ -992,7 +992,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs, under, o
     }
     if (cur.length) runs.push({ j, rows: cur });
   });
-  // A run denser than its pixels draws the same from the points that land on distinct pixels ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]).
+  // A run denser than its pixels draws the same from the points that land on distinct pixels ([[engineering#Performance]]).
   // Dots and markers under an alpha would lose their stacked density, and a bubble or a labeled point is never dropped.
   const yOf = logY ? Math.log10 : (v: number) => v;
   const span = (d: [number | string, number | string], vals: () => number[], f: (v: number) => number): [number, number] =>
@@ -1266,7 +1266,7 @@ function RegionShade({ cutsText, marks, paint, hoverAt, curves, cellsRef }: {
   );
 }
 
-/** The dots' grain in screen pixels: one dot per spot and color, however many points land there ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). */
+/** The dots' grain in screen pixels: one dot per spot and color, however many points land there ([[engineering#Performance]]). */
 const DOT_GRAIN = 2;
 
 function RegionPick({ cutsText, points, paint, onHover, onToggle, cellsRef }: {

@@ -1508,7 +1508,7 @@ pub struct PivotSpec {
     pub relative_to: Option<f64>,
     #[serde(default)]
     pub filter: Option<Vec<Option<bool>>>,
-    /// The columns the Pivot view lists under each row group ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]] pivotView): the layout's leaf rows carry
+    /// The columns the Pivot view lists under each row group ([[table-popup#The Pivot view]] pivotView): the layout's leaf rows carry
     /// their source rows; the output never changes with them.
     #[serde(default)]
     pub details: Option<Vec<String>>,
@@ -2146,7 +2146,7 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     Ok((frame(out_cols), layout))
 }
 
-/// A PIVOTBY card's pivot split by what reads it ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]] pivotView): the totals belong to the Pivot view, never to the
+/// A PIVOTBY card's pivot split by what reads it ([[table-popup#The Pivot view]] pivotView): the totals belong to the Pivot view, never to the
 /// Frame every other card reads.
 pub struct PivotSplit {
     /// The leaf rows by the leaf value columns, after the row keys.
@@ -2875,7 +2875,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
         let (mut cum_sum, mut cum_count, mut cum_min, mut cum_max) =
             (crate::exact_sum::ExactSum::default(), 0usize, f64::INFINITY, f64::NEG_INFINITY);
         // The window a rolling function reads: its exact sum and count, slid a row at a time, and the rows that can
-        // still be its least or greatest, so each row costs the same however wide the window ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+        // still be its least or greatest, so each row costs the same however wide the window ([[engineering#Performance]] linearWork).
         let width = if big_n.is_nan() || big_n < 1.0 { 0 } else { big_n as usize };
         let mut roll_sum = crate::exact_sum::ExactSum::default();
         let mut roll_count = 0usize;

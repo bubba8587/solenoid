@@ -1,4 +1,4 @@
-// [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]
+// [[table-popup#The Pivot view]]
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   buildPivotModel, detailCellText, emptyText, filterPivotBody, groupKey, liveDetailKeys, totalsModes, valueCaption,
@@ -35,7 +35,7 @@ const BAND_OPTIONS: { value: Banding; label: string }[] = [
 ];
 
 const MAX_ROWS = 1000;
-/** A group's source rows draw at most this many under it ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]). */
+/** A group's source rows draw at most this many under it ([[table-popup#The Pivot view]]). */
 const MAX_DETAIL_ROWS = 100;
 
 interface PivotTotalsControl {

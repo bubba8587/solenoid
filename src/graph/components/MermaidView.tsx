@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue (the shared slot order), [[engineering#Content entering or leaving the app is guarded where it crosses]]
+// [[C100]] chartIsAValue (the shared slot order), [[engineering#Untrusted content]]
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import type { MountOptions, Mounted } from "pele";
 import { appThemeStore } from "../appTheme";

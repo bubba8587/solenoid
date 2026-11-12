@@ -1,4 +1,4 @@
-// [[group-expand-push#A node joins or leaves a group only when you put it there]], [[literal-input-editors#The popup is the editor for rank-2+ literal sources]]
+// [[group-expand-push#Who is a member]], [[literal-input-editors#The popup is the editor for rank-2+ literal sources]]
 import { describe, it, expect } from "vitest";
 import {
   parseCubeSource, cubeSourceToText, getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
@@ -23,7 +23,7 @@ describe("parseCubeSource / cubeSourceToText", () => {
     expect((parseCubeSource("[1]") as { error: string }).error).toMatch(/row 1/);
   });
 
-  // [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
+  // [[frame-verbs#The Cube value]]
   it("writes plain records until a column is typed or computed, then { columns, rows }", () => {
     const rows = [{ a: 1 }];
     expect(cubeSourceToText({ columns: [{ name: "a" }], rows })).toBe('[\n  {\n    "a": 1\n  }\n]');
@@ -31,7 +31,7 @@ describe("parseCubeSource / cubeSourceToText", () => {
     expect(parseCubeSource(cubeSourceToText(typed))).toEqual({ source: typed });
   });
 
-  // [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
+  // [[frame-verbs#The Cube value]]
   it("a nested table's types ride under its records path and round-trip; a bad key or pick is dropped", () => {
     const typed = { columns: [{ name: "tasks" }], rows: [{ tasks: [{ hours: 1 }] }], nested: { '[0,"tasks"]': { frame: true as const, types: { hours: "number" as const } } } };
     expect(parseCubeSource(cubeSourceToText(typed))).toEqual({ source: typed });
@@ -65,7 +65,7 @@ describe("paths + shapes + cell text", () => {
     expect(recordsShape("x")).toBe("scalar");
     expect(recordsShape(null)).toBe("scalar");
   });
-  // [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
+  // [[frame-verbs#The Cube value]]
   it("a cell switches between a value, a list, a table, a Frame and a Cube, keeping what it can", () => {
     expect([cellKindOf(3), cellKindOf(null), cellKindOf([]), cellKindOf([1]), cellKindOf([[1, 2], [3]]), cellKindOf([{ a: 1 }]), cellKindOf([{ a: 1 }], true), cellKindOf({ a: 1 })])
       .toEqual(["value", "value", "list", "list", "table", "cube", "frame", "cube"]);
@@ -111,7 +111,7 @@ describe("CubeInputNode", () => {
   });
 });
 
-// [[frame-verbs#Each table in a Cube, nested or not, types its own columns]], [[C22]] rowFormulaRefs
+// [[frame-verbs#The Cube value]], [[C22]] rowFormulaRefs
 describe("Cube Input typed and formula columns", () => {
   const cube = (source: object) => new CubeInputNode({ cubeText: JSON.stringify(source) }).data().cube as CubeValue;
   const col = (c: CubeValue, name: string) => c.columns.find((x) => x.name === name)!;

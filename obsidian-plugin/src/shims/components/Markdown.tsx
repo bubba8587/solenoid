@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[obsidian-plugin]]
 import { useEffect, useRef } from "react";
 import { Component, MarkdownRenderer } from "obsidian";
 import { obsidianApp } from "../../obsidianApp";

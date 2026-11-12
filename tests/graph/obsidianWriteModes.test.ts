@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet, [[vault-bridge#Writing a note's properties changes only what it targets]], [[group-expand-push#A node joins or leaves a group only when you put it there]]
+// [[B1]] obsidianBet, [[vault-bridge#What every VaultBridgeFx holds to]], [[group-expand-push#Who is a member]]
 import { describe, it, expect } from "vitest";
 import { mergeNoteText } from "../../src/graph/obsidianWrite";
 import { WriteObsidianNode } from "../../src/graph/nodes/obsidian";

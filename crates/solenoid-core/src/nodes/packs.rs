@@ -1,4 +1,4 @@
-//! [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C79]] packActivationIsPresentation, [[C17]] shareImpl, [[C15]] matricesInFormulas,
+//! [[composite-nodes#Packs]], [[C79]] packActivationIsPresentation, [[C17]] shareImpl, [[C15]] matricesInFormulas,
 //! [[C44]] dateSerials, [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[C24]] arraySemantics.
 //! The small packs' card bodies (Electrical, Chemistry, Physics Constants, Astro, Thermo, Fluids, Health, EM Spectrum,
 //! Convert, Tornado and Triangle), with their kernels beside them.

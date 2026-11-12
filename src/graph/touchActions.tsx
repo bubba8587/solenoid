@@ -1,4 +1,4 @@
-// [[touch-gestures#A gesture follows what touches the screen, not the device]]
+// [[touch-gestures#Standing rules]]
 
 import { useEffect, useState } from "react";
 

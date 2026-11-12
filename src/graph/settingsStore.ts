@@ -19,7 +19,7 @@ export interface Settings {
   csvFolder: string;
   /** Bookmark for the "open in file manager" action; never indexed or scanned. */
   docsFolder: string;
-  /** Bypasses the per-document network gate ([[engineering#Content entering or leaving the app is guarded where it crosses]]). */
+  /** Bypasses the per-document network gate ([[engineering#Untrusted content]]). */
   alwaysAllowNetwork: boolean;
   obsidianVault: string;
   /** With no vault or TaskNotes URL set, the Obsidian nodes read the bundled read-only demo ([[D62]] demoVaultResolution). */

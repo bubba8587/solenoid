@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Touch gestures
 
-Serves [[B20]] mobileFriendly (what a finger, a mouse and a pen each do) (a pinch always wins). It is the inventory of what every pointer gesture means on each device configuration, and where each one is handled. The mechanics of the listeners (event phases, the finger census, the claim tests) are in [[pointer-gestures]].
+Serves [[B20]] mobileFriendly. It is the inventory of what every pointer gesture means on each device configuration, and where each one is handled. The mechanics of the listeners (event phases, the finger census, the claim tests) are in [[pointer-gestures]].
 
 Some gestures exist only as a side effect of event plumbing. Long-press to add, for example, is the browser's own long-press turning into a `contextmenu` event, and no code anywhere mentions "long-press". Such a gesture is invisible to search, so this inventory is where every gesture is written down. Adding, removing or regating a gesture updates this spec in the same change.
 
@@ -40,6 +40,8 @@ flowchart TD
 
 Breaking any of these breaks gestures silently.
 
+- **A gesture follows what touches the screen, not the device.** A finger dragging an unselected node pans the canvas; a mouse or a pen selects and drags in one motion.
+- **A pinch always zooms.** A two-finger pinch zooms the canvas wherever it starts, and nothing under the fingers can stop it. Panning and dragging give way to a control that wants the touch ([[pointer-gestures#The ordering rule]]).
 - **Pinch listens in capture, pan and drag in bubble.** `pointerGesture.ts` counts contacts from window-capture listeners, so no component's `stopPropagation` can hide a finger. `isPinching()` (two or more fingers; a mouse or pen never counts) is the only definition. Never count raw pointers, and never move pan or drag to capture: they are vetoable on purpose ([[pointer-gestures#What counts as a finger: the census]]).
 - **No palm rejection**: this is a precise editor, and nobody rests a palm on a node graph. A resting stylus is deliberately not half a pinch.
 - **A finger never selects on pointerdown.** Selection lands through the tap's click, because a press can still become a pan or a pinch, and a pinch's click, up to 400 ms after its last finger lifts, is swallowed by `flowPinch`'s click guard. A one-finger drag on an unselected card pans (`flowTouchPan.ts`), and so does one on a cable, selected or not: React Flow marks a selectable cable `nopan`, and touch adjustment snaps nearby touches onto a cable's wide hit stroke, so without this a pan near a cable went nowhere. A tap on a cable still selects it.
@@ -138,16 +140,3 @@ Tests: `touchActions.test.ts`: both bars import every shared action and glyph fr
 
 The inventory itself is not machine-checked: it is a map, kept true by updating it in the same change as the gesture.
 
-## A pinch always zooms, and nothing under the fingers can stop it
-
-A two-finger pinch always zooms the canvas, wherever it starts, and nothing under the fingers can stop it. Panning and dragging give way to a control that wants the touch.
-
-- How it's built: [[pointer-gestures#The ordering rule]].
-- **Reopen if:** a control turns up that truly needs two fingers for itself.
-
-## A gesture follows what touches the screen, not the device
-
-A gesture follows what is touching the screen, not the device. A finger dragging an unselected node pans the canvas; a mouse or a pen selects and drags in one motion.
-
-- How it's built: [[touch-gestures]] and [[pointer-gestures]].
-- **Reopen if:** a drawing-style surface lands in the app and wants the shape and pressure of each touch.

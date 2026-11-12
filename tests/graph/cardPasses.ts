@@ -1,4 +1,4 @@
-// [[C23]] calcModes, [[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]
+// [[C23]] calcModes, [[alert-node-alerts-hud#When it fires]]
 // One card in a real editor, computed by full passes, as the engine calls it directly (graph-core.md § Direct
 // calls): what it holds between passes (a draw for the recalc generation, an alert's last status) is seen only so.
 import { GraphEditor } from "../../src/graph/graphEditor";

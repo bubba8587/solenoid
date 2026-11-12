@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § Voice)
+// [[A1]] visualGraphCalculator, [[components#The design system]] (DESIGN.md § Voice)
 // Catalog descriptions are inline markdown, projected to HTML for rich surfaces and to plain text for tooltips.
 import { marked } from "marked";
 import DOMPurify from "dompurify";

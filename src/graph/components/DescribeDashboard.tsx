@@ -1,4 +1,4 @@
-// [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]], [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]
+// [[table-popup#The Pivot view]], [[engineering#Performance]]
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DescribeTile } from "../describeProfile";
 import { defaultCellText } from "../cellText";

@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[components#One design system governs every look, layout and word in the app]]
+// [[C69]] ganttPackages, [[components#The design system]]
 
 import type { GanttPayload } from "./payload";
 import type { GridColumn } from "./frame";

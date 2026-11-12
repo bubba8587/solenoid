@@ -1,4 +1,4 @@
-// [[B11]], [[engineering#Content entering or leaving the app is guarded where it crosses]], [[vault-read#The app ships a read-only demo vault to try the vault nodes on]]
+// [[B11]], [[engineering#Untrusted content]], [[vault-read#Which notes are read]]
 import { dayOf } from "../dateValue";
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, chartOut, readInput, readTextInput } from "./shared";

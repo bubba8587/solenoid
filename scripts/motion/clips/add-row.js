@@ -1,4 +1,4 @@
-// [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
+// [[motion-graphics]]
 // Add a row, 15 s: a sixth order goes into the table. In the spreadsheet it lands in the row under the last
 // one, and the total keeps reading 1240: its SUM range ends a row above. In Solenoid the row is added in the
 // table, whose column sums count it at once, and on Save the total follows down the cables: 1420.

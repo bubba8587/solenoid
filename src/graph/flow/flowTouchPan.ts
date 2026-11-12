@@ -1,4 +1,4 @@
-// [[B20]], [[touch-gestures#A gesture follows what touches the screen, not the device]], [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]
+// [[B20]], [[touch-gestures#Standing rules]]
 import { touchCount } from "../pointerGesture";
 import { touchSelectStore } from "../touchSelectStore";
 

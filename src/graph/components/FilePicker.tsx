@@ -1,4 +1,4 @@
-// [[components#One design system governs every look, layout and word in the app]], [[B2]] webTryDesktopFull: the app's own file and folder picker, where the OS dialog can't
+// [[components#The design system]], [[B2]] webTryDesktopFull: the app's own file and folder picker, where the OS dialog can't
 // reach (the web, the demo vault); `chooseFile` opens it, mounted once in App, over `filePickerModel.ts`.
 import { useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { filePicker, type FilePickerState } from "../filePickerStore";

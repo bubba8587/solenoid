@@ -6,7 +6,7 @@ use crate::frame::FrameCell;
 use crate::jsnum::{js_string, trim_space};
 
 /// The most elements a generated list or grid may hold: a count past it is an error naming the limit, never a
-/// hang ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
+/// hang ([[engineering#Performance]] linearWork).
 pub const MAX_GENERATED: f64 = 1_000_000.0;
 
 pub const DOMAIN_MESSAGE: &str = "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.";

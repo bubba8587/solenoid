@@ -1,4 +1,4 @@
-// [[script-sandbox#Script runs your own code, and only typed values come out]]
+// [[script-sandbox]]
 import { solError, isSolError, type SolError } from "../errorValue";
 import { jsDateToSerial, serialToJsDate } from "./dateSerial";
 import { isCx } from "../cxValue";

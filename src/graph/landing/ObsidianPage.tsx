@@ -1,4 +1,4 @@
-// [[D62]], [[B3]] sameNodeEverywhere, [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[D62]], [[B3]] sameNodeEverywhere, [[obsidian-plugin]]
 import { useEffect, useMemo } from "react";
 import { Reveal, useRevealAnim, NoteImportScene, VaultTableScene, TaskNotesScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
 import { LiveGraph } from "./LandingGraph";

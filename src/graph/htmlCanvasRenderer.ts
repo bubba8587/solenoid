@@ -1,4 +1,4 @@
-// [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]], [[A1]] visualGraphCalculator
+// [[html-in-canvas]], [[A1]] visualGraphCalculator
 
 import { Camera } from "./hicCamera";
 import { styleKey, type VShape } from "./hicVectors";

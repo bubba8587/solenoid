@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[D99]] rustIsSpec, [[schedule-and-gantt#An unsupported imported field is named, never dropped and never a new column]], [[schedule-and-gantt#Import at the border]]
+// [[C69]] ganttPackages, [[D99]] rustIsSpec, [[schedule-and-gantt#Import at the border]]
 // The plan-file readers held to their frozen answers (fixtures/core/plan-readers.json.gz, the TS readers' before they
 // moved to crates/solenoid-schedule): the corpus, seeded MSPDI files that walk every field the reader looks at,
 // GanttProject and XER variations, telling the format, and predecessor text. A key left out and one set null read

@@ -1,4 +1,4 @@
-// [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C24]]
+// [[composite-nodes#Packs]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { ParallelCombineNode } from "../../../src/graph/nodes/electrical";
 import { coreFunction } from "../coreFunction";

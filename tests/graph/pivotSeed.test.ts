@@ -47,7 +47,7 @@ describe("pivot-tables seed", () => {
       const out = (await engine.fetch(byId.get(seedId)!.id)) as Record<string, unknown>;
       return (await readFrame(out.frame as FrameInput)) as FrameValue;
     };
-    // Each pivot as its view lays it out, totals in their places ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]: the card's Frame has none).
+    // Each pivot as its view lays it out, totals in their places ([[table-popup#The Pivot view]]: the card's Frame has none).
     const frameOf = async (seedId: string) => pivotViewFrame(await cardFrame(seedId));
     const col = (f: FrameValue, name: string): FrameCell[] => {
       const c = f.columns.find((x) => x.name === name);

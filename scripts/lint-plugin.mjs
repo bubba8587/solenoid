@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[obsidian-plugin]]
 // Lints the Obsidian plugin's source as Obsidian's review reads it: the snapshot `export-plugin-source.mjs` writes,
 // under eslint-plugin-obsidianmd's recommended config, with types. Errors fail the run; warnings print.
 //   npm run plugin:lint

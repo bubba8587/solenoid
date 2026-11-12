@@ -1,4 +1,4 @@
-// [[B17]] typedValueModel, [[script-sandbox#Script runs your own code, and only typed values come out]]
+// [[B17]] typedValueModel, [[script-sandbox]]
 // Script-node highlighting: lezer's JavaScript grammar mapped onto the `.fx-tokens` classes, re-emitting every
 // character so the highlighted <pre> mirrors the <textarea> exactly.
 import { parser } from "@lezer/javascript";

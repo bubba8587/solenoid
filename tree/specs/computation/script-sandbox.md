@@ -9,7 +9,7 @@ tags: [spec, computation]
 
 Serves [[B17]] typedValueModel. It covers what the system does and blocks, and the decision each behavior serves.
 
-The Script card runs a user-written JavaScript function on its inputs. Each parameter becomes an input socket, the arguments are converted to plain JavaScript, and the returned value is folded back onto the app's value model, where it types itself. The function runs inside a Web Worker, a separate background thread with the input and output routes removed, so a runaway or careless script cannot freeze the app or reach the network.
+The Script card is the one node that runs code the user writes: a JavaScript function, run on the card's inputs, and whatever goes in or comes out is an ordinary typed Solenoid value. Each parameter becomes an input socket, the arguments are converted to plain JavaScript, and the returned value is folded back onto the app's value model, where it types itself. The function runs inside a Web Worker, a separate background thread with the input and output routes removed, so a runaway or careless script cannot freeze the app or reach the network.
 
 The node is named Script, not Code, because CODE is an Excel function ([[B16]] oneFormulaSurface). A script declares no result type, unlike Expression's Number / Text / Date / Auto switch: a JavaScript value says its own type, where a formula does not say what it returns.
 
@@ -61,13 +61,13 @@ flowchart TD
 4. `executeScript(src, args)` sends `{ id, src, args }` to the worker, with a fresh request id per call, and starts the timer.
 5. In the worker, `invokeScript` compiles (cached) and calls the function, awaiting a returned promise. A throw is `#VALUE!` with `Name: message`; a compile failure is `#SYNTAX!`. The card shows the message under the source field.
 6. The return value is passed through `toClonable` so it can cross back to the main thread. Functions and symbols become an `__unclonable` marker, as do `Map`, `Set` and anything nested more than 7 levels deep; typed arrays become plain arrays. The depth limit clears the deepest legal shape (cube rows holding frame rows holding lists) with a level to spare.
-7. On the main thread, `coerceScriptResult` folds the value onto the value model (below). The result socket takes the type of the value it carried, as every wildcard output does ([[socket-lattice]] req. 9): a list's family at the combo rung, a table at its matrix, a frame or cube as itself. A result with nothing to read (an empty list, all blanks or errors) keeps the last type ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]]).
+7. On the main thread, `coerceScriptResult` folds the value onto the value model (below). The result socket takes the type of the value it carried, as every wildcard output does ([[socket-lattice]] req. 9): a list's family at the combo rung, a table at its matrix, a frame or cube as itself. A result with nothing to read (an empty list, all blanks or errors) keeps the last type ([[socket-lattice#Requirements]]).
 
 Tests: `script.test.ts`: building the card, as loading a document does, never runs its source; scalars, lists and matrices arrive as plain values; a wired blank is `null` and an unwired, untyped one `undefined`; an unwired parameter takes its typed number or text; an error cell in any argument, a Frame's included, becomes the result unrun; an empty source is blank, a broken one `#SYNTAX!` and a throw `#VALUE!` with its message; the result socket takes the carried value's type and keeps it through an empty answer; `toClonable` marks what cannot cross and flattens typed arrays; `invokeScript` awaits an async function; the card's cached result mirrors the answer and its error message clears on a success.
 
 ## The arguments
 
-Frames and Cubes go into and come out of a script, though a formula keeps them out ([[C15]] matricesInFormulas): Script is the advanced surface, and there is no good reason for the same limit there. This is [[#Script runs your own code, and only typed values come out]].
+Frames and Cubes go into and come out of a script, though a formula keeps them out ([[C15]] matricesInFormulas): Script is the advanced surface, and there is no good reason for the same limit there. Whatever goes in or comes out is still an ordinary typed Solenoid value.
 
 `scriptArgToJs` hands the script the same shapes it can return, so what one script emits another can read:
 
@@ -149,10 +149,3 @@ Tests: `script.test.ts`: a script that mutates its argument never edits the call
 Because `new Function` is built on both the main thread and in the worker, the desktop content security policy (`src-tauri/tauri.conf.json`) must allow `'unsafe-eval'` in `script-src`. Without it, every Script card shows the policy refusal as its error.
 
 Tests: `desktopCsp.test.ts`: the desktop policy's `script-src` allows eval.
-
-## Script runs your own code, and only typed values come out
-
-Script is the one node that runs code you write: a JavaScript function whose parameters become its inputs. Whatever goes in or comes out is an ordinary typed Solenoid value.
-
-- How it's built: [[script-sandbox]].
-- **Reopen if:** a script needs files or the network, state between runs, or a second language.

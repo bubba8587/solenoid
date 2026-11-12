@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]], [[table-popup#The Dashboard view]], [[frame-verbs#Describe and Correlation Matrix]]
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]], [[table-popup#The Dashboard view]], [[frame-verbs#Describe and Correlation Matrix]]
 import { describe, it, expect } from "vitest";
 import { describeTilesOf } from "../../src/graph/describeProfile";
 import { carryFrameSidecars } from "../../src/graph/frameSidecar";

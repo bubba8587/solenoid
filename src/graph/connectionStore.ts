@@ -1,4 +1,4 @@
-// [[engineering#Content entering or leaving the app is guarded where it crosses]]
+// [[engineering#Untrusted content]]
 import { isTrustedSource } from "./deploymentConfig";
 import { createNotifier } from "./storeKit";
 import { processGraph } from "./process";

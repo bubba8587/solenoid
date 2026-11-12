@@ -82,7 +82,7 @@ components:
     textColor: "{colors.text}"
     rounded: "{rounded.pill}"
 ---
-<!-- [[components#One design system governs every look, layout and word in the app]] -->
+<!-- [[components#The design system]] -->
 
 # Design System: Solenoid
 

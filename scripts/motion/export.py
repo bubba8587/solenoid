@@ -1,4 +1,4 @@
-# [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
+# [[motion-graphics]]
 """capture.mjs's scene.json → pieces.json for the three.js player: every piece of every card triangulated
 once, in flow px, with its color, paint order, part and the states it belongs to. The first state is built
 whole; a later state adds only the pieces it changes (the slider thumb, a value's glyphs) and names the

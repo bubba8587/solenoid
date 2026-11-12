@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
+// [[A1]] visualGraphCalculator, [[components#The design system]]
 import { createNotifier } from "./storeKit";
 
 // Marketing pages mount the live overlays read-only and hide chrome with nothing to act on off the canvas; one

@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[C51]] formulaNaming, [[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]]
+// [[C17]] shareImpl, [[C51]] formulaNaming, [[formula-language#Scalar operators]]
 
 import type { PackFormula } from "./packShared";
 

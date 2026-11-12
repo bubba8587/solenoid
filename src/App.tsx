@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[components#One design system governs every look, layout and word in the app]]
+// [[B3]] sameNodeEverywhere, [[components#The design system]]
 import { lazy, Suspense, useEffect } from "react";
 import { FlowCanvas } from "./graph/flow/FlowCanvas";
 import { FlowCompositeOverlay } from "./graph/flow/FlowCompositeOverlay";

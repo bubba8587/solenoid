@@ -322,7 +322,7 @@ A Cube is a `CubeValue`: `{ __cube: true, columns: CubeColumn[], depth }`, recog
 
 A `CubeColumn` is `{ name, cells, type?, format? }`.
 
-- **`type`** is the column's element type. A declared type (Cube Input's column type, a Solenoid Properties pick, a source Frame column's type) holds the column's values and list items to it, never a Frame nested in it, which carries its own columns' types ([[#Each table in a Cube, nested or not, types its own columns]] cubeTypesAtDepth). One inferred for a column nobody typed is a display hint, not a promise that every cell matches. A hand-built Cube has no column types. A list column's type is its items' type, so its chips tint and print by it.
+- **`type`** is the column's element type. A declared type (Cube Input's column type, a Solenoid Properties pick, a source Frame column's type) holds the column's values and list items to it, never a Frame nested in it. Every table in a Cube, nested or not, types its own columns: a Frame nested in a cell declares its own types rather than taking its column's, at every depth. A type reads what was typed and never rewrites it. One inferred for a column nobody typed is a display hint, not a promise that every cell matches. A hand-built Cube has no column types. A list column's type is its items' type, so its chips tint and print by it.
 - **`format`** is the Cube counterpart of `FrameColumn.format`: a producing verb can stamp a date pattern on a column (a Minutes-mode Schedule stamps `DD-MMM-YYYY HH:mm` on Start and Finish).
 
 ```mermaid
@@ -349,7 +349,7 @@ flowchart LR
 
 - **Columns** are the keys in first-appearance order, named through `makeHeaders`.
 - **Cells.** A list value becomes a list cell (never joined into text), a list of lists a 2-D cell. A list whose present items are all objects becomes a nested Cube, a `null` beside the objects counting as an empty record; a single object becomes a one-row nested Cube.
-- **Picks.** `picks` types the top level's columns ([[#Each table in a Cube, nested or not, types its own columns]] cubeTypesAtDepth) through `typedCubeCell`:
+- **Picks.** `picks` types the top level's columns only, since each nested table types its own, through `typedCubeCell`:
   - a scalar crosses the type's own value boundary, `coerceFrameCell`, as a Frame Input cell would, so what the type cannot read becomes `NaN`, never a silent blank ([[C58]] tableInputRawText);
   - the items of a list or 2-D cell cross `coerceListItem`, which reads text as `coerceFrameCell` does, so what the type cannot read is NaN there too (Date over `[10-Sep-2026, apple]` is a date and a NaN);
   - a nested Cube or Frame passes untouched.
@@ -529,7 +529,7 @@ Tests:
 - **Structural failures throw.** A verb throws a tagged SolError: a missing column is `#REF!`, a type conflict `#TYPE!`, a bad configuration `#VALUE!`, an unknown aggregate `#NAME?`. The calling card turns the throw into its output value (a flush answers it as the ref's error, `frame_ref.rs`).
 - **Degenerate shapes answer.** A frame with no rows, a ragged frame, a key column of blanks and a take of zero rows never throw: a row verb answers no rows and keeps the schema, a schema verb (select, drop, rename) reshapes the columns as usual, groupBy, pivot, unpivot and nest of no rows answer their columns with no rows, and an append of empty frames is the union schema with no rows.
 - **Row verbs select indices.** Sort, distinct, head and filter compute a list of row indices and rebuild every column from it (`reorder_rows`), so a column's type, unit and format ride along, and a cell in a column the verb doesn't read, an error included, rides along untouched.
-- **Work is linear in rows** ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). A window or an aggregate over one partition of 200,000 rows runs in linear time and never spreads the partition into a call's arguments.
+- **Work is linear in rows** ([[engineering#Performance]]). A window or an aggregate over one partition of 200,000 rows runs in linear time and never spreads the partition into a call's arguments.
 - **Identity keys.** Distinct, GROUPBY, Window partitions, Pivot's axes and Join keys read each cell through `cell_key` (`frame_verbs.rs`), its equality class: blank, a logical, a number, a string, or an error by its code.
   - `1` and `"1"` differ;
   - `null` differs from `0` and `""`, and two nulls are equal;
@@ -777,7 +777,7 @@ Tests: `frameVerbs.test.ts`: the id column's unit and a shared value unit.
 - No value fields is `#VALUE!` (`PIVOTBY needs at least one value field`); an unknown field is `#REF!`.
 - `funcs[i]` applies to `values[i]`, falling back to `funcs[0]`, then `sum`.
 - `filter`, when present, keeps only source rows whose mask entry is `true`.
-- `details` names columns for the Pivot view only ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]): the output is the same with or without it, and with row fields the layout kept beside the output records each row leaf's source rows and those columns' values ([[table-popup#The Pivot view]]); an unknown name is `#REF!`.
+- `details` names columns for the Pivot view only ([[table-popup#The Pivot view]]): the output is the same with or without it, and with row fields the layout kept beside the output records each row leaf's source rows and those columns' values ([[table-popup#The Pivot view]]); an unknown name is `#REF!`.
 
 **Axes.** Each axis (rows, columns) has leaf groups: the distinct field tuples among the kept rows. Leaves are ordered hierarchically: each field level ranks its values ascending by the column type's comparator (text by character code, [[C59]] byteStringOrder; numbers and dates by value; blanks and errors last), as Excel's PIVOTBY lists them (author 2026-11-11, replacing first-appearance order, which no reader could follow), and tuples sort by those ranks level by level, so each outer group stays contiguous. GROUPBY's totals run here too, so its groups follow the same order. An axis with no fields has one anonymous leaf.
 
@@ -805,7 +805,7 @@ Tests: `frameVerbs.test.ts`: the id column's unit and a shared value unit.
 - **Key cells:** a leaf shows its tuple; a subtotal shows its prefix, `Total` in the next field, and blanks after; the grand row shows `Grand Total` in the first key column. A key column that receives a `Total` or `Grand Total` marker becomes a string column, its other cells formatted as display text (`formatFrameCell`: dates as `DD-MMM-YYYY`, logicals as `TRUE`/`FALSE`).
 - **Body headers:** the column tuple's values joined with ` | `, each converted with `String()`, so a date shows its serial and a blank shows `null`. The grand total's column is headed `Grand Total`, and a subtotal's is its prefix plus `Total`. With more than one value, ` | <value name>` follows. With no column fields and one value, the header is just the value's name. Body headers go through `makeHeaders`.
 - **Body types:** number, except a `min` or `max` over a text value column, which is a string column ([[C24]] arraySemantics).
-- **Units and formats:** each body column carries the unit its value field's aggregate takes (as groupBy's, above) and no format; the key columns carry neither. The layout's Details columns take their source columns' formats ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]).
+- **Units and formats:** each body column carries the unit its value field's aggregate takes (as groupBy's, above) and no format; the key columns carry neither. The layout's Details columns take their source columns' formats ([[table-popup#The Pivot view]]).
 
 **Calculated fields** (author 2026-11-10: explicit formulas, through LAMBDA slots). A calculated value field is a LAMBDA whose parameters name columns ([[C50]] lambdaBindsByName), such as `LAMBDA(Miles, Gallons, SUM(Miles) / SUM(Gallons))`. It runs for every cell, leaves, subtotals and grand totals alike, over that cell's own source rows: each parameter is the list of its column's values in those rows (a Date column's as dates), so a ratio of sums is right at every level, where a ratio computed first and then aggregated would average ratios (`pivot_frame_calc`, `PivotCalc` in `frame_verbs.rs`, `calc_fields` and `calc_cell` in `nodes/backend_verbs.rs`).
 
@@ -820,7 +820,7 @@ Tests: `frameVerbs.test.ts`: the id column's unit and a shared value unit.
 - **No value fields:** it forwards its input unchanged.
 - **Missing fields:** it skips a saved field whose column the input lacks, keeping it saved so it counts again when the column comes back (Configure Fields marks it).
 - **The layout** rides on the frame it answers (the Pivot view reads it).
-- **Totals are the view's** ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]; author 2026-11-11). The card's Frame is the leaf rows by the leaf columns: no subtotal or grand total row, and no subtotal or grand total column, so a column of it sums to its own total and a chart of it has no Grand Total bar. `rowTotalDepth` and `colTotalDepth` (Configure Fields, the ribbon) set what the Pivot view, a Dashboard box and a Report draw; the totals ride on the layout as `totals` (each total row's cells across every view column, each total column's cells down every view row, by place), and `pivotAddress` reads a view place from them or from the Frame (`split_pivot_totals` in `frame_verbs.rs`; `pivotLayout.ts`). The row keys of the Frame keep their columns' types and formats, where the full pivot turns a key column to text to hold "Total". **Export totals** (`exportTotals`, off by default, a checkbox in Configure Fields) adds two outputs: **Row Totals**, a row per leaf row with the row keys, then each total column (the grand total and the column subtotals); and **Column Totals**, the column headers turned into rows, a row per leaf column item with its column keys (and its value's name under `Value` where there are several), then a column per total row, headed as the row reads (`East | Total`, `Grand Total`). The corner cells, where a total row meets a total column, are in neither; the view draws them. Turning it off drops the two outputs' cables first.
+- **Totals are the view's** ([[table-popup#The Pivot view]]; author 2026-11-11). The card's Frame is the leaf rows by the leaf columns: no subtotal or grand total row, and no subtotal or grand total column, so a column of it sums to its own total and a chart of it has no Grand Total bar. `rowTotalDepth` and `colTotalDepth` (Configure Fields, the ribbon) set what the Pivot view, a Dashboard box and a Report draw; the totals ride on the layout as `totals` (each total row's cells across every view column, each total column's cells down every view row, by place), and `pivotAddress` reads a view place from them or from the Frame (`split_pivot_totals` in `frame_verbs.rs`; `pivotLayout.ts`). The row keys of the Frame keep their columns' types and formats, where the full pivot turns a key column to text to hold "Total". **Export totals** (`exportTotals`, off by default, a checkbox in Configure Fields) adds two outputs: **Row Totals**, a row per leaf row with the row keys, then each total column (the grand total and the column subtotals); and **Column Totals**, the column headers turned into rows, a row per leaf column item with its column keys (and its value's name under `Value` where there are several), then a column per total row, headed as the row reads (`East | Total`, `Grand Total`). The corner cells, where a total row meets a total column, are in neither; the view draws them. Turning it off drops the two outputs' cables first.
 - **An exception to card and formula agreeing** (author 2026-11-11: "for such a complex surface it's ok"): `PIVOTBY()` in a formula answers Excel's spill, totals among its rows and columns, while the card's Frame leaves them out. Everything else about the pivot is the same body (`pivot_frame_calc`).
 - **Field lists:** its Rows, Columns and Values are list literals written by `listLiteralText` beside the list-literal reader (`listLiterals.ts`) and read by `csvList`, so a field name holding a comma or a quote survives. Configure Fields signals the graph changed on every edit (`notifyGraphChanged`), saving it whether or not a pass runs.
 - **Dragging fields** in Configure Fields (`PivotEditorPopup.tsx`) is HTML5 drag and drop: each chip's `dragstart` puts the field's name on the drag (Firefox starts none without data), and the desktop window turns Tauri's native drop handler off (`dragDropEnabled: false`, `tauri.conf.json`), without which Windows' webview delivers no HTML5 drag events. Solenoid reads no dropped file paths, so the handler had no use.
@@ -1362,21 +1362,3 @@ Tests:
 
 - The Describe card's frozen answers (`fixtures/core/nodes/DescribeNode`), replayed by `nodes.rs` (solenoid-core) and `coreNodes.test.ts`.
 - `describeProfile.test.ts`: Describe's dashboard tiles come from the node's own pass ([[table-popup]]).
-
-## Each table in a Cube, nested or not, types its own columns
-
-Every Frame in a Cube types its own columns, and a Frame nested in a cell declares its own types rather than taking its column's. A type reads what was typed and never rewrites it.
-
-- How it's built: [[frame-verbs#The Cube value]] and [[table-popup#Editing a Cube Input]].
-- **Reopen if:** nested Frames in one column turn out always to share a shape.
-
-Carried from D80, which this node supersedes.
-
-### Contest 2026-09-28 by Claude (agent): variant wins
-
-- keep: D80 as written types a nested table's every column with the parent column's type. Its own Reopen names this case, and the author asked for it: a Number column holding a task table turns the names column NaN. Fails C10's aim (kinds honest per column) one level down.
-- opposite: a declared type holds nothing but top-level scalars; lists keep their own kinds. Loses the list reading the author endorsed ("a typed cube column can override a List in its type").
-- deletion: C10 alone doesn't say how a mixed container column reads; a person could choose otherwise, so a leaf is needed.
-- variant (chosen): a column's type holds its values and list items; a nested table types its own columns at every depth, keyed by the column, never inherited. Cost: a nested schema in Cube Input's source and the plugin's column-type store, a type button on nested levels. Chosen on the author's word (2026-09-28).
-
-Variant wins.

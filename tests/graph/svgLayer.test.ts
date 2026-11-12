@@ -1,4 +1,4 @@
-// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]]
+// [[B18]] safeToShare, [[engineering#Untrusted content]]
 import { describe, it, expect } from "vitest";
 import { elementName, resolveLayer, type SvgLike } from "../../src/graph/svgLayer";
 

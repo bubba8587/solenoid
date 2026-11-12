@@ -1,4 +1,4 @@
-// [[B20]], [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]
+// [[B20]], [[touch-gestures#Standing rules]]
 import { boundZoom } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };

@@ -1,4 +1,4 @@
-/* [[A1]] visualGraphCalculator, [[composite-nodes#Packs stay easy to read: only the exception gets a mark]] */
+/* [[A1]] visualGraphCalculator, [[composite-nodes#Packs]] */
 /* Fills the main canvas's region above it (z 0) and below the app chrome, so drilling in swaps only the canvas surface; opaque so the main graph can't bleed through. */
 .solenoid-composite-editor__backdrop {
   position: fixed;

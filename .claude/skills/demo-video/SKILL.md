@@ -78,7 +78,7 @@ Every render and its intermediates land in `.dev/video/` (gitignored). A cut wor
   (`injectCursor`) and `c.enterWindow(/^Settings/)` / `c.leaveWindow` hand the pointer across at the same screen spot.
 - **Camera**: `c.frame` (instant, off camera), `c.fly` (van Wijk smooth zoom), `c.drift` (slow push or pan).
   They write `view.transform` and call `view.pan`, which bypasses the 10% zoom lattice (which
-  governs discrete steps only; [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]). Wheel zoom would jump in 10% steps.
+  governs discrete steps only; [[touch-gestures#Standing rules]]). Wheel zoom would jump in 10% steps.
 - **Documents**: `c.doc(graph, name)` imports save-format JSON (`tree/specs/documents/save-format.md`)
   through `documentStore.importAsDocument`; ids are remapped, so find nodes by label with `c.socket`,
   `c.within`, `c.node` (a node with no label is found by its header title). `c.example(seedId)` opens a

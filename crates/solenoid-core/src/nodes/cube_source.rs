@@ -1,4 +1,4 @@
-//! [[frame-verbs#Each table in a Cube, nested or not, types its own columns]] cubeTypesAtDepth, [[C28]] literalsIffEditable.
+//! [[frame-verbs#The Cube value]] cubeTypesAtDepth, [[C28]] literalsIffEditable.
 //! Cube Input's source text read into the cube its formula columns run over, as the Cube popup's `parseCubeSource`
 //! reads it (`tree/specs/computation/frame-verbs.md` § The Cube value).
 

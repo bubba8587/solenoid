@@ -1,4 +1,4 @@
-// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]]
+// [[B18]] safeToShare, [[engineering#Untrusted content]]
 // Pure and side-effect free, so the presets unit-test without the network.
 import { frameFromColumnar, type FrameValue } from "./frame";
 import { csvToFrame } from "./frameBackend";

@@ -25,7 +25,7 @@ export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>)
   const rawSeries = toSeries(data.cachedResult);
   const chartOp: ChartShape = op === "winloss" ? "column" : op;
   const series = op === "winloss" ? rawSeries.map((s) => ({ ...s, v: Math.sign(s.v) })) : rawSeries;
-  // The same three slots a SPARKLINE() picture paints in ([[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]).
+  // The same three slots a SPARKLINE() picture paints in ([[formula-language#Lists]]).
   const signColors = op === "winloss"
     ? { pos: resolveColor(SPARK_SLOTS.pos), neg: resolveColor(SPARK_SLOTS.neg) }
     : undefined;

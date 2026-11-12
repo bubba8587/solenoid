@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet, [[vault-bridge#Writing a note's properties changes only what it targets]]
+// [[B1]] obsidianBet, [[vault-bridge#What every VaultBridgeFx holds to]]
 import { yamlScalar } from "./obsidianMarkdown";
 import { parseNoteFrontmatter, type FrontmatterRow } from "./noteFrontmatter";
 

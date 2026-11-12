@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[B3]] sameNodeEverywhere, [[obsidian-plugin]]
 // The Obsidian round trip: the plugin's look, a Frame property, Import Obsidian Note, a Report written back, the note
 // opened in Obsidian. `app: "obsidian"` scenes run on obsidian.mjs's rig; the others reach the vault through bridgeVault.
 import fs from "node:fs";

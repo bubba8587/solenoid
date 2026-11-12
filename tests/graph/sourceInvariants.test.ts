@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]], [[C26]], [[save-format#A save loses nothing quietly]], [[B18]] safeToShare, [[alert-node-alerts-hud#An alert fires when its status changes, and never on load]], [[B11]], [[add-menu#A placed node is titled with what you picked in the Add menu]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull, [[components#The rules]]
+// [[A1]] visualGraphCalculator, [[components#The design system]], [[C26]], [[save-format#A save loses nothing quietly]], [[B18]] safeToShare, [[alert-node-alerts-hud#When it fires]], [[B11]], [[add-menu#Naming a placed node]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull, [[components#The rules]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -574,7 +574,7 @@ describe("[[B18]] safeToShare — data() never touches disk", () => {
 });
 
 // [[node-classes#Reading inputs]]
-describe("[[alert-node-alerts-hud#An alert fires when its status changes, and never on load]] — an outward effect from data() gates on isGraphRebuilding()", () => {
+describe("[[alert-node-alerts-hud#When it fires]] — an outward effect from data() gates on isGraphRebuilding()", () => {
   // The post-load recompute runs INSIDE the rebuild scope, so an alert/notice
   // fired from data() without the gate replays its whole backlog on every
   // document open, doc switch and rollback (the audit-2026-07-05 class: a
@@ -591,7 +591,7 @@ describe("[[alert-node-alerts-hud#An alert fires when its status changes, and ne
     expect(
       offenders,
       `These node files fire alerts without the isGraphRebuilding() gate ` +
-      `([[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]): every document load will replay the alert backlog:\n  ` +
+      `([[alert-node-alerts-hud#When it fires]]): every document load will replay the alert backlog:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -828,7 +828,7 @@ describe("[[A1]] visualGraphCalculator — the socket box's greppable half", () 
 });
 
 // [[node-classes#Frame input labels]]
-describe("[[components#One design system governs every look, layout and word in the app]] — frame-input labels follow the column-role grammar", () => {
+describe("[[components#The design system]] — frame-input labels follow the column-role grammar", () => {
   // A frame input's label is the ONE place the expected columns can be read
   // before wiring (aligned columns arrive as one frame input by design). Roles
   // join with " + " in Title case; a no-expectation input is a plain noun; shape
@@ -865,7 +865,7 @@ describe("[[components#One design system governs every look, layout and word in 
         }
       }
     }
-    expect(offenders, "labels violating the frameLabelGrammar grammar ([[components#One design system governs every look, layout and word in the app]])").toEqual([]);
+    expect(offenders, "labels violating the frameLabelGrammar grammar ([[components#The design system]])").toEqual([]);
   });
 });
 
@@ -1012,7 +1012,7 @@ describe("[[B2]] webTryDesktopFull — recharts is imported statically by exactl
   });
 });
 
-describe("[[add-menu#A placed node is titled with what you picked in the Add menu]] — no component syncs a label on an op change", () => {
+describe("[[add-menu#Naming a placed node]] — no component syncs a label on an op change", () => {
   it("no component writes an op's catalog label into node.label", () => {
     const offenders: string[] = [];
     for (const file of walk(path.join(SRC, "components"))) {

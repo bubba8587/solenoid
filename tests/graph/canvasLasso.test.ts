@@ -1,4 +1,4 @@
-// [[C52]] visibleSelection, [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]], [[pointer-gestures#The lasso]]
+// [[C52]] visibleSelection, [[touch-gestures#Standing rules]], [[pointer-gestures#The lasso]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { installLassoSelection, type LassoState } from "../../src/graph/canvasLasso";
 import { lassoActiveStore } from "../../src/graph/lasso";

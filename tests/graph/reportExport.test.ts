@@ -1,4 +1,4 @@
-// [[C24]], [[engineering#Content entering or leaving the app is guarded where it crosses]], [[reports-and-notes#Webpage export]]
+// [[C24]], [[engineering#Untrusted content]], [[reports-and-notes#Webpage export]]
 import { describe, it, expect } from "vitest";
 import { exportBodyHtml, exportFileName, buildExportCss, reportReferencedNodeIds } from "../../src/graph/reportExport";
 import { renderNoteMarkdown } from "../../src/graph/noteMarkdown";

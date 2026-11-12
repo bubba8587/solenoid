@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[obsidian-plugin]]
 import type { Family, PropertyKind } from "./yamlValue";
 
 const BOX = (inner: string) =>

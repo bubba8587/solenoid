@@ -1,4 +1,4 @@
-// [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]], [[B11]], [[palette-and-theme#Card colors]], [[html-in-canvas#When it runs]]
+// [[html-in-canvas]], [[B11]], [[palette-and-theme#Card colors]], [[html-in-canvas#When it runs]]
 import { describe, it, expect } from "vitest";
 import { nodeDomWeight, nodeAccent, nodeAccentSlot, nodeKindOf, explicitKindOf } from "../../../src/graph/nodes/kind";
 import { majorityColor } from "../../../src/graph/groupLogic";
@@ -96,7 +96,7 @@ describe("chart cards wear the chart green", () => {
   });
 });
 
-describe("[[components#One design system governs every look, layout and word in the app]]", () => {
+describe("[[components#The design system]]", () => {
   it("a card no family lists wears its one non-numeric output's color", () => {
     for (const n of [new UrlEncodeNode(), new EpochNode()]) {
       expect(explicitKindOf(n), n.constructor.name).toBeNull();

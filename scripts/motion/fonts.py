@@ -1,4 +1,4 @@
-# [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
+# [[motion-graphics]]
 """Glyph outlines for the engine, from the same font files the app ships (@fontsource-variable), pinned to the
 weight Chrome used. A character the face lacks falls back the way Chrome's does on Linux (fontconfig).
 """

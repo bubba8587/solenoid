@@ -144,7 +144,7 @@ flowchart LR
     kind -->|"a number or text"| none["no popup:<br>the card shows it whole"]
 ```
 
-- **The Table popup** views and edits a list, a matrix or a Frame: as a grid, as CSV text, as cards, as a one-record form, as a pivot table for a Pivot's output, or as a dashboard of columns for a Describe's ([[table-popup]], [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]). On a literal source, such as a Frame Input node, it is the editor, and Save writes back to the node ([[literal-input-editors]], [[table-popup#Modes and what Save writes back]]).
+- **The Table popup** views and edits a list, a matrix or a Frame: as a grid, as CSV text, as cards, as a one-record form, as a pivot table for a Pivot's output, or as a dashboard of columns for a Describe's ([[table-popup]], [[table-popup#The Pivot view]]). On a literal source, such as a Frame Input node, it is the editor, and Save writes back to the node ([[literal-input-editors]], [[table-popup#Modes and what Save writes back]]).
 - **The Cube popup** opens a Cube a level at a time and edits a Cube Input's ([[table-popup#The Cube popup]]).
 - **The chart popup** draws a chart object at the window's size, pages a Record from the keyboard, and copies a Gantt as SVG ([[chart-figures#Surfaces and sizing]]).
 - **Every popup shares one shell**: a header that reads like the source node's (its accent and its group framing), an overflow menu with Go to Source and Pin to HUD, a resize grip, and the same ways to close ([[table-popup#The popup shell]]).

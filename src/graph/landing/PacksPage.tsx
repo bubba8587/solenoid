@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[B15]] leanCore, [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § Voice)
+// [[B3]] sameNodeEverywhere, [[B15]] leanCore, [[components#The design system]] (DESIGN.md § Voice)
 import { useEffect } from "react";
 import { SiteHeader, SiteFooter, SiteThumb } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";

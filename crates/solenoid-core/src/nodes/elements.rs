@@ -1,4 +1,4 @@
-//! [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C17]] shareImpl, [[C25]] firstClassUnits, [[C24]] arraySemantics.
+//! [[composite-nodes#Packs]], [[C17]] shareImpl, [[C25]] firstClassUnits, [[C24]] arraySemantics.
 //! The periodic table and the Element card, from PubChem's periodic table with IUPAC conventional atomic weights,
 //! frozen in `data/elements.json` (`docs/node-coverage.md` § Packs, Element).
 

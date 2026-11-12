@@ -1,4 +1,4 @@
-// [[standoffs#No layout action breaks a standoff you set]] (the seed rule), [[A1]] visualGraphCalculator
+// [[standoffs#The solver runs last]] (the seed rule), [[A1]] visualGraphCalculator
 // Console-only: group fit and a whole-canvas Tidy measure painted DOM, so they need the live app. scripts/tune-seeds.mjs
 // patches the returned geometry in place, not as a re-export, which would rewrite every hand-authored id.
 import { SEEDS, clearAndLoadSeed } from "./seeds";

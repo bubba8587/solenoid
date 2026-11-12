@@ -1,4 +1,4 @@
-<!-- [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § Voice) -->
+<!-- [[A1]] visualGraphCalculator, [[components#The design system]] (DESIGN.md § Voice) -->
 ## What connects, exactly
 
 The ladder above is the whole rule for *shape*. These are its edges.

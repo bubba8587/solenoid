@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]], [[group-expand-push#The world the push works on]]
+// [[A1]] visualGraphCalculator, [[group-expand-push#LayoutFx]], [[group-expand-push#The world the push works on]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

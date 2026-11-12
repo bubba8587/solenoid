@@ -1,4 +1,4 @@
-// [[C88]] collapsedGroupCard (collapsedAwareNodesRect), [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]
+// [[C88]] collapsedGroupCard (collapsedAwareNodesRect), [[touch-gestures#Standing rules]]
 import { boundZoom } from "./viewPresets";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
 import { getActiveView, getActiveEditor } from "./activeGraph";

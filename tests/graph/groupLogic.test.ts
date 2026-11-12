@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[group-expand-push#A node joins or leaves a group only when you put it there]], [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]], [[group-expand-push#Groups are React Flow sub-flows]],
+// [[A1]] visualGraphCalculator, [[group-expand-push#Who is a member]], [[group-expand-push#LayoutFx]], [[group-expand-push#Groups are React Flow sub-flows]],
 // [[group-expand-push#Who is a member]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";

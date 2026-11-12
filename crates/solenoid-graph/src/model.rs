@@ -25,7 +25,7 @@ pub trait Host: 'static {
         inputs: Inputs<Self::Value>,
     ) -> LocalBoxFuture<'a, Result<Outputs<Self::Value>, Error>>;
 
-    /// A Delayed Pass card ([[compute-pass#A Delayed Pass card hands on what its input held one recalculation earlier, so loops through it step]] delayedPass): the engine never fetches its `in` input, so a cycle through it never
+    /// A Delayed Pass card ([[compute-pass#Delayed Pass]] delayedPass): the engine never fetches its `in` input, so a cycle through it never
     /// recurses, and a cable into `in` makes no loop.
     fn delayed(_node: &Self::Node) -> bool {
         false

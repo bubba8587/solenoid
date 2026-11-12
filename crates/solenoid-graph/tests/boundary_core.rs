@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C10]] socketLattice, [[error-values#An error remembers the node where it started]], [[C139]] mathlibLaws, [[graph-core#The input boundary]]
+// [[C130]] rustCore, [[C10]] socketLattice, [[error-values#Producers and provenance]], [[C139]] mathlibLaws, [[graph-core#The input boundary]]
 //! The boundary on core values against `fixtures/core/boundary-*.json.gz` (written by `coreBoundary.test.ts`).
 
 use std::io::Read;

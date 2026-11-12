@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]. The selection mirror (react-flow-surface-contract § Selection).
+// [[B19]] spreadsheetHabits, [[engineering#Performance]]. The selection mirror (react-flow-surface-contract § Selection).
 
 type Selectable = { selected?: boolean };
 export type SelectionState = {

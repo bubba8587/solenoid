@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[C67]] mdbaseCeiling, [[frame-verbs#Each table in a Cube, nested or not, types its own columns]], [[obsidian-plugin#The app reads the picks]]
+// [[obsidian-plugin]], [[C67]] mdbaseCeiling, [[frame-verbs#The Cube value]], [[obsidian-plugin#The app reads the picks]]
 import { describe, it, expect } from "vitest";
 import { parsePluginColumnTypes, parsePluginNestedTables } from "../../src/graph/pluginColumnTypes";
 import { PLUGIN_DATA_PATH } from "../../src/graph/pluginDataPath";

@@ -1,4 +1,4 @@
-//! [[B19]] spreadsheetHabits, [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]], [[frame-verbs#pivot]]
+//! [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]], [[frame-verbs#pivot]]
 //! A PIVOTBY card's totals belong to its view: `split_pivot_totals` keeps the leaf rows by the leaf columns as the Frame,
 //! carries every total cell for the view, and hands the totals on as Row Totals and Column Totals.
 

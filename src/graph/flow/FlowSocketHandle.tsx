@@ -1,4 +1,4 @@
-// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], [[B3]] sameNodeEverywhere
+// [[engineering#Performance]], [[B3]] sameNodeEverywhere
 import { useSyncExternalStore, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from "react";
 import { Position, useNodeId, useStoreApi, addEdge, type Connection } from "@xyflow/react";
 import { XYHandle, isMouseEvent, getHostForElement } from "@xyflow/system";

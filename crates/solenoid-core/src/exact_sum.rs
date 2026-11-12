@@ -1,5 +1,5 @@
 //! Sums rounded once, at the end (Shewchuk's partials, as Python's `math.fsum`), then snapped to 0 where the numbers
-//! as written cancel (`snap`): order-free ([[B19]] spreadsheetHabits, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], `tree/specs/computation/formula-language.md` § Sums).
+//! as written cancel (`snap`): order-free ([[B19]] spreadsheetHabits, [[engineering#Performance]], `tree/specs/computation/formula-language.md` § Sums).
 
 /// A running exact sum, held as non-overlapping partials, its infinities and NaNs counted beside them.
 #[derive(Clone, Debug, Default)]

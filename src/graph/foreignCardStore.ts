@@ -1,4 +1,4 @@
-// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]]
+// [[B18]] safeToShare, [[engineering#Untrusted content]]
 // Cards someone else wrote: a foreign card keeps asking wherever it is pasted until the user allows its scripts
 // (scriptGate.ts) and fetches (connectionStore.ts); a foreign document asks for all its cards at once and marks none.
 // `elsewhere` says only who wrote the card, so no Allow clears it: its File Link asks before opening and its fetches

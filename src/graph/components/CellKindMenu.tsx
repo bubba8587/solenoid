@@ -1,4 +1,4 @@
-// [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
+// [[frame-verbs#The Cube value]]
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useHangUnder } from "./columnHeadControls";

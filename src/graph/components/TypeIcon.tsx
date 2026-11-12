@@ -1,4 +1,4 @@
-// [[components#One design system governs every look, layout and word in the app]]: one icon per value type, on every type switcher and column type button.
+// [[components#The design system]]: one icon per value type, on every type switcher and column type button.
 import type { ReactNode } from "react";
 import "./TypeIcon.css";
 

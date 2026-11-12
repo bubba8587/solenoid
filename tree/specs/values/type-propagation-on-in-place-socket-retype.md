@@ -49,7 +49,7 @@ flowchart LR
 
 ## An input that follows another
 
-An input can take the kind of another input's settled type rather than its own cable's: Expect's Min and Max are `date` when the value it checks is a date (the In socket adopted a date rung) and `number` otherwise, so a date is bounded by dates ([[date-values#A range check bounds a date by dates and a number by numbers]]). The wiring drives it, as it drives adoption, and no field does.
+An input can take the kind of another input's settled type rather than its own cable's: Expect's Min and Max are `date` when the value it checks is a date (the In socket adopted a date rung) and `number` otherwise, so a date is bounded by dates ([[date-values#Cards]]). The wiring drives it, as it drives adoption, and no field does.
 
 **MUST:** a follower is a `MutableSocket` its class retypes in `settleFollowers()`, which answers the keys it retyped. `settleWildcardTypes` calls it on every node after applying the core's Type Settle, so it reads settled types, and names the card so its next call carries the new socket type ([[graph-core#Direct calls]]); `reconcileFcTypes` then drops each cable into a retyped follower that its new type no longer takes, as `retypeInputCables` does. The settle in the core never sees a follower: it is an input with no adoption. A follower's literal for each kind is kept apart (Expect's number bounds in `literals`, its date bounds as keyed text in `stringLiterals`, the core's date field for Expect), so the card keeps both as its value moves between kinds.
 
@@ -59,7 +59,7 @@ Tests: `expect_date_bounds.rs` (solenoid-core): Expect's range check over date a
 
 Code: `InlineCast`
 
-A formula or LAMBDA card's result takes the type it computed, and its InlineCast casts it ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]; [[formula-language]] § Result socket). The output socket swaps at the node's own dimensionality (`ResultDim`) to the cast's family, or under ∅ to the computed one (`castResultSocket`). `resultSocket(dim, t)` is the one table, used both to build the port (`resultOut`) and to swap it in place:
+A formula or LAMBDA card's result takes the type it computed, and its InlineCast casts it ([[socket-lattice#The InlineCast]]; [[formula-language]] § Result socket). The output socket swaps at the node's own dimensionality (`ResultDim`) to the cast's family, or under ∅ to the computed one (`castResultSocket`). `resultSocket(dim, t)` is the one table, used both to build the port (`resultOut`) and to swap it in place:
 
 | Dimensionality | Nodes | Number | Text | Date | Boolean | Untyped |
 |---|---|---|---|---|---|---|

@@ -1,4 +1,4 @@
-// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
+// [[obsidian-plugin]]
 // Runs the rig as a phone: Obsidian's mobile emulation, a phone-sized window, and a coarse pointer with
 // touch, which must share one CDP session, so the steps run in a row. Needs `npm run plugin:rig -- up`.
 //   node scripts/obsidian-rig-mobile.mjs setup 412x915 look Orchard theme light \

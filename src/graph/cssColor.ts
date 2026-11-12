@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
+// [[A1]] visualGraphCalculator, [[components#The design system]]
 import { clamp } from "./nodes/mathUtils";
 
 export interface RGBA { r: number; g: number; b: number; a: number }
