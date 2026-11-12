@@ -4,6 +4,7 @@
 
 use crate::excel_formula::cell_to_v;
 use std::cell::{Cell, RefCell};
+use std::mem::DropGuard;
 use std::rc::Rc;
 
 use crate::frame::FrameColumn;
@@ -627,8 +628,11 @@ thread_local! {
 }
 
 impl CallDepth {
-    fn enter() -> Option<CallDepth> {
-        CALL_DEPTH.with(|d| (d.get() < MAX_CALL_DEPTH).then(|| d.set(d.get() + 1)).map(|()| CallDepth))
+    fn enter() -> Option<impl Sized> {
+        (CALL_DEPTH.get() < MAX_CALL_DEPTH).then(|| {
+            CALL_DEPTH.update(|d| d + 1);
+            DropGuard::new((), |()| CALL_DEPTH.update(|d| d - 1))
+        })
     }
 
     fn too_deep() -> V {
@@ -636,12 +640,6 @@ impl CallDepth {
             ErrorCode::Overflow,
             "This formula nests calls more than 500 deep, for example a LAMBDA that keeps calling itself",
         ))
-    }
-}
-
-impl Drop for CallDepth {
-    fn drop(&mut self) {
-        CALL_DEPTH.update(|d| d - 1);
     }
 }
 
@@ -936,9 +934,8 @@ impl Eval<'_> {
         // A LAMBDA's body is a formula of its own: its last `+` or `-` snaps as a formula's does
         // (`LAMBDA(x, x-0.3)(0.1+0.2)` is 0).
         let outer = self.root.replace(&**body as *const Ast as usize);
-        let out = self.lambda_body(lam, body, args);
-        self.root.set(outer);
-        out
+        let _root = DropGuard::new(outer, |outer| self.root.set(outer));
+        self.lambda_body(lam, body, args)
     }
 
     fn lambda_body(&self, lam: &LambdaV, body: &Ast, args: &[V]) -> V {
@@ -2349,19 +2346,9 @@ fn column_hoisting<C>(
         binds.push(Bind::Side(ctx.aligned(side(p))));
     }
     let mut cells = Vec::with_capacity(inp.rows);
-    /// ROW()'s row while the column runs; dropping it clears the row.
-    struct Rows;
-    impl Rows {
-        fn at(&self, i: usize) {
-            crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
-        }
-    }
-    impl Drop for Rows {
-        fn drop(&mut self) {
-            crate::excel_functions::set_row_number(None);
-        }
-    }
-    let rows = Rows;
+    // ROW()'s row while the column runs, cleared on every way out.
+    let row_at = |i: usize| crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+    let _rows = DropGuard::new((), |()| crate::excel_functions::set_row_number(None));
     match spec {
         ColumnSpec::Expr { ast, .. } => {
             // Each cell is a formula whose last `+` or `-` snaps; the column holds the tree, not the text, so a formula
@@ -2406,7 +2393,7 @@ fn column_hoisting<C>(
             }
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
-                rows.at(i);
+                row_at(i);
                 let v = ev.run(ast, &env);
                 kinds.note(&v, cells.len());
                 cells.push(tag(v));
@@ -2415,7 +2402,7 @@ fn column_hoisting<C>(
         ColumnSpec::Lambda(lam) => {
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
-                rows.at(i);
+                row_at(i);
                 let argv: Vec<V> = binds
                     .iter()
                     .map(|b| match b {
