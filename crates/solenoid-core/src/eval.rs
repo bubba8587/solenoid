@@ -1053,7 +1053,7 @@ impl Eval<'_> {
             }
         }
         let Ok(v) = crate::date_values::call(name, argv, |argv| {
-            Ok::<_, std::convert::Infallible>(self.call_with(name, t, args, argv, settled))
+            Ok::<_, !>(self.call_with(name, t, args, argv, settled))
         });
         v
     }

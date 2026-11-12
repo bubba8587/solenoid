@@ -39,7 +39,7 @@ pub fn core_call(name: &str, args: &[V]) -> V {
         crate::excel_functions::solenoid_errors(v)
     };
     let Ok(v) = crate::date_values::call(&name.to_ascii_uppercase(), args.to_vec(), |a| {
-        Ok::<_, std::convert::Infallible>(body(&a))
+        Ok::<_, !>(body(&a))
     });
     v
 }
