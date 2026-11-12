@@ -315,26 +315,51 @@ fn mat_det(m: &NumMat) -> Option<f64> {
     Some(d)
 }
 
-/// The exponent that brings `x`'s magnitude into [0.5, 1) when `x` is scaled by 2 to it; 0 for 0 or a non-finite `x`.
-fn binade_exp(x: f64) -> i32 {
-    if x == 0.0 || !x.is_finite() {
-        0
-    } else {
-        -libm::frexp(x).1
+/// The power of two for each row and each column under which `m`'s nonzero entries sit as near 1 as scaling rows and
+/// columns alone can bring them: least squares on log₂|x|, by alternating row and column means until neither moves.
+/// Writing a row or a column in other units shifts every log in it by one amount, which its own exponent takes up, so
+/// the balanced matrix is the same whatever units `m` came in (to the factor of two the rounding leaves).
+fn balance_exps(m: &NumMat, n: usize) -> (Vec<i32>, Vec<i32>) {
+    let lg: Vec<Vec<Option<f64>>> = m
+        .iter()
+        .map(|row| row.iter().map(|x| (x.is_finite() && *x != 0.0).then(|| libm::log2(x.abs()))).collect())
+        .collect();
+    let (mut r, mut c) = (vec![0.0f64; m.len()], vec![0.0f64; n]);
+    for _ in 0..64 {
+        let mut moved = 0.0f64;
+        for (i, row) in lg.iter().enumerate() {
+            let (sum, k) =
+                row.iter().zip(&c).fold((0.0, 0u32), |(s, k), (x, cj)| x.map_or((s, k), |x| (s + x + cj, k + 1)));
+            if k > 0 {
+                let next = -sum / f64::from(k);
+                moved = moved.max((next - r[i]).abs());
+                r[i] = next;
+            }
+        }
+        for (j, cj) in c.iter_mut().enumerate() {
+            let (sum, k) =
+                lg.iter().zip(&r).fold((0.0, 0u32), |(s, k), (row, ri)| row[j].map_or((s, k), |x| (s + x + ri, k + 1)));
+            if k > 0 {
+                let next = -sum / f64::from(k);
+                moved = moved.max((next - *cj).abs());
+                *cj = next;
+            }
+        }
+        if moved < 1e-3 {
+            break;
+        }
     }
+    let whole = |v: Vec<f64>| v.into_iter().map(|e| libm::round(e) as i32).collect();
+    (whole(r), whole(c))
 }
 
 /// Whether `m` is singular up to the units its rows and columns are written in: elimination with partial pivoting on
-/// `m` equilibrated by powers of two (each row's, then each column's, largest entry in [0.5, 1), which is exact), and a
-/// pivot under `tol` there. Only the verdict comes from here; the answer is computed on `m` itself, so a matrix that
-/// was invertible before answers exactly as it did, and `inv(cA) = inv(A) / c` holds at every scale c (mathlib
-/// `Matrix.inv_smul`).
+/// `m` balanced by powers of two (`balance_exps`, which is exact), and a pivot under `tol` there. Only the verdict
+/// comes from here; the answer is computed on `m` itself, so a matrix that was invertible before answers exactly as
+/// it did, and `inv(cA) = inv(A) / c` holds at every scale c (mathlib `Matrix.inv_smul`).
 fn singular_at_any_scale(m: &NumMat, tol: f64) -> bool {
     let n = mat_cols(m);
-    let r: Vec<i32> = m.iter().map(|row| binade_exp(row.iter().fold(0.0, |s, x| js_max(s, x.abs())))).collect();
-    let c: Vec<i32> = (0..n)
-        .map(|j| binade_exp(m.iter().zip(&r).fold(0.0, |s, (row, &e)| js_max(s, libm::ldexp(row[j].abs(), e)))))
-        .collect();
+    let (r, c) = balance_exps(m, n);
     let mut b: NumMat = m
         .iter()
         .zip(&r)

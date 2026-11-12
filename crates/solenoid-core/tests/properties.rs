@@ -241,6 +241,20 @@ fn matrix_functions_keep_their_scaling_laws() {
         let got = with_matrix("SOLVE(m, b)", &col, &b)
             .map(|g| g.iter().enumerate().map(|(j, v)| if j == k { v * c } else { *v }).collect::<Vec<_>>());
         assert!(got.as_ref().is_some_and(|g| close_all(g, &x, 1e-9)), "solve, variable {k} of {a:?} by {c:e}: {got:?}");
+        // An equation and a variable in other units at once: still solvable, the variable's answer scaled back.
+        let (kr, d) = (r.usize(0..n), libm::pow(10.0, f64::from(r.i32(-15..16))));
+        let both: Vec<Vec<f64>> = col
+            .iter()
+            .enumerate()
+            .map(|(i, rw)| rw.iter().map(|v| if i == kr { v * d } else { *v }).collect())
+            .collect();
+        let db: Vec<f64> = b.iter().enumerate().map(|(i, v)| if i == kr { v * d } else { *v }).collect();
+        let got = with_matrix("SOLVE(m, b)", &both, &db)
+            .map(|g| g.iter().enumerate().map(|(j, v)| if j == k { v * c } else { *v }).collect::<Vec<_>>());
+        assert!(
+            got.as_ref().is_some_and(|g| close_all(g, &x, 1e-9)),
+            "solve, equation {kr} by {d:e} and variable {k} by {c:e} of {a:?}: {got:?}"
+        );
     }
 }
 
