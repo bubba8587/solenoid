@@ -13,8 +13,8 @@ specific item.
   C140 function records). Each one's text is a `## <title>` section at the end of its spec. The leaves' children moved to their parents.
 - **Citations:** code, tests and docs cite the spec section (`[[spec#Title]]`); where that was a file's only citation, the
   retired leaf's live parent is cited beside it, so coverage stays 100%. Spec header lines cite the parent.
-- **B12** is now noForwardCompat (only the version gate); the general "a save loses nothing quietly" goal is a section of
-  `save-format.md`, with no leaf. **B28 wysiwygValues** (new, the author's) holds C28, C35, C58. **C3** rewritten by the author.
+- **B12** is now noForwardCompat (only the version gate); the general "a save loses nothing quietly" goal is a section of the
+  save-format spec (`tree/specs/documents/save-format.md`), with no leaf. **B28 wysiwygValues** (new, the author's) holds C28, C35, C58. **C3** rewritten by the author.
 - Temporary states (Isolate off, Charts refusing dates, publishing the function library) are backlog lines under "Held for later".
 - **Open:** inbox items `operators-read-blank-as-zero` (parent D124, retired), `paste-carries-card-state` and
   `ghost-cables-feed-and-save` (parent B12, now narrow) need new parents when placed.
