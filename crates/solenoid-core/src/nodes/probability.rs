@@ -536,6 +536,11 @@ fn bootstrap_or_err(c: &mut Call) -> Result<Option<[f64; 3]>, V> {
     if raw.is_sol_error() {
         return Err(raw);
     }
+    // Dates aren't the numbers resampled here ([[D114]] dateIsAKind): an error, where skipping them would blank the answer.
+    if crate::date_values::holds_date(&raw) {
+        let msg = "Bootstrap resamples numbers, and this list holds dates. Cast them to numbers first";
+        return Err(err(ErrorCode::Type, msg));
+    }
     let items: Vec<V> = match raw {
         V::List(items) => items.iter().cloned().collect(),
         V::Null | V::Undef => Vec::new(),
@@ -544,7 +549,15 @@ fn bootstrap_or_err(c: &mut Call) -> Result<Option<[f64; 3]>, V> {
     if let Some(e) = items.iter().find(|v| v.is_sol_error()) {
         return Err(e.clone());
     }
-    let xs: Vec<f64> = items.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect();
+    // A logical counts as 1 or 0, as an aggregate reads it.
+    let xs: Vec<f64> = items
+        .iter()
+        .filter_map(|v| match v {
+            V::Num(n) => Some(*n),
+            V::Bool(b) => Some(f64::from(u8::from(*b))),
+            _ => None,
+        })
+        .collect();
     if xs.is_empty() {
         return Ok(None);
     }

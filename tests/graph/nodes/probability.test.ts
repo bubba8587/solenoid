@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { ProbabilityBetweenNode, AbTestNode, BootstrapNode } from "../../../src/graph/nodes/probability";
 import { isSolError } from "../../../src/graph/errorValue";
+import { solDate } from "../../../src/graph/dateValue";
 import { extractInit } from "../../../src/graph/nodeInit";
 
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
@@ -122,6 +123,14 @@ describe("Bootstrap", () => {
     const lows = new Set([1, 2, 3, 4, 5].map((k) => n.data({ list: smooth, seed: [k] }).low));
     expect(lows.size).toBeGreaterThan(1);
     expect(seven.estimate).toBe(fromValues.estimate);
+  });
+
+  it("a list of dates is #TYPE! naming them, never a blank, and a logical counts as 1 or 0", () => {
+    const n = new BootstrapNode();
+    const dated = n.data({ list: [[solDate(46000), solDate(46005), solDate(46011)]] });
+    expect(code(dated.estimate)).toBe("#TYPE!");
+    expect(isSolError(dated.estimate) && dated.estimate.message).toContain("holds dates");
+    expect(n.data({ list: [[true, false, true, true]] }).estimate).toBe(0.75);
   });
 
   it("the op picks the statistic and names the output", () => {

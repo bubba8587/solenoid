@@ -117,3 +117,13 @@ describe("REGEX* take Excel's documented arguments", () => {
     expect(isSolError(bad) && bad.code).toBe("#VALUE!");
   });
 });
+
+describe("BETA.DIST's density at the ends of its range", () => {
+  it("is the limit there: β at 0 when α is 1, α at 1 when β is 1, as Excel gives", () => {
+    expect(ev("BETA.DIST(0, 1, 3, FALSE)")).toBe(3);
+    expect(ev("BETA.DIST(1, 3, 1, FALSE)")).toBe(3);
+    expect(ev("BETA.DIST(0, 1, 1, FALSE)")).toBe(1);
+    expect(ev("BETA.DIST(0, 2, 3, FALSE)")).toBe(0);
+    expect(ev("BETA.DIST(0.000001, 1, 3, FALSE)")).toBeCloseTo(3, 4);
+  });
+});

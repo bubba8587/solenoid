@@ -553,9 +553,10 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
             } else if (v == 0.0 && av < 1.0) || (v == 1.0 && bv < 1.0) {
                 None
             } else if v == 0.0 {
-                Some(if av == 1.0 { 1.0 } else { 0.0 })
+                // The density's limit at the end: β(1 − x)^(β−1) is β at 0 when α is 1.
+                Some(if av == 1.0 { bv } else { 0.0 })
             } else if v == 1.0 {
-                Some(if bv == 1.0 { 1.0 } else { 0.0 })
+                Some(if bv == 1.0 { av } else { 0.0 })
             } else {
                 Some(exp(
                     (av - 1.0) * log(v) + (bv - 1.0) * log(1.0 - v) - ln_gamma(av) - ln_gamma(bv) + ln_gamma(av + bv)
