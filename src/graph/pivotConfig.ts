@@ -5,6 +5,7 @@ import type { FrameCell } from "./frame";
 import { isSolError } from "./errorValue";
 import { csvList } from "./nodes/frameShapeHook";
 import { listLiteralText } from "./listLiterals";
+import { pivotLayoutOf } from "./pivotLayout";
 
 export interface PivotConfig {
   rows: string[];
@@ -128,4 +129,12 @@ export function placesFrom(tokens: readonly string[], ids: readonly string[], pr
   }
   for (const id of ids) if (!tokens.includes(calcToken(id))) place[id] = -1;
   return { vals, place };
+}
+
+/** A calculated field's name: as the card's last result names it (a wired name included), else as typed, else
+ *  `Calculated N` by its row (`n`, 0-based), as the core names a blank one. */
+export function calcFieldName(node: { cachedResult: unknown; stringLiterals: Record<string, string> }, id: string, n: number): string {
+  const r = node.cachedResult;
+  const layout = r && typeof r === "object" && !isSolError(r) ? pivotLayoutOf(r as never) : null;
+  return layout?.calcNames?.[id] || node.stringLiterals[`calcName${id}`]?.trim() || `Calculated ${n + 1}`;
 }

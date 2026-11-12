@@ -16,6 +16,7 @@ import seed from "../../../src/graph/seedGraphs/pivot-calculated-fields.json";
 import { restoreLiterals } from "../../../src/graph/literalFields";
 import { isSolError } from "../../../src/graph/errorValue";
 import { pivotLayoutOf, pivotViewFrame } from "../../../src/graph/pivotLayout";
+import { calcFieldName } from "../../../src/graph/pivotConfig";
 
 // A fleet's fuel log: MPG per plate per month is miles over gallons in that cell's rows.
 const log = new FrameInputNode({
@@ -336,6 +337,39 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     expect(await order({})).toEqual(["Plate", "Miles", "Gallons", "MPG", "GPM"]);
     expect(await order({ 1: 0, 0: 1 })).toEqual(["Plate", "GPM", "Miles", "MPG", "Gallons"]);
     expect(await order({ 0: -1 })).toEqual(["Plate", "Miles", "Gallons", "GPM"]);
+  });
+
+  it("sorts rows and columns by a calculated field, after the plain values in the sort's list", () => {
+    const sorted = (rowSort: number, colSort = 0) => {
+      const n = new PivotNode({ rowSort, colSort, valueKeys: ["calcName0", "calcFn0"] });
+      Object.assign(n.stringLiterals, { rowFields: "Plate", colFields: "Month", values: "Miles", calcName0: "MPG" });
+      const out = n.data({ frame: [log], rowFields: [["Plate"]], colFields: [["Month"]], values: [["Miles"]], calcFn0: [MPG] }).frame as FrameValue;
+      return { rows: out.columns[0].values, cols: out.columns.slice(1).map((c) => c.name) };
+    };
+    // Plate is sort 1, Miles 2, MPG 3: ABC-123's MPG is 25, XYZ-789's 20; February's 30 and January's 50/3.
+    expect(sorted(3).rows).toEqual(["XYZ-789", "ABC-123"]);
+    expect(sorted(-3).rows).toEqual(["ABC-123", "XYZ-789"]);
+    expect(sorted(0, -3).cols).toEqual(["2026-02 | Miles", "2026-02 | MPG", "2026-01 | Miles", "2026-01 | MPG"]);
+  });
+
+  it("names every wired field in the layout by id, a wired name and one dragged out of the pivot included", () => {
+    const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0", "calcName1", "calcFn1"], calcPlace: { 1: -1 } });
+    Object.assign(n.stringLiterals, { rowFields: "Plate", values: "", calcName1: "Off" });
+    const out = n.data({ frame: [log], rowFields: [["Plate"]], colFields: [[]], values: [[]], calcName0: ["Wired MPG"], calcFn0: [MPG], calcFn1: [MPG] }).frame as FrameValue;
+    expect(pivotLayoutOf(out)?.calcNames).toEqual({ 0: "Wired MPG", 1: "Off" });
+    expect(calcFieldName(n, "0", 0)).toBe("Wired MPG");
+  });
+
+  it("a field dragged out comes back into the values when its cable is pulled and wired again", async () => {
+    const editor = new GraphEditor<Schemes>();
+    const p = new PivotNode({ valueKeys: ["calcName0", "calcFn0"], calcPlace: { 0: -1 } });
+    const l = new LambdaNode({ params: "Miles, Gallons", expr: "SUM(Miles) / SUM(Gallons)" });
+    for (const node of [p, l]) await editor.addNode(node as unknown as Schemes["Node"]);
+    const cable = new GraphConnection(l, "result", p, "calcFn0") as Schemes["Connection"];
+    await editor.addConnection(cable);
+    expect(p.calcPlace).toEqual({ 0: -1 });
+    await editor.removeConnection(cable.id);
+    expect(p.calcPlace).toEqual({});
   });
 
   it("saves and reloads with its fields; removing one keeps the others' slots", () => {

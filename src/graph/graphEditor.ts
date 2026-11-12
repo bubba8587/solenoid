@@ -169,11 +169,15 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
         this.connectionList = null;
         this.byTarget = null;
         break;
-      case "connectionremoved":
+      case "connectionremoved": {
         this.connections.delete(signal.data.id);
         this.connectionList = null;
         this.byTarget = null;
+        // A card that keeps state about what's wired to an input hears when that cable goes (a pivot's calculated field).
+        const target = this.nodes.get(signal.data.target) as { inputUnwired?(key: string): void } | undefined;
+        target?.inputUnwired?.(String(signal.data.targetInput));
         break;
+      }
     }
   }
 

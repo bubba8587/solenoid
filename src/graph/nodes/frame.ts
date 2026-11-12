@@ -564,6 +564,13 @@ export class PivotNode extends GraphNode {
     delete this.calcPlace[id];
   }
 
+  /** A calculated field's λ cable pulled: one dragged out of the pivot comes back into the values when next wired. */
+  inputUnwired(key: string): void {
+    if (!key.startsWith("calcFn")) return;
+    const id = key.slice(6);
+    if (this.calcPlace[id] === -1) delete this.calcPlace[id];
+  }
+
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
     // Row Totals and Column Totals take their columns from the data; the Frame's own shape has no totals in it.
     if (outKey !== "frame") return null;

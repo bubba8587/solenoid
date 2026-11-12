@@ -1821,10 +1821,28 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         });
         perm
     };
+    // A calculated field sorts by its answer over the row's (or column's) rows: the sort's values are the spec's
+    // values, then the calculated fields in their order.
+    let calc_score = |k: usize, mut at: Vec<usize>| -> Score {
+        if at.is_empty() {
+            return Score::Null;
+        }
+        at.sort_unstable();
+        match (calcs[k].eval)(&at).0 {
+            FrameCell::Num(n) if !n.is_nan() => Score::N(n),
+            FrameCell::Str(s) => Score::S(s.to_string()),
+            _ => Score::Null,
+        }
+    };
+    let sortable = (v_n + calcs.len()) as f64;
     let row_val_sort = rs.abs() - 1.0 - row_cols.len() as f64;
-    if row_val_sort >= 0.0 && row_val_sort < v_n as f64 && row_val_sort.fract() == 0.0 && r_n > 1 {
+    if row_val_sort >= 0.0 && row_val_sort < sortable && row_val_sort.fract() == 0.0 && r_n > 1 {
         let vs = row_val_sort as usize;
-        let scores: Vec<Score> = (0..r_n).map(|r| sort_key(&cells[vs][r].concat(), vs)).collect();
+        let scores: Vec<Score> = if vs < v_n {
+            (0..r_n).map(|r| sort_key(&cells[vs][r].concat(), vs)).collect()
+        } else {
+            (0..r_n).map(|r| calc_score(vs - v_n, srcs[r].concat())).collect()
+        };
         let perm = order(&scores, rs < 0.0);
         row_leaves = perm.iter().map(|&r| row_leaves[r].clone()).collect();
         for plane in cells.iter_mut() {
@@ -1835,11 +1853,17 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         }
     }
     let col_val_sort = cs.abs() - 1.0 - col_cols.len() as f64;
-    if col_val_sort >= 0.0 && col_val_sort < v_n as f64 && col_val_sort.fract() == 0.0 && c_n > 1 {
+    if col_val_sort >= 0.0 && col_val_sort < sortable && col_val_sort.fract() == 0.0 && c_n > 1 {
         let vs = col_val_sort as usize;
-        let scores: Vec<Score> = (0..c_n)
-            .map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs))
-            .collect();
+        let scores: Vec<Score> = if vs < v_n {
+            (0..c_n)
+                .map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs))
+                .collect()
+        } else {
+            (0..c_n)
+                .map(|c| calc_score(vs - v_n, (0..r_n).flat_map(|r| srcs[r][c].iter().copied()).collect()))
+                .collect()
+        };
         let perm = order(&scores, cs < 0.0);
         col_leaves = perm.iter().map(|&c| col_leaves[c].clone()).collect();
         for plane in cells.iter_mut() {

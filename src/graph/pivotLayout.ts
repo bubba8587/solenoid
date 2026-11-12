@@ -38,6 +38,8 @@ export interface PivotLayout {
   /** The totals, which a PIVOTBY card keeps out of its Frame: each total row's cells across every view column, each
    *  total column's cells down every view row, by their place among `rows` and `cols` ([[C127]] pivotView). */
   totals?: PivotTotalCells;
+  /** Each wired calculated field's name by its id, on the pivot or dragged out of it, typed or wired alike. */
+  calcNames?: Record<string, string>;
 }
 
 export interface PivotTotalCells {

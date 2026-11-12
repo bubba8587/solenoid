@@ -26,9 +26,10 @@ specific item.
   and fails without the fix. A new LAMBDA card has no parameter (it was `x`); its params field shows `x, y` as its Example (author 2026-11-12:
   the empty-slot kinds, not a silent rule for unused parameters).
 - Pivot calculated fields drag in Configure Fields (author 2026-11-12): a λ chip among the Values, its column where
-  its chip is; dragged to the Fields list it leaves the pivot, cable kept (`calcPlace`, `frame-verbs.md` § pivot).
+  its chip is; dragged to the Fields list it leaves the pivot, cable kept (`calcPlace`, `tree/specs/computation/frame-verbs.md` § pivot).
   Checked with real HTML5 drags in Chromium (Playwright's `dragTo`; grab a chip by its name, not its function menu).
-  Open: a field dragged out stays out if its cable is pulled and rewired.
+  Pulling a field's cable and wiring it again brings it back; Sort takes a calculated field; a wired Name shows in
+  the popup (the layout's `calcNames`).
 - Seen, not touched: the table popup's footer Sum skips error cells (a column holding `#UNCALC!` still sums).
 - Self-hosting: `docs/self-hosting.md` is the proposal for the engineering team (SharePoint via Microsoft Graph, or
   same-origin hosting). Built: `solenoid.config.json` with `trustedSources`, hosts that skip the network prompt

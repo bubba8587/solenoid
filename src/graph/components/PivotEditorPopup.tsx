@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { pivotEditor } from "../pivotEditorStore";
 import { notifyGraphChanged, processGraph } from "../process";
-import { DATE_GROUPS, calcIdOf, calcToken, dateGroupOf, pivotConfigOf, placesFrom, regroupField, valuesWithCalcs, writePivotConfig, type DateGroup, type PivotConfig } from "../pivotConfig";
+import { DATE_GROUPS, calcFieldName, calcIdOf, calcToken, dateGroupOf, pivotConfigOf, placesFrom, regroupField, valuesWithCalcs, writePivotConfig, type DateGroup, type PivotConfig } from "../pivotConfig";
 import { caseTwin } from "../frame";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameOps";
@@ -71,9 +71,10 @@ export function PivotEditorPopup() {
   // Calculated fields come from the card's wired λ rows: each sits in Values, dragged like a value, until it's dragged
   // out to the Fields list, which takes it off the pivot and leaves its cable be.
   const calcs = node.valuePairKeys().map(([nameKey, fnKey], n) => ({
-    id: nameKey.slice(8), wired: connected.has(fnKey),
-    name: node.stringLiterals[nameKey]?.trim() || `Calculated ${n + 1}`,
+    id: nameKey.slice(8), wired: connected.has(fnKey), name: calcFieldName(node, nameKey.slice(8), n),
   })).filter((c) => c.wired);
+  // The sort's values: the plain ones, then the calculated fields on the pivot in their row order, as the core reads it.
+  const sortValues = [...cfg.vals, ...calcs.filter((c) => node.calcPlace[c.id] !== -1).map((c) => c.name)];
   const calcIds = calcs.map((c) => c.id);
   const calcName = (token: string) => calcs.find((c) => c.id === calcIdOf(token))?.name ?? "";
   const valueTokens = valuesWithCalcs(cfg.vals, node.calcPlace, calcIds);
@@ -365,7 +366,7 @@ export function PivotEditorPopup() {
             {renderZone("cols", "Columns")}
             <div className="pivot-zone__controls">
               <label>Totals {numSelect(cfg.colTotalDepth, TOTAL_DEPTH_OPTIONS, (n) => commit({ ...cfg, colTotalDepth: n }))}</label>
-              <label>Sort {numSelect(cfg.colSort, sortOptions(cfg.cols, cfg.vals), (n) => commit({ ...cfg, colSort: n }))}</label>
+              <label>Sort {numSelect(cfg.colSort, sortOptions(cfg.cols, sortValues), (n) => commit({ ...cfg, colSort: n }))}</label>
             </div>
           </div>
 
@@ -373,7 +374,7 @@ export function PivotEditorPopup() {
             {renderZone("rows", "Rows")}
             <div className="pivot-zone__controls">
               <label>Totals {numSelect(cfg.rowTotalDepth, TOTAL_DEPTH_OPTIONS, (n) => commit({ ...cfg, rowTotalDepth: n }))}</label>
-              <label>Sort {numSelect(cfg.rowSort, sortOptions(cfg.rows, cfg.vals), (n) => commit({ ...cfg, rowSort: n }))}</label>
+              <label>Sort {numSelect(cfg.rowSort, sortOptions(cfg.rows, sortValues), (n) => commit({ ...cfg, rowSort: n }))}</label>
             </div>
           </div>
 
