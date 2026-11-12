@@ -568,7 +568,7 @@ fn besselj(x: f64, n: f64) -> Option<f64> {
         if jsum {
             sum += bj;
         }
-        jsum = !jsum;
+        jsum.toggle();
         if j == n {
             ret = bjp;
         }
