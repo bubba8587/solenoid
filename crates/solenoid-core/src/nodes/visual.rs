@@ -227,8 +227,8 @@ fn is_number_spec(spec: &str) -> bool {
     if s.is_empty() {
         return false;
     }
-    let mut rest = s.strip_prefix('+').unwrap_or(s);
-    rest = rest.strip_prefix(',').unwrap_or(rest);
+    let mut rest = s.trim_prefix('+');
+    rest = rest.trim_prefix(',');
     if let Some(after) = rest.strip_prefix('.') {
         let digits = after.bytes().take_while(u8::is_ascii_digit).count();
         if !(1..=2).contains(&digits) {

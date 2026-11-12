@@ -214,7 +214,7 @@ pub fn format_scalar(n: f64, d: NumberDisplay) -> String {
         let s = to_exponential(n, 4.0).unwrap_or_default();
         let (m, e) = s.split_once('e').unwrap_or((&s, ""));
         let kept = m.trim_end_matches('0');
-        let kept = if kept.len() < m.len() { kept.strip_suffix('.').unwrap_or(kept) } else { m };
+        let kept = if kept.len() < m.len() { kept.trim_suffix('.') } else { m };
         return format!("{kept}e{e}");
     }
     if n.fract() == 0.0 {
@@ -226,7 +226,7 @@ pub fn format_scalar(n: f64, d: NumberDisplay) -> String {
     }
     // `.replace(/\.?0+$/, "")`.
     let kept = s.trim_end_matches('0');
-    let kept = if kept.len() < s.len() { kept.strip_suffix('.').unwrap_or(kept) } else { &s };
+    let kept = if kept.len() < s.len() { kept.trim_suffix('.') } else { &s };
     if kept == "-0" {
         "0".into()
     } else {

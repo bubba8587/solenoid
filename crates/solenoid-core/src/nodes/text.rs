@@ -636,9 +636,9 @@ fn parse_cx(s: &str) -> (f64, f64) {
     };
     // NUM: `[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?`
     let num = |s: &str| {
-        let s = s.strip_prefix(['+', '-']).unwrap_or(s);
+        let s = s.trim_prefix(['+', '-']);
         match s.find(['e', 'E']) {
-            Some(k) => unsigned(&s[..k]) && digits(s[k + 1..].strip_prefix(['+', '-']).unwrap_or(&s[k + 1..])),
+            Some(k) => unsigned(&s[..k]) && digits(s[k + 1..].trim_prefix(['+', '-'])),
             None => unsigned(s),
         }
     };
@@ -655,7 +655,7 @@ fn parse_cx(s: &str) -> (f64, f64) {
         "-" => -1.0,
         m => n(m),
     };
-    let rest = body.strip_prefix(['+', '-']).unwrap_or(body);
+    let rest = body.trim_prefix(['+', '-']);
     if rest.is_empty() || unsigned(rest) {
         return (0.0, im(body));
     }

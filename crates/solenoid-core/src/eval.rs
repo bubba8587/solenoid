@@ -335,7 +335,7 @@ pub(crate) fn format_cx(re: f64, im: f64) -> String {
             // `.replace(/\.?0+$/, "")`
             let t = s.trim_end_matches('0');
             if t.len() < s.len() {
-                t.strip_suffix('.').unwrap_or(t).to_string()
+                t.trim_suffix('.').to_string()
             } else {
                 s
             }

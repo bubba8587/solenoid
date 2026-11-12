@@ -67,7 +67,7 @@ fn component(rest: &mut &str, unit: char) -> f64 {
 /// An XSD duration (`PT8H0M0S`, `P1DT4H`) in hours; a leading minus is read past.
 pub fn xsd_duration_to_hours(s: Option<&str>) -> Option<f64> {
     let t = trim_space(s.filter(|s| !s.is_empty())?);
-    let mut rest = t.strip_prefix('-').unwrap_or(t).strip_prefix('P')?;
+    let mut rest = t.trim_prefix('-').strip_prefix('P')?;
     let d = component(&mut rest, 'D');
     let (mut h, mut m, mut sec) = (0.0, 0.0, 0.0);
     if let Some(after) = rest.strip_prefix('T') {

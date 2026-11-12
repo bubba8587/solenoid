@@ -553,7 +553,7 @@ fn month_word(b: &[u8]) -> Option<(u32, &[u8])> {
     let word = std::str::from_utf8(&b[..n]).ok()?.to_ascii_lowercase();
     let month = MONTHS.iter().find(|(w, _)| *w == word)?.1;
     let rest = &b[n..];
-    Some((month, if n <= 4 { rest.strip_prefix(b".").unwrap_or(rest) } else { rest }))
+    Some((month, if n <= 4 { rest.trim_prefix(b".") } else { rest }))
 }
 
 /// A day's ordinal suffix (`st`, `nd`, `rd`, `th`, any case), skipped.
@@ -617,7 +617,7 @@ fn with_time(days: i64, after: &[u8]) -> Option<DateReading> {
     let z = if named.is_some() { &zoned[3..] } else { zoned };
     if let [sign @ (b'+' | b'-'), h1, h2, more @ ..] = z {
         if h1.is_ascii_digit() && h2.is_ascii_digit() {
-            let more = more.strip_prefix(b":").unwrap_or(more);
+            let more = more.trim_prefix(b":");
             let (mins, more) = match more {
                 [m1, m2, r @ ..] if m1.is_ascii_digit() && m2.is_ascii_digit() => {
                     (f64::from((m1 - b'0') * 10 + (m2 - b'0')), r)
@@ -691,8 +691,8 @@ fn month_name_middle_endian(t: &str) -> Option<DateReading> {
     let lead = std::str::from_utf8(&b[..n]).ok()?.to_ascii_lowercase();
     if WEEKDAYS.contains(&lead.as_str()) {
         let rest = &b[n..];
-        let rest = rest.strip_prefix(b".").unwrap_or(rest);
-        let rest = rest.strip_prefix(b",").unwrap_or(rest);
+        let rest = rest.trim_prefix(b".");
+        let rest = rest.trim_prefix(b",");
         let spaced = skip_spaces(rest);
         if spaced.len() == rest.len() {
             return None;
@@ -706,7 +706,7 @@ fn month_name_middle_endian(t: &str) -> Option<DateReading> {
     }
     let (day, rest) = split_num(spaced, 1, 2)?;
     let rest = skip_ordinal(rest);
-    let rest = rest.strip_prefix(b",").unwrap_or(rest);
+    let rest = rest.trim_prefix(b",");
     let spaced = skip_spaces(rest);
     if spaced.len() == rest.len() {
         return None;

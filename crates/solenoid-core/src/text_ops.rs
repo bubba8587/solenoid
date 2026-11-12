@@ -212,7 +212,7 @@ pub fn unaccent(t: &str) -> String {
 /// links and plain names reads through.
 pub fn link_path(t: &str) -> String {
     let s = crate::jsnum::trim_space(t);
-    let s = s.strip_prefix('!').unwrap_or(s);
+    let s = s.trim_prefix('!');
     let target = if let Some(inner) = s.strip_prefix("[[").and_then(|r| r.strip_suffix("]]")) {
         inner.split('|').next().unwrap_or(inner)
     } else if let Some(inner) = s.strip_prefix('[').and_then(|r| r.strip_suffix(')')).and_then(|r| r.split_once("](")) {
@@ -222,7 +222,7 @@ pub fn link_path(t: &str) -> String {
     };
     let target = target.split('#').next().unwrap_or(target);
     let target = crate::jsnum::trim_space(target);
-    let target = target.strip_suffix(".md").unwrap_or(target);
+    let target = target.trim_suffix(".md");
     target.replace("%20", " ")
 }
 
