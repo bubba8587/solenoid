@@ -40,7 +40,7 @@ import { BitwiseNode, DepreciationNode, TvmNode, PaymentBreakdownNode, NPVNode, 
 import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
 import { DistributionsNode } from "./distribution";
 import { ConduitNode } from "./conduit";
-import { FrameFromListsNode } from "./frame";
+import { FrameFromListsNode, CategorizeNode } from "./frame";
 import { ScheduleNode } from "./schedule";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
 import { CubeInputNode, BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
@@ -192,7 +192,7 @@ export function explicitKindOf(node: GraphNode): NodeKind | null {
   ) return "table";
   if (
     node instanceof FrameInputNode || node instanceof CubeInputNode ||
-    node instanceof BuildFrameNode || node instanceof FrameFromListsNode || node instanceof SplitFrameNode ||
+    node instanceof BuildFrameNode || node instanceof FrameFromListsNode || node instanceof CategorizeNode || node instanceof SplitFrameNode ||
     node instanceof GetColumnNode || node instanceof AddColumnNode ||
     node instanceof ComputedColumnNode ||
     node instanceof GetRowNode ||

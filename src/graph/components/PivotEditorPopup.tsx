@@ -16,6 +16,8 @@ import { PivotFilterList } from "./PivotFilterList";
 import { dropOutputCables } from "./cablePrune";
 import { getOwningView } from "../activeGraph";
 import { useConnectedInputs } from "./inlineInput";
+import { FieldChip, FieldsPanel, startChipDrag as startDrag } from "./FieldChips";
+import { CloseIcon } from "./CloseIcon";
 
 // The per-value function list derives from AGG_OP_META; the pivot is the one surface
 // that also offers the pivotOnly ops.
@@ -177,11 +179,10 @@ export function PivotEditorPopup() {
     }
     return key;
   }
-  /** Firefox starts no HTML5 drag without data on it, so the field's name rides along; the drop reads `drag`. */
+  /** The drop reads `drag`. */
   function startChipDrag(e: React.DragEvent, payload: { from: Zone | "fields"; field: string }) {
     drag.current = payload;
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", payload.field);
+    startDrag(e, payload.field);
   }
 
   function applyDrop(toZone: Zone, insertIdx?: number) {
@@ -239,7 +240,7 @@ export function PivotEditorPopup() {
           {DATE_GROUPS.map((u) => <option key={u} value={u}>{u}</option>)}
         </select>
       )}
-      <button className="pivot-chip__x" onClick={() => removeField(zone, field)} aria-label="Remove" title="Remove">×</button>
+      <button className="pivot-chip__x" onClick={() => removeField(zone, field)} aria-label="Remove" title="Remove"><CloseIcon size={10} /></button>
     </span>
   );
 
@@ -269,7 +270,7 @@ export function PivotEditorPopup() {
       <select className="pivot-chip__func" value={cfg.funcs[field] ?? node.agg} onChange={(e) => setFunc(field, e.target.value as AggOp)} onPointerDown={(e) => e.stopPropagation()}>
         {FUNC_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
-      <button className="pivot-chip__x" onClick={() => removeField("vals", field)} aria-label="Remove" title="Remove">×</button>
+      <button className="pivot-chip__x" onClick={() => removeField("vals", field)} aria-label="Remove" title="Remove"><CloseIcon size={10} /></button>
     </span>
   );
 
@@ -281,7 +282,7 @@ export function PivotEditorPopup() {
       title={inFields ? `${calcName(token)} · calculated field, off the pivot` : `${calcName(token)} · calculated field, from a λ on the card`}>
       <span className="pivot-chip__glyph">λ</span>
       <span className="pivot-chip__name">{calcName(token)}</span>
-      {!inFields && <button className="pivot-chip__x" onClick={() => removeField("vals", token)} aria-label="Remove" title="Remove from the pivot">×</button>}
+      {!inFields && <button className="pivot-chip__x" onClick={() => removeField("vals", token)} aria-label="Remove" title="Remove from the pivot"><CloseIcon size={10} /></button>}
     </span>
   );
 
@@ -343,7 +344,7 @@ export function PivotEditorPopup() {
                 <button className="pivot-filter__name" onClick={() => setOpenFilter(open ? null : field)} title="Choose which values to keep">
                   {field}{hidden ? ` · ${hidden} hidden` : ""} <span className="pivot-filter__caret">{open ? <ChevronDownIcon size={10} strokeWidth={2} /> : <ChevronRightIcon size={10} strokeWidth={2} />}</span>
                 </button>
-                <button className="pivot-chip__x" onClick={() => removeFilter(field)} aria-label="Remove" title="Remove">×</button>
+                <button className="pivot-chip__x" onClick={() => removeFilter(field)} aria-label="Remove" title="Remove"><CloseIcon size={10} /></button>
               </span>
               {open && (
                 <PivotFilterList type={typeOf(field)} keys={distinct} total={meta?.distinctTotal ?? distinct.length}
@@ -365,19 +366,13 @@ export function PivotEditorPopup() {
       cardStyle={popupCardVars(state)}
     >
       <div className="pivot-editor__body">
-        <div className="pivot-fields" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); dropOnFields(); }}>
-          <div className="pivot-fields__head">Fields {fields.length === 0 && <span className="pivot-fields__hint">· connect a frame</span>}</div>
-          <div className="pivot-fields__list">
-            {fields.map((f) => (
-              <span key={f.name} className={`pivot-chip pivot-chip--${f.type}${usedSet.has(f.name) ? " pivot-chip--used" : ""}`} draggable
-                onDragStart={(e) => { startChipDrag(e, { from: "fields", field: f.name }); }} title={`${f.name} · ${f.type}`}>
-                <span className="pivot-chip__glyph">{TYPE_GLYPH(f.type)}</span>
-                <span className="pivot-chip__name">{f.name}</span>
-              </span>
-            ))}
-            {removedCalcs.map((c) => calcChip(calcToken(c.id), true))}
-          </div>
-        </div>
+        <FieldsPanel head="Fields" hint={fields.length === 0 ? "connect a frame" : undefined} onDrop={dropOnFields}>
+          {fields.map((f) => (
+            <FieldChip key={f.name} name={f.name} glyph={TYPE_GLYPH(f.type)} className={`pivot-chip--${f.type}${usedSet.has(f.name) ? " pivot-chip--used" : ""}`}
+              onDragStart={(e) => { startChipDrag(e, { from: "fields", field: f.name }); }} title={`${f.name} · ${f.type}`} />
+          ))}
+          {removedCalcs.map((c) => calcChip(calcToken(c.id), true))}
+        </FieldsPanel>
 
         <div className="pivot-grid">
           {renderFilters()}

@@ -46,6 +46,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "ReconcileNode" => reconcile(c),
         "BuildFrameNode" => build_frame(c),
         "FrameFromListsNode" => frame_from_lists(c),
+        "CategorizeNode" => categorize(c),
         _ => return None,
     })
 }
@@ -3465,6 +3466,145 @@ fn frame_from_lists(c: &mut Call) -> Answer {
         crate::frame_fns::FrameOut::Frame(f) => shown_frame(c, "frame", Cv::Frame(Rc::new(from_core(&f)))),
         _ => Err(thrown("Frame from Lists got an answer it doesn't read")),
     }
+}
+
+// ─── Categorize ──────────────────────────────────────────────────────────────────
+
+/// The categories a blank Categories field gives, each renamable on the card's sorter.
+pub(crate) const DEFAULT_CATEGORIES: usize = 3;
+
+/// An item as the card saves it in `assigned`: its text, a number by its digits and a date by its serial, so a sort holds
+/// however the item is formatted.
+fn item_key(v: &V) -> String {
+    match v {
+        V::Num(n) | V::Date(n) => crate::jsnum::number_to_string(*n),
+        V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
+        v => crate::excel_functions::value_text(v),
+    }
+}
+
+fn item_label(v: &V) -> String {
+    match v {
+        V::Date(n) => crate::date_serial::format_date_serial(*n, "DD-MMM-YYYY"),
+        v => crate::excel_functions::value_text(v),
+    }
+}
+
+/// The categories in their order: the wired list's texts, else the field's, else `Category 1` to `Category 3`; a repeat
+/// and a blank are left out.
+fn category_names(c: &Call) -> Vec<String> {
+    let v = match c.wired("categories") {
+        Some(_) => super::list::slot(c, "categories"),
+        None => c.csv_text("categories").map_or(V::Undef, V::str),
+    };
+    let mut names: Vec<String> = match v {
+        V::Str(s) => super::list::literal_items(&s),
+        V::List(xs) => xs
+            .iter()
+            .flat_map(|x| if let V::List(r) = x { r.to_vec() } else { vec![x.clone()] })
+            .filter(|x| !matches!(x, V::Err(_)))
+            .map(|x| trim_space(&item_label(&x)).to_string())
+            .collect(),
+        V::Null | V::Undef | V::Err(_) => Vec::new(),
+        x => vec![trim_space(&item_label(&x)).to_string()],
+    };
+    let mut seen = std::collections::HashSet::new();
+    names.retain(|n| !n.is_empty() && seen.insert(n.clone()));
+    if names.is_empty() && c.wired("categories").is_none() {
+        names = (1..=DEFAULT_CATEGORIES).map(|i| format!("Category {i}")).collect();
+    }
+    names
+}
+
+/// Each distinct item with the category it was sorted into: a two-column table to join back onto the rows the items
+/// came from. Items no category holds come last with a blank Category. The sort is saved by item and category name
+/// (`assigned`), never by position, so it holds whatever the lists around it do.
+fn categorize(c: &mut Call) -> Answer {
+    let raw = super::list::slot(c, "items");
+    let cells: Vec<V> = match raw {
+        V::Null | V::Undef => Vec::new(),
+        V::List(xs) => xs.iter().flat_map(|x| if let V::List(r) = x { r.to_vec() } else { vec![x.clone()] }).collect(),
+        x => vec![x],
+    };
+    let census = crate::date_values::census(&list(cells.clone()));
+    if census.beside_dates().is_some() {
+        return shown_frame(c, "frame", crate::date_values::mixed("other kinds"));
+    }
+    // Distinct items, first seen first; a blank or an error is nothing to sort.
+    let mut seen = std::collections::HashSet::new();
+    let mut items: Vec<(String, V)> = Vec::new();
+    for v in cells {
+        if matches!(v, V::Null | V::Undef | V::Err(_)) || matches!(&v, V::Str(s) if trim_space(s).is_empty()) {
+            continue;
+        }
+        let k = item_key(&v);
+        if seen.insert(k.clone()) {
+            items.push((k, v));
+        }
+    }
+    let names = category_names(c);
+    // The saved sort: `[category, [item key, …]]`, an item claimed once, by the first category that names it.
+    let mut placed: Vec<(String, Vec<String>)> = Vec::new();
+    let mut claimed = std::collections::HashSet::new();
+    if let Some(Json::Array(groups)) = c.field("assigned") {
+        for g in groups {
+            let (Some(name), Some(Json::Array(keys))) = (g.get(0).and_then(Json::as_str), g.get(1)) else { continue };
+            let keys: Vec<String> = keys
+                .iter()
+                .filter_map(Json::as_str)
+                .filter(|k| claimed.insert(k.to_string()))
+                .map(str::to_string)
+                .collect();
+            placed.push((name.to_string(), keys));
+        }
+    }
+    let by_key: std::collections::HashMap<&str, &V> = items.iter().map(|(k, v)| (k.as_str(), v)).collect();
+    let mut item_col: Vec<V> = Vec::new();
+    let mut cat_col: Vec<V> = Vec::new();
+    let mut sorted = std::collections::HashSet::new();
+    for name in &names {
+        for (_, keys) in placed.iter().filter(|(n, _)| n == name) {
+            for k in keys {
+                if let Some(v) = by_key.get(k.as_str()) {
+                    sorted.insert(k.as_str());
+                    item_col.push((*v).clone());
+                    cat_col.push(V::str(name));
+                }
+            }
+        }
+    }
+    for (k, v) in &items {
+        if !sorted.contains(k.as_str()) {
+            item_col.push(v.clone());
+            cat_col.push(V::str(""));
+        }
+    }
+    // The sorter's chips: each item's key and how it reads.
+    let shown_items: Vec<Json> = items.iter().map(|(k, v)| json!([k, item_label(v)])).collect();
+    c.show("sortItems", Cv::Json(Rc::new(Json::Array(shown_items))));
+    c.show("sortCategories", Cv::Json(Rc::new(json!(names))));
+    if items.is_empty() {
+        return shown_frame(c, "frame", V::Null);
+    }
+    let (ty, item_col) = if census.only_dates() {
+        (FrameColType::Date, item_col.iter().map(crate::date_values::unwrap).collect())
+    } else if item_col.iter().all(|v| matches!(v, V::Num(_))) {
+        (FrameColType::Number, item_col)
+    } else if item_col.iter().all(|v| matches!(v, V::Bool(_))) {
+        (FrameColType::Logical, item_col)
+    } else {
+        (FrameColType::String, item_col.iter().map(|v| V::str(&crate::excel_functions::value_text(v))).collect())
+    };
+    let col = |name: &str, ty: FrameColType, values: Vec<V>| Column {
+        name: name.to_string(),
+        ty,
+        values,
+        unit: None,
+        format: None,
+        raw: None,
+    };
+    let frame = frame_v(vec![col("Item", ty, item_col), col("Category", FrameColType::String, cat_col)]);
+    shown_frame(c, "frame", frame)
 }
 
 fn reconcile(c: &mut Call) -> Answer {

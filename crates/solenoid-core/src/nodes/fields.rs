@@ -169,6 +169,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("ChartBuilderNode", "pielabels", Empty::Fallback(Fill::Text(""))),
     ("ChartBuilderNode", "radarscale", Empty::Fallback(Fill::Text(""))),
     ("ChartBuilderNode", "s", Empty::Fallback(Fill::Text(""))),
+    ("CategorizeNode", "categories", Empty::Behavior("Category 1, 2, 3")),
     ("ChartBuilderNode", "stacked", Empty::Fallback(Fill::Text(""))),
     ("ChartBuilderNode", "status", Empty::Fallback(Fill::Text(""))),
     ("ChartBuilderNode", "tiers", Empty::Fallback(Fill::Text(""))),

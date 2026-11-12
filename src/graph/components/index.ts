@@ -277,6 +277,7 @@ export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
 
 export { ConcatListsComponent } from "./ConcatListsNode";
 export { FrameFromListsComponent } from "./FrameFromListsNode";
+export { CategorizeComponent } from "./CategorizeNode";
 export { QuadraticRootsComponent } from "./QuadraticRootsNode";
 export { PolyRootsComponent } from "./PolyRootsNode";
 

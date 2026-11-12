@@ -12,7 +12,7 @@ import {
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GCDNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
+  UniqueNode, ConcatListsNode, FrameFromListsNode, CategorizeNode, QuadraticRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
@@ -675,6 +675,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Build & Read", description: "Make a Frame from a Matrix and headers or from lists, take one apart, and read or add rows and columns.",
         children: [
           { type: "build-frame", label: "Build Frame", description: "Combines a Matrix and a List of headers into a Frame. Missing headers become `Col1`, `Col2`…, and duplicates are made unique.", create: () => new BuildFrameNode(), parity: false },
+          { type: "categorize", added: NEXT_RELEASE, label: "Categorize", description: "Maps a list's distinct items onto categories picked by hand on the card's sorter, as a two-column lookup table of Item and Category to Join back onto the rows. Categories come from a list, or start as Category 1 to 3, renamed on the sorter. A sort is kept by value, so it holds when the list changes.", create: () => new CategorizeNode(), parity: false, keywords: "categorize bucket buckets recode map mapping group classify sort into lookup table tag label assign bin manual drag" },
           { type: "frame-from-lists", label: "Frame from Lists", description: "Builds a Frame straight from lists: each column pairs a typed name with a list of any type. Ragged columns pad with blanks.", create: () => new FrameFromListsNode(), parity: false, keywords: "lists to frame columns table build fast assemble" },
           { type: "split-frame", label: "Split Frame", description: "Takes a Frame apart into its numeric Matrix body and header text-list; the inverse of Build Frame. The type filter (All / Num / Date / Bool / Text) keeps only columns of that type.", create: () => new SplitFrameNode(), parity: false },
           { type: "get-column",  label: "Get Column",  description: "Pulls one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date.", create: () => new GetColumnNode(), parity: false },

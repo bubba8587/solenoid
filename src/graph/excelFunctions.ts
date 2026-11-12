@@ -16,7 +16,7 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   DECISIONMATRIX: "Decision Matrix", CUBEINPUT: "Cube Input", GROUPCOSTSETTLE: "Group Cost Settle", PAYOFFPLANNER: "Payoff Planner", SENSITIVITY: "Sensitivity", ALLOCATOR: "Allocator", RECONCILE: "Reconcile", DESCRIBE: "Describe", CORRELATIONMATRIX: "Correlation Matrix", KMEANS: "K-Means", PCA: "PCA", LOGISTICREGRESSION: "Logistic Regression", WINDOW: "Window",
   NESTJOIN: "Nest Join", BUILDCUBE: "Build Cube", CUBECOLUMNS: "Cube Columns",
   CUBEROLLUP: "Cube Rollup",
-  SETCELL: "Set Cell",
+  SETCELL: "Set Cell", CATEGORIZE: "Categorize",
 };
 
 export const NODE_SURFACE_NAMES: Readonly<Record<string, string>> = {

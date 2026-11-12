@@ -36,6 +36,7 @@ import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
+import { readAssigned, type Assigned } from "../categorizeConfig";
 import { calcIsOff, readCalcPlaces, readPivotSort, type CalcPlaces, type PivotSort } from "../pivotConfig";
 import { setDescribeTiles, type DescribeTile } from "../describeProfile";
 import { isDateOrder, type DateOrder } from "../dateOrder";
@@ -1525,6 +1526,47 @@ export class BuildFrameNode extends GraphNode {
 
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | null } {
     return nodeOnCore(this, inputs) as { frame: FrameValue | null };
+  }
+}
+
+// ─── CATEGORIZE ───────────────────────────────────────────────────────────────
+
+/** Sorts a list's distinct items into categories by hand, on its sorter, and answers the lookup table: Item, Category. */
+export class CategorizeNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    items: "Each distinct value is one item to sort; a repeat counts once, and a blank or an error is skipped.",
+    categories: "The names to sort into. Left blank, the card starts with Category 1 to 3, which the sorter renames, adds to and removes.",
+  };
+
+  label: string;
+  cachedResult: FrameValue | SolError | null = null;
+  stringLiterals: Record<string, string> = { categories: "" };
+  /** The sort, by item key and category name (`categorizeConfig.ts`). */
+  assigned: Assigned = [];
+  /** The last pass's distinct items, `[key, text]`, for the sorter. */
+  sortItems: [string, string][] = [];
+  /** The categories the last pass sorted into, in order. */
+  sortCategories: string[] = [];
+  width = 220; height = 260;
+
+  constructor(init?: { label?: string; assigned?: Assigned }) {
+    super("Categorize");
+    this.label = init?.label ?? "Categorize";
+    this.assigned = readAssigned(init?.assigned);
+    this.addInput("items", adoptiveListIn("Items"));
+    this.addInput("categories", strListIn("Categories"));
+    this.addOutput("frame", frameOut("Lookup"));
+  }
+
+  /** Always Item and Category; Item takes the items' kind, known once the card has run, Text until then. */
+  frameShape(): Shape {
+    const r = this.cachedResult;
+    if (r && isFrameValue(r)) return shapeOfFrameValue(r);
+    return { columns: [{ name: "Item", type: "string" }, { name: "Category", type: "string" }] };
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
 }
 

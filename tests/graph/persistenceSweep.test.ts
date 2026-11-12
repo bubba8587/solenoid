@@ -160,6 +160,8 @@ describe("[[save-format#A save loses nothing quietly]] — every own field is pe
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    sortItems: "Categorize's distinct items as its body last listed them for the sorter; the body lists them again each run",
+    sortCategories: "Categorize's categories in effect as its body last read them; stringLiterals.categories holds the typed ones",
     xlsxTables: "Local File's and Web Source's list of a workbook's Tables, for the picker; every read lists them again (tableName holds the pick)",
     plotX: "The Probability pack's picture points as its body last showed them; the body draws them again each run",
     plotY: "The Probability pack's picture points as its body last showed them; the body draws them again each run",

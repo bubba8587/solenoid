@@ -45,7 +45,7 @@ export const INIT_FIELD_ORDER = [
 export const INIT_EXTRA_FIELD_ORDER = [
   "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "varRequired", "bindings",
   "keyOrder", "pivotView", "detailFields", "boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues",
-  "literalKinds", "cellEdits", "calcPlace",
+  "literalKinds", "cellEdits", "calcPlace", "assigned",
 ] as const;
 
 /** The saved fields only the canvas reads (a card's size, fold, colour, place, text styling): a card's call leaves them
@@ -115,6 +115,8 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
   // A pivot's sorts and its calculated fields' places are copied, so a save never shares them with the live card.
   for (const k of ["rowSort", "colSort"] as const) if (init[k] && typeof init[k] === "object") init[k] = { ...(init[k]) };
   if (Array.isArray(n.calcPlace) && n.calcPlace.length) init.calcPlace = (n.calcPlace as unknown[][]).map((p) => [...p]);
+  // A Categorize card's sort, copied the same way.
+  if (Array.isArray(n.assigned) && n.assigned.length) init.assigned = (n.assigned as [string, string[]][]).map(([c, ks]) => [c, [...ks]]);
   for (const k of ["boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues", "literalKinds"] as const) {
     if (n[k] && typeof n[k] === "object" && Object.keys(n[k]).length) init[k] = { ...(n[k]) };
   }

@@ -23,6 +23,7 @@ import { ChartPopup } from "./graph/components/ChartPopup";
 import { ElementPicker } from "./graph/components/ElementPicker";
 import { FilePicker } from "./graph/components/FilePicker";
 import { PivotEditorPopup } from "./graph/components/PivotEditorPopup";
+import { CategorizePopup } from "./graph/components/CategorizePopup";
 import { ShortcutsOverlay } from "./graph/ShortcutsOverlay";
 import { Settings } from "./graph/Settings";
 import { DocumentProperties } from "./graph/components/DocumentProperties";
@@ -141,6 +142,7 @@ function MainApp() {
       <ElementPicker />
       <FilePicker />
       <PivotEditorPopup />
+      <CategorizePopup />
       <ShortcutsOverlay />
       <HelpDialogs />
       <Settings />
