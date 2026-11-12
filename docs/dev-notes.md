@@ -23,6 +23,8 @@ specific item.
 - Self-hosting: `docs/self-hosting.md` is the proposal for the engineering team (SharePoint via Microsoft Graph, or
   same-origin hosting). Built: `solenoid.config.json` with `trustedSources`, hosts that skip the network prompt
   (`deploymentConfig.ts`). Not built: the Microsoft sign-in, opening a graph from a link; the product call comes first.
+- Desktop build, Linux: `cache-apt-pkgs-action` reports a failed install as success (a mirror 404'd GStreamer
+  debs; the build died at the linker), so `desktop-build.yml` now checks with `pkg-config` and installs directly once.
 - This container lacked the `wasm-bindgen` CLI: `cargo install wasm-bindgen-cli --version 0.2.130 --locked`.
 - Site: a Bluesky icon in the header and a footer link; the site review is a backlog item under Landing pages.
 
