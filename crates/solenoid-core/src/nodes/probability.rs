@@ -437,7 +437,7 @@ fn ab_test_or_err(c: &mut Call) -> Result<Option<[f64; 4]>, V> {
 
     let lo = (a.mean() - PLOT_SPAN * a.sd()).min(b.mean() - PLOT_SPAN * b.sd()).max(0.0);
     let hi = (a.mean() + PLOT_SPAN * a.sd()).max(b.mean() + PLOT_SPAN * b.sd()).min(1.0);
-    let xs: Vec<f64> = (0..PLOT_POINTS).map(|i| lo + (hi - lo) * i as f64 / (PLOT_POINTS - 1) as f64).collect();
+    let xs: Vec<f64> = Vec::from_fn(PLOT_POINTS, |i| lo + (hi - lo) * i as f64 / (PLOT_POINTS - 1) as f64);
     c.show("plotX", nums(&xs));
     c.show("plotA", nums(&xs.iter().map(|&x| a.density(x)).collect::<Vec<_>>()));
     c.show("plotB", nums(&xs.iter().map(|&x| b.density(x)).collect::<Vec<_>>()));
@@ -522,7 +522,7 @@ fn histogram(sorted: &[f64]) -> (Vec<f64>, Vec<f64>) {
     for s in sorted {
         counts[(((s - origin) / width).max(0.0) as usize).min(bins - 1)] += 1.0;
     }
-    ((0..bins).map(|i| origin + width * (i as f64 + 0.5)).collect(), counts)
+    (Vec::from_fn(bins, |i| origin + width * (i as f64 + 0.5)), counts)
 }
 
 fn bootstrap(c: &mut Call) -> Answer {
@@ -573,14 +573,12 @@ fn bootstrap_or_err(c: &mut Call) -> Result<Option<[f64; 3]>, V> {
     };
     let mut rng = crate::planners::mulberry32(seed);
     let mut buf = vec![0.0; n];
-    let mut stats: Vec<f64> = (0..resample_count(n))
-        .map(|_| {
-            for slot in buf.iter_mut() {
-                *slot = xs[((rng() * n as f64) as usize).min(n - 1)];
-            }
-            stat(&op, &mut buf)
-        })
-        .collect();
+    let mut stats: Vec<f64> = Vec::from_fn(resample_count(n), |_| {
+        for slot in buf.iter_mut() {
+            *slot = xs[((rng() * n as f64) as usize).min(n - 1)];
+        }
+        stat(&op, &mut buf)
+    });
     stats.sort_by(f64::total_cmp);
     let (low, high) = (percentile(&stats, 0.025), percentile(&stats, 0.975));
 

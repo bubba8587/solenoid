@@ -90,7 +90,7 @@ fn calendar_skips_weekends_and_holidays_in_index_space() {
     assert_eq!(day_of_week(mon()), 1.0);
     assert_eq!(day_of_week(s(1970, 1, 1)), 4.0);
     let c = Calendar::new(mon(), &CalendarSpec { holidays: holidays(&[s(2026, 1, 7)]), ..working() });
-    let ds: Vec<String> = (0..6).map(|k| iso(c.date(k as f64).unwrap())).collect();
+    let ds: Vec<String> = Vec::from_fn(6, |k| iso(c.date(k as f64).unwrap()));
     assert_eq!(ds, ["2026-01-05", "2026-01-06", "2026-01-08", "2026-01-09", "2026-01-12", "2026-01-13"]);
     assert_eq!(c.index_ceil(s(2026, 1, 7)).unwrap(), 2.0);
     assert_eq!(c.index_floor(s(2026, 1, 7)).unwrap(), 1.0);

@@ -513,7 +513,7 @@ impl<'a> RowCtx<'a> {
             .borrow_mut()
             .entry(c.name().to_string())
             .or_insert_with(|| match c {
-                Col::Frame(c) => list((0..c.values.len()).map(|i| list(vec![frame_cell_v(c, i)])).collect()),
+                Col::Frame(c) => list(Vec::from_fn(c.values.len(), |i| list(vec![frame_cell_v(c, i)]))),
                 Col::Row(RowColumn { whole: Some(w), .. }) => w.clone(),
                 Col::Row(c) => list(c.values.iter().map(|v| list(vec![v.clone()])).collect()),
             })
@@ -1049,9 +1049,8 @@ impl Eval<'_> {
                 }
             }
         }
-        let Ok(v) = crate::date_values::call(name, argv, |argv| {
-            Ok::<_, !>(self.call_with(name, t, args, argv, settled))
-        });
+        let Ok(v) =
+            crate::date_values::call(name, argv, |argv| Ok::<_, !>(self.call_with(name, t, args, argv, settled)));
         v
     }
 
@@ -1452,27 +1451,25 @@ impl Eval<'_> {
                 let cell_at = |k: usize, i: usize, j: usize| {
                     shaped.get(k).and_then(|m| m.get(i)).and_then(|r| r.get(j)).cloned().unwrap_or(V::Null)
                 };
-                let out: Vec<Vec<V>> = (0..rows)
-                    .map(|i| {
-                        (0..cols)
-                            .map(|j| {
-                                one(
-                                    "cell",
-                                    call(
-                                        &[
-                                            cell_at(0, i, j),
-                                            cell_at(1, i, j),
-                                            cell_at(2, i, j),
-                                            V::Num((i + 1) as f64),
-                                            V::Num((j + 1) as f64),
-                                        ],
-                                        arrays.len(),
-                                    ),
-                                )
-                            })
-                            .collect()
-                    })
-                    .collect();
+                let out: Vec<Vec<V>> = Vec::from_fn(rows, |i| {
+                    (0..cols)
+                        .map(|j| {
+                            one(
+                                "cell",
+                                call(
+                                    &[
+                                        cell_at(0, i, j),
+                                        cell_at(1, i, j),
+                                        cell_at(2, i, j),
+                                        V::Num((i + 1) as f64),
+                                        V::Num((j + 1) as f64),
+                                    ],
+                                    arrays.len(),
+                                ),
+                            )
+                        })
+                        .collect()
+                });
                 like_input(&arrays[0], out)
             }
             "BYROW" => match as_rows(&arg(0)) {
@@ -1483,16 +1480,12 @@ impl Eval<'_> {
                 None => V::Null,
                 Some(m) => {
                     let cols = m.iter().map(Vec::len).max().unwrap_or(0);
-                    list(
-                        (0..cols)
-                            .map(|j| {
-                                one(
-                                    "column",
-                                    call(&[list(m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Null)).collect())], 1),
-                                )
-                            })
-                            .collect(),
-                    )
+                    list(Vec::from_fn(cols, |j| {
+                        one(
+                            "column",
+                            call(&[list(m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Null)).collect())], 1),
+                        )
+                    }))
                 }
             },
             "REDUCE" => {
@@ -1565,22 +1558,15 @@ impl Eval<'_> {
                     ));
                 }
                 let (r, c) = (if r.is_nan() { 0.0 } else { r }, if c.is_nan() { 0.0 } else { c });
-                list(
-                    (0..r as usize)
-                        .map(|i| {
-                            list(
-                                (0..c as usize)
-                                    .map(|j| {
-                                        one(
-                                            "cell",
-                                            self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]),
-                                        )
-                                    })
-                                    .collect(),
-                            )
-                        })
-                        .collect(),
-                )
+                list(Vec::from_fn(r as usize, |i| {
+                    list(
+                        (0..c as usize)
+                            .map(|j| {
+                                one("cell", self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]))
+                            })
+                            .collect(),
+                    )
+                }))
             }
             "GROUPBY" => {
                 if absent(&arg(0)) || absent(&arg(1)) {
@@ -2495,12 +2481,12 @@ mod hoist_tests {
             |i: usize, m: usize| if i % 4 == 3 { FrameCell::Null } else { FrameCell::Num((i * m % 7) as f64 - 2.0) };
         let f = FrameValue {
             columns: vec![
-                FrameColumn::new("a", FrameColType::Number, (0..n).map(|i| num(i, 3)).collect()),
-                FrameColumn::new("b", FrameColType::Number, (0..n).map(|i| num(i, 5)).collect()),
+                FrameColumn::new("a", FrameColType::Number, Vec::from_fn(n, |i| num(i, 3))),
+                FrameColumn::new("b", FrameColType::Number, Vec::from_fn(n, |i| num(i, 5))),
                 FrameColumn::new(
                     "t",
                     FrameColType::String,
-                    (0..n).map(|i| FrameCell::Str(Rc::from(["x", "y", ""][i % 3]))).collect(),
+                    Vec::from_fn(n, |i| FrameCell::Str(Rc::from(["x", "y", ""][i % 3]))),
                 ),
             ],
         };

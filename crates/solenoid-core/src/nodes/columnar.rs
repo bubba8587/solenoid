@@ -231,17 +231,15 @@ mod tests {
 
     #[test]
     fn frame_and_list_round_trip() {
-        let cells: Vec<V> = (0..80)
-            .map(|i| match i % 7 {
-                0 => V::Num(-0.0),
-                1 => V::Num(f64::NAN),
-                2 => V::str("é😀"),
-                3 => V::Bool(true),
-                4 => V::Null,
-                5 => V::err(sol_error(ErrorCode::NotAvailable, "m")),
-                _ => V::Num(i as f64),
-            })
-            .collect();
+        let cells: Vec<V> = Vec::from_fn(80, |i| match i % 7 {
+            0 => V::Num(-0.0),
+            1 => V::Num(f64::NAN),
+            2 => V::str("é😀"),
+            3 => V::Bool(true),
+            4 => V::Null,
+            5 => V::err(sol_error(ErrorCode::NotAvailable, "m")),
+            _ => V::Num(i as f64),
+        });
         let f = Frame {
             columns: vec![Column {
                 name: "a".into(),
@@ -249,7 +247,7 @@ mod tests {
                 values: cells.clone(),
                 unit: Some(json!({ "dim": { "length": 1 } })),
                 format: Some(Json::Null),
-                raw: Some(Json::Array((0..80).map(|i| Json::String(format!("r{i}"))).collect())),
+                raw: Some(Json::Array(Vec::from_fn(80, |i| Json::String(format!("r{i}"))))),
             }],
             total_rows: Some(240.0),
             approx: Some(json!({ "factor": 3 })),

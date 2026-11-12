@@ -573,7 +573,7 @@ mod tests {
     use super::*;
 
     fn dates(n: usize, from: f64) -> V {
-        V::List(Rc::new((0..n).map(|i| V::Date(from + i as f64)).collect()))
+        V::List(Rc::new(Vec::from_fn(n, |i| V::Date(from + i as f64))))
     }
 
     /// A long list's serial copy is made once, so a range function per row of a column reads one list, not a copy a row

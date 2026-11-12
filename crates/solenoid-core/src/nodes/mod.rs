@@ -208,7 +208,7 @@ impl Call {
     /// with `redraw` all of them anew where it holds a different count. The roll a call's `init` carries under `given`
     /// (a frozen call: a number, or a list of them) comes first, padded with fresh rolls to `n`.
     pub fn rolls(&mut self, given: &str, n: usize, redraw: bool) -> Vec<f64> {
-        let fresh = |k: usize| (0..k).map(|_| crate::fns_random::random()).collect::<Vec<f64>>();
+        let fresh = |k: usize| Vec::<f64>::from_fn(k, |_| crate::fns_random::random());
         if let Some(g) = self.init.get(given) {
             let mut held: Vec<f64> = match g {
                 Json::Array(a) => a.iter().map(|x| x.as_f64().unwrap_or(f64::NAN)).collect(),

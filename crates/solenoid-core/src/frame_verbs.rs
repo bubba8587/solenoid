@@ -547,7 +547,7 @@ pub fn sample_frame(f: &FrameValue, n: usize) -> Option<FrameValue> {
         return None;
     }
     let stride = total as f64 / n as f64;
-    let idx: Vec<usize> = (0..n).map(|i| ((i as f64 * stride).floor() as usize).min(total - 1)).collect();
+    let idx: Vec<usize> = Vec::from_fn(n, |i| ((i as f64 * stride).floor() as usize).min(total - 1));
     Some(reorder_rows(f, &idx))
 }
 
@@ -1299,12 +1299,10 @@ fn asof_pairs(
         a.key.partial_cmp(&b.key).unwrap_or(Ordering::Equal).then(a.idx.cmp(&b.idx))
     });
     let direction = opts.asof_direction.unwrap_or(AsofDirection::Backward);
-    Ok((0..frame_row_count(left))
-        .map(|i| match asof_key(lk.cell_at(i)) {
-            None => (Some(i), None),
-            Some(key) => (Some(i), asof_nearest(&sorted_right, key, direction, opts.asof_tolerance)),
-        })
-        .collect())
+    Ok(Vec::from_fn(frame_row_count(left), |i| match asof_key(lk.cell_at(i)) {
+        None => (Some(i), None),
+        Some(key) => (Some(i), asof_nearest(&sorted_right, key, direction, opts.asof_tolerance)),
+    }))
 }
 
 pub fn cross_join_frames(left: &FrameValue, right: &FrameValue) -> FrameValue {
@@ -1554,23 +1552,21 @@ fn order_leaves(rows: &[usize], cols: &[&FrameColumn], sort_field: isize, desc: 
     // Every level's items sort ascending by their own type (text by character code, numbers and dates by value, a
     // blank or an error last), as Excel's PIVOTBY lists them; the sort field's level runs descending when asked
     // (author 2026-11-11: the order the data first shows them in was no order a reader could follow).
-    let sorted_rank: Vec<FxHashMap<CellKey, usize>> = (0..cols.len())
-        .map(|lvl| {
-            let cmp = comparator_for(cols[lvl].ty);
-            let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
-            let mut ordered = cell_by_enc[lvl].clone();
-            stable_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
-                (true, true) => Ordering::Equal,
-                (true, false) => Ordering::Greater,
-                (false, true) => Ordering::Less,
-                _ => cmp(a, b),
-            });
-            if desc && lvl as isize == sort_field {
-                ordered.reverse();
-            }
-            ordered.iter().enumerate().map(|(idx, (vk, _))| (*vk, idx)).collect()
-        })
-        .collect();
+    let sorted_rank: Vec<FxHashMap<CellKey, usize>> = Vec::from_fn(cols.len(), |lvl| {
+        let cmp = comparator_for(cols[lvl].ty);
+        let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
+        let mut ordered = cell_by_enc[lvl].clone();
+        stable_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Greater,
+            (false, true) => Ordering::Less,
+            _ => cmp(a, b),
+        });
+        if desc && lvl as isize == sort_field {
+            ordered.reverse();
+        }
+        ordered.iter().enumerate().map(|(idx, (vk, _))| (*vk, idx)).collect()
+    });
     let rank_at = |lvl: usize, vk: &CellKey| -> usize { sorted_rank[lvl][vk] };
     let ranks: Vec<Vec<usize>> =
         first_seen.iter().map(|t| t.iter().enumerate().map(|(lvl, c)| rank_at(lvl, &cell_key(c))).collect()).collect();
@@ -1839,9 +1835,9 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     if row_val_sort >= 0.0 && row_val_sort < sortable && row_val_sort.fract() == 0.0 && r_n > 1 {
         let vs = row_val_sort as usize;
         let scores: Vec<Score> = if vs < v_n {
-            (0..r_n).map(|r| sort_key(&cells[vs][r].concat(), vs)).collect()
+            Vec::from_fn(r_n, |r| sort_key(&cells[vs][r].concat(), vs))
         } else {
-            (0..r_n).map(|r| calc_score(vs - v_n, srcs[r].concat())).collect()
+            Vec::from_fn(r_n, |r| calc_score(vs - v_n, srcs[r].concat()))
         };
         let perm = order(&scores, rs < 0.0);
         row_leaves = perm.iter().map(|&r| row_leaves[r].clone()).collect();
@@ -1856,13 +1852,11 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     if col_val_sort >= 0.0 && col_val_sort < sortable && col_val_sort.fract() == 0.0 && c_n > 1 {
         let vs = col_val_sort as usize;
         let scores: Vec<Score> = if vs < v_n {
-            (0..c_n)
-                .map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs))
-                .collect()
+            Vec::from_fn(c_n, |c| {
+                sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs)
+            })
         } else {
-            (0..c_n)
-                .map(|c| calc_score(vs - v_n, (0..r_n).flat_map(|r| srcs[r][c].iter().copied()).collect()))
-                .collect()
+            Vec::from_fn(c_n, |c| calc_score(vs - v_n, (0..r_n).flat_map(|r| srcs[r][c].iter().copied()).collect()))
         };
         let perm = order(&scores, cs < 0.0);
         col_leaves = perm.iter().map(|&c| col_leaves[c].clone()).collect();
@@ -2009,7 +2003,7 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         s
     };
     let named = |v: usize| if v < v_n { value_names[v].clone() } else { calcs[v - v_n].name.clone() };
-    let all_values: Vec<String> = (0..v_n + calcs.len()).map(named).collect();
+    let all_values: Vec<String> = Vec::from_fn(v_n + calcs.len(), named);
     let value_names = &all_values;
     let multi_val = all_values.len() > 1;
     let col_header = |co: &AxisOut, v: usize| -> String {
@@ -2051,7 +2045,7 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     }
     let body_names = make_headers(&raw_headers, raw_headers.len());
     let plans: Vec<ReadingPlan> =
-        (0..v_n).map(|v| agg_unit_plan(funcs[v], val_cols[v].unit.as_deref(), Some(val_cols[v].ty))).collect();
+        Vec::from_fn(v_n, |v| agg_unit_plan(funcs[v], val_cols[v].unit.as_deref(), Some(val_cols[v].ty)));
     for (bi, (co, v)) in body_specs.iter().enumerate() {
         if *v >= v_n {
             let calc = &calcs[*v - v_n];
@@ -2182,21 +2176,19 @@ pub fn split_pivot_totals(src: &FrameValue, full: &FrameValue, layout: &Json) ->
     // column, which turns a date or number field to text in the full pivot, and the leaves have no total among them.
     let row_fields_src: Vec<&str> =
         layout["rowFields"].as_array().map_or(Vec::new(), |a| a.iter().filter_map(Json::as_str).collect());
-    let key_columns: Vec<FrameColumn> = (0..keys)
-        .map(|k| {
-            let source = src.columns.iter().find(|c| Some(c.name.as_str()) == row_fields_src.get(k).copied());
-            let cells = leaf_rows
-                .iter()
-                .map(|&i| {
-                    rows[i]["tuple"].as_array().and_then(|t| t.get(k)).map_or(FrameCell::Null, crate::wire::decode_cell)
-                })
-                .collect();
-            let mut col =
-                FrameColumn::new(full.columns[k].name.clone(), source.map_or(full.columns[k].ty, |c| c.ty), cells);
-            col.format = source.and_then(|c| c.format.clone());
-            col
-        })
-        .collect();
+    let key_columns: Vec<FrameColumn> = Vec::from_fn(keys, |k| {
+        let source = src.columns.iter().find(|c| Some(c.name.as_str()) == row_fields_src.get(k).copied());
+        let cells = leaf_rows
+            .iter()
+            .map(|&i| {
+                rows[i]["tuple"].as_array().and_then(|t| t.get(k)).map_or(FrameCell::Null, crate::wire::decode_cell)
+            })
+            .collect();
+        let mut col =
+            FrameColumn::new(full.columns[k].name.clone(), source.map_or(full.columns[k].ty, |c| c.ty), cells);
+        col.format = source.and_then(|c| c.format.clone());
+        col
+    });
     let key_cols = || key_columns.iter().cloned();
 
     let plain = FrameValue {
@@ -2350,7 +2342,7 @@ pub fn bind_columns(frames: &[&FrameValue]) -> FrameValue {
     frame(
         all.iter()
             .zip(names)
-            .map(|(c, name)| FrameColumn { name, ..c.with_values((0..rows).map(|r| c.cell_at(r).clone()).collect()) })
+            .map(|(c, name)| FrameColumn { name, ..c.with_values(Vec::from_fn(rows, |r| c.cell_at(r).clone())) })
             .collect(),
     )
 }
@@ -2647,7 +2639,7 @@ pub fn add_index_column(f: &FrameValue, name: &str, start: f64) -> FrameValue {
     let index = FrameColumn::new(
         nm,
         FrameColType::Number,
-        (0..frame_row_count(f)).map(|i| FrameCell::Num(start + i as f64)).collect(),
+        Vec::from_fn(frame_row_count(f), |i| FrameCell::Num(start + i as f64)),
     );
     with_unique_names(std::iter::once(index).chain(f.columns.iter().cloned()).collect())
 }
@@ -2690,18 +2682,16 @@ pub fn merge_columns(f: &FrameValue, columns: &[String], separator: &str, name: 
     if sources.len() < 2 {
         return Err(sol_error(ErrorCode::Value, "Merge needs at least two columns"));
     }
-    let values = (0..frame_row_count(f))
-        .map(|i| {
-            let texts: Vec<Cow<str>> = sources
-                .iter()
-                .map(|c| match c.cell_at(i) {
-                    FrameCell::Null => Cow::Borrowed(""),
-                    v => Cow::Owned(format_frame_cell(c.ty, v)),
-                })
-                .collect();
-            FrameCell::Str(Rc::from(texts.join(separator)))
-        })
-        .collect();
+    let values = Vec::from_fn(frame_row_count(f), |i| {
+        let texts: Vec<Cow<str>> = sources
+            .iter()
+            .map(|c| match c.cell_at(i) {
+                FrameCell::Null => Cow::Borrowed(""),
+                v => Cow::Owned(format_frame_cell(c.ty, v)),
+            })
+            .collect();
+        FrameCell::Str(Rc::from(texts.join(separator)))
+    });
     let drop: HashSet<&str> = sources.iter().map(|c| c.name.as_str()).collect();
     let at = f.columns.iter().position(|c| c.name == sources[0].name).unwrap_or(0);
     let kept: Vec<&FrameColumn> = f.columns.iter().filter(|c| !drop.contains(c.name.as_str())).collect();

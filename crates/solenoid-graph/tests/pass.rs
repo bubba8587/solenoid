@@ -97,7 +97,7 @@ fn loop_members_is_empty_on_a_dag() {
 
 #[test]
 fn loop_members_survives_a_long_ring() {
-    let ids: Vec<String> = (0..50_000).map(|i| format!("n{i}")).collect();
+    let ids: Vec<String> = Vec::from_fn(50_000, |i| format!("n{i}"));
     let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
     let mut cables: Vec<(&str, &str)> = refs.windows(2).map(|w| (w[0], w[1])).collect();
     cables.push((refs[refs.len() - 1], refs[0]));

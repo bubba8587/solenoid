@@ -62,10 +62,10 @@ mod tests {
 
     #[test]
     fn stable_and_total() {
-        let mut v: Vec<(i32, usize)> = (0..1000).map(|i| ((i * 7919 % 13) as i32, i)).collect();
+        let mut v: Vec<(i32, usize)> = Vec::from_fn(1000, |i| ((i * 7919 % 13) as i32, i));
         stable_sort_by(&mut v, |a, b| a.0.cmp(&b.0));
         assert!(v.windows(2).all(|w| w[0].0 < w[1].0 || (w[0].0 == w[1].0 && w[0].1 < w[1].1)));
-        let mut w: Vec<f64> = (0..500).map(|i| if i % 3 == 0 { f64::NAN } else { (i % 17) as f64 }).collect();
+        let mut w: Vec<f64> = Vec::from_fn(500, |i| if i % 3 == 0 { f64::NAN } else { (i % 17) as f64 });
         stable_sort_by(&mut w, |a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
     }
 }

@@ -178,7 +178,7 @@ fn table_mult(c: &mut Call) -> Answer {
 
 /// `diag(i)` on the diagonal, `off` elsewhere.
 fn square(n: usize, diag: impl Fn(usize) -> V, off: &V) -> V {
-    grid((0..n).map(|i| (0..n).map(|j| if i == j { diag(i) } else { off.clone() }).collect()))
+    grid((0..n).map(|i| Vec::from_fn(n, |j| if i == j { diag(i) } else { off.clone() })))
 }
 
 fn off_diag(c: &Call) -> (bool, V) {
@@ -582,7 +582,7 @@ fn by_axis(c: &mut Call) -> Answer {
     let vectors: Vec<Vec<V>> = if by_row {
         m.clone()
     } else {
-        (0..m[0].len()).map(|j| m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect()).collect()
+        Vec::from_fn(m[0].len(), |j| m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect())
     };
     let ev = Eval::default();
     let out: Vec<V> = vectors.into_iter().map(|vec| result_cell(&body.call(&ev, &[list(vec)]))).collect();
@@ -711,9 +711,7 @@ fn table_raw_cells(text: &str) -> Vec<Vec<String>> {
     while cols > 1 && raw.iter().all(|r| r.get(cols - 1).is_none_or(|x| trim_space(x).is_empty())) {
         cols -= 1;
     }
-    raw.iter()
-        .map(|r| (0..cols).map(|j| trim_space(r.get(j).map_or("", String::as_str)).to_string()).collect())
-        .collect()
+    raw.iter().map(|r| Vec::from_fn(cols, |j| trim_space(r.get(j).map_or("", String::as_str)).to_string())).collect()
 }
 
 fn table_input(c: &mut Call) -> Answer {
@@ -983,8 +981,7 @@ fn expand(c: &mut Call) -> Answer {
 fn set_cells(m: &[Vec<V>], writes: &[(V, V, V)]) -> Result<V, V> {
     let rows = m.len();
     let cols = m.first().map_or_default(Vec::len);
-    let mut out: Vec<Vec<V>> =
-        m.iter().map(|r| (0..cols).map(|j| r.get(j).cloned().unwrap_or(V::Null)).collect()).collect();
+    let mut out: Vec<Vec<V>> = m.iter().map(|r| Vec::from_fn(cols, |j| r.get(j).cloned().unwrap_or(V::Null))).collect();
     let ref_err = |n: f64, max: usize, what: &str| {
         Ok(err(ErrorCode::Ref, format!("{what} {} is outside 1…{max}", number_to_string(n))))
     };

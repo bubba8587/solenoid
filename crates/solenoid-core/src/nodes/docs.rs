@@ -850,7 +850,7 @@ fn template(c: &mut Call) -> Answer {
     };
     let result = match len {
         None => render(None),
-        Some(n) => list((0..n).map(|i| render(Some(i))).collect()),
+        Some(n) => list(Vec::from_fn(n, |i| render(Some(i)))),
     };
     c.show("cachedText", result.clone());
     Ok(vec![("result".into(), Cv::from(result))])
@@ -1119,8 +1119,8 @@ fn record_deck(cols: &[Column], drawn: &[usize], d: crate::card_helpers::NumberD
         .map(|(i, c)| CardColumn {
             name: names[i].clone(),
             ty: c.ty.as_str().to_string(),
-            cells: (0..profiled).map(|r| raw_text(c, r)).collect(),
-            shown: Some((0..profiled).map(|r| shown_text(c, r)).collect()),
+            cells: Vec::from_fn(profiled, |r| raw_text(c, r)),
+            shown: Some(Vec::from_fn(profiled, |r| shown_text(c, r))),
             chip: chip_cols.contains(&i),
             nested: false,
             lists: false,

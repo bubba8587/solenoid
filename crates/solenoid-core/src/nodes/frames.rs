@@ -844,22 +844,18 @@ fn split_frame(c: &mut Call) -> Answer {
         let matrix = if cols.is_empty() {
             V::Null
         } else {
-            list(
-                (0..rows)
-                    .map(|i| {
-                        list(
-                            cols.iter()
-                                .map(|col| match col.values.get(i) {
-                                    Some(V::Str(s)) => V::Str(s.clone()),
-                                    Some(V::Err(e)) => V::str(e.code.as_str()),
-                                    None | Some(V::Null | V::Undef) => V::str(""),
-                                    Some(v) => V::str(&crate::excel_functions::value_text(v)),
-                                })
-                                .collect(),
-                        )
-                    })
-                    .collect(),
-            )
+            list(Vec::from_fn(rows, |i| {
+                list(
+                    cols.iter()
+                        .map(|col| match col.values.get(i) {
+                            Some(V::Str(s)) => V::Str(s.clone()),
+                            Some(V::Err(e)) => V::str(e.code.as_str()),
+                            None | Some(V::Null | V::Undef) => V::str(""),
+                            Some(v) => V::str(&crate::excel_functions::value_text(v)),
+                        })
+                        .collect(),
+                )
+            }))
         };
         return out(c, Cv::V(matrix), Cv::V(headers), false);
     }
@@ -994,12 +990,10 @@ fn trend_series(nums: &[f64]) -> Vec<f64> {
     if n <= TREND_POINTS {
         return nums.to_vec();
     }
-    (0..TREND_POINTS)
-        .map(|b| {
-            let (lo, hi) = (b * n / TREND_POINTS, (b + 1) * n / TREND_POINTS);
-            nums[lo..hi].iter().sum::<f64>() / (hi - lo) as f64
-        })
-        .collect()
+    Vec::from_fn(TREND_POINTS, |b| {
+        let (lo, hi) = (b * n / TREND_POINTS, (b + 1) * n / TREND_POINTS);
+        nums[lo..hi].iter().sum::<f64>() / (hi - lo) as f64
+    })
 }
 
 /// A column's most common values, most first and ties in text order, and how many filled rows hold any other.
@@ -1538,7 +1532,7 @@ fn add_column(c: &mut Call) -> Answer {
     let values = super::stats::items(&values).to_vec();
     if let Cv::Cube(cube) = &raw {
         let rows = cube_row_count(cube).max(values.len());
-        let padded: Vec<V> = (0..rows).map(|i| values.get(i).cloned().unwrap_or(V::Null)).collect();
+        let padded: Vec<V> = Vec::from_fn(rows, |i| values.get(i).cloned().unwrap_or(V::Null));
         let unit = parse_column_unit_from_header(&name).1;
         let out = cube_with_column(cube, &name, padded, ty, unit.as_ref());
         return shown_frame(c, "frame", out);
@@ -1549,7 +1543,7 @@ fn add_column(c: &mut Call) -> Answer {
         _ => widen_to_frame(&V::Null),
     };
     let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0).max(values.len());
-    let padded: Vec<V> = (0..rows).map(|i| values.get(i).cloned().unwrap_or(V::Null)).collect();
+    let padded: Vec<V> = Vec::from_fn(rows, |i| values.get(i).cloned().unwrap_or(V::Null));
     let (clean, unit) = parse_column_unit_from_header(&name);
     let names_only = FrameValue {
         columns: f.columns.iter().map(|col| FrameColumn::new(col.name.clone(), col.ty, Vec::new())).collect(),
@@ -1687,7 +1681,7 @@ fn cube_lookup_indices(cube: &Cube, in_col: &str, lookups: &[String], mm: &str, 
     let rows = cube_row_count(cube);
     let key_cells = cube_values(&key.cells);
     let ty = key.ty.unwrap_or_else(|| infer_cube_key_type(&key_cells));
-    let cells: Vec<V> = (0..rows).map(|i| key_cells.get(i).cloned().unwrap_or(V::Undef)).collect();
+    let cells: Vec<V> = Vec::from_fn(rows, |i| key_cells.get(i).cloned().unwrap_or(V::Undef));
     let keys: Vec<FrameCell> = keys_in_display_unit(&cells).iter().map(core_cell).collect();
     let f = FrameValue { columns: vec![FrameColumn::new(in_col, ty, keys)] };
     let wanted = list(lookups.iter().map(|l| V::str(l)).collect());
@@ -2434,9 +2428,9 @@ fn cube_columns(c: &mut Call) -> Answer {
         .enumerate()
         .map(|(i, (name, cells))| CubeColumn {
             name,
-            cells: (0..max)
-                .map(|r| cells.get(r).filter(|v| !matches!(v, Cv::V(V::Undef))).cloned().unwrap_or(Cv::NULL))
-                .collect(),
+            cells: Vec::from_fn(max, |r| {
+                cells.get(r).filter(|v| !matches!(v, Cv::V(V::Undef))).cloned().unwrap_or(Cv::NULL)
+            }),
             ty: dates.get(i).copied().unwrap_or(false).then_some(FrameColType::Date),
             format: None,
         })
@@ -2552,29 +2546,25 @@ fn relate_frames(parent: &Frame, child: &Cv, key: &str, nested_name: &str) -> Op
         .iter()
         .enumerate()
         .map(|(j, c)| {
-            let cells = (0..p_rows)
-                .map(|i| {
-                    let v = c.values.get(i).cloned().unwrap_or(V::Null);
-                    Cv::V(match &c.unit {
-                        Some(u) => tag_cell_unit(&v, u),
-                        None => v,
-                    })
+            let cells = Vec::from_fn(p_rows, |i| {
+                let v = c.values.get(i).cloned().unwrap_or(V::Null);
+                Cv::V(match &c.unit {
+                    Some(u) => tag_cell_unit(&v, u),
+                    None => v,
                 })
-                .collect();
+            });
             CubeColumn { name: names[j].clone(), cells, ty: Some(c.ty), format: None }
         })
         .collect();
-    let nested_cells = (0..p_rows)
-        .map(|i| {
-            let id = key_id_in_column(p_key.values.get(i).unwrap_or(&V::Null), p_key.unit.as_ref());
-            let rows = by_key.get(&id).cloned().unwrap_or_default();
-            match child {
-                Cv::Cube(k) => select_cube_rows(k, &rows),
-                Cv::Frame(f) => sub_frame(f, &rows),
-                _ => Cv::NULL,
-            }
-        })
-        .collect();
+    let nested_cells = Vec::from_fn(p_rows, |i| {
+        let id = key_id_in_column(p_key.values.get(i).unwrap_or(&V::Null), p_key.unit.as_ref());
+        let rows = by_key.get(&id).cloned().unwrap_or_default();
+        match child {
+            Cv::Cube(k) => select_cube_rows(k, &rows),
+            Cv::Frame(f) => sub_frame(f, &rows),
+            _ => Cv::NULL,
+        }
+    });
     columns.push(CubeColumn { name: names[parent.columns.len()].clone(), cells: nested_cells, ty: None, format: None });
     Some(cube_v(columns))
 }
@@ -3174,7 +3164,7 @@ fn rank_nested(
         }
     };
     let mut out: Vec<(Cv, Best)> =
-        (0..rows).map(|i| (cells.get(i).filter(|v| is_table(v)).map_or(Cv::NULL, tidy), None)).collect();
+        Vec::from_fn(rows, |i| (cells.get(i).filter(|v| is_table(v)).map_or(Cv::NULL, tidy), None));
     let tables: Vec<(Cv, usize)> =
         out.iter().enumerate().filter(|(_, o)| table_rows(&o.0) > 0).map(|(i, o)| (o.0.clone(), i)).collect();
     if tables.is_empty() {
@@ -3387,13 +3377,11 @@ fn build_frame(c: &mut Call) -> Answer {
     let Some(m) = to_any_matrix(&raw).filter(|m| !m.is_empty()) else { return shown_frame(c, "frame", V::Null) };
     // A column of dates is a Date column, its days packed as numbers ([[D114]] dateIsAKind).
     let width = m.iter().map(Vec::len).max().unwrap_or(0);
-    let date_cols: Vec<crate::value_kinds::Census> = (0..width)
-        .map(|j| {
-            m.iter()
-                .filter_map(|r| r.get(j))
-                .fold(crate::value_kinds::Census::default(), |c, v| c.join(crate::date_values::census(v)))
-        })
-        .collect();
+    let date_cols: Vec<crate::value_kinds::Census> = Vec::from_fn(width, |j| {
+        m.iter()
+            .filter_map(|r| r.get(j))
+            .fold(crate::value_kinds::Census::default(), |c, v| c.join(crate::date_values::census(v)))
+    });
     if date_cols.iter().any(|c| c.beside_dates().is_some()) {
         return shown_frame(c, "frame", crate::date_values::mixed("other kinds"));
     }

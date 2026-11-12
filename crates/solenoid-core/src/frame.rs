@@ -158,16 +158,14 @@ pub fn frame_row_count(f: &FrameValue) -> usize {
 }
 
 pub fn make_headers(names: &[String], ncols: usize) -> Vec<String> {
-    let raw: Vec<String> = (0..ncols)
-        .map(|i| {
-            let trimmed = names.get(i).map(|s| trim_space(s)).unwrap_or("");
-            if trimmed.is_empty() {
-                format!("Col{}", i + 1)
-            } else {
-                trimmed.to_string()
-            }
-        })
-        .collect();
+    let raw: Vec<String> = Vec::from_fn(ncols, |i| {
+        let trimmed = names.get(i).map(|s| trim_space(s)).unwrap_or("");
+        if trimmed.is_empty() {
+            format!("Col{}", i + 1)
+        } else {
+            trimmed.to_string()
+        }
+    });
     let mut seen = std::collections::HashSet::new();
     raw.into_iter()
         .map(|name| {

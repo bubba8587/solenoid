@@ -77,7 +77,7 @@ fn preview_of(f: &FrameValue, n: usize) -> Json {
     let row_count = frame_row_count(f);
     let take = n.min(row_count);
     let rows: Vec<Json> =
-        (0..take).map(|r| Json::Array(f.columns.iter().map(|c| encode_cell(c.cell_at(r))).collect())).collect();
+        Vec::from_fn(take, |r| Json::Array(f.columns.iter().map(|c| encode_cell(c.cell_at(r))).collect()));
     json!({
         "schema": f.columns.iter().map(|c| column_meta(json!({ "name": c.name, "type": c.ty.as_str() }), c)).collect::<Vec<_>>(),
         "rows": rows,

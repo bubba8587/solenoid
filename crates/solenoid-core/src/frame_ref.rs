@@ -138,7 +138,7 @@ impl Flushed {
     /// The first `n` rows, a row past a short column's end blank.
     pub fn head(&self, n: usize) -> Vec<FrameColumn> {
         let take = n.min(frame_row_count(&self.frame));
-        self.frame.columns.iter().map(|c| c.with_values((0..take).map(|r| c.cell_at(r).clone()).collect())).collect()
+        self.frame.columns.iter().map(|c| c.with_values(Vec::from_fn(take, |r| c.cell_at(r).clone()))).collect()
     }
 }
 
@@ -385,7 +385,7 @@ mod tests {
         let n = 50_000;
         let base = Rc::new(FrameValue {
             columns: vec![
-                FrameColumn::new("k", FrameColType::String, (0..n).map(|_| FrameCell::str("x")).collect()),
+                FrameColumn::new("k", FrameColType::String, Vec::from_fn(n, |_| FrameCell::str("x"))),
                 nums("v", (0..n).map(|_| 1.0)),
             ],
         });
@@ -423,7 +423,7 @@ mod tests {
                 FrameColumn::new(
                     "k",
                     FrameColType::String,
-                    (0..n).map(|i| FrameCell::str(if i % 5 < 3 { "a" } else { "b" })).collect(),
+                    Vec::from_fn(n, |i| FrameCell::str(if i % 5 < 3 { "a" } else { "b" })),
                 ),
                 nums("v", (0..n).map(|_| 1.0)),
             ],

@@ -132,7 +132,7 @@ fn randarray(a: &[V]) -> V {
             ),
         );
     }
-    let flat: Vec<V> = (0..(r * c) as usize).map(|_| V::Num(rand_array_draw(random(), lo, hi, whole))).collect();
+    let flat: Vec<V> = Vec::from_fn((r * c) as usize, |_| V::Num(rand_array_draw(random(), lo, hi, whole)));
     if c == 1.0 || flat.is_empty() {
         return list(flat);
     }
@@ -290,7 +290,7 @@ fn randdist(a: &[V]) -> V {
     if ps.iter().any(|v| v.is_nan()) {
         return crate::excel_functions::value_err("RANDDIST");
     }
-    let us: Vec<f64> = (0..count as usize).map(|_| random()).collect();
+    let us: Vec<f64> = Vec::from_fn(count as usize, |_| random());
     list(sample_quantiles(name, continuous, inverse, &us, &ps).into_iter().map(|v| v.map_or(V::Null, V::Num)).collect())
 }
 
@@ -388,7 +388,7 @@ fn randsample(a: &[V]) -> V {
         V::Null | V::Undef => None,
         other => Some(vec![other.clone()]),
     };
-    let rolls: Vec<f64> = (0..n).map(|_| random()).collect();
+    let rolls: Vec<f64> = Vec::from_fn(n, |_| random());
     match sample_with(&items, weights.as_deref(), &rolls) {
         Ok(drawn) => list(drawn),
         Err(e) => e,
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn draws_are_uniform_on_the_unit_interval() {
-        let xs: Vec<f64> = (0..10_000).map(|_| random()).collect();
+        let xs: Vec<f64> = Vec::from_fn(10_000, |_| random());
         assert!(xs.iter().all(|x| (0.0..1.0).contains(x)));
         let mean = xs.iter().sum::<f64>() / xs.len() as f64;
         assert!((mean - 0.5).abs() < 0.02, "{mean}");

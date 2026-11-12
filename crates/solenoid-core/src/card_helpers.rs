@@ -1457,13 +1457,11 @@ pub fn parse_record_layout(text: &str) -> Vec<Placement> {
                     let name = if title { trim_space(&named[1..]) } else { named };
                     let span =
                         m.map_or(1.0, |(_, d)| crate::value_kinds::decimal_from_text(d).clamp(1.0, 12.0)) as usize;
-                    (0..span)
-                        .map(move |i| Cell {
-                            name: name.to_string(),
-                            hint: if i == 0 { hint.to_string() } else { String::new() },
-                            title,
-                        })
-                        .collect::<Vec<_>>()
+                    Vec::from_fn(span, move |i| Cell {
+                        name: name.to_string(),
+                        hint: if i == 0 { hint.to_string() } else { String::new() },
+                        title,
+                    })
                 })
                 .collect::<Vec<_>>()
         })
