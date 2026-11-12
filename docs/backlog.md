@@ -243,6 +243,16 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 - [ ] **Conditional formatting as one shared layer** (author 2026-11-11: held until it is a component every Frame and List view hooks into, not a Pivot-only option): a color scale and data bars (Excel's), each column or value field on its own range, totals out of the range, bars from zero when all values are above it. Tried in the Pivot view first (`shadeFractions` over leaf cells, a `shade` view option); the layer wants to sit under the Grid, the Pivot view, Cards and a List's popup alike, with its pick saved where the column formats are (`frameFormatStore`).
 - [ ] **A Timeline card**: a date column in, a period strip to drag across (Day, Month, Quarter, Year), out the filtered frame and a logical mask for PIVOTBY's Filter input, so one Timeline drives several pivots, as Excel's connects to several. Slicer picks distinct values only.
 - [ ] **Date filters on a pivot field, what is left**: Before, After and Between on a date field, and relative ones (This Month, Year to Date), which recalculate as days pass and so stay opt-in by [[C44]] dateSerials: the author's call. The year › month › day checklist landed 2026-11-11 (`PivotFilterList.tsx`).
+- [ ] **A workbook's PivotTables as sources** (author 2026-11-12, backlogged): Local File and Web Source list a workbook's
+  PivotTables beside its Tables, and a pick outputs the pivot's saved source rows (its pivot cache:
+  `Xlsx::pivot_tables` and `pivot_table_data` in calamine). The rows are as fresh as the pivot's last Refresh in Excel,
+  not the last save; a workbook saved without its source data ("Save source data with file" off) has no cache, and
+  says so. Excel's rendered summary cells are not read (compact layout, blank repeated labels, subtotal rows).
+- [ ] **"Recreate this pivot"** (author 2026-11-12, backlogged; after the one above): with a pivot picked, a button
+  drops a Pivot card wired to it and set as Excel's: the definition's `rowFields`, `colFields`, `dataFields` (each
+  with its subtotal function), page fields and hidden items mapped to `PivotSpec`. calamine doesn't parse the
+  definition (`xl/pivotTables/pivotTableN.xml`); read it with quick-xml. What has no match (calculated items, Show
+  Values As, some date groupings) is listed on the card, never dropped silently. The button's look is the author's call.
 - [ ] **Custom subtotal functions**: a field's subtotals with a function other than its cells' (Excel's Field Settings ▸ Custom subtotals). Totals today re-aggregate the source with the value's own function.
 
 ## Desktop (low priority, author 2026-11-10)
