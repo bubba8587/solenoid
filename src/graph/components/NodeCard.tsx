@@ -17,6 +17,11 @@ export const HEADER_TAP_SLOP = 4;
 
 const noSubscribe = () => () => {};
 
+/** An input row's leading label (a row's second label, as in Rows/Cols, sits inside the field column), and a connection
+ *  card's field label. Shared with nodeCard.css and ConnectionNodes.css. */
+const IO_LABEL_COLUMN =
+  ".solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child), .sol-conn__field > .sol-conn__label";
+
 /** SVG strokes, not CSS borders, so the frame can't subpixel-crack under zoom (DESIGN.md § Cards); two sibling viewports, since an absolutely positioned svg keeps its intrinsic 300×150 unless sized and geometry on a nested svg proved unreliable. */
 export function CardFrame() {
   return (
@@ -113,6 +118,36 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   }
   // After every commit, which also covers the collapse toggle's re-layout.
   useLayoutEffect(syncOutputSocketTop);
+
+  /** The widest input-row label's natural width in layout px, or null for a card with no labeled input row. */
+  function readLabelColumn(): number | null | undefined {
+    const el = ref.current;
+    if (!el) return undefined;
+    let widest = 0;
+    let found = false;
+    const range = document.createRange();
+    for (const label of el.querySelectorAll<HTMLElement>(IO_LABEL_COLUMN)) {
+      const next = label.nextElementSibling;
+      if (!next || next.classList.contains("solenoid-node__row-remove")) continue;
+      range.selectNodeContents(label);
+      widest = Math.max(widest, range.getBoundingClientRect().width);
+      found = true;
+    }
+    if (!found) return null;
+    // Range rects are on screen, under the canvas zoom.
+    const scale = el.getBoundingClientRect().width / (el.offsetWidth || 1);
+    return Math.ceil(widest / (scale || 1));
+  }
+  const labelColumnOwner = useRef({});
+  // Every labeled input row starts its field at one x: the card's widest label, capped in CSS.
+  useLayoutEffect(() => {
+    measureThenWrite(labelColumnOwner.current, readLabelColumn, (w) => {
+      const el = ref.current;
+      if (!el || w === undefined) return;
+      if (w === null) el.style.removeProperty("--io-label-w");
+      else if (el.style.getPropertyValue("--io-label-w") !== `${w}px`) el.style.setProperty("--io-label-w", `${w}px`);
+    });
+  });
 
   // A pinned inline `height` would keep the collapsed card full-height while empty.
   useLayoutEffect(() => {

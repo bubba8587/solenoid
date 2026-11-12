@@ -514,6 +514,13 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   box-sizing: border-box;
 }
 
+/* A date picker on a 22px row (Date Range) takes the inline field's size, so a full date fits a default-width card. */
+.solenoid-node__io-row:not(.solenoid-node__io-row--hero) > input.solenoid-node__value-input[type="date"] {
+  flex: 1 1 auto;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
 .solenoid-node__value-input:focus {
   border-color: var(--node-accent, var(--accent));
 }
@@ -712,8 +719,9 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 }
 
 .solenoid-node__io-row {
-  /* Not a positioning context: sockets anchor to .solenoid-node__content, so every row shares one x and a header-independent top. */
-  height: 22px;
+  /* Not a positioning context: sockets anchor to .solenoid-node__content, so every row shares one x and a header-independent top.
+     A 22px line; a label too long for the label column wraps and the row grows, its socket re-centering on it. */
+  min-height: 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -727,9 +735,29 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 .solenoid-node__io-label {
   flex: 0 0 auto;
 }
+/* The label column: every labeled input row's field starts at one x, the card's widest label (`--io-label-w`,
+   NodeCard measures it), capped so the field keeps 60px, room for six digits or a short word. A label past the cap
+   wraps onto a second, balanced line rather than squeezing its field. Same selector as NodeCard's IO_LABEL_COLUMN. */
+.solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child) {
+  flex: 0 0 auto;
+  min-width: min(var(--io-label-w, 0px), 100% - 72px);
+  max-width: calc(100% - 72px);
+  line-height: 1.2;
+  overflow-wrap: break-word;
+  text-wrap-style: balance;
+}
 /* A field that fills the rest of the row sits a little further off its label than the row's gap. */
-.solenoid-node__io-label + :is(.solenoid-node__quoted--inline, .solenoid-node__inline-input, .solenoid-node__select, .solenoid-node__value-input) {
+.solenoid-node__io-label + :is(.solenoid-node__quoted--inline, .solenoid-node__inline-input, .solenoid-node__select, .solenoid-node__value-input, .solenoid-node__keyed, .sol-conn__select) {
   margin-left: 4px;
+  min-width: 60px;
+}
+/* The quote marks hang outside the field, so a text field's box lines up with the number fields above and below. */
+.solenoid-node__io-label + .solenoid-node__quoted--inline {
+  margin-left: calc(4px - var(--quote-hang));
+  min-width: calc(60px + 2 * var(--quote-hang));
+}
+.solenoid-node__io-label + .solenoid-node__quoted--inline:last-child {
+  margin-right: calc(0px - var(--quote-hang));
 }
 
 .solenoid-node__io-row--hero {
@@ -962,6 +990,7 @@ body.solenoid-scrubbing * {
 }
 
 .solenoid-node__quoted {
+  --quote-hang: 7px; /* a quote mark and the gap after it */
   position: relative;
   display: inline-flex;
   align-items: baseline;
@@ -980,7 +1009,8 @@ body.solenoid-scrubbing * {
   max-width: 100%;
 }
 .solenoid-node__quote {
-  flex: 0 0 auto;
+  flex: 0 0 5px;
+  text-align: center;
   color: var(--text-dim);
   font-family: var(--font-sans);
 }
@@ -1286,8 +1316,8 @@ body.solenoid-scrubbing * {
   border: 1px solid var(--border);
   color: var(--text-bright);
   font-family: inherit;
-  font-size: 13px;
-  padding: 4px 24px 4px 8px;
+  font-size: 12px;
+  padding: 3px 24px 3px 8px;
   border-radius: 4px;
   outline: none;
   cursor: pointer;
@@ -1421,6 +1451,11 @@ body.solenoid-scrubbing * {
 }
 
 /* Chromium and WebView2 paint the OS option popup from these backgrounds; its outer frame is not styleable. */
+/* LazySelect's floor: its widest option, measured once, so a max-content card isn't held wide by a hovered list. */
+.sol-lazy-select {
+  min-width: var(--lazy-min, auto);
+}
+
 .solenoid-node__select option {
   background-color: var(--surface);
   color: var(--text-bright);
@@ -1633,7 +1668,7 @@ body.solenoid-scrubbing * {
   border-width: 2px;
   border-color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-emphasis), var(--border));
   /* 1px off each side, so the outer box matches the 1px/4px/8px neutral field. */
-  padding: 3px 23px 3px 7px;
+  padding: 2px 23px 2px 7px;
 }
 .solenoid-node__select--op:focus {
   border-color: var(--node-accent, var(--accent));

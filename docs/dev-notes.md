@@ -6,6 +6,23 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-12b: card body spacing and alignment sweep; cloud session)
+- Every catalog card was mounted and shot (a scratch gallery script: `FLAT_CATALOG` create, `view.zoom(1)`, element
+  screenshot) and reviewed before and after. The repeat offender was input rows: each field started where its label
+  ended, so fields zigzagged and a long label crushed its field (Accrued Interest showed `0.6` for `0.06`).
+- The label column (`tree/specs/floors/components.md` § Input rows): `NodeCard` measures the widest leading input-row
+  label into `--io-label-w`; CSS caps it so the field keeps 60 px; a label past the cap wraps to two balanced lines and
+  its row grows (`io-row` is `min-height: 22px` now, so a 26 px picker on an output row no longer overlaps its
+  neighbor). Connection cards' field labels (`sol-conn__label`) join the same column.
+- Quoted text fields hang their quote marks, so the box lines up with number fields. Dropdowns step from 13 px to the
+  12 px body size. Connection cards drop their own mini-kit (11 px values, 5 px corners, an inset focus ring DESIGN.md
+  rules out, a fixed 60 px left-aligned number) for the card kit; Date Range's pickers take the inline size, so a full
+  date fits a 180 px card.
+- `LazySelect` publishes its measured floor as `--lazy-min` (`.sol-lazy-select`) instead of an inline min-width: the
+  inline one beat every stylesheet rule and held Currency's FROM/TO wider than their row.
+- Seen, left: IFS/SWITCH placeholders (`Output 1`) clip in their narrower fields; XMATCH's keyed field plus its type
+  button is tight at 180 px. Stacking a field under its label stays unused; no row needed it once the column landed.
+
 ### SESSION DIGEST (2026-11-12: Excel workbook Tables, self-hosting groundwork, a Bluesky link; cloud session)
 - Local File and Web Source read an Excel workbook's named Table on the core (`xlsx.rs`, the `calamine` crate,
   default features off): the answers Excel saved, types off the cells, an uncalculated formula a per-cell `#N/A`

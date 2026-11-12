@@ -83,7 +83,7 @@ function RefreshIntervalField({ node }: { node: { id: string; refreshMinutes: nu
   }
   return (
     <label className="sol-conn__field" title="Automatically refreshes on this cadence. 0 turns it off.">
-      Auto-refresh (min)
+      <span className="sol-conn__label">Auto-refresh (min)</span>
       <input
         className="sol-conn__num"
         type="number"
@@ -173,7 +173,7 @@ function WorkbookTablePick({ node }: { node: { id: string; tableName: string; xl
   const known = tables.some((t) => t.name === table);
   return (
     <label className="sol-conn__field" title="The Excel Table to read. Only named Tables are read: in Excel, select the data and press Ctrl+T to make one.">
-      Table
+      <span className="sol-conn__label">Table</span>
       <LazySelect className="sol-conn__select" value={table || (tables.length === 1 ? tables[0].name : "")} onChange={(e) => setTable(e.target.value)} {...stopDrag}>
         {tables.length !== 1 && !table && <option value="">Pick a Table…</option>}
         {table && !known && <option value={table}>{table} (not in the workbook)</option>}
@@ -211,7 +211,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <CardSection label="Options" collapsible defaultOpen={data.dateOrder !== "" || data.refreshMinutes > 0}>
           <div className="sol-conn__field" title="How the source writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
-            Dates
+            <span className="sol-conn__label">Dates</span>
             <DateOrderToggle node={data} />
           </div>
           <RefreshIntervalField node={data} />
@@ -256,7 +256,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
           onMouseDown={(e) => e.stopPropagation()}
         />
         <label className="sol-conn__field">
-          Table #
+          <span className="sol-conn__label">Table #</span>
           <input
             className="sol-conn__num"
             type="number"
@@ -410,7 +410,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
         {folder && (desktop || isDemoVaultPath(folder)) && (
           <CardSection label="Options" collapsible defaultOpen={pattern !== "" || data.dateOrder !== "" || data.refreshMinutes > 0}>
           <label className="sol-conn__field" title="Reads every file whose name matches, stacked as one table with a File column. * stands for anything, **/ for any subfolder.">
-            All matching
+            <span className="sol-conn__label">All matching</span>
             <input
               className="sol-conn__url sol-placeholder-example" style={FIELD_INPUT} type="text" value={pattern}
               placeholder="monthly/*.csv" spellCheck={false}
@@ -421,7 +421,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
             />
           </label>
           <div className="sol-conn__field" title="How the file writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
-            Dates
+            <span className="sol-conn__label">Dates</span>
             <DateOrderToggle node={data} />
           </div>
           {desktop && <RefreshIntervalField node={data} />}
@@ -595,7 +595,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
   }
   const numField = (label: string, val: string, set: (s: string) => void) => (
     <label className="sol-conn__field">
-      {label}
+      <span className="sol-conn__label">{label}</span>
       <input
         className="sol-conn__num" type="number" value={val}
         onChange={(e) => set(e.target.value)} onBlur={commit}
@@ -680,7 +680,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
           {NAGER_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
         </LazySelect>
         <label className="sol-conn__field">
-          Year
+          <span className="sol-conn__label">Year</span>
           <input
             className="sol-conn__num" type="number" value={year} placeholder="[this year]"
             onChange={(e) => setYear(e.target.value)} onBlur={commitYear}
@@ -947,7 +947,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               }).then((rel) => { if (rel !== null) pickFolder(rel); })}
             />
             <label className="sol-conn__field" title="Only notes whose name matches. * stands for anything.">
-              Filter
+              <span className="sol-conn__label">Filter</span>
               <input
                 className="sol-conn__url sol-placeholder-example" style={FIELD_INPUT} type="text" value={connected.has("glob") ? "" : glob}
                 placeholder={connected.has("glob") ? "Driven by the cable" : "2026-*"}
@@ -959,7 +959,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               />
             </label>
             <label className="sol-conn__field" title="Reads a date out of each note's name. Blank detects the format.">
-              Date in name
+              <span className="sol-conn__label">Date in name</span>
               <input
                 className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="[auto]" spellCheck={false}
                 onChange={(e) => setNameFormat(e.target.value)}
