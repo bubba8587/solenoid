@@ -10,6 +10,11 @@ ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tr
 
 Each line is a leaf whose rule the code doesn't keep yet. The leaf carries an `*Unenforced:*` bullet pointing here ([dte.md](dte.md) § Solenoid practice). Highest stakes first; delete a line when the code keeps the rule, and delete the leaf's bullet with it.
 
+- [ ] **C3 brandGoldChrome** (the marketing pages wear gold and the Default palette): `.sol-landing` overrides only the four
+  accent variables, so a visitor's own palette (a cream workbench, say) reaches the site's chrome, its socket colors and
+  the scenes' node colors. Pin the Default palette on the marketing pages, chrome and scenes alike, without touching the
+  palette the app saved. Open for the author: the site's light/dark toggle (`siteNav.tsx`) writes the app's own saved mode,
+  so switching the site switches the app; the leaf says "the page's light / dark mode", so ask whether the site keeps its own.
 - [ ] **C25 firstClassUnits** (a temperature difference stays a difference): subtracting two °C or °F readings, and a spread over readings (STDEV, GROUPBY's), should give Δ°C or Δ°F. Today it gives K, and converting that to °C shows −263.15 °C. Needs Δ°C and Δ°F units that convert by scale and add back to a reading.
 
 ## Dependency updates (walking them one at a time)
