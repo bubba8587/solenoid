@@ -576,6 +576,21 @@ fn body_names(a: &crate::excel_formula::Ast, out: &mut Vec<String>) {
     }
 }
 
+/// Every name a wired LAMBDA could read as a column: its parameters, its captures and its body's names, and the same
+/// of each LAMBDA wired into it, whose body runs over the same rows.
+fn lambda_names(lam: &crate::eval::LambdaV, out: &mut Vec<String>) {
+    out.extend(lam.params.iter().cloned());
+    out.extend(lam.captured.iter().flatten().cloned());
+    if let Some(body) = &lam.body {
+        body_names(body, out);
+    }
+    for v in lam.env.values() {
+        if let V::Lambda(inner) = v {
+            lambda_names(inner, out);
+        }
+    }
+}
+
 /// A calculated field's answer over a cell's rows: each parameter is its column's values in those rows, a date
 /// column's as dates. `@` names this row, and a pivot cell is many rows, so the LAMBDA reads whole lists.
 fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCell, bool) {
@@ -588,8 +603,12 @@ fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCel
             }
             return V::err(sol_error(ErrorCode::Name, msg));
         };
-        let items =
-            V::List(rows.iter().map(|&i| col.values.get(i).cloned().unwrap_or(V::Null)).collect::<Vec<_>>().into());
+        // A column a lazy read left out holds no cells: an error, where a blank would compute quietly.
+        if rows.iter().any(|&i| i >= col.values.len()) {
+            let msg = format!("The calculated field reads {p}, which this read of the table left out");
+            return V::err(sol_error(ErrorCode::Ref, msg));
+        }
+        let items = V::List(rows.iter().map(|&i| col.values[i].clone()).collect::<Vec<_>>().into());
         if col.ty == FrameColType::Date {
             crate::date_values::wrap(&items)
         } else {
@@ -752,11 +771,8 @@ fn pivot(c: &mut Call) -> Answer {
             // A calculated field reads its parameters' columns, and the columns its body names with no parameter: a
             // `[Column]`, or a bare name its card captured. Left out, they'd read as the card's empty slot, a 0.
             for (_, lam, _) in calc_fields(c) {
-                let mut names = lam.params.clone();
-                names.extend(lam.captured.iter().flatten().cloned());
-                if let Some(body) = &lam.body {
-                    body_names(body, &mut names);
-                }
+                let mut names = Vec::new();
+                lambda_names(&lam, &mut names);
                 for n in names {
                     want(n);
                 }

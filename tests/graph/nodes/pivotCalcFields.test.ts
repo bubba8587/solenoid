@@ -339,6 +339,27 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     expect(await order({ 0: -1 })).toEqual(["Plate", "Miles", "Gallons", "GPM"]);
   });
 
+  it("a placed field's columns say which value they hold: the layout's value index follows its values list", () => {
+    const n = new PivotNode({ valueKeys: ["calcName0", "calcFn0"], calcPlace: { 0: 0 } });
+    Object.assign(n.stringLiterals, { rowFields: "Plate", colFields: "Month", values: "Miles", calcName0: "MPG" });
+    const out = n.data({ frame: [log], rowFields: [["Plate"]], colFields: [["Month"]], values: [["Miles"]], calcFn0: [MPG] }).frame as FrameValue;
+    const layout = pivotLayoutOf(out)!;
+    expect(layout.values).toEqual(["MPG", "Miles"]);
+    expect(layout.funcs).toEqual(["calc", "sum"]);
+    // Each column's header ends in the value the layout names for it, so a caption or a menu acts on that field.
+    expect(out.columns.slice(1).map((c) => c.name)).toEqual(["2026-01 | MPG", "2026-01 | Miles", "2026-02 | MPG", "2026-02 | Miles"]);
+    expect(layout.cols.map((co) => layout.values[co.value])).toEqual(["MPG", "Miles", "MPG", "Miles"]);
+  });
+
+  it("a field that hands its rows to a LAMBDA wired into it reads that one's columns too, over a lazy input", async () => {
+    // Each plate's miles over its gallons, the division inside the wired LAMBDA, whose body alone names Gallons.
+    const share = lambda("x", "x / SUM(Gallons)");
+    const field = new LambdaNode({ params: "", expr: "SUM(MAP(Miles, g))" }).data({ g: [share] }).result;
+    const eager = (await run({ frame: log, calcs: [["MPG", field]] })).col("MPG")!.values;
+    expect(eager).toEqual([25, 20, 22]);
+    expect((await run({ frame: planned(log, { kind: "distinct" }), calcs: [["MPG", field]] })).col("MPG")!.values).toEqual(eager);
+  });
+
   it("sorts rows and columns by a calculated field, after the plain values in the sort's list", () => {
     const sorted = (rowSort: number, colSort = 0) => {
       const n = new PivotNode({ rowSort, colSort, valueKeys: ["calcName0", "calcFn0"] });

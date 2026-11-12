@@ -2137,7 +2137,8 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
                 r
             })
             .collect::<Vec<_>>(),
-        "cols": body_specs.iter().map(|(co, v)| json!({ "kind": co.kind.tag(), "tuple": tuple_json(&co.tuple), "fill": co.fill, "value": v })).collect::<Vec<_>>(),
+        // A column's value is its place in `values` above, which a calculated field placed among them reorders.
+        "cols": body_specs.iter().map(|(co, v)| json!({ "kind": co.kind.tag(), "tuple": tuple_json(&co.tuple), "fill": co.fill, "value": slots.iter().position(|s| s == v).unwrap_or(*v) })).collect::<Vec<_>>(),
     });
     if !detail_json.is_empty() {
         layout["details"] = Json::Array(detail_json);
