@@ -160,8 +160,8 @@ runs inside a "remote" scope so its own changes don't echo back out.
 **Shipped for undo (2026-11-12): `graphDelta.ts`.** `diffGraphs` (pure) and `applyGraphDelta` now carry undo and
 redo ([[react-flow-surface-contract#Undo history]]), keyed by card name, with a read-back that falls back to a whole
 load on any miss. `graphDelta.test.ts` is the property test above over every shipped example and two kinds of step,
-answers included. What the room still needs from it: keying by `sid` instead of name, and the hot-field row of the
-table (a literal or `frameText` set in place): today any `init` or literal change rebuilds that one card.
+answers included. The hot-field row shipped too (`IN_PLACE`: the inline fields, titles, input values, table text, group
+members, set on the live card). What the room still needs from it: keying by `sid` instead of name.
 
 **The table popup in a room.** Today it edits a local grid and Save writes the whole string back.
 In a room: each cell commits on blur straight into the table container (the popup already

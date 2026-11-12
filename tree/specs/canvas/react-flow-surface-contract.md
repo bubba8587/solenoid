@@ -430,7 +430,8 @@ Undo is a snapshot history ([[A1]] visualGraphCalculator). Every settled mutatio
   | What differs | Applied as |
   |---|---|
   | a card gone or new | deleted with its cables (its stores forgotten) / built from the step as a load builds it |
-  | a card's type, `init`, literals, name or trust mark | rebuilt from the step under a fresh live id, so its view mounts afresh rather than keeping the old card's drafts; what referred to the old id (a dock, a group's members, a presentation's steps) is pointed at the new one, and its cables come back from the step |
+  | a typed value alone: a card's inline fields (`literals`, `stringLiterals`, `literalKinds`), its title, and per type the field its edit sets by plain assignment (Value Input, Slider and Angle Dial's `value`, Frame Input's `frameText`, Table Input and Grid Painter's `tableText`, a group's `members`; `IN_PLACE` in `graphDelta.ts`) | set on the live card as its edit set it, the core told its call changed (`named`), the types settled as the edit settles them (`reconcileTypesAfterEdit`): the card keeps its node, its view, its focus and its drafts, which follow the committed value |
+  | anything else in a card's type, `init`, name or trust mark, or a field the step's save leaves out | rebuilt from the step under a fresh live id, so its view mounts afresh rather than keeping the old card's drafts; what referred to the old id (a dock, a group's members, a presentation's steps) is pointed at the new one, and its cables come back from the step |
   | a cable | removed or added |
   | size, fold, flip, sections | the stores, no pass |
   | position | `moveNode`, no pass |
@@ -448,9 +449,9 @@ Tests:
 
 - `flow/flowHistory.test.ts`: an undo within the coalesce window keeps the pending edit and steps back one entry, a redo within it records the edit and drops the redo tail, the byte budget keeps the entry before the current one and lists every surviving action once the baseline is trimmed, the camera comes back exactly between zoom steps, and an unchanged node is shared between steps so a 4 MB table doesn't crowd out history.
 - `flow/flowHistoryDigest.test.ts`: the labels each change gets.
-- `graphDeltaChain.test.ts`: on every shipped example, six edits drawn from a fixed seed (a card deleted as Delete deletes it, moved, relabeled, folded, renamed or copied, a cable cut or wired back), each made live and captured, then undone one by one and redone, each landing the captured save and answers by delta (`STEPS=25 SALT=n` stresses it).
+- `graphDeltaChain.test.ts`: on every shipped example, six edits drawn from a fixed seed (a card deleted as Delete deletes it, moved, relabeled, folded, renamed, pinned and commented, typed into or copied, a cable cut or wired back), each made live and captured, then undone one by one and redone, each landing the captured save and answers by delta (`STEPS=25 SALT=n` stresses it).
 - `groupMembersDelete.test.ts`: a deleted member leaves its group and the save.
-- `graphDelta.test.ts`: the diff's sorting; over every shipped example and two kinds of step (a card deleted, one moved, a cable cut; a card renamed, one folded, a value typed, a pin and a comment), undo and redo by delta land the save and the answers a whole load of the step lands; an undo of one input's edit resets and renders only that input's chain; a delete renders only what lost a cable and lands what a fresh load of the rest gives; Wrap as Composite and Unpack each render only what they reach; in Manual an undo still computes.
+- `graphDelta.test.ts`: the diff's sorting; over every shipped example and two kinds of step (a card deleted, one moved, a cable cut; a card renamed, one folded, a value typed, a pin and a comment), undo and redo by delta land the save and the answers a whole load of the step lands; a typed value is patched and an operator or a dropped field rebuilds; an undo of one input's edit sets it on the live card, resets only that card and renders only its chain; a delete renders only what lost a cable and lands what a fresh load of the rest gives; Wrap as Composite and Unpack each render only what they reach; in Manual an undo still computes.
 
 ## The main canvas
 

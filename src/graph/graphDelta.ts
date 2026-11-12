@@ -29,6 +29,7 @@ import { compositeEditorStore } from "./compositeEditorStore";
 import { rebuildGroupMembership, dropFromGroups } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
 import { settleCableChange } from "./cableSettle";
+import { reconcileTypesAfterEdit } from "./fcReconcile";
 import { repositionDockedNodes } from "./canvasCommands";
 import { perfEnabled } from "./perfProbe";
 import { sameLanding, USER_SIZED, withoutSettled } from "./flow/flowHistoryDigest";
@@ -42,8 +43,10 @@ export interface GraphDelta {
   removed: string[];
   /** Cards new in `to`, in its order. */
   added: SavedNode[];
-  /** Cards in both whose type, init, literals or trust changed: rebuilt from `to`. */
+  /** Cards in both whose type, init, literals or trust changed beyond what `patched` takes: rebuilt from `to`. */
   rebuilt: SavedNode[];
+  /** Cards in both whose only change is a typed value (`IN_PLACE`): set on the live card, as the edit set it. */
+  patched: SavedNode[];
   /** Cards whose size, fold, flip or sections changed and nothing a pass reads. */
   restyled: SavedNode[];
   /** Cards whose position changed. */
@@ -75,6 +78,46 @@ function initKey(n: SavedNode): string {
 const filled = (m: object | undefined) => (m && Object.keys(m).length > 0 ? m : null);
 const bodyKey = (n: SavedNode): string =>
   JSON.stringify([n.type, n.name ?? null, filled(n.literals), filled(n.stringLiterals), n.foreign ?? null]) + initKey(n);
+/** The fields a card's own edit sets by plain assignment before it reruns (a typed field, the title, a table's
+ *  text), so an undo sets them the same way on the live card rather than building a new one. Every card's inline
+ *  fields (`literals`, `stringLiterals`, `literalKinds`) and title, and per type its typed value. */
+const IN_PLACE: Readonly<Record<string, readonly string[]>> = {
+  "*": ["label", "literalKinds"],
+  ValueInputNode: ["value"],
+  SliderInputNode: ["value"],
+  AngleDialNode: ["value"],
+  FrameInputNode: ["frameText"],
+  TableInputNode: ["tableText"],
+  GridPainterNode: ["tableText"],
+  // Saved by name, so set as live ids (below), as a load remaps them.
+  GroupNode: ["members"],
+};
+
+const inPlaceKeys = (type: string): ReadonlySet<string> => new Set([...IN_PLACE["*"], ...(IN_PLACE[type] ?? [])]);
+
+/** The init without its measures and settled types, as `initKey` compares it. */
+function readInit(n: SavedNode): Record<string, unknown> {
+  const init = withoutSettled(n.type, n.init);
+  if (USER_SIZED.has(n.type)) return init;
+  const { width: _w, height: _h, ...rest } = init;
+  return rest;
+}
+
+/** Whether `p` becomes `n` by setting typed values alone: the same type, name and trust, no literal map appearing,
+ *  and every other differing init field one `IN_PLACE` names and `n` holds. */
+function patchable(p: SavedNode, n: SavedNode): boolean {
+  if (p.type !== n.type || (p.name ?? null) !== (n.name ?? null) || !same(p.foreign, n.foreign)) return false;
+  // An emptied map lands as `{}`, which no comparison counts; a map appearing on a card that never had one can't be set.
+  if ((filled(n.literals) && p.literals === undefined) || (filled(n.stringLiterals) && p.stringLiterals === undefined)) return false;
+  const a = readInit(p), b = readInit(n);
+  const keys = inPlaceKeys(n.type);
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if (same(a[k], b[k])) continue;
+    if (!keys.has(k) || !(k in b)) return false;
+  }
+  return true;
+}
+
 const styleKey = (n: SavedNode): string =>
   JSON.stringify([n.size ?? null, n.collapsed ?? false, n.flipped ?? false, n.sections ?? null]);
 
@@ -88,12 +131,16 @@ export function diffGraphs(from: SavedGraph, to: SavedGraph): GraphDelta | null 
   const removed = from.nodes.filter((n) => !toById.has(n.id)).map((n) => n.id);
   const added: SavedNode[] = [];
   const rebuilt: SavedNode[] = [];
+  const patched: SavedNode[] = [];
   const restyled: SavedNode[] = [];
   const moved: SavedNode[] = [];
   for (const n of to.nodes) {
     const p = fromById.get(n.id);
     if (!p) { added.push(n); continue; }
-    if (bodyKey(p) !== bodyKey(n)) { rebuilt.push(n); continue; }
+    if (bodyKey(p) !== bodyKey(n)) {
+      if (!patchable(p, n)) { rebuilt.push(n); continue; }
+      patched.push(n);
+    }
     if (styleKey(p) !== styleKey(n)) restyled.push(n);
     if (p.x !== n.x || p.y !== n.y) moved.push(n);
   }
@@ -119,7 +166,7 @@ export function diffGraphs(from: SavedGraph, to: SavedGraph): GraphDelta | null 
   const order = added.length > 0 || kept.join("\u0000") !== keptInTo.join("\u0000");
 
   return {
-    removed, added, rebuilt, restyled, moved, cablesRemoved, cablesAdded, sides,
+    removed, added, rebuilt, patched, restyled, moved, cablesRemoved, cablesAdded, sides,
     drawnCables: !same(from.drawnCables ?? [], to.drawnCables ?? []),
     palette: !same(from.palette, to.palette),
     reportPalette: !same(from.reportPalette, to.reportPalette),
@@ -130,7 +177,7 @@ export function diffGraphs(from: SavedGraph, to: SavedGraph): GraphDelta | null 
 
 /** Whether the delta changes anything at all. */
 export function isEmptyDelta(d: GraphDelta): boolean {
-  return !d.removed.length && !d.added.length && !d.rebuilt.length && !d.restyled.length && !d.moved.length &&
+  return !d.removed.length && !d.added.length && !d.rebuilt.length && !d.patched.length && !d.restyled.length && !d.moved.length &&
     !d.cablesRemoved.length && !d.cablesAdded.length && !d.sides.length && !d.drawnCables && !d.palette &&
     !d.reportPalette && !d.meta && !d.order;
 }
@@ -237,6 +284,18 @@ export async function applyGraphDelta(target: SavedGraph): Promise<SavedGraph | 
       } catch { /* a socket the card no longer has: a whole load drops the same cable */ }
     }
 
+    // A typed value set on the live card, as its edit set it: the card keeps its node, its view and its drafts.
+    for (const sn of delta.patched) {
+      const node = editor.getNode(live.get(sn.id)!) as unknown as Record<string, unknown> & GraphNode;
+      const init = sn.init ?? {};
+      for (const k of inPlaceKeys(sn.type)) if (k in init && !same(node[k], init[k])) node[k] = structuredClone(init[k]);
+      if (typeof node.literals === "object") node.literals = { ...(sn.literals ?? {}) };
+      if (typeof node.stringLiterals === "object") node.stringLiterals = { ...(sn.stringLiterals ?? {}) };
+      if ("members" in init) remapNodeRefs(node as unknown as NodeRefs, live, isLive);
+      editor.named(node.id);
+      dirty.add(node.id);
+    }
+
     for (const sn of delta.restyled) {
       const id = live.get(sn.id)!;
       nodeSizeStore.set(id, sn.size ? { ...sn.size } : undefined);
@@ -278,6 +337,8 @@ export async function applyGraphDelta(target: SavedGraph): Promise<SavedGraph | 
 
     rebuildGroupMembership(editor);
     settleCableChange(editor, view);
+    // A typed value can move a derived socket type with no cable event, as its edit settles it ([[B11]] maximalMerge).
+    if (delta.patched.length) reconcileTypesAfterEdit(editor, view);
     syncGroupCollapse(editor, view);
 
     // One pass over what the changes reach: each changed card's reach is cleared, everything else keeps its caches.
@@ -304,7 +365,7 @@ export async function applyGraphDelta(target: SavedGraph): Promise<SavedGraph | 
   const hit = !!landed && sameLanding(landed, target);
   if (perf) {
     const t3 = performance.now();
-    console.log(`[perf] undo delta  rebuilt=${delta.rebuilt.length} added=${delta.added.length} removed=${delta.removed.length} ` +
+    console.log(`[perf] undo delta  patched=${delta.patched.length} rebuilt=${delta.rebuilt.length}${delta.rebuilt.length ? ` (${delta.rebuilt.slice(0, 3).map((n) => n.type).join(", ")})` : ""} added=${delta.added.length} removed=${delta.removed.length} ` +
       `moved=${delta.moved.length} cables=${delta.cablesAdded.length}+/${delta.cablesRemoved.length}-  serialize=${(t1 - t0).toFixed(1)}ms ` +
       `apply+pass=${(t2 - t1).toFixed(1)}ms  check=${(t3 - t2).toFixed(1)}ms${hit ? "" : "  MISSED"}`);
   }

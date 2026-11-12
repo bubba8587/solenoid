@@ -86,8 +86,11 @@ specific item.
   the recompute the edit itself cost; the old reload was about 2.7 s. An earlier note here said 25 ms: that was one
   pass, not the whole undo. `window.__solenoidPerf = true` prints an `[perf] undo` line with the phases.
 - Wrap as Composite and Unpack pass over only what they reach, as Delete does (`src/graph/editReach.ts`).
-- Open: a literal or `frameText` edit still rebuilds its one card rather than setting the field in place
-  (`docs/v2.0/27-multiplayer.md`'s hot-field row). A drill-in's undo still rebuilds the composite's inside whole
+- Undoing a typed value sets it on the live card (`IN_PLACE`, `src/graph/graphDelta.ts`): the inline fields, the
+  title, and the field each input card's edit assigns (a value, a table's text, a group's members). The card keeps
+  its node, focus and drafts; checked in the browser (the same input element survives an undo showing the old
+  value). Anything else still rebuilds the one card. In the edit-chain fuzz about five cards patch for each rebuild.
+- Open: a drill-in's undo still rebuilds the composite's inside whole
   (`src/graph/flow/FlowCompositeOverlay.tsx`, `restoreInternal`).
 
 ### SESSION DIGEST (2026-11-11c: the Probability pack, pads that dragged their card; cloud session)

@@ -76,14 +76,14 @@ async function whole(g: SavedGraph): Promise<{ save: SavedGraph; answers: Record
 
 const asStep = (g: SavedGraph): SavedGraph => { const { nodes, ...head } = structuredClone(g); return { ...head, nodes }; };
 
-/** One edit: a card deleted, moved, relabeled, folded, renamed, pinned and commented, or copied, a cable cut, or a cut
- *  cable wired back. */
+/** One edit: a card deleted, moved, relabeled, folded, renamed, pinned and commented, typed into or copied, a cable
+ *  cut, or a cut cable wired back. */
 function step(g: SavedGraph, r: () => number, cut: SavedGraph["connections"]): { save: SavedGraph; what: string } {
   const out = structuredClone(g);
   const pick = <T,>(xs: T[]): T => xs[Math.floor(r() * xs.length)];
   if (out.nodes.length === 0) return { save: out, what: "nothing" };
   const n = pick(out.nodes);
-  switch (Math.floor(r() * 9)) {
+  switch (Math.floor(r() * 11)) {
     case 0: {
       // As Delete does: an FC docked to the card goes with it, and every group lets the card go.
       const doomed = new Set([n.id, ...out.nodes.filter((m) => m.init?.hostNodeId === n.id).map((m) => m.id)]);
@@ -124,6 +124,19 @@ function step(g: SavedGraph, r: () => number, cut: SavedGraph["connections"]): {
       for (const st of out.standoffs ?? []) for (const end of [st.a, st.b]) if (end.nodeId === n.id) end.nodeId = to;
       n.id = to; n.name = to;
       return { save: out, what: `rename to ${to}` };
+    }
+    case 8:
+    case 9: {
+      // A typed value: a number field, an input's value, a digit in a table.
+      const typed = out.nodes.filter((m) => Object.keys(m.literals ?? {}).length || ["ValueInputNode", "SliderInputNode", "FrameInputNode"].includes(m.type));
+      if (!typed.length) return { save: out, what: "nothing typed" };
+      const t = pick(typed);
+      const v = 1 + Math.floor(r() * 9);
+      if (t.type === "ValueInputNode") t.init = { ...t.init, value: String(v) };
+      else if (t.type === "SliderInputNode") t.init = { ...t.init, value: v };
+      else if (t.type === "FrameInputNode" && typeof t.init.frameText === "string") t.init = { ...t.init, frameText: (t.init.frameText as string).replace(/\d/, String(v)) };
+      else { const k = Object.keys(t.literals!)[0]; t.literals = { ...t.literals, [k]: v }; }
+      return { save: out, what: `type ${v} into ${t.id}` };
     }
     case 7: {
       const key = Object.keys(n.literals ?? {})[0] ?? "value";

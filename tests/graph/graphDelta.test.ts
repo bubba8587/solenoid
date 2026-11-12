@@ -113,14 +113,29 @@ describe("the delta between two saves", () => {
   const node = (id: string, init: Record<string, unknown>, x = 0): SavedNode => ({ id, name: id, type: "ValueInputNode", x, y: 0, init });
   const g = (nodes: SavedNode[], connections: SavedGraph["connections"] = []): SavedGraph => ({ v: 2, nodes, connections });
 
-  it("sorts each card into added, removed, rebuilt or moved, and a moved card's cables stay", () => {
+  it("sorts each card into added, removed, patched or moved, and a moved card's cables stay", () => {
     const a = g([node("a", { value: "1" }), node("b", { value: "2" }), node("c", { value: "3" })]);
     const b = g([node("a", { value: "1" }, 50), node("b", { value: "9" }), node("d", { value: "4" })]);
     const d = diffGraphs(a, b)!;
     expect(d.removed).toEqual(["c"]);
     expect(d.added.map((n) => n.id)).toEqual(["d"]);
-    expect(d.rebuilt.map((n) => n.id)).toEqual(["b"]);
+    expect(d.rebuilt).toEqual([]);
+    expect(d.patched.map((n) => n.id)).toEqual(["b"]);
     expect(d.moved.map((n) => n.id)).toEqual(["a"]);
+  });
+
+  it("a typed value is set in place; anything else a card's edit changes rebuilds it", () => {
+    const ar = (init: Record<string, unknown>, literals?: Record<string, number>): SavedNode =>
+      ({ id: "f", name: "f", type: "ArithmeticNode", x: 0, y: 0, init, ...(literals ? { literals } : {}) });
+    const typed = diffGraphs(g([ar({ op: "mul" }, { a: 0, b: 2 })]), g([ar({ op: "mul" }, { a: 0, b: 9 })]))!;
+    expect([typed.patched.length, typed.rebuilt.length]).toEqual([1, 0]);
+    const titled = diffGraphs(g([ar({ op: "mul", label: "x" })]), g([ar({ op: "mul", label: "y" })]))!;
+    expect([titled.patched.length, titled.rebuilt.length]).toEqual([1, 0]);
+    const op = diffGraphs(g([ar({ op: "mul" })]), g([ar({ op: "add" })]))!;
+    expect([op.patched.length, op.rebuilt.length]).toEqual([0, 1]);
+    // A field the save leaves out has no value to set back, so it rebuilds.
+    const dropped = diffGraphs(g([ar({ op: "mul", label: "x" })]), g([ar({ op: "mul" })]))!;
+    expect([dropped.patched.length, dropped.rebuilt.length]).toEqual([0, 1]);
   });
 
   it("a measured width alone is no edit, and another pack set is a whole load", () => {
@@ -181,11 +196,14 @@ describe("what the change doesn't reach keeps its value", () => {
     engine.pass = (changed, renderOnly, topology) => { passes.push(renderOnly && [...renderOnly].map((id) => nodeNameStore.get(id)!).sort()); return pass(changed, renderOnly, topology); };
     engine.reset = (id) => { resets.push(id ? nodeNameStore.get(id)! : "<every cache>"); reset(id); };
     const liveG = nodeNameStore.byName("G");
+    const liveA = nodeNameStore.byName("A");
     expect(await applyGraphDelta(asStep(first.save))).not.toBeNull();
     expect(canon(serializeGraph()!)).toBe(canon(first.save));
     expect(nodeNameStore.byName("G")).toBe(liveG);
+    // The typed value is set on A's live card: no new node, no cable taken down and put back.
+    expect(nodeNameStore.byName("A")).toBe(liveA);
     expect(passes).toEqual([["A", "F"]]);
-    expect(resets.sort()).toEqual(["A", "F"]);
+    expect(resets).toEqual(["A"]);
     expect(answers()).toEqual(first.answers);
   });
 
