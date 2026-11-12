@@ -31,6 +31,10 @@ specific item.
   TEXTAFTER's and XMATCH's options, Find Peaks' thresholds. The collapse sweep, wired and not, is clean.
 - A field below its label runs from the label's left edge to the right edge the other fields end on (the quote marks
   hang outside); it had kept `max-width: 100%` while pulled outward, so it sat left and ended short.
+- Equation, TVM and the geometry Valid row put each variable on one line on the label column, in a slimmer box (TVM
+  about 45% shorter). List fields (`a, b, c`, column lists) read left-aligned. Tornado's Run Sensitivity is the
+  standard action button, not a field styled as one. Seen: the collapse sweep's TVM/Compound Growth "no pill" flags
+  predate this session (equation rows stay open when collapsed).
 
 ### SESSION DIGEST (2026-11-12: Excel workbook Tables, self-hosting groundwork, a Bluesky link, undo by delta; cloud session)
 - Local File and Web Source read an Excel workbook's named Table on the core (`xlsx.rs`, the `calamine` crate,

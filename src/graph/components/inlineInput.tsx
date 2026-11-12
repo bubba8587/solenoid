@@ -461,7 +461,7 @@ export function InlineCsvField({
   return (
     <input
       type="text"
-      className="solenoid-node__inline-input"
+      className="solenoid-node__inline-input solenoid-node__inline-input--list"
       value={field.draft}
       placeholder="a, b, c"
       list={listId}

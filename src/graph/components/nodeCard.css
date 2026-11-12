@@ -1027,6 +1027,11 @@ body.solenoid-scrubbing * {
   cursor: ns-resize !important;
 }
 
+/* A list reads left to right, as text does, whatever its items are. */
+.solenoid-node__inline-input--list {
+  text-align: left;
+}
+
 .solenoid-node__inline-input--text,
 .solenoid-node__value-input--text {
   font-family: var(--font-sans);
