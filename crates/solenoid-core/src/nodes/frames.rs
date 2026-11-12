@@ -3446,6 +3446,12 @@ fn frame_from_lists(c: &mut Call) -> Answer {
         };
         names.push(V::str(&name));
         let wired = if matches!(wired, V::List(_)) { wired } else { list(vec![wired]) };
+        // A column is a list. A table can reach this input through an output that is untyped until it has run.
+        if matches!(&wired, V::List(items) if items.iter().any(|x| matches!(x, V::List(_)))) {
+            let msg =
+                format!("{} takes a list, and this is a table. TOROW or TOCOL makes a table a list", c.label(vals_k));
+            return shown_frame(c, "frame", err(ErrorCode::Type, msg));
+        }
         // A list of dates is a Date column ([[D114]] dateIsAKind).
         let census = crate::date_values::census(&wired);
         if census.beside_dates().is_some() {

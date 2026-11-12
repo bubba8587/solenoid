@@ -4,6 +4,7 @@ import { ConcatListsNode } from "../../../src/graph/nodes/list";
 import { FrameFromListsNode, AppendNode, FilterFrameNode } from "../../../src/graph/nodes/frame";
 import { frameFromCells, type FrameValue } from "../../../src/graph/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
+import { isSolError } from "../../../src/graph/errorValue";
 import { throughBoundary } from "../boundaryKit";
 import { GraphEditor } from "../../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../../src/graph/graphModel";
@@ -54,6 +55,13 @@ describe("Frame from Lists — the fast lists→Frame path", () => {
     });
     return n.data(inputs).frame as FrameValue | null;
   };
+
+  it("a table where a list goes is #TYPE! naming the input, not a failed card", () => {
+    // TAKE's output is untyped until it has run, so a table's last row (a 1 × 3 table) can be wired in.
+    const f = build([["a", [[1, 2, 3]]]]) as unknown as { code: string; message: string };
+    expect(isSolError(f) && f.code).toBe("#TYPE!");
+    expect(f.message).toMatch(/takes a list, and this is a table\. TOROW or TOCOL makes a table a list$/);
+  });
 
   it("named typed columns come out type-preserved", () => {
     const f = build([["City", ["Oslo", "Rome"]], ["Pop", [0.7, 2.8]], ["EU", [false, true]]])!;

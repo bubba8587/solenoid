@@ -19,6 +19,41 @@ specific item.
 - **Open:** inbox items `operators-read-blank-as-zero` (parent D124, retired), `paste-carries-card-state` and
   `ghost-cables-feed-and-save` (parent B12, now narrow) need new parents when placed.
 
+### SESSION DIGEST (2026-11-12c: hardening for 1.6.2; cloud session)
+- A review of everything since 1.6.1, two read-only review agents (workbooks; the Probability pack and pivot fields),
+  the fuzzers run deeper, and the new cards used in the app. What needs the author is in `backlog.md` § From the
+  2026-11-12 hardening run.
+- **SOLVE and MINVERSE called an invertible matrix singular** when one variable was in other units (a column scaled
+  past about 1e13): the verdict's rows-then-columns scaling left every row's largest entry in the big column.
+  `balance_exps` (`fns_matrix.rs`) balances by least squares on the logs instead. The property test had passed only on
+  its default seed: run the Rust property and formula fuzzers on other seeds (`PROP_SEED`, `FUZZ_SEED`) before
+  believing them.
+- **Pivot:** a calculated field placed among the values left each layout column pointing at the old value index, so
+  the Pivot view's captions, Summarize By, Remove and value formats acted on the wrong field (`frame_verbs.rs`, the
+  layout's `cols[].value` is now the place in `values`). A field handing its rows to a LAMBDA wired into it reads that
+  LAMBDA's columns from a lazy input (`lambda_names`), and a column a lazy read left out is `#REF!`, not blanks.
+- **Workbooks:** the reader takes a Table's edges from the Table's own part and streams the sheet's cells
+  (`table_parts`, `read_table`, `xlsx.rs`); calamine's read of a Table decodes the whole sheet densely, which a stray
+  cell in a far row made gigabytes, asserted on a header-only Table and read a totals row under no header row as data.
+  `fixtures/xlsx/edges.xlsx` holds all four. Retyping a column with a blank cell threw (`raw` arrived as null); a Text
+  column's error cell stays under a pick; the Table picker matches ignoring case and lists a pattern's Tables.
+- **Probability:** BETA.DIST's density at 0 with alpha 1 (and at 1 with beta 1) answered 1, not the other parameter;
+  Bootstrap over dates blanked silently and is `#TYPE!`, and counts a logical as 1 or 0.
+- **Weather's forecast** marks today by the forecast place's clock (the reply's `utc_offset_seconds`, `placeToday`)
+  and Weather joins the midnight rollover. Drag-to-scrub is gone from number fields. A table wired into Frame from
+  Lists is `#TYPE!` naming the input. A trusted source written `host:443` matches.
+- **Tests:** `graphEditReach.test.ts` compares every card after a live delete, cut, wrap or unpack with a whole pass
+  from empty caches, on every example. The undo fuzz (`graphDeltaChain.test.ts`) had skipped its answer check on 39 of
+  52 examples, since a lazy frame's handle and an error's per-load card id differ between loads; it reads frames whole
+  and writes ids as names, and checks 50. A test that drives a bulk edit outside the app must install the app's bulk
+  settle (`setBulkSettle` with `settleCableChange` first), or types settle after the pass and Frame from Lists reads
+  a stale one.
+- Checked and left: Tab and Shift+Tab toggling chrome is the spec's (`tree/specs/canvas/react-flow-surface-contract.md` § The
+  canvas keyboard); the collapse sweep against 1.6.1 shows no card the layout sweep broke; the label column's measuring is
+  about 0.1 ms for a canvas of cards; the deployed script worker carries its `Content-Security-Policy`.
+- Another session pushes to `develop` at the same time: `git pull --rebase` before each push, and rebuild the wasm
+  when both sides touched Rust (`source-stamp.txt` conflicts; take either side and run `npm run build:wasm`).
+
 ### SESSION DIGEST (2026-11-12b: card body spacing and alignment sweep; cloud session)
 - Every catalog card was mounted and shot (a scratch gallery script: `FLAT_CATALOG` create, `view.zoom(1)`, element
   screenshot) and reviewed before and after. The repeat offender was input rows: each field started where its label
