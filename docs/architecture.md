@@ -48,6 +48,7 @@ mindmap
 | `.claude/` | Claude Code project config: skills/ (add-node, demo-video, motion, shot-graph), commands/, settings.json |
 | `.github/workflows/` | CI: test.yml (tsc+vitest), engine-test.yml (cargo test, on engine or corpus changes), desktop-build.yml (solenoid.exe + the Linux .deb, built once per merge to main; a `v*` tag publishes that build), rust-supply-chain.yml (cargo-deny over every Rust crate against `deny.toml`, the Rust license inventory, the desktop shell's fmt + clippy + tests; weekly too), plugin-build.yml (Solenoid Properties built by hand as a run artifact) |
 | `package.json` | JS deps + scripts (dev, build, test, tauri) |
+| `rust-toolchain.toml`, `.cargo/config.toml` | The Rust every branch builds with (1.100.0), and Cargo's cooldown: a crate version is taken only once it has been public for 7 days, when a lockfile is resolved; the file names the override |
 | `vite.config.ts` | Vite config (keepNames: constructor.name is load-bearing) |
 | `vitest.config.ts` | Test runner config |
 | `index.html` | HTML entry point |

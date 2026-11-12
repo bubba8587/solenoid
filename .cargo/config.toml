@@ -1,0 +1,7 @@
+# A crate version is taken only once it has been public for a week, by which time a hijacked release has usually been
+# caught and pulled. It applies when a lockfile is resolved (`cargo update`, a new dependency), never to a build from
+# the lockfile as it stands, and `cargo install` ignores it. For a fix that can't wait:
+#   CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow cargo update <crate>
+# Cargo reads it from 1.100 on (rust-toolchain.toml). The bleeding-edge branch sets it to "0" in a commit of its own.
+[registry]
+global-min-publish-age = "7 days"

@@ -30,6 +30,7 @@ crates/solenoid-parquet/rustfmt.toml
 src-tauri/rustfmt.toml
 deny.toml
 rust-toolchain.toml
+.cargo/config.toml
 crates/solenoid-core/clippy.toml
 crates/solenoid-graph/clippy.toml
 scripts/rust-licenses/*

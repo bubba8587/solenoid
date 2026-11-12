@@ -6,6 +6,21 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-12d: Rust 1.100, the crate cooldown; cloud session)
+
+- **The pin is Rust 1.100.0** (`rust-toolchain.toml`, the author's word). The crates needed no change: fmt, clippy, the three crates'
+  release tests and the whole TypeScript suite pass through a module rebuilt with it. `rust-version` in the manifests stays 1.99
+  until the bleeding-edge findings are ported (backlog, Rust core).
+- **Crates wait a week** (`.cargo/config.toml`, `global-min-publish-age = "7 days"`, the author's word): Cargo 1.100 skips a version
+  published more recently when it resolves a lockfile, and refuses a requirement only such a version meets, naming the override.
+  A build from the lockfile as it stands is untouched. Cargo 1.99 ignored the setting with a warning, which is why the pin moved
+  with it. `bleeding-edge` sets it to "0" in a commit of its own, since that branch takes every release the day it ships. What would reopen it: a port from bleeding-edge
+  whose `Upgrades:` line names a crate under a week old fails its port check until the week is up; that is the hold working.
+- **`crates/solenoid-parquet/Cargo.lock`** had fallen behind the core's manifest (the `zip` and `quick-xml` edges of the workbook
+  Tables work); the check run recorded them, no version moved.
+- **Cargo 1.100 reports `wasm-bindgen-futures` as unused** in the graph crate's plugin build; `check-rust.sh` shows the warning and
+  passes. The fix is the author's call (backlog, Rust core).
+
 ### SESSION DIGEST (2026-11-12c: tree pruned from 126 leaves to 80, with the author; cloud session)
 
 - **46 leaves moved to specs** (`dte to-spec`): obvious practice (B14 one design system, C101, C103, C106, C120 linear work, C78 …),
