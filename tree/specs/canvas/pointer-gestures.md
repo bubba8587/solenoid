@@ -2,17 +2,17 @@
 aliases: ["Pointer gestures"]
 tags: [spec, canvas]
 ---
-<!-- [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType, [[B3]] sameNodeEverywhere, [[C52]] visibleSelection -->
+<!-- [[B20]] mobileFriendly, [[B3]] sameNodeEverywhere, [[C52]] visibleSelection -->
 
 # Spec: Pointer gestures
 
-Serves [[C92]] pinchUnvetoable (where each gesture listens and what counts as a finger), [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[B3]] sameNodeEverywhere (both canvases wire the gestures once). It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[B20]] mobileFriendly (where each gesture listens and what counts as a finger) (what a finger, a mouse and a pen each do) and [[B3]] sameNodeEverywhere (both canvases wire the gestures once). It covers what the system does and blocks, and the decision each behavior serves.
 
 This spec is the mechanics of canvas pointer input: which listener handles each gesture, in which event phase, and how a finger is told apart from a mouse or pen. [[touch-gestures]] is its companion: the inventory of what every gesture does on each device.
 
 ## The ordering rule
 
-Pinch listens in the capture phase and cannot be vetoed. Pan and node drag listen in the bubble phase and can be ([[C92]] pinchUnvetoable). Both halves matter; don't move either. The guarantee leans on React Flow binding its handlers in bubble: if React Flow ever moves them to capture, the ordering breaks and this section must be redone.
+Pinch listens in the capture phase and cannot be vetoed. Pan and node drag listen in the bubble phase and can be ([[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]). Both halves matter; don't move either. The guarantee leans on React Flow binding its handlers in bubble: if React Flow ever moves them to capture, the ordering breaks and this section must be redone.
 
 ```mermaid
 flowchart TD
@@ -42,7 +42,7 @@ The pinch is installed on the canvas wrapper in capture, listening to touch even
 
 ## Zoom steps
 
-Zooming in steps (a wheel notch, the zoom pill, a key) lands on a 10% step. A fit (Fit all, the load fit, framing a card) frames at the exact zoom that fits, off the grid: a fit snapped down to a step lost up to a third of the screen at 30% and half at 20%. A pinch zooms smoothly and never snaps while the fingers move, and the next stepped zoom after a pinch or a fit rounds back onto a step ([[C92]] pinchUnvetoable). Snapping mid-pinch would jump the canvas under the fingers, so the pinch follows them. Fixed steps everywhere else keep the zoom readout tidy and the steps repeatable. `MIN_ZOOM` and `MAX_ZOOM` are themselves on the step grid. **Reopen if:** the step size should change with the zoom level.
+Zooming in steps (a wheel notch, the zoom pill, a key) lands on a 10% step. A fit (Fit all, the load fit, framing a card) frames at the exact zoom that fits, off the grid: a fit snapped down to a step lost up to a third of the screen at 30% and half at 20%. A pinch zooms smoothly and never snaps while the fingers move, and the next stepped zoom after a pinch or a fit rounds back onto a step ([[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]). Snapping mid-pinch would jump the canvas under the fingers, so the pinch follows them. Fixed steps everywhere else keep the zoom readout tidy and the steps repeatable. `MIN_ZOOM` and `MAX_ZOOM` are themselves on the step grid. **Reopen if:** the step size should change with the zoom level.
 
 Tests: `viewPresets.test.ts`: `clampZoom` snaps to the nearest step within range, `boundZoom` bounds without snapping (and a non-finite input never gives NaN), and both bounds sit on the grid.
 
@@ -68,7 +68,7 @@ Wheel zoom listens on the canvas wrapper in capture, like the pinch. It is the o
 
 Code: `installTouchCardPan` in `flow/flowTouchPan.ts`.
 
-The card pan listens on the canvas wrapper in capture ([[C93]] gestureByPointerType). On touch, a one-finger drag that starts on an unselected card or group pans the canvas; a busy graph otherwise leaves no blank space to pan from. A selected node drags, so on touch you tap to select and then drag. Mouse and pen keep select-and-drag in one motion. The rule keys on the event's pointer type, not on the device class.
+The card pan listens on the canvas wrapper in capture ([[touch-gestures#A gesture follows what touches the screen, not the device]]). On touch, a one-finger drag that starts on an unselected card or group pans the canvas; a busy graph otherwise leaves no blank space to pan from. A selected node drags, so on touch you tap to select and then drag. Mouse and pen keep select-and-drag in one motion. The rule keys on the event's pointer type, not on the device class.
 
 ```mermaid
 flowchart TD
@@ -129,7 +129,7 @@ Code: `installLassoSelection` in `canvasLasso.ts`.
 
 The lasso is a `pointerdown` listener in capture on the canvas wrapper, so RF's pane never sees a lasso press.
 
-**Starting.** A primary-button press starts a lasso with Shift held, or without Shift while touch-select mode is on. Anything else falls through to the pane's pan. A press inside any card starts no lasso, so a socket's cable drag survives; the test is live containment in each card's element (`view.nodeElement(id).contains`), because a CSS class list silently misses some roots. A second contact, or a press while a lasso is already active, cancels the lasso without applying it and lets the pointer through unstopped, so the pinch takes over ([[C92]] pinchUnvetoable). That check comes before the card test, so a second finger landing on a card still releases the lasso. On desktop the press is stopped, or the pane would pan under the lasso; in touch-select mode it is not, because the pinch must see the first finger.
+**Starting.** A primary-button press starts a lasso with Shift held, or without Shift while touch-select mode is on. Anything else falls through to the pane's pan. A press inside any card starts no lasso, so a socket's cable drag survives; the test is live containment in each card's element (`view.nodeElement(id).contains`), because a CSS class list silently misses some roots. A second contact, or a press while a lasso is already active, cancels the lasso without applying it and lets the pointer through unstopped, so the pinch takes over ([[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]). That check comes before the card test, so a second finger landing on a card still releases the lasso. On desktop the press is stopped, or the pane would pan under the lasso; in touch-select mode it is not, because the pinch must see the first finger.
 
 **Drawing.** The card rectangles are read once at the start: the lasso owns the pointer, so they are stable, and reading them per frame would force an O(N) reflow. Cards hidden in a collapsed group or receded by isolate are left out, since the lasso reaches only what you can see ([[C52]] visibleSelection). A point is added on each `pointermove` at least 3 px from the last. The winding picks the mode, AutoCAD style: clockwise (a positive signed area in screen coordinates) is a crossing lasso, and counterclockwise is a window lasso.
 
@@ -150,7 +150,7 @@ Tests: `canvasLasso.test.ts`: a cancelled pointer, a lost window, Escape and an 
 
 ## Pens and palms
 
-There is no palm rejection ([[C93]]). A pen is handled only as what it is, a precise pointer: it never counts toward a pinch, and it keeps select-and-drag in one motion like a mouse.
+There is no palm rejection ([[touch-gestures#A gesture follows what touches the screen, not the device]]). A pen is handled only as what it is, a precise pointer: it never counts toward a pinch, and it keeps select-and-drag in one motion like a mouse.
 
 ## Tablets
 

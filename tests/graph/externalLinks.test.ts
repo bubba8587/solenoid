@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]]
 import { describe, it, expect } from "vitest";
 import { externalLinkTarget } from "../../src/graph/externalLinks";
 

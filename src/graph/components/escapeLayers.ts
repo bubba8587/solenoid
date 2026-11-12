@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md modal rules)
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]] (DESIGN.md modal rules)
 // An open menu inside a popup takes Escape before the popup does, so Escape closes the menu, not the popup.
 import { useEffect, useRef } from "react";
 

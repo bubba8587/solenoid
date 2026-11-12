@@ -1,4 +1,4 @@
-// [[C47]] equationNode
+// [[equation-solver#The Equation node solves a relation for whichever variable is unwired]]
 import type { GraphSocket } from "../graphModel";
 import { useRef, useState, useLayoutEffect, type ReactNode } from "react";
 import type { EquationNode as EquationNodeType } from "../nodeClasses";

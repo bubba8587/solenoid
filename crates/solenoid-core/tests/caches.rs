@@ -1,4 +1,4 @@
-// [[C120]] linearWork
+// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork
 //! The evaluator's per-site caches (the range memo, the call sites) are keyed by node address: one LAMBDA body's entry
 //! must never answer another's. The native allocator reuses a freed body's address at once, so these run natively.
 

@@ -37,7 +37,7 @@ const ROWS: &[(&str, &str, Field)] = &[
     ("FilterNode", "value", Field::Text),
     ("FilterFrameNode", "value", Field::Text),
     ("SumIfsNode", "value", Field::Text),
-    // The bounds take the checked value's kind ([[D120]] rangeBoundsTakeTheValuesKind).
+    // The bounds take the checked value's kind ([[date-values#A range check bounds a date by dates and a number by numbers]] rangeBoundsTakeTheValuesKind).
     ("ExpectNode", "min", Field::Bound),
     ("ExpectNode", "max", Field::Bound),
     ("ExpectNode", "allowed", Field::Csv),

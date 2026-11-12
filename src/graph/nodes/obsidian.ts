@@ -1,4 +1,4 @@
-// [[C101]] onePatchPath, [[B18]] safeToShare
+// [[vault-bridge#Writing a note's properties changes only what it targets]], [[B18]] safeToShare
 import { readTasks, tasksCube, readTables, tablesFrame, planTaskMark, setTaskMarks, type TaskMark } from "../noteBody";
 import { GraphNode } from "../graphModel";
 import { documentIn, strIn, strOut, cubeIn, frameOut, readTextInput, strListIn, keysCsv } from "./shared";
@@ -85,7 +85,7 @@ function cellFamily(cells: unknown[], colType: CubeValue["columns"][number]["typ
   return "str";
 }
 
-/** The type a new key registers ([[D116]] writeSolenoidTypes): a Solenoid Properties type for a list, matrix, Frame, Cube or complex
+/** The type a new key registers ([[vault-bridge#Write to Obsidian types a new property with the Solenoid Properties types]]): a Solenoid Properties type for a list, matrix, Frame, Cube or complex
  *  number, Obsidian's own for a plain scalar; null for a key Obsidian types itself. */
 export function obsidianTypeName(cube: CubeValue, key: string): string | null {
   if (OBSIDIAN_OWNED.has(key)) return null;

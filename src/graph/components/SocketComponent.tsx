@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[components#One design system governs every look, layout and word in the app]]
 import { useId, type CSSProperties } from "react";
 import type { GraphSocket } from "../graphModel";
 import { SOCKET_COLORS } from "../sockets";

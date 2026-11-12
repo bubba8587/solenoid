@@ -1,4 +1,4 @@
-// [[C58]] tableInputRawText, [[C107]] obsidianPlugin
+// [[C58]] tableInputRawText, [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
 import type { PivotConfig } from "./pivotConfig";
 import type { AggOp } from "./frameOps";
 import type { ComponentType } from "react";
@@ -59,7 +59,7 @@ export interface TablePopupState {
   /** Opened before its data arrived: the popup shows its loading skeleton until `open` is called again with the data. */
   loading?: boolean;
   formLayout?: string;
-  /** The Cards view's authored layout ([[D111]] cardLayouts), in the Form layout's grammar. */
+  /** The Cards view's authored layout ([[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]), in the Form layout's grammar. */
   cardLayout?: string;
   lambdaOptions?: string[];
   noFormulaColumns?: boolean;
@@ -111,7 +111,7 @@ let pivotHostAction: PivotHostAction | null = null;
 export function setPivotHostAction(action: PivotHostAction | null): void { pivotHostAction = action; }
 export function getPivotHostAction(): PivotHostAction | null { return pivotHostAction; }
 
-/** Draws the Dashboard view. Installed by the app; the Obsidian plugin installs none, since a note's frame never carries Describe's tiles, and so never bundles the chart renderers ([[C127]] pivotView). */
+/** Draws the Dashboard view. Installed by the app; the Obsidian plugin installs none, since a note's frame never carries Describe's tiles, and so never bundles the chart renderers ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]). */
 type DashboardView = ComponentType<{ tiles: readonly DescribeTile[]; query: string }>;
 let dashboardView: DashboardView | null = null;
 export function setDashboardView(view: DashboardView | null): void { dashboardView = view; }

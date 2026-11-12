@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C26]] opArgDistinct
+// [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C26]] opArgDistinct
 
 import {
   EmSpectrumNode as EmSpectrumNodeType,

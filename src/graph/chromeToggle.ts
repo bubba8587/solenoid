@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
 // Collapsible canvas chrome, so one hotkey toggles it as a group while Canvas and the panels stay decoupled.
 
 type ChromeToggle = { isOpen: () => boolean; setOpen: (open: boolean) => void };

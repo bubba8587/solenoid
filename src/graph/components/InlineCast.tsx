@@ -1,4 +1,4 @@
-// [[D113]] inlineCast: a type pick on a card's result is a Cast, labelled as one; ∅ keeps the computed type.
+// [[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]: a type pick on a card's result is a Cast, labelled as one; ∅ keeps the computed type.
 // [[B11]] maximalMerge: the pick retypes the result socket in place, so it reconciles the cables after.
 import { useEffect, useState } from "react";
 import type { GraphSocket } from "../graphModel";

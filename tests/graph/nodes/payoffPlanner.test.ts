@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[C17]] shareImpl, [[frame-verbs#Payoff Planner]]
+// [[group-expand-push#A node joins or leaves a group only when you put it there]], [[C17]] shareImpl, [[frame-verbs#Payoff Planner]]
 import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { PayoffPlannerNode, type PayoffOrder, type PayoffView } from "../../../src/graph/nodeClasses";

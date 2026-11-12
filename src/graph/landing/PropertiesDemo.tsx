@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[B3]] sameNodeEverywhere
+// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[B3]] sameNodeEverywhere
 import { useMemo, useState } from "react";
 import { parse, stringify } from "yaml";
 import noteText from "../../../demo-vault/Solenoid/Property types.md?raw";

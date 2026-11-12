@@ -1,4 +1,4 @@
-// [[C73]] inspectorIsStatic
+// [[layout-chrome#The Inspector is a static reference, never live values]]
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { GraphNode, GraphSocket } from "../graphModel";
 import { inspectorStore } from "../inspectorStore";

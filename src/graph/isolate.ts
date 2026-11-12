@@ -31,7 +31,7 @@ function expandEntities(editor: AnyEditor, ids: Set<string>): Set<string> {
 }
 
 /** Receded cards leave the selection, so no verb acts on a card the user can't see. Switched off, nothing enters
- *  ([[C135]] isolateOff). */
+ *  ([[react-flow-surface-contract#The Isolate modes are switched off for now: nothing in the app enters them]]). */
 function enter(editor: AnyEditor, focus: Set<string>, mode?: string): boolean {
   if (!ISOLATE_ON) return false;
   isolateStore.set(focus, mode);

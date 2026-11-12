@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md § The Quiet Accent Rule: a user-authored color)
+// [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § The Quiet Accent Rule: a user-authored color)
 import type { CSSProperties } from "react";
 import { PALETTE, themeAccent, resolveColor, contrastInk, darkenAccent, hexToRgba } from "../palette";
 

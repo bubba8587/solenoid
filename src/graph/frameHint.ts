@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
 // A node class declares a per-input example frame (static `frameHints`) that hovering the socket shows as a mini-table;
 // on the class, so it sits beside the socket it documents and survives minification.
 

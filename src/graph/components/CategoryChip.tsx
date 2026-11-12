@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md § Quiet Accent)
+// [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § Quiet Accent)
 import { useSeriesColors } from "./chartCore";
 import "./CategoryChip.css";
 

@@ -1,4 +1,4 @@
-/* [[C119]] landscapePhoneIsTablet: a sideways phone in fullscreen, where the page scale is pinned to 1, shrinks the app
+/* [[layout-chrome#A phone turned sideways runs the tablet layout, scaled to fit]]: a sideways phone in fullscreen, where the page scale is pinned to 1, shrinks the app
    chrome by the landscape fit instead. Never the canvas: React Flow reads pointers in zoomed pixels against an unzoomed
    transform, so a zoomed canvas would drag cards short of the finger. */
 html.chrome-zoomed :is(

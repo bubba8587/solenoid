@@ -1,4 +1,4 @@
-// [[D22]] oneNamePerCard
+// [[B16]] oneFormulaSurface, [[add-menu#A placed node is titled with what you picked in the Add menu]]
 import type { GraphEditor } from "./graphEditor";
 import type { GraphConnection, GraphNode } from "./graphModel";
 

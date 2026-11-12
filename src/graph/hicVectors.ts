@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer
+// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]]
 // Mechanics: [[html-in-canvas#Cables and overlays on the canvas]]. Every SVG the viewport draws outside the cards (cables,
 // ribbons, standoff bars, drawn cables) is copied onto the canvas as vectors in world coordinates, so nothing stays live DOM.
 

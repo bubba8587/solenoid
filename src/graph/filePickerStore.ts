@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[C106]] noNativeDialogs
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[components#The app never uses the browser's own pop-up boxes]]
 import { createValueStore } from "./storeKit";
 
 /** The open file picker (`FilePicker.tsx`): what it lists, under which root, and who hears the answer. */

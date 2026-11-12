@@ -1,4 +1,4 @@
-// [[C121]]
+// [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
 // Typing, 6.5 s, straight on: an empty Expression card, then SQRT(3^2 + 4^2) typed into it a key at a time.
 // Each keystroke lands in the formula first and the rest of the card answers a beat later, in the app's own
 // layout of that prefix: the stray S becomes a socket and a 0, an open bracket reads "Missing 1 closing

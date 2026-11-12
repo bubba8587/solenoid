@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation, [[C17]] shareImpl, [[C51]] formulaNaming
+// [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C79]] packActivationIsPresentation, [[C17]] shareImpl, [[C51]] formulaNaming
 //! The built-in packs' formula functions (`src/graph/packs/*Formulas.ts`), on the kernels their cards' bodies use
 //! (`nodes/packs.rs`). A pack being off hides its names from the menus, never from a formula.
 
@@ -328,7 +328,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                 V::Num(k::MMHG_TO_PA * libm::pow(10.0, ca - cb / (cc + tc)))
             }
         }
-        // The Sets pack's tests and set operations ([[D124]] comparisonFunctions): its cards call these too.
+        // The Sets pack's tests and set operations ([[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]] comparisonFunctions): its cards call these too.
         "IS" | "ISNOT" | "ABOVE" | "BELOW" | "ATLEAST" | "ATMOST" => {
             let op = crate::compare::function_op(name).expect("a comparison function");
             crate::compare::compare(op, arg(a, 0), arg(a, 1))

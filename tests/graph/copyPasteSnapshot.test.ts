@@ -75,7 +75,7 @@ describe("copy", () => {
 });
 
 describe("paste", () => {
-  it("a pasted group tints its pasted members at once ([[C86]] membershipByGesture)", async () => {
+  it("a pasted group tints its pasted members at once ([[group-expand-push#A node joins or leaves a group only when you put it there]])", async () => {
     const { groupMembershipStore } = await import("../../src/graph/groupMembership");
     const a = await add(new DisplayNode());
     const group = await add(new GroupNode({ members: [a.id], color: "accent" }));

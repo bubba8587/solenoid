@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[D90]] cubeTypesAtDepth, [[obsidian-plugin#The app reads the picks]]
+// [[B1]] obsidianBet, [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[frame-verbs#Each table in a Cube, nested or not, types its own columns]], [[obsidian-plugin#The app reads the picks]]
 import { it, expect, vi } from "vitest";
 
 const files = new Map<string, string>();

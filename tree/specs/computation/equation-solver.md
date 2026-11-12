@@ -2,11 +2,12 @@
 aliases: ["Equation solver"]
 tags: [spec, computation]
 ---
-<!-- [[C47]] equationNode, [[C139]] mathlibLaws -->
+<!-- [[B11]] -->
+<!-- [[B11]] maximalMerge, [[C139]] mathlibLaws -->
 
 # Spec: Equation solver
 
-Serves [[C47]] equationNode. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[B11]] maximalMerge. It covers what the system does and blocks, and the decision each behavior serves.
 
 The Equation card holds one relation, `LHS = RHS`, and solves it for whichever variable is not wired. Every variable is both an input and an output. The Equation node lives in `nodes/equation.ts` (`EquationNode`), and its solving layers are in `crates/solenoid-core/src/nodes/formula.rs` ([[node-bodies]]). TVM is an Equation card with a fixed relation (`TvmNode extends EquationNode` in `nodes/finance.ts`), so it solves the same way; Triangle Solver has its own solver (`triangle_solver`, `crates/solenoid-core/src/nodes/packs.rs`).
 
@@ -117,3 +118,10 @@ times, a quadratic and x·eˣ = 5, each at k from 10³ to 10⁻²⁰.
 The numeric layers run on base-SI magnitudes: each known's dimension is captured, then its unit is stripped. The solved unknown's unit is the dimension of its isolated expression (`dim_eval_with_code`), tagged onto the result with its currency code, so a TVM payment on a dollar loan is in dollars. An unknown that appears more than once has no isolated form, so its result stays a bare number rather than a guessed unit. Knowns whose units cannot combine give `#UNIT!`. A relation whose knowns carry no units gives bare results, and a dimensionless ratio known is read as its plain magnitude, so `y = r * x` with r a ratio and x in meters solves y in meters, not as a ratio.
 
 Tests: `equationUnits.test.ts`: the unknown's unit derived through each layer (d = v · t solved for d and for v, both roots of x² = A in meters, R from volts and amps in ohms), a known passing through with its own display unit while the math runs on base SI, and a ratio known read as its magnitude.
+
+## The Equation node solves a relation for whichever variable is unwired
+
+The Equation node holds a relation and solves it for whichever variable you leave unwired, with a Check output for whether it holds. It uses Solenoid's own small solver, not an outside algebra library.
+
+- How it's built: [[equation-solver]].
+- **Reopen if:** there is demand for cubic or higher roots.

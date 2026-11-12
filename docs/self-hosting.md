@@ -94,7 +94,7 @@ Today it carries:
 ```
 
 - **`trustedSources`**: hosts whose fetches skip the network prompt. A graph opened from a shared location counts as
-  someone else's document ([[C103]] untrustedContentSeams), so every connection card asks "Allow it to fetch?" first.
+  someone else's document ([[engineering#Content entering or leaving the app is guarded where it crosses]]), so every connection card asks "Allow it to fetch?" first.
   That's right for a file from the internet and noise for the company's own graph reading the company's own SharePoint.
   The list lets an admin vouch for named hosts only; a card in the same graph fetching anywhere else still asks. Host
   match is exact (no wildcards), lowercase, and a `.` prefix (`.company.com`) covers that domain and its subdomains;

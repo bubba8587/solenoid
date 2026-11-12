@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
 import { createPortal as realCreatePortal, flushSync } from "react-dom";
 import type { ReactNode, ReactPortal } from "react";
 import { popupPortalRoot } from "../shadow";

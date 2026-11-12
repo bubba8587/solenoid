@@ -1,4 +1,4 @@
-// [[C120]] linearWork
+// [[B19]] spreadsheetHabits, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]
 import { flushSync } from "react-dom";
 
 type Job = { read: () => unknown; write: (value: unknown) => void };

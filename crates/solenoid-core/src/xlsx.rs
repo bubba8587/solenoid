@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams, [[C130]] rustCore
+// [[engineering#Content entering or leaving the app is guarded where it crosses]], [[C130]] rustCore
 //! An Excel workbook's named Tables, read on the `calamine` crate (`tree/specs/computation/live-connections.md`
 //! § Excel workbooks). Only a Table is read, never a sheet or a range: a Table has exact edges and a header row. Each
 //! cell is the answer Excel saved with the file; a formula with no saved answer is an error naming the cell.

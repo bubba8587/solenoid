@@ -1,4 +1,4 @@
-// [[D118]] delayedPass, [[compute-pass#Delayed Pass]]
+// [[C23]] calcModes, [[compute-pass#A Delayed Pass card hands on what its input held one recalculation earlier, so loops through it step]], [[compute-pass#Delayed Pass]]
 import { describe, it, expect } from "vitest";
 import type { View } from "../../../src/graph/view";
 import { GraphEditor } from "../../../src/graph/graphEditor";

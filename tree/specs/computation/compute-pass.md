@@ -2,11 +2,11 @@
 aliases: ["Compute pass and the input boundary"]
 tags: [spec, computation]
 ---
-<!-- [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
+<!-- [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
 
 # Spec: Compute pass and the input boundary
 
-Serves [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas and [[C17]] shareImpl. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[C10]] socketLattice, [[C15]] matricesInFormulas and [[C17]] shareImpl. It covers what the system does and blocks, and the decision each behavior serves.
 
 This file owns what happens from "something changed" to "every card shows its new value": how the engine is driven, which nodes a pass recomputes, the calc mode, volatile nodes, rebuild scopes, and what a value goes through between leaving one node's output and reaching the next node's `data()`. Which cables may connect at all is [[socket-lattice]] ([[C10]] socketLattice); this file starts once a cable exists. The error codes and their meaning are [[error-values]]; units on the value are [[unit-flow]]; the null and blank semantics a `data()` applies are [[value-semantics]].
 
@@ -252,12 +252,12 @@ What an open scope suppresses:
 | The React Flow topology sync (retried each task until the scope closes) | `FlowCanvas.tsx` | the rebuild commits once |
 | Undo-history recording | `flowHistory.ts` | a load is not an undoable step |
 | Document operations (switch, create, fork and the rest) | `documentStore.ts` | they would race a half-built canvas |
-| Outward effects: Alert firing, Expect violations, a relative date Value Input's day change, a composite's By-Row cap warning, Problems panel logging | nodes and `problemsStore.ts` | [[D79]] effectsEdgeTriggered: a load must not replay old alerts |
+| Outward effects: Alert firing, Expect violations, a relative date Value Input's day change, a composite's By-Row cap warning, Problems panel logging | nodes and `problemsStore.ts` | [[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]: a load must not replay old alerts |
 | The Conduit's lane-change recompute | `ConduitComponent.tsx` | the rebuild's own settle covers it |
 
 ### A refresh never runs inside a rebuild scope
 
-**MUST:** a live-data refresh (`refreshConnection` from the manual button or the interval timer, `refreshAllConnections`, a background load landing) runs its pass outside `beginGraphRebuild` / `endGraphRebuild`. Bulk topology operations wrap themselves in scopes on purpose; a refresh must never be one of them. A scope suppresses outward effects so a load doesn't replay old alerts ([[D79]] effectsEdgeTriggered), and a refresh inside one would swallow a real alert on fresh data: an Alert watching a live feed would simply stop firing.
+**MUST:** a live-data refresh (`refreshConnection` from the manual button or the interval timer, `refreshAllConnections`, a background load landing) runs its pass outside `beginGraphRebuild` / `endGraphRebuild`. Bulk topology operations wrap themselves in scopes on purpose; a refresh must never be one of them. A scope suppresses outward effects so a load doesn't replay old alerts ([[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]), and a refresh inside one would swallow a real alert on fresh data: an Alert watching a live feed would simply stop firing.
 
 The Tornado sweep opens a scope and `beginForceExact()` on purpose: its perturbation passes must run in manual mode, on full data, without raising real alerts.
 
@@ -291,7 +291,7 @@ On each call with `inputs`:
 
 1. **Short-circuit.** Unless the node's constructor name is in `SEES_ERRORS` (`boundary.rs`; `IFErrorNode`, `IsTestNode`, the branch cards `IfNode`, `IfsNode`, `SwitchNode` and `ChooseNode`, `ConduitNode`, `CableSwitchNode`, `DisplayNode`, `NoteNode`, `ReportNode`, `DashboardNode`, `ChartNode`, `CompositeNode`, `CompositeOutputNode`; why each is listed is [[error-values#Nodes that see raw errors]]), the guard scans each input array's top-level values for a `SolError`. On the first one found it returns error-out without calling `data()`. Errors inside a list, matrix or Frame cell do not short-circuit; the node handles those per cell.
 2. **Run.** Coerces the inputs and calls `data()`. A synchronous throw, or a rejected promise, becomes error-out of the converted error: a thrown `SolError` is itself, an error whose `name` is `"ShapeError"` becomes `#SHAPE!` with its message, anything else becomes `#ERROR!` with the message "This node failed to compute: …". An answer of nothing (`undefined` or `null`, returned or resolved) is the same `#ERROR!`, "This node failed to compute: it returned no answer", at once or async alike.
-3. **Tag the result.** On success, every output value is passed through origin tagging: an untagged top-level `SolError` gets `origin: { nodeId, nodeName }`; untagged errors in a one-dimensional array's cells and in a Frame's column cells get the same, in a copy, one tagged error per distinct untagged error. An origin already present is never overwritten ([[E9]] errorsKeepOrigin). When nothing needed tagging the original object is returned. Then the result is reported to the error sinks.
+3. **Tag the result.** On success, every output value is passed through origin tagging: an untagged top-level `SolError` gets `origin: { nodeId, nodeName }`; untagged errors in a one-dimensional array's cells and in a Frame's column cells get the same, in a copy, one tagged error per distinct untagged error. An origin already present is never overwritten ([[error-values#An error remembers the node where it started]]). When nothing needed tagging the original object is returned. Then the result is reported to the error sinks.
 4. **Error-out.** Tags the error with this node as origin if it has none (with `inputSlot` set to the input key that carried it when it came from an input, and no `inputSlot` key otherwise), sets every current output key to the tagged error, sets `cachedResult` (and a figure card's `cachedChart`) to it and `cachedPayload` to `null` where the node has those properties, reports it to the sinks, and returns the outputs.
 
 Error sinks (`registerErrorSink` in `errorValue.ts`; the Problems store registers one) receive at most one report per node per call: the first error found on the node's own outputs by `findCellError`, a bounded scan of the head and a stride sample of each container ([[error-values]], "Per-cell errors surface through a bounded scan"), or `null` when the outputs are clean, which re-arms the sink's edge detection. The Problems store (`problemsStore.ts`) is one such sink:
@@ -422,7 +422,7 @@ A composite card owns a private `GraphEditor` and `DataflowEngine`, wrapped in t
 
 ## Delayed Pass
 
-A Delayed Pass card (`DelayedPassNode`, [[D118]] delayedPass) breaks a cable cycle by answering one recalculation late.
+A Delayed Pass card (`DelayedPassNode`, [[#A Delayed Pass card hands on what its input held one recalculation earlier, so loops through it step]] delayedPass) breaks a cable cycle by answering one recalculation late.
 
 - **The engine never fetches its `In`.** The graph core builds its engine with a per-node port selection (`model.rs`, `Host::delayed`): for a Delayed Pass card every input but `in` takes part, so a fetch never follows `In` and a cycle through it can't recurse. `Start` is an ordinary input.
 - **A cable into `In` is no edge to the loop finder** (`pass::loop_members`'s `delayed`, and `graphValidate.ts`'s `findCycle` for the text form), so the cycle's members are never seeded `#CIRC!`. A cable into `Start` that closes a cycle is still a loop.
@@ -435,3 +435,15 @@ Tests:
 
 - `nodes/delayedPass.test.ts`: a loop through a Delayed Pass card steps once per pass, full or targeted, with no `#CIRC!`; Reset returns it to Start; the text validator sees no cycle through it.
 - `pass.rs` (solenoid-graph): the loop finder's cut at `In`.
+
+## A Delayed Pass card hands on what its input held one recalculation earlier, so loops through it step
+
+A Delayed Pass card answers with the value its input had at the end of the previous recalculation, so a cable cycle through it is legal, never #CIRC!, and the loop moves one step each time the sheet recalculates.
+
+- *Exception to [[C23]] calcModes:* a document with a Delayed Pass card answers by how many recalculations ran, so a partial recalculation can differ from a fresh one. **Removed by:** the held values counting as part of the document, so a recalculation from the same held values always gives the same answers.
+- Every recalculation steps the loop, an edit elsewhere and F9 alike. The held value isn't saved: a reopened document starts from the card's Start value, and Reset returns a card to it.
+- How it's built: [[compute-pass]] § Delayed Pass.
+
+## A partial recalculation matches a full one
+
+However much a pass recalculates, its answers match a full, clean recalculation of the whole graph. Touching only what an edit affects is a speedup, never a different answer.

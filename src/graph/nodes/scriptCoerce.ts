@@ -1,4 +1,4 @@
-// [[C66]] scriptNode
+// [[script-sandbox#Script runs your own code, and only typed values come out]]
 import { solError, isSolError, type SolError } from "../errorValue";
 import { jsDateToSerial, serialToJsDate } from "./dateSerial";
 import { isCx } from "../cxValue";

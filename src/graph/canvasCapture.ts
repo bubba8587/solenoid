@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[C42]] htmlInCanvasRenderer
+// [[B3]] sameNodeEverywhere, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]]
 import { getView, getEditor } from "./process";
 
 function inlineStylesheetText(): string {

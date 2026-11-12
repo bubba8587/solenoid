@@ -1,4 +1,4 @@
-// [[D87]] knapNotes
+// [[obsidian-plugin#A note can opt in to read in Obsidian as its Note card does, chips included]]
 import { Component, MarkdownRenderer, editorInfoField, editorLivePreviewField } from "obsidian";
 import { syntaxTree } from "@codemirror/language";
 import { Prec, RangeSetBuilder, StateEffect, StateField, type EditorState, type Transaction } from "@codemirror/state";

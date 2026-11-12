@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[C92]] pinchUnvetoable
+// [[B3]] sameNodeEverywhere, [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]
 
 const ZOOM_SCALE = 0.0028;
 const ZOOM_STEP_CAP = 0.24;

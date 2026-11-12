@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem, [[palette-and-theme#Each palette, drawn]]
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]], [[palette-and-theme#Each palette, drawn]]
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { paletteDiagrams } from "../../scripts/palette-diagrams";

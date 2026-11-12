@@ -1,4 +1,4 @@
-// [[save-format#A save loses nothing quietly]]
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]
 // copyPaste.ts can't import nodeCtorRegistry directly: catalogUtils → nodeCatalog → nodeClasses → composite → copyPaste
 // would be a cycle.
 let _ctorRegistryProvider: () => Map<string, new (init?: Record<string, unknown>) => object> = () => new Map();

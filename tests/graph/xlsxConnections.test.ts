@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams, [[live-connections#Excel workbooks]]
+// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]], [[live-connections#Excel workbooks]]
 // Local File and Web Source read an Excel workbook's named Table: the answers Excel saved, typed by their cells, a
 // formula Excel never calculated an error naming its cell, and the popup's type picks over the cells' text.
 import { afterEach, describe, expect, it } from "vitest";

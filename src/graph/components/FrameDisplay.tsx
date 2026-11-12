@@ -1,4 +1,4 @@
-// [[C118]] formatTravelsWithValue, [[E9]] errorsKeepOrigin
+// [[C118]] formatTravelsWithValue, [[error-values#An error remembers the node where it started]]
 import { useSyncExternalStore } from "react";
 import { frameRows, fullList } from "../listPreview";
 import { FrameChip } from "./FrameChip";

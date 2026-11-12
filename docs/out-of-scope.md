@@ -86,13 +86,13 @@ addressable name; server-side evaluation.
 runs and untyped results; it destroys every guarantee the product sells — purity, typing,
 provenance, auditability, safety of shared files. It is the universal escape hatch, and
 the whole point of Solenoid is that the escape hatch is where trust goes to die.
-**The line (revised by the author 2026-08-28, [[C66]] scriptNode):** ONE node, **Script**,
+**The line (revised by the author 2026-08-28, [[B17]] typedValueModel, [[script-sandbox#Script runs your own code, and only typed values come out]]):** ONE node, **Script**,
 is the bounded form — a single JavaScript function whose parameters are its inputs and
 whose return value is folded onto the value model, typing itself by what it is. No I/O (a
 sandbox worker with the network and storage doors removed), no state between runs, a wall
 clock, and nothing leaves it that is not already a Solenoid value. It is a typed pure
 function, not a cell: no Python, no packages, no second language. Frames and cubes flow
-through it as rows of `{name: value}` objects, both directions ([[C66]] scriptNode) —
+through it as rows of `{name: value}` objects, both directions ([[script-sandbox#Script runs your own code, and only typed values come out]]) —
 still typed pure values, so §4's actual fears (I/O, state, untyped results) stay shut;
 the verb engine remains the RELATIONAL surface (matricesInFormulas is about formulas). Extensibility beyond that stays *more
 node types* (packs, composites — typed, inspectable). The report projection is a view of

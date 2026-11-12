@@ -1,4 +1,4 @@
-// [[C44]] dateSerials, [[C86]] membershipByGesture
+// [[C44]] dateSerials, [[group-expand-push#A node joins or leaves a group only when you put it there]]
 import { describe, it, expect } from "vitest";
 import {
   PointPlotterNode, CurveNode, GridPainterNode,

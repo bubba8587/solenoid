@@ -1,4 +1,4 @@
-// [[C120]] linearWork. The pan layer (react-flow-surface-contract § Drag performance).
+// [[B19]] spreadsheetHabits, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]. The pan layer (react-flow-surface-contract § Drag performance).
 import { IS_COARSE } from "../coarse";
 import { renderModeStore } from "../renderMode";
 

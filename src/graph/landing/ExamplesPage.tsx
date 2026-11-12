@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem (DESIGN.md § Voice)
+// [[B3]] sameNodeEverywhere, [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § Voice)
 import { useEffect } from "react";
 import { SiteHeader, SiteFooter, SiteThumb } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";

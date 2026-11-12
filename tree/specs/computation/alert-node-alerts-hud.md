@@ -2,11 +2,12 @@
 aliases: ["Alert node + Alerts HUD"]
 tags: [spec, computation]
 ---
-<!-- [[D79]] effectsEdgeTriggered -->
+<!-- [[C23]] -->
+<!-- [[C23]] calcModes -->
 
 # Spec: Alert node + Alerts HUD
 
-Serves [[D79]] effectsEdgeTriggered. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[C23]] calcModes. It covers what the system does and blocks, and the decision each behavior serves.
 
 The **Alert** card watches a value and raises a notification when a condition is met. Each firing lands in two places: a toast, and the Alerts section of the HUD, the column of floating panels on the right edge of the screen. The Alert node lives in `nodes/display.ts` (`AlertNode`, which raises what its body says fires) and `components/AlertNode.tsx`, and its status, what fires and the message in its body (`alert` in `crates/solenoid-core/src/nodes/docs.rs`, [[node-bodies]]); the log is `alertStore.ts`; the column is `components/HudStack.tsx`.
 
@@ -47,7 +48,7 @@ The card's value box shows a neutral dot and word, never a pass or fail mark, be
 
 ## When it fires
 
-An Alert fires on a change of status, not on a boolean flip ([[D79]] effectsEdgeTriggered). The body decides what fires; the TypeScript only raises it:
+An Alert fires on a change of status, not on a boolean flip ([[#An alert fires when its status changes, and never on load]]). The body decides what fires; the TypeScript only raises it:
 
 1. A null status is unknown. The body shows nothing new, so nothing fires and the remembered status stands.
 2. Otherwise the body shows the status key (`alertKey`: the mode and the status, the number or the list joined with commas) and, when the status is alerting (any nonzero cell), the message it fires (`alertMessage`, else null).
@@ -113,3 +114,9 @@ Each section renders nothing when empty, so the column is invisible until used, 
 - presenter mode hides the column (`PresentationOverlay.css`).
 
 The column is not a generic panel API. Each section is its own component with its own state, its own trigger button and its own `registerChrome` call. A new panel is a new component added as a sibling inside `HudStack`, not a plug-in to a shared base.
+
+## An alert fires when its status changes, and never on load
+
+An effect that reaches outside the graph, such as an alert, fires only when its status changes, never again while it stays the same, and stays silent while a document loads.
+
+- How it's built: [[alert-node-alerts-hud#When it fires]] and [[compute-pass#Rebuild scopes]].

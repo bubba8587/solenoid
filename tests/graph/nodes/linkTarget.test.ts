@@ -1,4 +1,4 @@
-// [[D87]] knapNotes
+// [[B1]] obsidianBet, [[obsidian-plugin#A note can opt in to read in Obsidian as its Note card does, chips included]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { TextTransformNode } from "../../../src/graph/nodes/text";

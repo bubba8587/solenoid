@@ -1,4 +1,4 @@
-// [[C112]] noOverlapsEver, [[group-expand-push#LayoutFx]]
+// [[A1]] visualGraphCalculator, [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]], [[group-expand-push#LayoutFx]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

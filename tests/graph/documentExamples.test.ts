@@ -1,4 +1,4 @@
-// [[save-format#A save loses nothing quietly]], [[per-doc-autosave-persistence#Examples]]
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]], [[per-doc-autosave-persistence#Examples]]
 // A seed opened from the menus is an example: out of the file tree, dropped when left as it opened, and asked about
 // (Keep, Discard, Cancel) when left changed. Editor-less: the tests hand the capture a graph to stand for an edit.
 import { describe, it, expect, vi, beforeEach } from "vitest";

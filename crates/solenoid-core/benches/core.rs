@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C120]] linearWork
+// [[C130]] rustCore, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork
 //! The core's hot paths timed natively at 800,000 rows (the Engine Speed Test seed's): `cargo bench --bench core`
 //! (`-- <name>` runs the matching ones). For comparing changes, not a gate: `wasmEngineBench.test.ts` times the wasm.
 

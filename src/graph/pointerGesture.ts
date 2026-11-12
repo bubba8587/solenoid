@@ -1,4 +1,4 @@
-// [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType
+// [[B20]], [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]], [[touch-gestures#A gesture follows what touches the screen, not the device]]
 
 const down = new Map<number, boolean>();
 

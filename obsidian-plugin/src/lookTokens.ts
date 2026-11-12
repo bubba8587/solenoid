@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
 import { paletteStore, PALETTE_NAMES, COLOR_PALETTE, NEUTRAL_WHITE, NEUTRAL_DARK, CHROME_HOME, resolveColor, themeAccent, contrastInk, hexToHsl, hexToOklch, liftedToward, DEFAULT_CHROME, chromeCssVars, type PaletteName } from "../../src/graph/palette";
 import { themeVars, type ThemeMode } from "../../src/graph/themeVars";
 

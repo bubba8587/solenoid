@@ -903,7 +903,7 @@ fn describe(c: &mut Call) -> Answer {
     shown_frame(c, "frame", out)
 }
 
-/// How many most common values a tile lists ([[C127]] pivotView).
+/// How many most common values a tile lists ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]] pivotView).
 const TOP_VALUES: usize = 5;
 /// A number column with this few distinct values lists them, as a text column does: a histogram of two years is two
 /// bars and a gap.

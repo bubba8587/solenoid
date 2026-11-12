@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md § Voice: the Reference explains what normal use can't make obvious)
+// [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § Voice: the Reference explains what normal use can't make obvious)
 // A top-level folder's page in the Reference: what its kind of value is, drawn small, then its cards by sub-folder.
 import type { CSSProperties, ReactNode } from "react";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../AddNodeMenu";

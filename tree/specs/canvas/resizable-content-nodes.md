@@ -2,7 +2,7 @@
 aliases: ["Resizable-content nodes"]
 tags: [spec, canvas]
 ---
-<!-- [[save-format#A save loses nothing quietly]] -->
+<!-- [[A1]] visualGraphCalculator, [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]] -->
 
 # Spec: Resizable-content nodes
 

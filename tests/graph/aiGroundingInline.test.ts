@@ -1,4 +1,4 @@
-// [[save-format#A save loses nothing quietly]], [[save-format#The strict validator]], [[inline-literal-maps#One field per input]]
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]], [[save-format#The strict validator]], [[inline-literal-maps#One field per input]]
 import { describe, it, expect } from "vitest";
 import { buildGroundingSpec } from "../../src/graph/aiGrounding";
 import { validateText } from "../../src/graph/graphValidate";

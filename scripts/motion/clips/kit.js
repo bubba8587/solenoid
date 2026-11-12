@@ -1,4 +1,4 @@
-// [[C121]]
+// [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
 // What the clips share: easing, keyed values, the assemble choreography (a card unfolds and its layers drop in
 // by paint order), state sweeps (the app's own layouts swapped in, a changed glyph popping as it lands), the
 // camera rig and the rest check. A clip is a pure function of time built from these.

@@ -63,7 +63,7 @@ pub struct Traits {
     roles: Vec<Option<Role>>,
     blanks: Vec<serde_json::Value>,
     scalar: Vec<bool>,
-    /// The name's facts the call path reads on every row, resolved once as the table loads ([[C120]] linearWork).
+    /// The name's facts the call path reads on every row, resolved once as the table loads ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
     #[serde(skip)]
     pub fast: Fast,
 }
@@ -597,7 +597,7 @@ fn same(a: &V, b: &V) -> bool {
 }
 
 /// These answer a list built fresh from a whole column, so the memo keeps it, and the range function reading it hits
-/// its own memo too ([[C120]] linearWork).
+/// its own memo too ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
 const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "DROP"];
 
 /// `BRANCH_SELECTORS`: the arguments that pick a branch. Only an error there is the call's answer; an error in a branch
@@ -658,10 +658,10 @@ pub struct Eval<'a> {
     /// per call and dropped, so its address can come back holding another body: an entry answers only an equal one.
     bodies: RefCell<FxHashMap<*const Ast, Rc<Ast>>>,
     /// A whole column readied for a range call, kept by the list it came as: the column reaches the call row after row,
-    /// and readying it there would copy and scan the whole column per row ([[C120]] linearWork).
+    /// and readying it there would copy and scan the whole column per row ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
     readied: RefCell<Vec<Rc<Readied>>>,
     /// MIN or MAX of a whole column, kept by the column: `MAX(col, @x)` reads it beside a row's value every row
-    /// ([[C120]] linearWork).
+    /// ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
     partials: RefCell<Vec<Partial>>,
     /// A computed column's row-free subtrees (`row_free`), each with its value once a row has computed it.
     hoisted: RefCell<FxHashMap<*const Ast, Option<V>>>,
@@ -1961,7 +1961,7 @@ pub fn row_refs(ast: &Ast) -> Vec<String> {
 
 thread_local! {
     /// Lists the TS sent once under an id (`{"__def": id, "v": …}`) and names again by it (`{"__ref": id}`), so a
-    /// formula called once per item doesn't re-send its captures each time ([[C120]] linearWork). The TS forgets an
+    /// formula called once per item doesn't re-send its captures each time ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork). The TS forgets an
     /// id when its list is collected (`engine_forget`).
     static HELD: RefCell<FxHashMap<u64, V>> = RefCell::new(FxHashMap::default());
     static MISSING: Cell<bool> = const { Cell::new(false) };
@@ -1969,7 +1969,7 @@ thread_local! {
 
 thread_local! {
     /// The formulas `engine_eval` ran last, parsed once, each with an evaluator whose range memo outlives the call:
-    /// `x - AVERAGE(vals)` over each item of a held list reads `vals` once ([[C120]] linearWork).
+    /// `x - AVERAGE(vals)` over each item of a held list reads `vals` once ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
     static FORMULAS: RefCell<Vec<(String, Rc<Compiled>)>> = const { RefCell::new(Vec::new()) };
 }
 
@@ -2167,7 +2167,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
 /// As `column`, each row's answer tagged by `tag`: a frame's one value per row, or a Cube's row that may hold a list.
 /// Whether `n` reads no row: no `@` cell, no ROW(), no random draw, no parameter of a LAMBDA around it (`bound`,
 /// lowered) and no LAMBDA it can't see into. Such a subtree answers the same on every row, so a computed column
-/// computes it once ([[C120]] linearWork). The largest such subtrees under a row-reading one go in `free`.
+/// computes it once ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork). The largest such subtrees under a row-reading one go in `free`.
 fn row_free<'a>(n: &'a Ast, bound: &[String], env: &Env, free: &mut Vec<&'a Ast>) -> bool {
     let unseen = |name: &str| bound.contains(&name.to_lowercase()) || matches!(env.get(name), Some(V::Lambda(_)));
     let varies = |name: &str| {

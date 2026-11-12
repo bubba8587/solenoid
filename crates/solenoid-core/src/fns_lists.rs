@@ -2163,7 +2163,7 @@ fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -
     if !(h >= 1.0) {
         return Ok(None);
     }
-    // FORECAST.ETS steps once per period of the horizon ([[C120]] linearWork).
+    // FORECAST.ETS steps once per period of the horizon ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
     if h > 1_000_000.0 {
         return Err(domain(&format!("{name} takes a target at most 1,000,000 steps past the timeline's end")));
     }

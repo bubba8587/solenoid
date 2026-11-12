@@ -6,7 +6,7 @@ description: Make motion graphics of Solenoid's node cards with three.js, built 
 # Motion graphics
 
 `scripts/motion/` rebuilds cards from what the running app draws, never from a hand-made copy
-([[C121]] motionFromAppGeometry, under [[B3]] sameNodeEverywhere). The app does the layout; the player only
+([[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]], under [[B3]] sameNodeEverywhere). The app does the layout; the player only
 moves the pieces. Plain screen recordings of the app stay with the `demo-video` skill.
 
 | File | Job |

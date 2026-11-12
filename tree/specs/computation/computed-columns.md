@@ -152,7 +152,7 @@ Tests:
 ## Fx columns in Cube Input
 
 - **Storage.** A formula column is a `{ name, expr }` entry in Cube Input's column list ([[frame-verbs#The Cube value]], Cube Input's source); it has no cells of its own, and records that still hold its key are ignored.
-- **Reading.** The formula reads the cube as the Computed Column node reads one (`cube_row_table`), after the typed columns are read by their types ([[D90]] cubeTypesAtDepth), so `SPARKLINE(@history)` draws each row's own list, typed items included, and a row may answer a list (*The Computed Column node*, Cubes).
+- **Reading.** The formula reads the cube as the Computed Column node reads one (`cube_row_table`), after the typed columns are read by their types ([[frame-verbs#Each table in a Cube, nested or not, types its own columns]]), so `SPARKLINE(@history)` draws each row's own list, typed items included, and a row may answer a list (*The Computed Column node*, Cubes).
 - **Dependency order and cycles** work as in Frame Input: a column's variables and `@` reads order it after the columns they name, and columns still unfilled when no more progress is possible are each a column of `#REF!` "Circular computed columns: A → B". A column that reads itself is such a cycle.
 - **No side inputs.** Cube Input has nothing to wire, so a name that is no column is `#REF!` "No column "x"", and there are no LAMBDA inputs.
 - **Blank and bad formulas.** An Fx column with no formula yet is blank; one that doesn't parse is `#VALUE!` "The formula does not parse".

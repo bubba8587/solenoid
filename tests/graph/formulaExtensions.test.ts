@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[formula-language#Packs]], [[formula-language#Derived names are unique]]
+// [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C51]] formulaNaming, [[formula-language#Packs]], [[formula-language#Derived names are unique]]
 import { describe, it, expect, afterEach } from "vitest";
 import { initPackFormulas, advertisedFunctionNames, packFormulaNames, packFormulaSignature } from "../../src/graph/formulaExtensions";
 import { packsStore, BUILTIN_PACKS, allPacks } from "../../src/graph/packs";

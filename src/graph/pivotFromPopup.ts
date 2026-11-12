@@ -1,4 +1,4 @@
-// [[C127]] pivotView
+// [[B19]] spreadsheetHabits, [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]
 import { getOwningEditor } from "./activeGraph";
 import { makeAnnotationResolver } from "./unitFlow";
 import { isFrameValue, type FrameValue } from "./frame";

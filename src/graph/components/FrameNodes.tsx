@@ -166,7 +166,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     scheduleAutosave();
   }
   const hasCardLayout = !!data.stringLiterals.cardLayout;
-  // The Suggest button's layout, read from the frame the card outputs ([[D111]] cardLayouts).
+  // The Suggest button's layout, read from the frame the card outputs ([[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]).
   const suggestFor = (units: number) => () => (isFrameValue(data.cachedResult) ? suggestFrameLayout(data.cachedResult, units) : "");
   const [showLayout, setShowLayout] = useState(false);
   const [layoutHidden, setLayoutHidden] = useState(data.layoutHidden);

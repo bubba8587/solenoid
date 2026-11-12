@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
 import { resolveAccent, paletteStore, initPalette } from "./palette";
 import { themeVars, type ThemeMode } from "./themeVars";
 import { createNotifier } from "./storeKit";

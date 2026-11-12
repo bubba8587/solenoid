@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams, [[B18]] safeToShare
+// [[engineering#Content entering or leaving the app is guarded where it crosses]], [[B18]] safeToShare
 // The one sanitizer for rendered note markdown, network gate included (`reports-and-notes.md` § What is sanitized).
 import DOMPurify from "dompurify";
 import { useSyncExternalStore } from "react";

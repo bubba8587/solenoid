@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
 
 export function categoryColorIndex(values: readonly (string | null | undefined)[]): Map<string, number> {
   const index = new Map<string, number>();

@@ -1,4 +1,4 @@
-// [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams
+// [[C28]] literalsIffEditable, [[engineering#Content entering or leaving the app is guarded where it crosses]]
 import { GraphNode } from "../graphModel";
 import { frameOut } from "./shared";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";

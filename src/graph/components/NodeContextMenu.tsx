@@ -1,4 +1,4 @@
-// [[C73]] inspectorIsStatic, [[C77]] compositeIsSubgraph, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast
+// [[layout-chrome#The Inspector is a static reference, never live values]], [[C77]] compositeIsSubgraph, [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]], [[standoffs#No layout action breaks a standoff you set]]
 import React, { useEffect } from "react";
 import { useMenuClamp } from "./menuClamp";
 import { inspectorStore } from "../inspectorStore";

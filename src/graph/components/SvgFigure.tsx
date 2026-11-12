@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[engineering#Content entering or leaving the app is guarded where it crosses]]
 import { useLayoutEffect, useRef } from "react";
 import type { SvgValue } from "../svgValue";
 import { elementName } from "../svgLayer";

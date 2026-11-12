@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[engineering#Content entering or leaving the app is guarded where it crosses]]
 import { createNotifier, createToggleStore } from "./storeKit";
 
 export interface DocMeta {

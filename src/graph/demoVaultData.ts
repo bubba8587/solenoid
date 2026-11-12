@@ -1,4 +1,4 @@
-// [[C1]]
+// [[B1]] obsidianBet, [[vault-read#The app ships a read-only demo vault to try the vault nodes on]]
 export const DEMO_VAULT_FILES = import.meta.glob(
   ["../../demo-vault/**/*.{md,base,yaml,csv}", "../../demo-vault/.obsidian/{types,daily-notes}.json"],
   { query: "?raw", import: "default", eager: true },

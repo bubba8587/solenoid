@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#Capture]]
+// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]], [[html-in-canvas#Capture]]
 import { describe, expect, it } from "vitest";
 import { ATLAS_GUTTER, packAtlas } from "../../src/graph/rasterAtlas";
 

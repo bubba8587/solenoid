@@ -1,4 +1,4 @@
-//! [[C58]] tableInputRawText, [[C48]] appendLadder, [[B11]] maximalMerge, [[B14]] oneDesignSystem,
+//! [[C58]] tableInputRawText, [[C48]] appendLadder, [[B11]] maximalMerge, [[components#One design system governs every look, layout and word in the app]],
 //! [[C50]] lambdaBindsByName.
 //! The linear-algebra cards and the LAMBDA helpers over a table.
 

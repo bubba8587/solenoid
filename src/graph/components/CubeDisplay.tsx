@@ -1,4 +1,4 @@
-// [[E9]] errorsKeepOrigin (an error chip flies to its origin)
+// [[error-values#An error remembers the node where it started]] (an error chip flies to its origin)
 // Mirrors FrameDisplay's classes, so the collapse-to-chip CSS applies unchanged.
 import { useSyncExternalStore } from "react";
 import { CubeChip } from "./CubeChip";

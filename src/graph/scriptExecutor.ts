@@ -1,4 +1,4 @@
-// [[C66]]
+// [[script-sandbox#Script runs your own code, and only typed values come out]]
 // Main-thread client of the Script sandbox (tree/specs/computation/script-sandbox.md): one worker, one call in it at a
 // time, the rest queued here. Without Workers the evaluator runs inline.
 import { invokeScript, SCRIPT_TIMEOUT_MS, type ScriptOutcome } from "./nodes/scriptRun";

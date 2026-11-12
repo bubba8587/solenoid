@@ -1,4 +1,4 @@
-// [[C98]] paletteMirrorsMenubar
+// [[command-palette#The Command Palette is the menubar in searchable form]]
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "./appTheme";
 import { canvasLockStore } from "./canvasLock";

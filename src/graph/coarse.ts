@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType. Touch-vs-mouse helpers shared across node chrome.
+// [[B20]], [[touch-gestures#A gesture follows what touches the screen, not the device]]. Touch-vs-mouse helpers shared across node chrome.
 import { IS_MOBILE_UA } from "./mobileUa";
 
 export const IS_COARSE =
@@ -15,7 +15,7 @@ export function prefersReducedMotion(): boolean {
   );
 }
 
-/** A phone: touch-primary with a mobile user agent. Turned sideways it runs the tablet layout ([[C119]] landscapePhoneIsTablet). */
+/** A phone: touch-primary with a mobile user agent. Turned sideways it runs the tablet layout ([[layout-chrome#A phone turned sideways runs the tablet layout, scaled to fit]]). */
 export const IS_PHONE = IS_COARSE && IS_MOBILE_UA;
 
 /** The screen's own orientation, never the viewport's shape: the on-screen keyboard makes a portrait viewport wider than tall. */

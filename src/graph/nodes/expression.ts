@@ -8,7 +8,7 @@ export class ExpressionNode extends GraphNode {
   label: string;
   expr: string;
   locked: boolean;
-  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  /** The InlineCast's pick on the result ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]). */
   castTo: CastTo;
   cachedResult: unknown = null;
   cachedError: string | null = null;

@@ -2,6 +2,7 @@
 aliases: ["Vault Read"]
 tags: [spec, integrations]
 ---
+<!-- [[B2]] -->
 <!-- [[B1]] obsidianBet, [[C67]] mdbaseCeiling, [[C44]] dateSerials, [[C58]] tableInputRawText, [[D62]] demoVaultResolution -->
 
 # Spec: Vault Read
@@ -138,3 +139,10 @@ Tests:
 
 - `vaultCube.test.ts`: the file columns come first and the frontmatter keys follow in first-met order; `tags` merges frontmatter and inline tags, each once; `links` collects wikilinks from the body and the frontmatter; an inline tag is never all digits and never read from a code fence or a code span; a file name parses by the daily-notes format and by a custom one, and a name with no day is blank; an mdbase type and a `types.json` type each decide a column; with neither, a column is guessed and one mixed across rows is text; a list key is a list cell, rows of records a nested Cube, a list of lists a table; text a type cannot read is `NaN`; a date under a text type is the ISO text written.
 - `demoVault.test.ts`: the demo vault is read through the same file calls and refuses every write.
+
+## The app ships a read-only demo vault to try the vault nodes on
+
+The app ships a small read-only demo vault of real notes, tasks and tables, so the Obsidian nodes work before you set up a vault of your own, and on the web.
+
+- How it's built: [[live-connections#The demo vault]].
+- **Reopen if:** the web app can open a real vault.

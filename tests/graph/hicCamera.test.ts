@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#Drawing and the camera]]
+// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]], [[html-in-canvas#Drawing and the camera]]
 import { describe, it, expect } from "vitest";
 import { Camera } from "../../src/graph/hicCamera";
 

@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[components#One design system governs every look, layout and word in the app]]
 // The phone's tuck: a sideways swipe slides a floating piece of chrome off to a screen edge, where a handle on its
 // own side stays in view, and pulls it back (layout-chrome § Mobile, touch-gestures).
 import { useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";

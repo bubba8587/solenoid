@@ -1,8 +1,8 @@
-// [[save-format#A save loses nothing quietly]], [[react-flow-surface-contract#Undo history]]
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]], [[react-flow-surface-contract#Undo history]]
 // A run of edits a person might make, each made live and captured as the history captures it, then undone step by
 // step and redone again by delta: every step lands the save and the answers the canvas had when it was captured.
 // Stress it with more steps and other draws: STEPS=25 SALT=3 npx vitest run tests/graph/graphDeltaChain.test.ts The edits are drawn from a fixed seed per example, so a failure reproduces.
-// Known at 20 steps (pack-fluids, SALT=1 and 6): a list of errors alone keeps the type its output last carried ([[D117]]
+// Known at 20 steps (pack-fluids, SALT=1 and 6): a list of errors alone keeps the type its output last carried ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]]
 // emptyKeepsLastType), which no save holds, so Frame from Lists types that column Number live and Text after an undo or a reload.
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, vi } from "vitest";

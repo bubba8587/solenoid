@@ -6,6 +6,19 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-12c: tree pruned from 126 leaves to 80, with the author; cloud session)
+
+- **46 leaves moved to specs** (`dte to-spec`): obvious practice (B14 one design system, C101, C103, C106, C120 linear work, C78 …),
+  feature design that predates the 2026-11-10 rule (Add menu, gestures, Pivot popup, Obsidian plugin, …), and process (C121 motion,
+  C140 function records). Each one's text is a `## <title>` section at the end of its spec. The leaves' children moved to their parents.
+- **Citations:** code, tests and docs cite the spec section (`[[spec#Title]]`); where that was a file's only citation, the
+  retired leaf's live parent is cited beside it, so coverage stays 100%. Spec header lines cite the parent.
+- **B12** is now noForwardCompat (only the version gate); the general "a save loses nothing quietly" goal is a section of
+  `save-format.md`, with no leaf. **B28 wysiwygValues** (new, the author's) holds C28, C35, C58. **C3** rewritten by the author.
+- Temporary states (Isolate off, Charts refusing dates, publishing the function library) are backlog lines under "Held for later".
+- **Open:** inbox items `operators-read-blank-as-zero` (parent D124, retired), `paste-carries-card-state` and
+  `ghost-cables-feed-and-save` (parent B12, now narrow) need new parents when placed.
+
 ### SESSION DIGEST (2026-11-12b: card body spacing and alignment sweep; cloud session)
 - Every catalog card was mounted and shot (a scratch gallery script: `FLAT_CATALOG` create, `view.zoom(1)`, element
   screenshot) and reviewed before and after. The repeat offender was input rows: each field started where its label
@@ -80,7 +93,7 @@ specific item.
 - Undo, second pass: a fuzz of live edit chains on every example (`tests/graph/graphDeltaChain.test.ts`, stressed to
   8 draws of 25 steps) found two real bugs. A deleted group member stayed in the group, so the save wrote its per-load
   id where a name belongs (pre-existing; `dropFromGroups`, `src/graph/groupMembership.ts`). And a Format Controller's
-  saved type depends on the edit path ([[D117]]), so it is no longer an edit or a miss (`SETTLED_INIT`). In Manual the
+  saved type depends on the edit path ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]]), so it is no longer an edit or a miss (`SETTLED_INIT`). In Manual the
   delta's pass runs inside the rebuild scope, so undo still computes as the whole load did.
 - Measured on `personal-finance` (an undo of a slider edit): the whole undo is about 340 ms, of which about 270 ms is
   the recompute the edit itself cost; the old reload was about 2.7 s. An earlier note here said 25 ms: that was one
@@ -118,7 +131,7 @@ specific item.
   card) is a plain one with a space, and an unbound `[Column]` in a field's body reads the cell's rows
   (`Eval::with_slices`). Configure Fields lists the fields by name (`calcFieldNames`). A wired λ's parameter naming no
   column reads blank through a side input, by design (as an unknown name in a formula does), not a silent bug.
-- PIVOTBY's totals are its view's ([[C127]] pivotView, the exception it carried removed): the card's Frame is leaf rows
+- PIVOTBY's totals are its view's ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]], the exception it carried removed): the card's Frame is leaf rows
   by leaf columns, the totals ride on the layout (`split_pivot_totals`, `pivotAddress`, `pivotViewFrame`), and Export
   totals adds Row Totals and Column Totals. `PIVOTBY()` in a formula keeps Excel's spill, an exception the author took.
 - The plugin export had started carrying `nodes/frame.ts` (a type import in `pivotConfig.ts`), which `plugin:lint` failed
@@ -181,7 +194,7 @@ specific item.
   0.2.130 for `plugin:build`; neither is in the cloud image.
 
 ### SESSION DIGEST (2026-11-09c: open-latitude fixes after 1.6, the headless runner for agents; cloud session)
-- **Align, Distribute and a card opening end with the No-Overlap Pass** ([[C112]] noOverlapsEver; `selectionOps.ts`
+- **Align, Distribute and a card opening end with the No-Overlap Pass** ([[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]]; `selectionOps.ts`
   `settle`, `cardsExpanded`), the cards just placed or opened holding still.
 - **A Chart plots a table** (an HSTACK, a matrix) as the frame of its columns, one row as a list; it drew an empty plot
   (`nodes/visual.rs` `chart`, `chartTable.test.ts`). **List Input keeps a typed gap** (`1,,3`) as a blank item
@@ -201,7 +214,7 @@ specific item.
   lists them. GROUPBY, Rollup and Group Lists' aggregator is `agg`, which both now say ([[C26]] opArgDistinct); the
   validator had checked it under `op`, a field those cards never read.
 - **The No-Overlap Pass runs inside a group** (`settleMemberOverlaps`), the box growing over a member pushed past an
-  edge: [[C112]] noOverlapsEver has no Unenforced bullet left.
+  edge: [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]] has no Unenforced bullet left.
 - **Get Column answers `#REF!` for a column the table lacks**, naming the columns it has; it answered a blank that a
   SUM showed as 0.
 - **`CLAUDE.md` opens with what the project is for**, in the author's words of 2026-11-09 and a model's account of
@@ -395,7 +408,7 @@ specific item.
   calls wait at the bundle's end.
 
 ### SESSION DIGEST (2026-11-07: function records, the Text family organized; cloud session)
-- **Function records** ([[C140]] functionRecords, `tree/specs/computation/function-records.md`): one Cube-form record per function under `fixtures/functions/`, Excel's answer beside Solenoid's, a kind of truth, a verdict and a citation per case. Excel's answers come only from a workbook Excel saved, through `from-excel.ts`, which refuses anything else or a wrong calibration sheet.
+- **Function records** ([[function-records#Each function keeps one record of its cases, Excel's computed answers beside Solenoid's]], `tree/specs/computation/function-records.md`): one Cube-form record per function under `fixtures/functions/`, Excel's answer beside Solenoid's, a kind of truth, a verdict and a citation per case. Excel's answers come only from a workbook Excel saved, through `from-excel.ts`, which refuses anything else or a wrong calibration sheet.
 - **Text is organized**: 33 records, 43,771 cases (the old tests and specs, IronCalc's workbooks vendored under `fixtures/functions/sources/ironcalc`, the edge grid); `harvest.json` gives every mention a case or a reason. No answer is filled: the run waits until every family is organized.
 - **Traps the workbook handles**: bound values sit in cells, not constants (Excel reads them differently); every formula is a marked dynamic array (an unmarked one is intersected); Excel's `_xlfn.` prefixes come from Excel-saved files; arrays come back through ARRAYTOTEXT beside a shape cell.
 - **Viewer**: the Excel Coverage tab's parity mark opens a function's record in the Cube popup.
@@ -444,7 +457,7 @@ specific item.
   offered under Packs while the pack is on; each charts what it computes (`frameOf` + `chart`), but Geometry's figures
   and Timesavers' QR code are already the visual. Comparison is core. **Seeds open as examples** (`SolDoc.seed`): out
   of the file tree until changed and kept, "Discard changes?" on leaving an edited one (`requestChoice`).
-- **Pack constants are cards** ([[C76]] formulaPackDefault, `pack-architecture.md` § Physical constants): a preset
+- **Pack constants are cards** ([[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], `pack-architecture.md` § Physical constants): a preset
   names a physical constant as a variable and declares it (`constants`); placing the card places a Physics Constant
   cabled in (`companions`, `src/graph/companions.ts`, both placement paths). The variable is required (`varRequired`,
   `nodes/formula.rs`): cut and untyped, it answers `#SYNTAX!` naming it, never a hidden CODATA copy. Physics Constant
@@ -512,5 +525,5 @@ specific item.
 - **Two temperature scales never meet** ([[C25]] firstClassUnits): `temperatures_mix` (`unit_value.rs`) refuses K with °C or °C with °F on the Arithmetic card, in an aggregate or running list, in a formula whose inputs carry two scales (a list mixing scales mapped item by item doesn't count) and in a computed column. Δ°C is still owed: two °C readings subtract to K.
 - **AVERAGEIF(S) over nothing is blank**, as AVERAGE's is, in the formula and on the SUMIFS card.
 - **CSV junk cells are NaN** (`infer_text_column`): missing markers and up to a tenth of other text keep a number or date column, their text in `raw`. A stopgap until the NaN walk; the full CSV pass is in the backlog.
-- **Query is Pipeline, a run mode** ([[C53]] pipelineIsCompositePreset, author 2026-11-06): computes as Manual refresh (`refreshes()`), plus `pipelineChain()` (one chain from the Table marker to the Result marker; side inputs through the Pipeline's own ports; the first fault named) and the read-only `PipelineSteps` list on the card, numbered, with a folded Preview of the selected step off its `cachedResult`. Nothing on the card edits the graph. Shot graph: `scripts/shot-graphs/pipeline-steps.json`.
+- **Query is Pipeline, a run mode** ([[composite-nodes#Pipeline is a composite set up as one chain, not a new kind of node]], author 2026-11-06): computes as Manual refresh (`refreshes()`), plus `pipelineChain()` (one chain from the Table marker to the Result marker; side inputs through the Pipeline's own ports; the first fault named) and the read-only `PipelineSteps` list on the card, numbered, with a folded Preview of the selected step off its `cachedResult`. Nothing on the card edits the graph. Shot graph: `scripts/shot-graphs/pipeline-steps.json`.
 - **Freezing**: `bodies_over_values_with_a_unit`, `fold-units` and `tests/csv.rs` now refreeze under `FREEZE_NATIVE` like the other suites.

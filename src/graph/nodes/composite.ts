@@ -89,7 +89,7 @@ interface CompositeMonteCarlo {
 
 export type CompositeStopOp = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
 
-/** Where a Pipeline's chain breaks ([[C53]] pipelineIsCompositePreset). */
+/** Where a Pipeline's chain breaks ([[composite-nodes#Pipeline is a composite set up as one chain, not a new kind of node]]). */
 export type PipelineFault = { kind: "unwired" | "dead-end" | "branch" | "cycle" | "off-chain"; node: GraphNode };
 
 /** The type of one value per pass: a value's list, a list's table, and for tables a Cube holding one in each row. */
@@ -442,7 +442,7 @@ export class CompositeNode extends GraphNode {
   }
 
   /** The steps from the first input port's marker to the first output port's, in order, and the first card that
-   *  breaks the one chain ([[C53]] pipelineIsCompositePreset). Other input markers may feed any step. */
+   *  breaks the one chain ([[composite-nodes#Pipeline is a composite set up as one chain, not a new kind of node]]). Other input markers may feed any step. */
   pipelineChain(): { steps: GraphNode[]; fault: PipelineFault | null } {
     const steps: GraphNode[] = [];
     const start = this.inputPorts[0] && this.internalEditor.getNode(this.inputPorts[0].internalNodeId);
@@ -658,7 +658,7 @@ export class CompositeNode extends GraphNode {
   }
 
   /** Every card inside computed: an output the wiring leaves a wildcard takes the type of the value it carried, as on
-   *  the main canvas ([[C136]] typesKnownAfterCalc, [[D117]] emptyKeepsLastType), drawn again in an open drill-in. */
+   *  the main canvas ([[C136]] typesKnownAfterCalc, [[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]]), drawn again in an open drill-in. */
   private readInnerTypes(): void {
     const nodes = this.internalEditor.getNodes();
     const keys = readTypeKeys(nodes);
@@ -925,7 +925,7 @@ export class CompositeNode extends GraphNode {
     return nestedNodeIds(this.internalEditor).some((id) => connectionStore.getState(id).status === "gated");
   }
 
-  /** Manual refresh, and Pipeline, which runs as it does ([[C53]] pipelineIsCompositePreset): one pass on Refresh. */
+  /** Manual refresh, and Pipeline, which runs as it does ([[composite-nodes#Pipeline is a composite set up as one chain, not a new kind of node]]): one pass on Refresh. */
   refreshes(): boolean {
     return this.runMode === "manual" || this.runMode === "pipeline";
   }

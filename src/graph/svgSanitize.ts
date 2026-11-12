@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]]
 import DOMPurify from "dompurify";
 
 const DROP_ELEMENTS = ["script", "foreignObject", "iframe", "object", "embed", "style"];

@@ -133,7 +133,7 @@ Write outcomes, not narratives: what stands, where it's enforced, what would reo
   under a "needs the author's call" heading, however much it reads like a plain bug: try it, write what the try showed
   on the backlog line, and leave the behavior as it was (INDEX's whole column, 2026-11-09).
 - **Measuring speed:** time the path the app runs (`tests/graph/passBench.test.ts`), not a card's `data()` called from
-  JS; say which path a number measured. Loops, sorts and caches: `tree/specs/floors/engineering.md` § Performance ([[C120]] linearWork).
+  JS; say which path a number measured. Loops, sorts and caches: `tree/specs/floors/engineering.md` § Performance ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]).
 - Several agents at once: one test run at a time, a claim in `docs/agent-coordination.md`. Solo: claim nothing.
 - A black screen: ask for the copied error text first (`tree/specs/canvas/react-flow-surface-contract.md`).
 

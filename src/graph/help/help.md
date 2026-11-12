@@ -1,4 +1,4 @@
-<!-- [[B14]] oneDesignSystem (DESIGN.md § Voice) -->
+<!-- [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]] (DESIGN.md § Voice) -->
 # Help
 
 Tooltips and the Socket Legend explain most of Solenoid. This page covers the parts that aren't obvious.

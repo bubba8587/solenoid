@@ -1,4 +1,4 @@
-// [[D118]] delayedPass
+// [[compute-pass#A Delayed Pass card hands on what its input held one recalculation earlier, so loops through it step]]
 import type { DelayedPassNode as DelayedPassNodeType } from "../nodeClasses";
 import { processGraph, getEngine } from "../process";
 import { NodeShell, type NodeProps } from "./nodeKit";

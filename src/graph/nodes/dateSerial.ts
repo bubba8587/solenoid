@@ -5,7 +5,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 
 // Serial 0 is 30-Dec-1899, so the Unix epoch is serial 25569 and 01-Mar-1900 is 61, as in Excel ([[C44]] dateSerials).
 
-/** The serials of 01-Jan-0001 and of 01-Jan-10000: the calendar a date reads in, before 1900 too ([[D119]] datesBefore1900). */
+/** The serials of 01-Jan-0001 and of 01-Jan-10000: the calendar a date reads in, before 1900 too ([[date-values#Days before 1900 are dates everywhere, as days after it are]]). */
 export const FIRST_SERIAL = -693593;
 export const END_SERIAL = 2958466;
 

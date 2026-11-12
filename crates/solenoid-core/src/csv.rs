@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams, [[C130]] rustCore
+// [[engineering#Content entering or leaving the app is guarded where it crosses]], [[C130]] rustCore
 //! CSV text on the `csv` crate with Solenoid's layers on top (`tree/specs/computation/frame-verbs.md` § Reading CSV
 //! text), held to the frozen `fixtures/core/csv-*.json.gz` by `tests/csv.rs`.
 

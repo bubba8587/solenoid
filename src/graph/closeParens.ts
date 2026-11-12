@@ -1,4 +1,4 @@
-/** [[C115]] closeParensOnCommit: a count of `(` against `)` outside quoted text and `[column]` references, nothing more.
+/** [[B16]] oneFormulaSurface, [[formula-language#Missing closing parentheses are added when a formula is committed]]: a count of `(` against `)` outside quoted text and `[column]` references, nothing more.
  *  An unterminated string or reference is left as typed for the parser to name. Its own module: the Obsidian plugin's
  *  column head reaches it without the formula engine. */
 export function closeParens(text: string): string {

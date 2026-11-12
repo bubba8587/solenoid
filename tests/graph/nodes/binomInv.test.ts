@@ -1,4 +1,4 @@
-// [[C120]] linearWork
+// [[B19]] spreadsheetHabits, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]
 import { it, expect } from "vitest";
 import { AT_ONCE_MS } from "../timing";
 import { coreFunction } from "../coreFunction";

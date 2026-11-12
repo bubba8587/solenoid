@@ -1,4 +1,4 @@
-/* [[C107]] obsidianPlugin */
+/* [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]] */
 .solenoid-property-chip {
   display: inline-flex;
   align-items: center;

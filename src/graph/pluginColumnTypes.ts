@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[C67]] mdbaseCeiling, [[D90]] cubeTypesAtDepth
+// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[C67]] mdbaseCeiling, [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
 // Column types a user picked in the Solenoid Properties plugin: a pick sits above the guesser and only refines a
 // table's columns (mdbase and `.obsidian/types.json` still say what a key is). Pure JSON.
 import { readColumnTypes, readNestedTables, type ColumnTypes, type NestedTables } from "./cubeTypes";

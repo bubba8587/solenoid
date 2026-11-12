@@ -1,4 +1,4 @@
-// [[E9]] errorsKeepOrigin, [[table-popup#Formatted and Source]]
+// [[C24]] arraySemantics, [[error-values#An error remembers the node where it started]], [[table-popup#Formatted and Source]]
 import { describe, expect, it } from "vitest";
 import { controlledCellText } from "../../src/graph/components/controlledCell";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";

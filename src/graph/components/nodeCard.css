@@ -871,7 +871,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   font-family: inherit;
   text-align: left;
 }
-/* A Pipeline's steps ([[C53]] pipelineIsCompositePreset). */
+/* A Pipeline's steps ([[composite-nodes#Pipeline is a composite set up as one chain, not a new kind of node]]). */
 .solenoid-pipeline {
   display: flex;
   flex-direction: column;

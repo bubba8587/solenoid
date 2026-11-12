@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic,
+// [[A1]] visualGraphCalculator, [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]], [[standoffs#No layout action breaks a standoff you set]], [[group-expand-push#Expanding a group nudges its neighbors aside, and collapsing puts them back]],
 // [[auto-arrange-tidy#What Tidy guarantees]], [[auto-arrange-tidy#Building the ELK graph]], [[auto-arrange-tidy#Ports]],
 // [[auto-arrange-tidy#Flipped cards]], [[auto-arrange-tidy#Cards stay content-sized]], [[auto-arrange-tidy#Position-locked groups]],
 // [[auto-arrange-tidy#Growing a group]], [[auto-arrange-tidy#Cleanup]]

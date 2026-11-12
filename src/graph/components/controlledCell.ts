@@ -1,4 +1,4 @@
-// [[C118]] formatTravelsWithValue, [[E9]] errorsKeepOrigin
+// [[C118]] formatTravelsWithValue, [[error-values#An error remembers the node where it started]]
 import type { Cell } from "../tablePopupStore";
 import { isSolError } from "../errorValue";
 import { coerceFrameCell } from "../frame";

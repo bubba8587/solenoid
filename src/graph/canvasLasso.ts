@@ -1,4 +1,4 @@
-// [[C52]] visibleSelection, [[C92]] pinchUnvetoable
+// [[C52]] visibleSelection, [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]
 import type { View } from "./view";
 import type { MutableRefObject } from "react";
 import type { GraphEditor } from "./graphEditor";

@@ -104,7 +104,7 @@ export class GraphCore {
     ports(id: string, output: boolean): Array<unknown> | undefined;
     /**
      * Reads the type of each `[id, output, type now]` in `keys` off the value the last pass landed there, keeping the
-     * last reading where the value has nothing to read ([[D117]] emptyKeepsLastType). Whether the Type Settle should
+     * last reading where the value has nothing to read ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]] emptyKeepsLastType). Whether the Type Settle should
      * run again: a reading moved, or an output still shows a wildcard its reading would type.
      */
     readTypes(keys: string): boolean;
@@ -189,7 +189,7 @@ export function auditNamedEdits(on: boolean): void;
 export function card_forget(ids: Uint32Array | number[]): void;
 
 /**
- * The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
+ * The image a Record cell's text shows, if any ([[engineering#Content entering or leaving the app is guarded where it crosses]]).
  */
 export function card_image_src(text: string): string | undefined;
 

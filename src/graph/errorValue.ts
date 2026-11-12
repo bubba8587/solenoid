@@ -1,4 +1,4 @@
-// [[C24]], [[E9]] errorsKeepOrigin, [[C24]] arraySemantics, [[E20]] pointError
+// [[C24]], [[error-values#An error remembers the node where it started]], [[C24]] arraySemantics, [[E20]] pointError
 
 export type SolErrorCode =
   | "#DIV/0!" | "#N/A"

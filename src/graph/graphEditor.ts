@@ -214,7 +214,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
     return this.connectionList.slice();
   }
 
-  /** The connections into a node, without walking the whole graph per card ([[C120]] linearWork). */
+  /** The connections into a node, without walking the whole graph per card ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]). */
   connectionsInto(id: string): readonly S["Connection"][] {
     this.byTarget ??= this.indexBy((c) => c.target);
     return this.byTarget.get(id) ?? [];

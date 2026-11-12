@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
+// [[A1]] visualGraphCalculator, [[group-expand-push#Expanding a group nudges its neighbors aside, and collapsing puts them back]], [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]]
 import { clamp } from "./nodes/mathUtils";
 
 export interface PushBox {

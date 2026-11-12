@@ -58,7 +58,7 @@ pub struct SolError {
     pub message: String,
     /// The JS side's reference to the uploaded original, handed back so it downloads as itself.
     pub reference: Option<u32>,
-    /// The node the error started at ([[E9]] errorsKeepOrigin), which the graph's boundary sets and nothing overwrites.
+    /// The node the error started at ([[error-values#An error remembers the node where it started]]), which the graph's boundary sets and nothing overwrites.
     pub origin: Option<Rc<Origin>>,
 }
 

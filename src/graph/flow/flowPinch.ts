@@ -1,4 +1,4 @@
-// [[C92]] pinchUnvetoable
+// [[B20]], [[touch-gestures#A pinch always zooms, and nothing under the fingers can stop it]]
 import { boundZoom } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };

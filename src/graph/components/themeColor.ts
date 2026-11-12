@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
 
 /**
  * A theme variable as a plain color a canvas or an SVG attribute can use. The chrome writes its ramp as

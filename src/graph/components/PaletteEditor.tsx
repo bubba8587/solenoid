@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[components#One design system governs every look, layout and word in the app]]
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CardFrame } from "./NodeCard";
 import { useHeaderHeightVar } from "./useHeaderHeightVar";

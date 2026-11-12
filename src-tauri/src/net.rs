@@ -1,4 +1,4 @@
-// [[B18]] safeToShare, [[C103]] untrustedContentSeams
+// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]]
 //! The desktop's network fetch. A document someone else wrote never reaches this computer or the local network: the
 //! host is checked on the request and on every redirect, and a name is checked by the address it resolves to, at the
 //! moment the connection is made, so no spelling of a private address and no name pointing inward gets through.

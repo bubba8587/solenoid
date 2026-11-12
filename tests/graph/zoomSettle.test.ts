@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#The lifecycle]]
+// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]], [[html-in-canvas#The lifecycle]]
 import { describe, it, expect, afterEach } from "vitest";
 import { zoomSettleMs, DEFAULT_ZOOM_SETTLE_MS } from "../../src/graph/zoomSettle";
 

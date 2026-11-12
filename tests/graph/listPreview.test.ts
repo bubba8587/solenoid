@@ -1,4 +1,4 @@
-// [[C120]] linearWork, [[C130]] rustCore, [[graph-core#Direct calls]]
+// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], [[C130]] rustCore, [[graph-core#Direct calls]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";

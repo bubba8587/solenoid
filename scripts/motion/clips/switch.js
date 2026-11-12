@@ -1,4 +1,4 @@
-// [[C121]]
+// [[motion-graphics#Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws]]
 // Switch an input, 13.5 s: the order total moves from the store price to the online price. In the spreadsheet
 // the price's address is found inside the formula and retyped. In Solenoid the price cable is moved to the
 // Online price card, and the total's socket names its new source. Capture: scenes/switch.json.

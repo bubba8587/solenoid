@@ -1,14 +1,14 @@
-// [[C86]] membershipByGesture, [[C88]] collapsedGroupCard, [[C112]] noOverlapsEver
+// [[group-expand-push#A node joins or leaves a group only when you put it there]], [[C88]] collapsedGroupCard, [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]]
 import { GraphNode } from "../graphModel";
 
 export class GroupNode extends GraphNode {
   label: string;
-  members: string[];      // the authoritative set ([[C86]] membershipByGesture)
+  members: string[];      // the authoritative set ([[group-expand-push#A node joins or leaves a group only when you put it there]])
   color: string;
   collapsed: boolean;
   width: number;
   height: number;
-  lockedPosition: boolean; // [[C112]] noOverlapsEver
+  lockedPosition: boolean; // [[auto-arrange-tidy#No layout action leaves two nodes or groups overlapping]]
 
   constructor(init?: {
     label?: string;

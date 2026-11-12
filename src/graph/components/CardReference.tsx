@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface, [[D96]] emptySlotShowsItsValue, [[C73]] inspectorIsStatic
+// [[B16]] oneFormulaSurface, [[D96]] emptySlotShowsItsValue, [[layout-chrome#The Inspector is a static reference, never live values]]
 // The Reference: the Add menu's own tree and search on the left, a card's page on the right, built from what the card
 // and the catalog already declare. Nothing here is hand-kept.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";

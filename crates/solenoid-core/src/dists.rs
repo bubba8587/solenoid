@@ -39,7 +39,7 @@ pub fn ln_gamma(x: f64) -> f64 {
 }
 
 /// Steps the series and continued fractions below may take: about the cube root of the shape, so a fixed 300 stopped
-/// short past a million; one still unconverged answers NaN rather than its partial sum ([[C120]] linearWork).
+/// short past a million; one still unconverged answers NaN rather than its partial sum ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
 const SPECIAL_FN_STEPS: u32 = 100_000;
 
 pub fn regularized_gamma(a: f64, x: f64) -> f64 {
@@ -467,7 +467,7 @@ pub enum Form {
     InvRt,
 }
 
-/// Loops a distribution runs one step per value: past this many, it is refused ([[C120]] linearWork).
+/// Loops a distribution runs one step per value: past this many, it is refused ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
 const LOOP_CAP: f64 = 1e6;
 
 /// A loop longer than `LOOP_CAP`.
@@ -685,7 +685,7 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
                     Some(0.0)
                 } else {
                     // Hoeffding bounds each pmf by exp(-2(j - mean)^2 / n): past sqrt(400n) from the mean it is below
-                    // e^-800, so exp gives exactly 0 and skipping those terms leaves the sum unchanged ([[C120]] linearWork).
+                    // e^-800, so exp gives exactly 0 and skipping those terms leaves the sum unchanged ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
                     let (mut from, mut top) = (lo, nan_min(ki, hi));
                     if top - from > 10_000.0 {
                         let (mean, reach) = (ni * mi / big, (400.0 * ni).sqrt().ceil() + 1.0);

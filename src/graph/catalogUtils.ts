@@ -1,4 +1,4 @@
-// [[D22]] oneNamePerCard, [[C79]] packActivationIsPresentation, [[B16]] oneFormulaSurface
+// [[add-menu#A placed node is titled with what you picked in the Add menu]], [[C79]] packActivationIsPresentation, [[B16]] oneFormulaSurface
 import { NODE_CATALOG } from "./nodeCatalog";
 import { nodeTypeName, setNodeNamer } from "./nodeNamer";
 import { packPlacements, packsStore, NODE_PACK_TAGS } from "./packs";

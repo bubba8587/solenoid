@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[E9]] errorsKeepOrigin, [[error-values#The guard]], [[error-values#Producers and provenance]], [[error-values#Detect and recover: one notion of error]]
+// [[C24]] arraySemantics, [[error-values#An error remembers the node where it started]], [[error-values#The guard]], [[error-values#Producers and provenance]], [[error-values#Detect and recover: one notion of error]]
 import { describe, it, expect } from "vitest";
 import { growthAt4x } from "./timing";
 import { nodeDisplayName } from "../../src/graph/catalogUtils";
@@ -169,7 +169,7 @@ describe("SolError origin (provenance Tier 1)", () => {
     expect(e.origin).toBeUndefined();
   });
 
-  it("tags many distinct errors in time linear in the cells ([[C120]] linearWork)", () => {
+  it("tags many distinct errors in time linear in the cells ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]])", () => {
     const tagged = (count: number) => {
       const cells = Array.from({ length: count }, (_, i) => solError("#DIV/0!", `row ${i}`));
       const n = { id: "n2", label: "Ratio", outputs: {}, constructor: { name: "SomeNode" } } as unknown as {

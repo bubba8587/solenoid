@@ -2,11 +2,11 @@
 aliases: ["Touch gestures"]
 tags: [spec, canvas]
 ---
-<!-- [[B20]] mobileFriendly, [[C93]] gestureByPointerType, [[C92]] pinchUnvetoable -->
+<!-- [[B20]] mobileFriendly -->
 
 # Spec: Touch gestures
 
-Serves [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[C92]] pinchUnvetoable (a pinch always wins). It is the inventory of what every pointer gesture means on each device configuration, and where each one is handled. The mechanics of the listeners (event phases, the finger census, the claim tests) are in [[pointer-gestures]].
+Serves [[B20]] mobileFriendly (what a finger, a mouse and a pen each do) (a pinch always wins). It is the inventory of what every pointer gesture means on each device configuration, and where each one is handled. The mechanics of the listeners (event phases, the finger census, the claim tests) are in [[pointer-gestures]].
 
 Some gestures exist only as a side effect of event plumbing. Long-press to add, for example, is the browser's own long-press turning into a `contextmenu` event, and no code anywhere mentions "long-press". Such a gesture is invisible to search, so this inventory is where every gesture is written down. Adding, removing or regating a gesture updates this spec in the same change.
 
@@ -137,3 +137,17 @@ Code: `components/DrawnCableLayer.tsx`.
 Tests: `touchActions.test.ts`: both bars import every shared action and glyph from `touchActions.tsx`, neither re-declares a shared handler, the bottom bar draws only the Add button's glyph and the top bar none, and a tablet is derived as coarse but not mobile.
 
 The inventory itself is not machine-checked: it is a map, kept true by updating it in the same change as the gesture.
+
+## A pinch always zooms, and nothing under the fingers can stop it
+
+A two-finger pinch always zooms the canvas, wherever it starts, and nothing under the fingers can stop it. Panning and dragging give way to a control that wants the touch.
+
+- How it's built: [[pointer-gestures#The ordering rule]].
+- **Reopen if:** a control turns up that truly needs two fingers for itself.
+
+## A gesture follows what touches the screen, not the device
+
+A gesture follows what is touching the screen, not the device. A finger dragging an unselected node pans the canvas; a mouse or a pen selects and drags in one motion.
+
+- How it's built: [[touch-gestures]] and [[pointer-gestures]].
+- **Reopen if:** a drawing-style surface lands in the app and wants the shape and pressure of each touch.

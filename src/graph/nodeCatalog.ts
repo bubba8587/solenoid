@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface, [[C53]] pipelineIsCompositePreset
+// [[B16]] oneFormulaSurface, [[composite-nodes#Pipeline is a composite set up as one chain, not a new kind of node]]
 import { NEXT_RELEASE } from "./release";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DelayedPassNode, ValueInputNode, DateRangeNode, XYPadNode,

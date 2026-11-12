@@ -1,4 +1,4 @@
-// [[C68]], [[C86]] membershipByGesture, [[C103]] untrustedContentSeams
+// [[C68]], [[group-expand-push#A node joins or leaves a group only when you put it there]], [[engineering#Content entering or leaving the app is guarded where it crosses]]
 import { describe, it, expect } from "vitest";
 import { SvgPickerNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/nodeInit";

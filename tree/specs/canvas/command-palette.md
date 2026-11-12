@@ -2,11 +2,12 @@
 aliases: ["Command Palette"]
 tags: [spec, canvas]
 ---
-<!-- [[C98]] paletteMirrorsMenubar, [[B13]] aiInScope, [[B19]] spreadsheetHabits -->
+<!-- [[A1]] -->
+<!-- [[A1]] visualGraphCalculator, [[B13]] aiInScope, [[B19]] spreadsheetHabits -->
 
 # Spec: Command Palette
 
-Serves [[C98]] paletteMirrorsMenubar, and in AI mode [[B13]] aiInScope. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[A1]] visualGraphCalculator, and in AI mode [[B13]] aiInScope. It covers what the system does and blocks, and the decision each behavior serves.
 
 The Command Palette is a searchable list of every action the app can take from its menus, plus the canvas and selection operations that have no menu home. It opens as a modal, or stays docked as a bar when the `commandPaletteAlwaysOn` setting is on (desktop only).
 
@@ -60,3 +61,10 @@ Tests:
 - `aiService.test.ts`, over a fake transport with the real validator: no key, an answer, a canonicalized edit, a repair round, the exhausted budget, a refusal, and a cycle kept as a warning.
 - `aiDemo.test.ts`: the staged build, validator-clean at each stage and right when run, an existing document kept, a question answered, and the demo transport running the real pipeline from the key alone.
 - `aiKey.test.ts`: with `AI_ENABLED` off, the palette is disconnected with or without a key.
+
+## The Command Palette is the menubar in searchable form
+
+The Command Palette is the menubar in searchable form, plus the canvas actions that have no menu. Node types stay in the Add menu.
+
+- How it's built: [[command-palette]].
+- **Reopen if:** the Add menu and the palette merge into one launcher.

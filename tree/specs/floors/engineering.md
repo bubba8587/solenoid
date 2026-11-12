@@ -2,11 +2,12 @@
 aliases: ["Engineering rules"]
 tags: [spec, floors]
 ---
-<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork, [[C139]] mathlibLaws -->
+<!-- [[B18]], [[B19]] -->
+<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[B19]] spreadsheetHabits, [[C139]] mathlibLaws -->
 
 # Spec: Engineering rules
 
-Serves [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork and [[C139]] mathlibLaws.
+Serves [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[B19]] spreadsheetHabits and [[C139]] mathlibLaws.
 
 The cross-cutting code-hygiene rules. Unlike the other floors this spec has no `covers:` glob: each rule binds every file in the repo, source and tests alike, whenever the file does the thing the rule names. A file that relies on one cites the parent leaf it serves, or nothing.
 
@@ -126,7 +127,7 @@ A comment is a copy of knowledge that has a better home, and copies drift. A rea
 
 ## Performance
 
-Serves [[C120]] linearWork. Each rule names the shape that broke it, since every one of these passed its tests on 20 rows.
+Serves [[#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork. Each rule names the shape that broke it, since every one of these passed its tests on 20 rows.
 
 ### Nothing whole-table runs once per row
 
@@ -164,3 +165,16 @@ The one exception runs the other way: a typed input reaches its node as a fresh 
 
 **MUST:** a change made for speed shows the old and new outputs agree, through the shared fixture corpus ([[frame-verbs]]) or a test that compares the fast path against the plain one, and its commit states a before-and-after measurement at a size that shows the difference. A performance test that pins a time bound sets it loose enough for a slow CI machine and tight enough that the quadratic version fails (`rangeCallMemo.test.ts`: 20k rows under 2 s).
 
+## Content entering or leaving the app is guarded where it crosses
+
+Content entering or leaving the app is made safe at the one place it crosses, so every new way in or out gets the guard.
+
+- How it's built: [[reports-and-notes#What is sanitized, and where]], with the network gate in [[live-connections#The network gate]].
+- **Reopen if:** something needs to run untrusted script on purpose.
+
+## Table work grows with the rows, never with rows squared, and drawing stops at the screen
+
+Work on a Frame or list costs time in proportion to its size, never its size squared, and drawing it costs no more than what fits on screen. Speed never buys a different answer.
+
+- How it's built: [[engineering#Performance]].
+- **Reopen if:** an exact answer at some size can only be had by work that grows faster than the data, and the answer is worth the wait.

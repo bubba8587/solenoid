@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[D89]] pluginApi, [[D90]] cubeTypesAtDepth
+// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[obsidian-plugin#Other Obsidian plugins can use the Frame chip through a versioned API]], [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
 import { ItemView, Plugin, PluginSettingTab, Setting, addIcon, type App, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
 import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
@@ -59,7 +59,7 @@ interface PluginData {
   /** Note path, then property: the column types of the tables nested in that note's cube. */
   nestedTables?: PluginNestedTables;
   look?: boolean;
-  /** Off only when the user turns it off ([[C107]] obsidianPlugin). */
+  /** Off only when the user turns it off ([[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]). */
   suggestColumns?: boolean;
   /** Off only when the user turns it off ([[obsidian-plugin#What's new]]). */
   showWhatsNew?: boolean;

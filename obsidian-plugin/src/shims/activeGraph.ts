@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
 import type { GraphEditor } from "../../../src/graph/graphEditor";
 import type { Schemes } from "../../../src/graph/schemes";
 import type { View } from "../../../src/graph/view";

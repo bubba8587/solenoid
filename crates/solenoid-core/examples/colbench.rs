@@ -1,4 +1,4 @@
-// [[C120]] linearWork
+// [[B19]] spreadsheetHabits, [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]
 //! A computed column's cost on the core, natively: `cargo run --release --example colbench [formula…]`, ROWS and REPS to
 //! size it. Under `valgrind --tool=callgrind --toggle-collect='*Eval*run*'` it counts the evaluator's instructions alone.
 use solenoid_core::eval::{column, ColumnInputs, ColumnSpec, Table};

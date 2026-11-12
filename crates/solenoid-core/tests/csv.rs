@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams, [[frame-verbs#Reading CSV text]]
+// [[engineering#Content entering or leaving the app is guarded where it crosses]], [[frame-verbs#Reading CSV text]]
 //! The core's CSV reader and writer against their frozen answers (`fixtures/core/csv-*.json.gz`), natively.
 
 use serde_json::Value as Json;

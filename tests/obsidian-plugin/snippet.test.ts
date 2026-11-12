@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[obsidian-plugin#The look]]
+// [[B1]] obsidianBet, [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[obsidian-plugin#The look]]
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { defaultLookCss } from "../../obsidian-plugin/src/lookTokens";

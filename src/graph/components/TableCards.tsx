@@ -1,4 +1,4 @@
-// [[C114]] cardsView, [[D111]] cardLayouts
+// [[C114]] cardsView, [[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]
 import { useMemo, useState, type ReactNode } from "react";
 import { planCards, cardMatches, PROFILE_ROWS, type CardColType, type CardColumnInput } from "../cardLayout";
 import { type ColumnSort, type SortDir } from "./columnSort";
@@ -17,7 +17,7 @@ const CARD_RULES = helpSection(helpMd, "Cards");
 export function TableCards({
   names, types, computed, chipCols, nestedCols, listCols, rowCount, order, rawAt, shownRow, itemsAt, cellNodeAt, dataKey, sort, onSort, query, onEdit, layout,
 }: {
-  /** An authored card layout ([[D111]] cardLayouts); none keeps the inferred cards. */
+  /** An authored card layout ([[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]); none keeps the inferred cards. */
   layout?: readonly RecordPlacement[];
   names: readonly string[];
   types: readonly CardColType[];

@@ -1,4 +1,4 @@
-// [[A1]], [[B3]], [[C135]] isolateOff, [[react-flow-surface-contract#Isolate]], [[composite-drill-in-mount-lifecycle#The canvas-substitution seam]]
+// [[A1]], [[B3]], [[react-flow-surface-contract#The Isolate modes are switched off for now: nothing in the app enters them]], [[react-flow-surface-contract#Isolate]], [[composite-drill-in-mount-lifecycle#The canvas-substitution seam]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { GraphEditor } from "../../src/graph/graphEditor";
@@ -35,7 +35,7 @@ afterEach(() => {
   isolateStore.exit();
 });
 
-describe("switched off, nothing enters an isolate view ([[C135]] isolateOff)", () => {
+describe("switched off, nothing enters an isolate view ([[react-flow-surface-contract#The Isolate modes are switched off for now: nothing in the app enters them]])", () => {
   it.skipIf(ISOLATE_ON)("the selection, a node set and a chain all leave the canvas whole", () => {
     expect(isolateSelection()).toBe(false);
     expect(isolateNodes(["m2"])).toBe(false);

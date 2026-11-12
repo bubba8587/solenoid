@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C15]] matricesInFormulas
+// [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C17]] shareImpl, [[C15]] matricesInFormulas
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";

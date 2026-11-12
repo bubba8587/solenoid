@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[C58]] tableInputRawText, [[D90]] cubeTypesAtDepth
+// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[C58]] tableInputRawText, [[frame-verbs#Each table in a Cube, nested or not, types its own columns]]
 import { useRef, useState, useSyncExternalStore } from "react";
 import { ArrayChip, arrayAccentFor } from "../../src/graph/components/ArrayChip";
 import { themeVersion, tokenHex } from "./shadow";
@@ -30,7 +30,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   columnTypes?: ColumnTypes;
   /** `replace` sets the property's whole map, so a cube column switched back to none loses its pick. */
   onColumnTypes?: (types: ColumnTypes, replace?: boolean) => void;
-  /** The frame editor's header suggestions ([[C107]] obsidianPlugin). */
+  /** The frame editor's header suggestions ([[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]). */
   columnNameOptions?: () => ColumnNameOption[];
   /** A cube's nested tables' types, this note's own; without the callback they are shown but not kept. */
   nestedTables?: NestedTables;

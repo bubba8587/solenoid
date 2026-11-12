@@ -36,7 +36,7 @@ describe("Expression — value-polymorphic results", () => {
     expect(n.data({ a: [5], b: [3] }).result).toBe(true);
   });
 
-  it("an InlineCast types the output socket as its cast; ∅ waits for the run ([[D113]] inlineCast)", () => {
+  it("an InlineCast types the output socket as its cast; ∅ waits for the run ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]])", () => {
     expect(dt(new ExpressionNode({ castTo: "number" }).outputs.result?.socket)).toBe("numlist");
     expect(dt(new ExpressionNode({ castTo: "text" }).outputs.result?.socket)).toBe("strcombo");
     expect(dt(new ExpressionNode({ castTo: "date" }).outputs.result?.socket)).toBe("datecombo");

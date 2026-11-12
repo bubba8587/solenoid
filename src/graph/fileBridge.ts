@@ -1,4 +1,4 @@
-// [[C1]] demoVault, [[C103]] untrustedContentSeams
+// [[B1]] obsidianBet, [[vault-read#The app ships a read-only demo vault to try the vault nodes on]], [[engineering#Content entering or leaving the app is guarded where it crosses]]
 import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdir, exists, stat } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { join, dirname, documentDir, homeDir } from "@tauri-apps/api/path";

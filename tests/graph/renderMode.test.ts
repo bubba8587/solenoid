@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#When it runs]]
+// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]], [[html-in-canvas#When it runs]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderModeStore } from "../../src/graph/renderMode";
 

@@ -711,7 +711,7 @@ pub(crate) fn forget_spread() {
 }
 
 /// Z.TEST's count, mean and sample spread of its list, `None` when it doesn't read as numbers, kept for the last long
-/// list: a computed column tests each row against the same column ([[C120]] linearWork).
+/// list: a computed column tests each row against the same column ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
 fn z_test_spread(list: &V) -> Option<(f64, f64, f64)> {
     let read = || {
         let xs = nums_of(std::slice::from_ref(list));

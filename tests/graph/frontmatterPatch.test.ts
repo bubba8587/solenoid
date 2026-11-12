@@ -10,7 +10,7 @@ import { fromUnit } from "../../src/graph/unitValue";
 import { fcUnitToUnit } from "../../src/graph/dimension";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 
-// [[C101]] onePatchPath, [[reports-and-notes#Write to Obsidian]]
+// [[B1]] obsidianBet, [[vault-bridge#Writing a note's properties changes only what it targets]], [[reports-and-notes#Write to Obsidian]]
 
 const NO_NAMES = new Set<string>();
 

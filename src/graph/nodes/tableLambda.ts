@@ -1,4 +1,4 @@
-// [[B14]], [[C50]]
+// [[components#One design system governs every look, layout and word in the app]], [[C50]]
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type CastTo, type ResultDim } from "./shared";
@@ -17,7 +17,7 @@ export class MapTableNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
-  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  /** The InlineCast's pick on the result ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]). */
   castTo: CastTo;
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
@@ -58,7 +58,7 @@ export class ByAxisNode extends GraphNode {
   unitAware = true;
   label: string;
   op: ByAxis;
-  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  /** The InlineCast's pick on the result ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]). */
   castTo: CastTo;
   stringLiterals: Record<string, string>;
   cachedResult: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null = null;
@@ -103,7 +103,7 @@ export class ReduceLambdaNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
-  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  /** The InlineCast's pick on the result ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]). */
   castTo: CastTo;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string>;
@@ -140,7 +140,7 @@ export class ScanLambdaNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
-  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  /** The InlineCast's pick on the result ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]). */
   castTo: CastTo;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string>;
@@ -173,7 +173,7 @@ export class MakeArrayNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
-  /** The InlineCast's pick on the result ([[D113]] inlineCast). */
+  /** The InlineCast's pick on the result ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]]). */
   castTo: CastTo;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string>;

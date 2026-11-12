@@ -1,4 +1,4 @@
-// [[C42]], [[B14]] oneDesignSystem
+// [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]], [[components#One design system governs every look, layout and word in the app]]
 import { GraphNode, GraphSocket } from "../graphModel";
 import { type NodeKind, NODE_KIND_ACCENTS, NODE_KIND_SLOTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";

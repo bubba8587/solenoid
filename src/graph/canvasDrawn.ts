@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer
+// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]]
 // Mechanics: [[html-in-canvas#Keeping the capture fresh]].
 
 /** Fired, bubbling, by a figure's `<canvas>` after it draws: new pixels change no DOM, so nothing else tells the

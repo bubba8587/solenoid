@@ -1,4 +1,4 @@
-// [[save-format#A save loses nothing quietly]], [[save-format#Where documents are stored]]
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]], [[save-format#Where documents are stored]]
 import { describe, it, expect } from "vitest";
 import { dataUrlToBytes, bytesToDataUrl, sanitizeName } from "../../src/graph/imageAssets";
 

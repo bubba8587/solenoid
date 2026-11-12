@@ -1,4 +1,4 @@
-// [[C47]] equationNode, [[C25]] firstClassUnits, [[C24]] arraySemantics, [[equation-solver#Units]], [[C47]], [[unit-flow#Expression]]
+// [[equation-solver#The Equation node solves a relation for whichever variable is unwired]], [[C25]] firstClassUnits, [[C24]] arraySemantics, [[equation-solver#Units]], [[equation-solver#The Equation node solves a relation for whichever variable is unwired]], [[unit-flow#Expression]]
 import { describe, it, expect } from "vitest";
 import { EquationNode } from "../../src/graph/nodes/equation";
 import { fromUnit, isUnitCell, dimOf, isRatio, type UnitCell } from "../../src/graph/unitValue";

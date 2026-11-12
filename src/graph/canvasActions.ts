@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[C89]] standoffsSolveLast
+// [[C10]] socketLattice, [[standoffs#No layout action breaks a standoff you set]]
 import type { View } from "./view";
 import type { GraphEditor } from "./graphEditor";
 import { GraphConnection } from "./graphModel";

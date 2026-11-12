@@ -1,4 +1,4 @@
-//! [[D79]] effectsEdgeTriggered, [[C25]] firstClassUnits, [[C45]] excelComparisons, [[C118]] formatTravelsWithValue,
+//! [[alert-node-alerts-hud#An alert fires when its status changes, and never on load]], [[C25]] firstClassUnits, [[C45]] excelComparisons, [[C118]] formatTravelsWithValue,
 //! [[B17]] typedValueModel, [[B11]] maximalMerge, [[C114]] cardsView.
 //! The cards that watch, format and write up values: Display, Alert, Expect, the Format Controller, Template, Frame
 //! Input and Record (`tree/specs/computation/node-bodies.md` § What has moved, Documents).
@@ -230,7 +230,7 @@ fn alert_message(c: &Call, condition: &str, result: &V) -> String {
     }
 }
 
-/// The status, with what it fires ([[D79]] effectsEdgeTriggered): `alertKey` names the condition and the status, so
+/// The status, with what it fires ([[alert-node-alerts-hud#An alert fires when its status changes, and never on load]]): `alertKey` names the condition and the status, so
 /// the TS raises `alertMessage` only when that changes; a blank status changes neither.
 fn alert(c: &mut Call) -> Answer {
     let result = alert_status(c)?;
@@ -501,7 +501,7 @@ fn expect(c: &mut Call) -> Answer {
     }
     let (has_min, has_max) = (!matches!(min, V::Null), !matches!(max, V::Null));
     if on("checkRange") && (has_min || has_max) {
-        // The bounds take the kind of the value checked ([[D120]] rangeBoundsTakeTheValuesKind).
+        // The bounds take the kind of the value checked ([[date-values#A range check bounds a date by dates and a number by numbers]] rangeBoundsTakeTheValuesKind).
         let kind = |v: &V| match v {
             V::Num(n) if n.is_finite() => Some(false),
             V::Date(n) if n.is_finite() => Some(true),

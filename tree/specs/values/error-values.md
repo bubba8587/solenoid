@@ -2,11 +2,11 @@
 aliases: ["Error values"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[E9]] errorsKeepOrigin, [[C25]] firstClassUnits, [[E20]] pointError -->
+<!-- [[C24]] arraySemantics, [[C25]] firstClassUnits, [[E20]] pointError -->
 
 # Spec: Error values
 
-Serves [[C24]] arraySemantics and [[E9]] errorsKeepOrigin. It covers what the system does and blocks, and the decision each behavior serves. The semantics (what null, NaN, Infinity and each error mean, and how they propagate by context) are [[value-semantics]]; this file is the mechanics.
+Serves [[C24]] arraySemantics. It covers what the system does and blocks, and the decision each behavior serves. The semantics (what null, NaN, Infinity and each error mean, and how they propagate by context) are [[value-semantics]]; this file is the mechanics.
 
 Failures in Solenoid are values. A node that cannot answer returns a tagged error, the error travels down the cables like any other value, and the value box shows it as a red badge until something catches it.
 
@@ -129,13 +129,13 @@ Tests:
 
 A node returns `solError(...)` where the failure is a real error, never `null`; `null` stays the legitimate blank.
 
-Every error carries an `origin` ([[E9]] errorsKeepOrigin):
+Every error carries an `origin` ([[#An error remembers the node where it started]]):
 
 - **Its fields.** `nodeId`; `nodeName` (the node's title, or its type name when untitled); `inputSlot`, set only when the origin was tagged at a relay rather than where it was minted.
 - **A node, never a row.** A row index would go stale at the first sort or filter downstream.
 - **Set once.** The guard sets the origin at the mint site or at the first relay that sees the error untagged, and never overwrites it, so a chain of passthroughs still points at the original producer.
 - **Cells too.** A per-cell error inside a list or a Frame-shaped output is tagged with its node like a scalar one; a cell already tagged keeps its origin.
-- **The cost.** Tagging copies only what it changes and returns the value untouched when nothing is untagged, so the error-free path costs nothing. Within one output, every cell holding the same untagged error gets one shared tagged copy, so a column of 100k `#DIV/0!` costs one error object, not 100k. Many distinct errors tag in time linear in the cells ([[C120]] linearWork).
+- **The cost.** Tagging copies only what it changes and returns the value untouched when nothing is untagged, so the error-free path costs nothing. Within one output, every cell holding the same untagged error gets one shared tagged copy, so a column of 100k `#DIV/0!` costs one error object, not 100k. Many distinct errors tag in time linear in the cells ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]]).
 
 Tests: `errorValue.test.ts` ("SolError origin"): a minted, a thrown and a relayed error's origin, an origin surviving a passthrough, per-cell tagging in a list and a Frame, one shared copy for repeats, and linear time over distinct errors.
 
@@ -336,3 +336,9 @@ Tests:
 
 - `errorSeed.test.ts`: loads that JSON, runs it through a real editor and engine with the app's own pass (coercion, guards and the loop seeding), and checks that every ISERROR reports its row's code and every Display before a check shows the badge, so a wrong socket key or a silently null producer fails CI instead of showing blank in the app.
 - `seeds.test.ts`: the seed's structure.
+
+## An error remembers the node where it started
+
+Every error remembers the node where it started, and that never changes as it flows downstream. An error with no traceable source is tagged with the first node where it shows up.
+
+- How it's built: [[error-values#Producers and provenance]].

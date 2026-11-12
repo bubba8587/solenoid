@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet, [[C101]] onePatchPath
+// [[B1]] obsidianBet, [[vault-bridge#Writing a note's properties changes only what it targets]]
 import { describe, it, expect } from "vitest";
 import { sanitizeDocName, stubRelPath, stubLink, buildStub, mergeStub } from "../../src/graph/graphStub";
 

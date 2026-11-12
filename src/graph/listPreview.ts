@@ -1,4 +1,4 @@
-// [[C120]] linearWork, [[C130]] rustCore
+// [[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]], [[C130]] rustCore
 // A card's box draws a big list or frame as a chip and its first rows, so a read inside `previewed` gets the first
 // rows the core keeps and any other read gets the whole (graph-core.md § Direct calls).
 

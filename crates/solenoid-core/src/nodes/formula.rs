@@ -1,4 +1,4 @@
-//! [[C47]] equationNode, [[C25]] firstClassUnits. The Expression card, its formula read over its inputs and wrapped
+//! [[equation-solver#The Equation node solves a relation for whichever variable is unwired]], [[C25]] firstClassUnits. The Expression card, its formula read over its inputs and wrapped
 //! in their units; the Equation card and Time Value of Money, a relation solved for its one unwired variable.
 
 use super::Cv;
@@ -173,8 +173,8 @@ fn tag_result(v: &V) -> V {
     }
 }
 
-/// The answer with the InlineCast's pick run on it, as Cast converts ([[D113]] inlineCast); the result socket reads its
-/// type off what comes out ([[D117]] emptyKeepsLastType).
+/// The answer with the InlineCast's pick run on it, as Cast converts ([[socket-lattice#A result's type is what it computed; a type pick on it is an InlineCast]] inlineCast); the result socket reads its
+/// type off what comes out ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]] emptyKeepsLastType).
 pub(crate) fn typed_answer(c: &mut Call, result: V) -> V {
     if result.is_sol_error() {
         return result;

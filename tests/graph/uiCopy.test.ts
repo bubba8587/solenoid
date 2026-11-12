@@ -1,4 +1,4 @@
-// [[B14]]
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -228,7 +228,7 @@ describe("UI copy", () => {
   // The other two prose surfaces the corpus lint never reached: a node's socketDocs
   // (socket-hint tooltips, incl. the shared BASIS_DOC) and nodeExcel.ts's per-name
   // `note`s (the Inspector's Excel-equivalent rows). Same two section-7 rules.
-  // The λ-binding parentheticals [[B14]] oneDesignSystem sanctions live on LABELS, not
+  // The λ-binding parentheticals [[components#One design system governs every look, layout and word in the app]] sanctions live on LABELS, not
   // here, so they don't reach this scan — no exemption needed.
   it("no socketDoc or Excel note uses an em dash or ends in a trailing parenthetical (section 7)", () => {
     const strings: { where: string; text: string }[] = [];

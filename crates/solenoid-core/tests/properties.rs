@@ -350,7 +350,7 @@ fn equation(expr: &str, known: &[(&str, f64)], unknown: &str) -> String {
 }
 
 /// mathlib `mul_right_inj'`: for k ≠ 0, k·a = k·b exactly when a = b, so multiplying both sides of an equation by the
-/// same nonzero k changes none of its solutions, at any scale ([[C47]] equationNode). The tiny cubic is the case the
+/// same nonzero k changes none of its solutions, at any scale ([[equation-solver#The Equation node solves a relation for whichever variable is unwired]]). The tiny cubic is the case the
 /// solver's old tolerance floor of 1 got wrong (x = 8).
 #[test]
 fn an_equation_scaled_by_k_keeps_its_solutions() {

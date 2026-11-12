@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]]
 import { useLayoutEffect, useRef, type RefObject } from "react";
 
 /** A layout effect, so the unclamped first position never flashes; returns the ref the menu root must carry, the same one used for outside-press dismissal. */

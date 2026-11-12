@@ -1,4 +1,4 @@
-// [[C98]] paletteMirrorsMenubar (the one menu model)
+// [[A1]] visualGraphCalculator, [[command-palette#The Command Palette is the menubar in searchable form]] (the one menu model)
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes, SolenoidNode } from "./schemes";
 import type { SocketContextTarget, CableContextTarget, NodeContextTarget } from "./components";

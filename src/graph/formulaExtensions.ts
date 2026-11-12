@@ -1,4 +1,4 @@
-// [[C76]], [[C79]], [[C51]] formulaNaming
+// [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C79]], [[C51]] formulaNaming
 // A pack's formula functions are the core's (`fns_packs.rs`); a pack declares their signatures and owns their names,
 // which the editor advertises only while the pack is on.
 import { allPacks, packsStore } from "./packs";

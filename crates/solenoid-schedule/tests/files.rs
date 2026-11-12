@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[D68]] importUnsupportedIsNamed, [[schedule-and-gantt#Import at the border]]
+// [[C69]] ganttPackages, [[schedule-and-gantt#An unsupported imported field is named, never dropped and never a new column]], [[schedule-and-gantt#Import at the border]]
 //! The plan-file readers over the corpus in `corpus/`
 //! and the GanttProject and XER samples: what they read, and that the engine reproduces the dates a file stores.
 

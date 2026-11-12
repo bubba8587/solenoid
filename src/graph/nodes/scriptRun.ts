@@ -1,4 +1,4 @@
-// [[C66]]
+// [[script-sandbox#Script runs your own code, and only typed values come out]]
 // This module is the sandbox worker's whole bundle, so it must import nothing from the app.
 
 export const SCRIPT_TIMEOUT_MS = 1000;

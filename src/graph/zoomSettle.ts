@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer
+// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]]
 export const DEFAULT_ZOOM_SETTLE_MS = 420;
 
 export function zoomSettleMs(): number {

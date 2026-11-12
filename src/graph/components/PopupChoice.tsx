@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[components#One design system governs every look, layout and word in the app]]
 import { useLayoutEffect, useRef, useState } from "react";
 import { IS_COARSE } from "../coarse";
 

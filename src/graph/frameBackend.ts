@@ -77,7 +77,7 @@ function decodeWireCell(v: unknown): unknown {
   return v;
 }
 
-/** A CSV file's text as a typed frame, read on the core ([[C103]] untrustedContentSeams): its delimiter guessed, blank
+/** A CSV file's text as a typed frame, read on the core ([[engineering#Content entering or leaving the app is guarded where it crosses]]): its delimiter guessed, blank
  *  lines skipped, the first row the header, each column's trimmed text kept as `raw`. */
 /** `order` (MDY, DMY, YMD; blank for Auto) types a column of dates written in numbers alone Date, read in that order. */
 export function csvToFrame(text: string, order = ""): FrameValue {
@@ -86,7 +86,7 @@ export function csvToFrame(text: string, order = ""): FrameValue {
   return { __frame: true, columns };
 }
 
-/** An Excel workbook's named Tables, read on the core ([[C103]] untrustedContentSeams), or the error that says why not. */
+/** An Excel workbook's named Tables, read on the core ([[engineering#Content entering or leaving the app is guarded where it crosses]]), or the error that says why not. */
 export function xlsxTables(bytes: Uint8Array): XlsxTableInfo[] | SolError {
   try {
     return wasmXlsxTables(bytes);

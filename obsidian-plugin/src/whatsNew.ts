@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[obsidian-plugin#What's new]]
+// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[obsidian-plugin#What's new]]
 /** The plugin version and the app's What's New deck a user last saw the tab for. */
 export interface SeenWhatsNew {
   plugin: string;

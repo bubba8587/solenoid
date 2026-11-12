@@ -211,7 +211,7 @@ fn present_numbers(arr: &[V]) -> Vec<f64> {
     arr.iter().filter_map(finite_num).collect()
 }
 
-/// An empty axis still costs a step per item of the other, and an infinite one never ends ([[C120]] linearWork).
+/// An empty axis still costs a step per item of the other, and an infinite one never ends ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork).
 fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
     (nan_max(rows, 1.0) * nan_max(cols, 1.0) > MAX_GENERATED).then(|| {
         err(
@@ -838,7 +838,7 @@ fn frequency_bins(data: &[V], bins: &[V]) -> V {
         }
     });
     let mut counts = vec![0.0; bins.len() + 1];
-    // The first bin at or above x, by binary search ([[C120]] linearWork); -∞ and NaN fall past every bin.
+    // The first bin at or above x, by binary search ([[engineering#Table work grows with the rows, never with rows squared, and drawing stops at the screen]] linearWork); -∞ and NaN fall past every bin.
     for x in xs {
         let k = sorted.partition_point(|&(b, _)| b < x);
         match sorted.get(k) {

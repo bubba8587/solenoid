@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#Cables and overlays on the canvas]]
+// [[A1]] visualGraphCalculator, [[html-in-canvas#Big graphs can optionally pan and zoom on pictures of their nodes]], [[html-in-canvas#Cables and overlays on the canvas]]
 import { describe, expect, it } from "vitest";
 import { shapeD, styleKey, visiblePaint } from "../../src/graph/hicVectors";
 

@@ -1,4 +1,4 @@
-// [[B14]], [[palette-and-theme#The built-in palettes]], [[palette-and-theme#The neutral chrome ramp]],
+// [[A1]] visualGraphCalculator, [[components#One design system governs every look, layout and word in the app]], [[palette-and-theme#The built-in palettes]], [[palette-and-theme#The neutral chrome ramp]],
 // [[palette-and-theme#Accent-adaptive ramps]], [[palette-and-theme#Derived chrome tokens]], [[palette-and-theme#The gray swatch's neutral cycle]],
 // [[palette-and-theme#The Custom palette]], [[palette-and-theme#Which palette is in effect]], [[palette-and-theme#Accent helpers]]
 import { describe, it, expect, afterEach } from "vitest";
@@ -423,7 +423,7 @@ describe("neutral shades (gray-swatch cycle)", () => {
     expect(nextNeutral(undefined)).toBe("gray");
   });
 
-  // [[B14]] oneDesignSystem
+  // [[components#One design system governs every look, layout and word in the app]]
   it("the neutrals take the palette's chrome: plain under Default, the chrome's own colors under a tinted palette", () => {
     expect(resolveColor(NEUTRAL_WHITE)).toBe(NEUTRAL_HEX[NEUTRAL_WHITE]);
     expect(resolveColor(NEUTRAL_DARK)).toBe(NEUTRAL_HEX[NEUTRAL_DARK]);
@@ -534,7 +534,7 @@ describe("reportPaletteStore (report/export-only, parallel to the canvas palette
     expect(resolveColor("gold")).toBe(canvasBefore); // canvas untouched
   });
 
-  it("drops an override that is not a #rrggbb hex, so a shared file cannot write markup into the exported page's stylesheet ([[C103]] untrustedContentSeams)", () => {
+  it("drops an override that is not a #rrggbb hex, so a shared file cannot write markup into the exported page's stylesheet ([[engineering#Content entering or leaving the app is guarded where it crosses]])", () => {
     const evil = "red; } </style><script>alert(1)</script><style>";
     reportPaletteStore.setReportPalette({ overrides: { sky: evil, gold: "#ff00ff" } });
     expect(reportPaletteStore.resolve("sky")).not.toContain("<");

@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[B18]] safeToShare, [[engineering#Content entering or leaving the app is guarded where it crosses]]
 // "Which layer did you click?" for the SVG Picker node, DOM-agnostic (`SvgLike`) so it tests without jsdom.
 
 // Priority order, so a readable label beats a machine id when a tool wrote both.

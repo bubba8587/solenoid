@@ -16,7 +16,7 @@ function editBody(n: SavedNode): string {
 export const USER_SIZED: ReadonlySet<string> = new Set(["GroupNode", "NoteNode", "ImportObsidianNode", "ImageNode", "SvgPickerNode"]);
 
 /** Init fields a card saves only to seed its next load, which the type settle works out again: a Format Controller's
- *  type follows its socket's, with the memory an emptied socket keeps ([[D117]] emptyKeepsLastType), so two canvases
+ *  type follows its socket's, with the memory an emptied socket keeps ([[socket-lattice#An empty answer keeps the type it last carried; before any, its source's declared type]]), so two canvases
  *  equal in everything a person made can hold different ones. No edit, and no difference between landings. */
 export const SETTLED_INIT: Readonly<Record<string, readonly string[]>> = { FormatControllerNode: ["socketDataType"] };
 

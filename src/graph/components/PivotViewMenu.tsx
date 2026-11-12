@@ -1,4 +1,4 @@
-// [[C127]] pivotView
+// [[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]
 // The Pivot view's right-click menu: what Excel's PivotTable menu offers on an item, a value or a field, acting on the
 // Pivot card's own settings, so the output changes as Configure Fields would change it.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";

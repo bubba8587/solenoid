@@ -1,4 +1,4 @@
-// [[D124]] comparisonFunctions, [[C45]] excelComparisons, [[C10]] socketLattice
+// [[formula-language#The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack]] comparisonFunctions, [[C45]] excelComparisons, [[C10]] socketLattice
 //! The one comparison: the operators, IS, ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN and the Comparison and Between
 //! cards all answer through `compare` (`tree/specs/computation/formula-language.md` § Scalar operators).
 

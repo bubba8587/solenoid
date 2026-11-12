@@ -24,7 +24,7 @@ describe("built-in packs", () => {
     expect(bad).toEqual([]);
   });
 
-  it("every input of a formula preset says what it is ([[C76]] formulaPackDefault)", () => {
+  it("every input of a formula preset says what it is ([[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]])", () => {
     const bare: string[] = [];
     for (const p of BUILTIN_PACKS) {
       for (const { entry } of p.nodes ?? []) {

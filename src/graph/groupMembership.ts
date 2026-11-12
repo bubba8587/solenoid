@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[A1]] visualGraphCalculator
+// [[group-expand-push#A node joins or leaves a group only when you put it there]], [[A1]] visualGraphCalculator
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { GroupNode } from "./nodeClasses";

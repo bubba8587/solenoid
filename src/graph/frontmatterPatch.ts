@@ -1,4 +1,4 @@
-// [[C101]] onePatchPath
+// [[B1]] obsidianBet, [[vault-bridge#Writing a note's properties changes only what it targets]]
 import { parse as parseYaml } from "yaml";
 import { listLiteralItems } from "./listLiterals";
 import { yamlKey, yamlScalar } from "./obsidianMarkdown";

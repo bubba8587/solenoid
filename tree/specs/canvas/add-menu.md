@@ -2,13 +2,14 @@
 aliases: ["Add menu"]
 tags: [spec, canvas]
 ---
-<!-- [[C138]] addMenuReachesAll, [[B16]] oneFormulaSurface, [[D22]] oneNamePerCard -->
+<!-- [[A1]] -->
+<!-- [[A1]] visualGraphCalculator, [[B16]] oneFormulaSurface -->
 
 # Spec: Add menu
 
-Serves [[C138]] addMenuReachesAll: every node can be added from the menu in some form, and every choice of how the menu is arranged is the author's hand design, recorded here and nowhere else. A node the author holds back is `hidden: true` in `nodeCatalog.ts`: it leaves the menu and search but still loads and computes in a saved document.
+Serves [[A1]] visualGraphCalculator: every node can be added from the menu in some form, and every choice of how the menu is arranged is the author's hand design, recorded here and nowhere else. A node the author holds back is `hidden: true` in `nodeCatalog.ts`: it leaves the menu and search but still loads and computes in a saved document.
 
-Serves [[B16]] oneFormulaSurface: every name a node shows has one home ([[#Where each name comes from]]) and a row's search words reach wider than its name ([[#A row's name and its search words]]). Placed nodes are titled by [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[B16]] oneFormulaSurface: every name a node shows has one home ([[#Where each name comes from]]) and a row's search words reach wider than its name ([[#A row's name and its search words]]). Placed nodes are titled by . It covers what the system does and blocks, and the decision each behavior serves.
 
 A function's **listing** is everything that makes it findable: its leaf, its op entry, its Excel names, its search words and its Inspector notes. It is declared apart from what the function computes (its call-table row and its card, [[node-classes#A new function across the app]]), so one function can be listed several ways, as the map below shows.
 
@@ -62,7 +63,7 @@ mindmap
 | Field | Meaning |
 |---|---|
 | `type` | The catalog key. Internal, never shown ([[#Where each name comes from]]). |
-| `label` | The name shown in the menu and, by default, on the card ([[D22]] oneNamePerCard). |
+| `label` | The name shown in the menu and, by default, on the card ([[#A placed node is titled with what you picked in the Add menu]]). |
 | `description` | Shown on hover in the menu, on the card header and in the Inspector. |
 | `create` | Builds a fresh node. |
 | `accent` | The node kind (`"frame"`, `"input"`…) whose accent tints the row, drawn as a filled rounded rectangle; it marks user-input nodes. The menu resolves it when it draws (`leafAccent`: the current palette's kind color, adjusted for light mode as a card's is) and redraws on a palette or theme switch, so a stored color can never freeze the startup palette; `catalogRegistry.test.ts` requires a kind. |
@@ -263,8 +264,8 @@ A placed node knows only its class and its `op`. The catalog lookups index every
 - `describeNode` gives the catalog description.
 - `nodeName` gives the catalog label, skipping generated `__op-` rows. A cleared card title falls back to it, so the header never collapses to zero height.
 - `catalogTypeOf` gives the catalog type, which `NODE_EXCEL` and the pack metadata are keyed by.
-- `nodeDisplayName` is the name every surface shows ([[D22]] oneNamePerCard). `catalogUtils` binds it into `nodeNamer` at load, so modules below it in the import graph reach it through `displayNameOf`.
-- The title a placed node shows ([[D22]] oneNamePerCard) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated "Host: Op" search rows), else the class name. So every leaf creates a card titled like its row, and an op family's card is named by its op (a placed ABS never reads "Math"). The exceptions derive their titles: a Conduit takes its sequence number, and a composite's boundary cards read Input and Output. No class hardcodes a family title: every op family sets `this.label = init?.label ?? ""`, and no component syncs a label when the op changes, so the title follows the current op on its own. Every surface that names a node (header, Navigator, Inspector, cable inspector, history digest, popup titles) reads it.
+- `nodeDisplayName` is the name every surface shows ([[#A placed node is titled with what you picked in the Add menu]]). `catalogUtils` binds it into `nodeNamer` at load, so modules below it in the import graph reach it through `displayNameOf`.
+- The title a placed node shows ([[#A placed node is titled with what you picked in the Add menu]]) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated "Host: Op" search rows), else the class name. So every leaf creates a card titled like its row, and an op family's card is named by its op (a placed ABS never reads "Math"). The exceptions derive their titles: a Conduit takes its sequence number, and a composite's boundary cards read Input and Output. No class hardcodes a family title: every op family sets `this.label = init?.label ?? ""`, and no component syncs a label when the op changes, so the title follows the current op on its own. Every surface that names a node (header, Navigator, Inspector, cable inspector, history digest, popup titles) reads it.
 - A leaf name is a title, so it carries no glyph prefix ("+ Add") and no hint ("ROUND to N digits"), and an "X / Y" row that creates only X is split into two leaves (`leafOps`).
 - A node's name never reads as a core Excel function that does something else ([[B16]] oneFormulaSurface): the node that keeps or drops columns is "Keep Columns" / "Drop Columns", never a bare "Columns", which reads as COLUMNS(). A label that is the node form of its like-named function (Sort and SORT) is fine. The check is a denylist: no Frames or Tables leaf despaces to ROWS, COLUMNS, ROW or COLUMN, the count functions that started the rule.
 - The hover type-hint (`.solenoid-node__type-hint`) shows the op-agnostic family name from `nodeTypeName`: the class name with its `Node` suffix removed and spaces added ("Series", "Math FX"). It is the one surface that does not show the node's name, on purpose: the hint exists to name the family once, which the title and op picker don't, so nothing removes this exception. A family name that reads wrong is fixed by renaming the class (`MathFnNode` to `MathFXNode`), never with an override map.
@@ -281,7 +282,7 @@ Every name a node shows comes from one home and reads the same on every surface 
 
 | Name | Home | Shown on |
 |---|---|---|
-| **Name** | the catalog leaf label (`nodeCatalog.ts`), or for an op family the current op's label; the title rules are [[D22]] oneNamePerCard | card title, Navigator, Inspector title, Problems, Pins, Comments, status bar, Isolate, cable inspector, history and popup titles, all through `nodeDisplayName` (the user's own label wins) |
+| **Name** | the catalog leaf label (`nodeCatalog.ts`), or for an op family the current op's label; the title rules are [[#A placed node is titled with what you picked in the Add menu]] | card title, Navigator, Inspector title, Problems, Pins, Comments, status bar, Isolate, cable inspector, history and popup titles, all through `nodeDisplayName` (the user's own label wins) |
 | **Family name** | `nodeTypeName`, derived from the class name | only the card's hover type-hint, under the exception in [[#Naming a placed node]] |
 | **Excel names** | `NODE_EXCEL[type]` | Inspector Excel rows; the description's closing "Excel: X."; and Add-menu search, as a row that shows the name before an arrow ("ROWS → Table Size", or "NORM.DIST → Distributions: Normal" for one op's formula name, built by `excelEntry`) whenever the Excel name is not already the row's own name or one of its ops |
 | **Op names** | the family's `OP_META` label, read by `nodeOps` | the op dropdown; hidden-op search rows ("Host: Op"); the card title when the op has its own leaf |
@@ -312,7 +313,7 @@ flowchart LR
     kw --> search["search, never shown"]
 ```
 
-The Inspector ([[C73]] inspectorIsStatic) assembles a node's page from those homes and the class:
+The Inspector ([[layout-chrome#The Inspector is a static reference, never live values]]) assembles a node's page from those homes and the class:
 
 ```mermaid
 flowchart LR
@@ -343,3 +344,22 @@ This would reopen if search words stopped ranking as high as the name.
 - A hidden-op row's label is `` `${hostLabel}: ${opLabel}` `` (`opSearchLabel`) and nothing else, so renaming a card renames its op rows.
 - A card's formula name (`fx`) is independent of its label. It stays declared wherever removing the spaces from the label would not produce it ([[engineering#An override lives on the declaration it overrides]], [[formula-language#Derived names are unique]]).
 - Every op is reachable: it either has a row of its own or is the family's primary op. The primary op is found by constructing the leaf and reading its `op` (`primaryOpOf`), never declared by hand.
+
+## The Add menu reaches every node, in a shape the author designs by hand
+
+The Add menu is the one place a person adds a node, and it reaches every node the app has:
+
+- **Reach.** Every node can be added from it in some form: a leaf of its own, an op row under its card, or a search row. A node that is in the app but in no form of the menu is a bug.
+- **Hand design.** How the menu is arranged (its categories and their order, which forms get a row of their own, which are reached only by search, what each row is called) is the author's design, made by hand and recorded in [[add-menu]], never generated from the code.
+- **Holding a node back.** The author may hide a node from the menu for a time. A hidden node still loads and computes in every saved document; it is only not offered.
+
+- Held back today: Choice Ladder, Gantt (its card and its Chart Builder target), Schedule and Earned Value, each until its own author pass (`hidden: true` in `nodeCatalog.ts` and `chartOptions.ts`; tracked in docs/backlog.md § Hidden until they get their own pass).
+- Enforced by `catalogRegistry.test.ts`: every registered node class is constructable by some catalog entry, hidden ones included.
+
+## A placed node is titled with what you picked in the Add menu
+
+A placed node is titled with the name you picked in the Add menu; a node with an operation picker is titled by its current operation, live. A title you type always wins.
+
+- *Exception:* a Conduit's default title is "Conduit N", its number, so every Conduit reads distinctly in the Navigator. **Removed by:** the Navigator telling same-named nodes apart on its own.
+- How it's built: [[add-menu#Naming a placed node]].
+- **Reopen if:** people want a placed node to keep its family name as its title.

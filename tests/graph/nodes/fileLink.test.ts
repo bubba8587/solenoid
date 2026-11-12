@@ -1,4 +1,4 @@
-// [[C68]], [[C86]] membershipByGesture
+// [[C68]], [[group-expand-push#A node joins or leaves a group only when you put it there]]
 import { describe, it, expect } from "vitest";
 import { FileLinkNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/nodeInit";

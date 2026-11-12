@@ -1,4 +1,4 @@
-// [[C114]] cardsView, [[C103]] untrustedContentSeams
+// [[C114]] cardsView, [[engineering#Content entering or leaving the app is guarded where it crosses]]
 import { wasmInvokeSync, coreIsHexColor, coreLinkHref } from "./engineWasm";
 import { formatFrameCell, type FrameValue } from "./frame";
 
@@ -77,7 +77,7 @@ export function planCards(cols: readonly CardColumnInput[]): CardPlan {
   return wasmInvokeSync<CardPlan>("engine_plan_cards", { cols });
 }
 
-/** A Record layout written from the data ([[D111]] cardLayouts), `units` grid columns wide: what a form or card with no
+/** A Record layout written from the data ([[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]), `units` grid columns wide: what a form or card with no
  *  authored layout uses, and what the layout fields' Suggest writes out. */
 export function suggestRecordLayout(cols: readonly CardColumnInput[], units: number): string {
   return wasmInvokeSync<string>("engine_plan_cards", { cols, units });

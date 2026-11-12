@@ -1,7 +1,7 @@
 // [[C17]] shareImpl
 import { PALETTE } from "../palette";
 
-// ─── Sparkline picture ([[D82]] sparklineCell) ───────────────────────────────
+// ─── Sparkline picture ([[formula-language#SPARKLINE answers a small picture as text that fits in a cell]]) ───────────────────────────────
 
 export type SparklineOp = "line" | "column" | "winloss";
 /** The palette slots a sparkline paints in. The picture carries their Default palette hexes; a display repaints them in the active palette. */

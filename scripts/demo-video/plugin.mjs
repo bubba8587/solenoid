@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[C107]] obsidianPlugin
+// [[B3]] sameNodeEverywhere, [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]]
 // The plugin cut: a short video for Obsidian users. A meeting's attendees go into a String List property; figures from
 // an email go into a Frame property through the plugin's Form view; Solenoid joins them to a roster note, totals them
 // with PIVOTBY and charts them; the chart is written back into the note. `app: "split"` scenes film Obsidian and

@@ -669,7 +669,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const fPos = formOrder ? formOrder.indexOf(fRow) : fRow;
   const fCount = formOrder ? formOrder.length : rows;
   const stepForm = (dir: 1 | -1) => setFormRow(formOrder ? formOrder[fPos + dir] : fRow + dir);
-  // With no authored layout the form is laid out from its data ([[D111]] cardLayouts), recomputed only when a cell, name or type changes.
+  // With no authored layout the form is laid out from its data ([[table-popup#Cards and forms can follow a layout the user writes, and suggest one from the data when none is written]]), recomputed only when a cell, name or type changes.
   const suggestedForm = (): string => {
     const names = Array.from({ length: cols }, (_, c) => (headerNames[c] ?? "").trim() || colLabel(c));
     const types = Array.from({ length: cols }, (_, c) => colTypeAt(c));
@@ -974,7 +974,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   ];
   const pickView = (v: PopupView) => (v === "csv" ? showCSV() : leaveCsv(v));
 
-  // ── Pivot view ([[C127]] pivotView) ───────────────────────────────────────
+  // ── Pivot view ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]) ───────────────────────────────────────
   // Only while this popup is still the one open: closing it before the recompute lands keeps it closed.
   const reopenWith = (f: FrameValue | null) => { if (f && tablePopup.get() === state) tablePopup.open({ ...state, ...framePopupData(f) }); };
   function setPivotView(next: PivotViewOptions) {
@@ -993,7 +993,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     tablePopup.close();
     pivotHost.current?.editFields((f) => { if (f) tablePopup.open({ ...opened, ...framePopupData(f) }); }, opened.accent);
   }
-  // The view's places hold the totals the Frame leaves out; the rest read the Frame ([[C127]] pivotView).
+  // The view's places hold the totals the Frame leaves out; the rest read the Frame ([[table-popup#A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame]]).
   const pivotAt = (r: number, c: number) => pivotAddress(state.pivot!).cell(r, c, (or, oc) => state.data[or]?.[oc] ?? null) as CellValue;
   const pivotCellText = (r: number, c: number): string => {
     const raw = pivotAt(r, c);

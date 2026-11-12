@@ -268,7 +268,7 @@ pub fn card_link_href(text: &str) -> Option<String> {
     crate::card_helpers::link_href(text)
 }
 
-/// The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
+/// The image a Record cell's text shows, if any ([[engineering#Content entering or leaving the app is guarded where it crosses]]).
 #[wasm_bindgen]
 pub fn card_image_src(text: &str) -> Option<String> {
     crate::card_helpers::record_image_src(text)

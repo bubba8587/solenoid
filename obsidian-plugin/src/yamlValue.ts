@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[C58]] tableInputRawText
+// [[obsidian-plugin#An Obsidian plugin shows Solenoid's values with the app's own chips]], [[C58]] tableInputRawText
 import { parseDateToSerial, noteDateSerial, noteDateText } from "../../src/graph/nodes/dateSerial";
 import { parseCellText } from "../../src/graph/literalEditors";
 import { parseCx } from "../../src/graph/cxValue";

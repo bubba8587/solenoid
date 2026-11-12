@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#A pack node is a ready-made formula unless it says it needs custom code]], [[C51]] formulaNaming, [[C17]] shareImpl
 // Metric inputs throughout (kg, cm, years); a sex-specific equation ships as two presets, never a hidden ±sign input.
 
 import { HrZonesNode } from "../nodeClasses";

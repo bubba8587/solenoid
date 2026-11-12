@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType
+// [[touch-gestures#A gesture follows what touches the screen, not the device]]
 import { useSyncExternalStore } from "react";
 import { deleteSelected } from "./canvasCommands";
 import { touchSelectStore } from "./touchSelectStore";
