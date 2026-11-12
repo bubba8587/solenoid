@@ -160,6 +160,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    xlsxTables: "Local File's and Web Source's list of a workbook's Tables, for the picker; every read lists them again (tableName holds the pick)",
     plotX: "The Probability pack's picture points as its body last showed them; the body draws them again each run",
     plotY: "The Probability pack's picture points as its body last showed them; the body draws them again each run",
     plotA: "A/B Test's A curve as its body last showed it; the body draws it again each run",

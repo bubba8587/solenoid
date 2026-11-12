@@ -1,4 +1,5 @@
 // [[C103]] untrustedContentSeams
+import { isTrustedSource } from "./deploymentConfig";
 import { createNotifier } from "./storeKit";
 import { processGraph } from "./process";
 import { allTopEditors } from "./activeGraph";
@@ -130,8 +131,9 @@ let _promptQueued = false;
 let _promptNotice: number | undefined;
 let _docGeneration = 0;
 
-export function requestNetwork(id: string, card?: { edited(): void }): boolean {
-  if (networkAllowed(id)) { _gated.delete(id); _gatedCards.delete(id); return true; }
+/** `url`, where the card knows it: a host the deployment vouches for (`deploymentConfig.ts`) never asks. */
+export function requestNetwork(id: string, card?: { edited(): void }, url?: string): boolean {
+  if (networkAllowed(id) || (url !== undefined && isTrustedSource(url))) { _gated.delete(id); _gatedCards.delete(id); return true; }
   if (card) _gatedCards.set(id, card);
   askNetwork(id);
   connectionStore.setState(id, { status: "gated" });

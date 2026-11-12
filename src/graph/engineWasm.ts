@@ -2,7 +2,7 @@
 // The one WebAssembly module: the graph engine and the core it links (`crates/solenoid-graph`, `crates/solenoid-core`),
 // answering the core's commands in-process. A trap anywhere drops the instance and brings a fresh one
 // (tree/specs/computation/graph-core.md § Traps). `npm run build:wasm` regenerates `engineWasm/`.
-import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, read_date, literal_field, empty_field, region_keys, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, engine_infer_bin, card_keep, card_forget, card_kept_count, card_unstage, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
+import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, read_date, literal_field, empty_field, region_keys, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, engine_xlsx_tables, engine_xlsx_frame, engine_infer_bin, card_keep, card_forget, card_kept_count, card_unstage, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
 import { toSolError, throwSol } from "./errorValue";
 import type { ColumnUnit } from "./unitValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -234,6 +234,23 @@ export function wasmReadBin(handle: string, column?: string, limit?: number): (B
  *  cells. */
 export function wasmCsvFrame(text: string, order = ""): BinaryCells & { rowCount: number } {
   const reply = JSON.parse(command(() => engine_csv_frame(text, order))) as { ok?: { columns: BinaryCells["schema"]; rowCount: number }; err?: unknown };
+  if ("err" in reply) throwSol(toSolError(reply.err));
+  const ok = reply.ok!;
+  return command(() => ({ schema: ok.columns, rowCount: ok.rowCount, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
+}
+
+/** An Excel workbook's named Tables (`xlsx::tables`). */
+export interface XlsxTableInfo { name: string; sheet: string; columns: string[]; rows: number }
+
+export function wasmXlsxTables(bytes: Uint8Array): XlsxTableInfo[] {
+  const reply = JSON.parse(command(() => engine_xlsx_tables(bytes))) as { ok?: XlsxTableInfo[]; err?: unknown };
+  if ("err" in reply) throwSol(toSolError(reply.err));
+  return reply.ok!;
+}
+
+/** A workbook's Table as typed columns (`xlsx::table_columnar`), each column that isn't text followed by its `raw`. */
+export function wasmXlsxFrame(bytes: Uint8Array, table: string): BinaryCells & { rowCount: number } {
+  const reply = JSON.parse(command(() => engine_xlsx_frame(bytes, table))) as { ok?: { columns: BinaryCells["schema"]; rowCount: number }; err?: unknown };
   if ("err" in reply) throwSol(toSolError(reply.err));
   const ok = reply.ok!;
   return command(() => ({ schema: ok.columns, rowCount: ok.rowCount, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));

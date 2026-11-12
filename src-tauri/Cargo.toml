@@ -38,6 +38,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
 # Local File's Parquet reader, on the core's frame ([[C130]] rustCore).
 solenoid-core = { path = "../crates/solenoid-core" }
+base64 = { version = "0.23.1", default-features = false, features = ["alloc"] }
 solenoid-parquet = { path = "../crates/solenoid-parquet" }
 
 [dev-dependencies]

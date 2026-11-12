@@ -22,35 +22,47 @@ function tooLargeError(bytes: number): Error {
 
 /** Rejects an oversized Content-Length up front, then counts streamed bytes, or gates the size after buffering. */
 async function readCappedText(res: Response): Promise<string> {
+  const streamed = await readCappedStream(res);
+  if (streamed) return new TextDecoder().decode(streamed);
+  const text = await res.text();
+  if (text.length > MAX_FETCH_BYTES) throw tooLargeError(text.length);
+  return text;
+}
+
+async function readCappedBytes(res: Response): Promise<Uint8Array> {
+  const streamed = await readCappedStream(res);
+  if (streamed) return streamed;
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.byteLength > MAX_FETCH_BYTES) throw tooLargeError(bytes.byteLength);
+  return bytes;
+}
+
+/** The body read chunk by chunk, aborting the moment it crosses the cap; null when the response can't stream. */
+async function readCappedStream(res: Response): Promise<Uint8Array | null> {
   const declared = Number(res.headers.get("content-length") ?? "");
   if (Number.isFinite(declared) && declared > MAX_FETCH_BYTES) throw tooLargeError(declared);
 
   const body = (res as { body?: ReadableStream<Uint8Array> | null }).body;
-  if (body && typeof body.getReader === "function") {
-    const reader = body.getReader();
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!value) continue;
-        total += value.byteLength;
-        if (total > MAX_FETCH_BYTES) { void reader.cancel(); throw tooLargeError(total); }
-        chunks.push(value);
-      }
-    } finally {
-      reader.releaseLock?.();
+  if (!body || typeof body.getReader !== "function") return null;
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > MAX_FETCH_BYTES) { void reader.cancel(); throw tooLargeError(total); }
+      chunks.push(value);
     }
-    const merged = new Uint8Array(total);
-    let offset = 0;
-    for (const c of chunks) { merged.set(c, offset); offset += c.byteLength; }
-    return new TextDecoder().decode(merged);
+  } finally {
+    reader.releaseLock?.();
   }
-
-  const text = await res.text();
-  if (text.length > MAX_FETCH_BYTES) throw tooLargeError(text.length);
-  return text;
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) { merged.set(c, offset); offset += c.byteLength; }
+  return merged;
 }
 
 export class CorsLikelyError extends Error {
@@ -60,13 +72,20 @@ export class CorsLikelyError extends Error {
   }
 }
 
-interface NetReply { status: number; status_text: string; headers: [string, string][]; body: string }
+interface NetReply { status: number; status_text: string; headers: [string, string][]; body: string; body_base64?: string | null }
+
+function fromBase64(b64: string): Uint8Array<ArrayBuffer> {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 
 /** The desktop's fetch, the shell's `net_fetch` (`src-tauri/src/net.rs`). What someone else wrote (`from`, the asking
  *  card) never reaches this computer or the local network, by any spelling, name or redirect; the user's own may. */
-async function desktopFetch(url: string, init: { method?: string; headers: Record<string, string>; body?: string; from?: string }): Promise<Response> {
+async function desktopFetch(url: string, init: { method?: string; headers: Record<string, string>; body?: string; from?: string; binary?: boolean }): Promise<Response> {
   const { invoke } = await import("@tauri-apps/api/core");
-  const req = { url, method: init.method, headers: Object.entries(init.headers), body: init.body, local: !writtenElsewhere(init.from) };
+  const req = { url, method: init.method, headers: Object.entries(init.headers), body: init.body, local: !writtenElsewhere(init.from), binary: !!init.binary };
   let reply: NetReply;
   try {
     reply = await invoke<NetReply>("net_fetch", { req });
@@ -77,7 +96,8 @@ async function desktopFetch(url: string, init: { method?: string; headers: Recor
     throw new Error(String(e));
   }
   const noBody = reply.status === 204 || reply.status === 205 || reply.status === 304;
-  return new Response(noBody ? null : reply.body, { status: reply.status, statusText: reply.status_text, headers: reply.headers });
+  const body = noBody ? null : reply.body_base64 != null ? fromBase64(reply.body_base64) : reply.body;
+  return new Response(body, { status: reply.status, statusText: reply.status_text, headers: reply.headers });
 }
 
 export async function fetchText(url: string, init?: { headers?: Record<string, string>; from?: string }): Promise<FetchedText> {
@@ -99,6 +119,24 @@ export async function fetchText(url: string, init?: { headers?: Record<string, s
   }
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
   return { text: await readCappedText(res), contentType: res.headers.get("content-type") ?? "" };
+}
+
+/** A body that isn't text (a workbook), as bytes, under the same cap, gates and errors as `fetchText`. */
+export async function fetchBytes(url: string, init?: { from?: string }): Promise<{ bytes: Uint8Array; contentType: string }> {
+  const absolute = /^https?:\/\//i.test(url.trim());
+  let res: Response;
+  if (isDesktop() && absolute) {
+    res = await desktopFetch(url, { headers: { "User-Agent": DATA_FETCH_UA }, from: init?.from, binary: true });
+  } else {
+    try {
+      res = await fetch(url);
+    } catch (e) {
+      if (e instanceof TypeError && !isDesktop()) throw new CorsLikelyError();
+      throw e;
+    }
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
+  return { bytes: await readCappedBytes(res), contentType: res.headers.get("content-type") ?? "" };
 }
 
 export async function fetchJson(url: string, init: { method: "POST" | "PUT" | "DELETE"; headers?: Record<string, string>; body?: unknown; from?: string }): Promise<FetchedText> {

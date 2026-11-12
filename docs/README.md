@@ -61,6 +61,8 @@ is parked there.
 - **`android.md`** — the Android app: what is prepared, the first build on the author's
   machine, and what to check then.
 - **`out-of-scope.md`** — the standing NO list.
+- **`self-hosting.md`** — proposed: a company hosting the web build, reading its workbooks from SharePoint or its own
+  server (the routes, what Web Source needs, the deployment config, open questions). For the engineering team.
 - **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
   ring map and everyday commands. Read before creating or changing a decision leaf;
   `python3 tools/dte.py validate` must print `OK` before you finish.
@@ -132,6 +134,8 @@ results get retried and settled rulings relapse.
 | `graphCompute.ts`, `process.ts`, `passSession.ts`, `calcModeStore.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs`, `session.rs`, `pass.rs` (the pass and the input boundary) | `../tree/specs/computation/compute-pass.md`; [[C23]] calcModes; `../tree/specs/values/error-values.md` |
 | `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | [[B3]] sameNodeEverywhere; `../tree/specs/canvas/react-flow-surface-contract.md`; [[A1]] visualGraphCalculator; `../DESIGN.md` § Cards |
 | `connectionStore.ts`, `httpBridge.ts`, `src-tauri/src/net.rs`, `dataProviders.ts`, `crates/solenoid-core/src/providers.rs`, live-source fetch | [[C23]] calcModes; `../tree/specs/computation/live-connections.md` |
+| `crates/solenoid-core/src/xlsx.rs`, `fixtures/xlsx/`, the workbook read in `nodes/connection.ts` | `../tree/specs/computation/live-connections.md` § Excel workbooks |
+| `deploymentConfig.ts`, `public/solenoid.config.json` | `../tree/specs/computation/live-connections.md` § The network gate; `self-hosting.md` |
 | `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapsedGroupCard; `../tree/specs/canvas/group-collapse.md` (camera targets) |
 | `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
 | `fns_lists.rs` `fill_grid` | [[C102]] gridFillThenForecast; `../tree/specs/computation/bordered-grid-fill.md` |

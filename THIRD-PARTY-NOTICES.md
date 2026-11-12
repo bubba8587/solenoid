@@ -48,6 +48,7 @@ libraries it bundled (both under *Ported from* below); charts are
 [Recharts](https://recharts.org) (MIT); the desktop shell is
 [Tauri](https://tauri.app) (MIT/Apache-2.0), and it reads Parquet files with Apache Arrow's
 [`parquet` and `arrow` crates](https://github.com/apache/arrow-rs) (Apache-2.0).
+Excel workbooks' Tables are read with [calamine](https://github.com/tafia/calamine) (MIT).
 
 Not everything is MIT: `elkjs` (auto-arrange layout) is EPL-2.0 OR
 GPL-3.0-or-later, `dompurify` (markdown sanitizing) is MPL-2.0 OR Apache-2.0,

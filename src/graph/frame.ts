@@ -195,7 +195,10 @@ export function retypeColumns(frame: FrameValue, types: Record<string, FrameColT
       const type = types[c.name];
       if (!type || type === c.type) return c;
       const raw = c.raw ?? c.values.map((v) => (v == null ? "" : textOf(v)));
-      return { ...c, type, values: raw.map((t) => coerceFrameCell(type, t, order)), raw, unit: type === "number" ? c.unit : undefined };
+      // An error with no text behind it (a workbook's #DIV/0!, a formula it never calculated) stays the error under
+      // any type; one the type made (text in a Number column) reads again from its text.
+      const values = raw.map((t, i) => (!t && isSolError(c.values[i]) ? c.values[i] : coerceFrameCell(type, t, order)));
+      return { ...c, type, values, raw, unit: type === "number" ? c.unit : undefined };
     }),
   };
 }

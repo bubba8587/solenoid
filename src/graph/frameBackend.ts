@@ -2,6 +2,7 @@
 // The core's frames from TypeScript ([[frame-verbs#Lazy frames]]): a lazy frame is a core value (`frame_ref.rs`) read
 // through the core; beside it, the cards' eager frame tools, CSV text as a frame, and the desktop's Parquet reader.
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "./frame";
+import type { XlsxTableInfo } from "./engineWasm";
 import type { FrameOp, PivotSpec } from "./frameOps";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -10,7 +11,7 @@ export { engineClock, evaluateOnCore, type EngineClock } from "./coreValues";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import type { LambdaValue } from "./lambdaValue";
 import { ipcInvoke } from "./ipcBridge";
-import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, wasmCsvFrame, onCore, guarded } from "./engineWasm";
+import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, wasmCsvFrame, wasmXlsxFrame, wasmXlsxTables, onCore, guarded } from "./engineWasm";
 import { frameRefRead, frameRefPreview, frameRefThen } from "./engineWasm/solenoid_graph.js";
 import { encodeBinary, decodeBinary, binaryFromBytes } from "./binaryCells";
 
@@ -83,6 +84,26 @@ export function csvToFrame(text: string, order = ""): FrameValue {
   const columns = decodeBinary(wasmCsvFrame(text, order));
   for (const c of columns) c.raw ??= c.values.map((v) => (v === null ? "" : (v as string)));
   return { __frame: true, columns };
+}
+
+/** An Excel workbook's named Tables, read on the core ([[C103]] untrustedContentSeams), or the error that says why not. */
+export function xlsxTables(bytes: Uint8Array): XlsxTableInfo[] | SolError {
+  try {
+    return wasmXlsxTables(bytes);
+  } catch (e) {
+    return asErrorValue(e);
+  }
+}
+
+/** A workbook's Table as a typed frame, read on the core: its cells the answers Excel saved, each column's type off
+ *  its cells, a column that isn't text keeping its cells' text as `raw` for a type picked later
+ *  (`tree/specs/computation/live-connections.md` § Excel workbooks). */
+export function xlsxToFrame(bytes: Uint8Array, table: string): FrameValue | SolError {
+  try {
+    return { __frame: true, columns: decodeBinary(wasmXlsxFrame(bytes, table)) };
+  } catch (e) {
+    return asErrorValue(e);
+  }
 }
 
 /** Frames through the wasm core at once: sourced, `run` over their handles, its frame read back and every handle

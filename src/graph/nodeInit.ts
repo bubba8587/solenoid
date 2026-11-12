@@ -39,6 +39,7 @@ export const INIT_FIELD_ORDER = [
   "dateOrder",
   "columnTypes",
   "exportTotals",
+  "tableName",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

@@ -32,7 +32,7 @@ import { CubeChip } from "./CubeChip";
 import { LazySelect } from "./LazySelect";
 import { PickField } from "./PickField";
 import { chooseFile } from "../chooseFile";
-import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
+import { NodeShell, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -162,6 +162,26 @@ async function retypeAndReopen(data: RetypableSource, c: number, type: FrameColT
   }, { onRetypeColumn: (col, t) => void retypeAndReopen(data, col, t) });
 }
 
+/** An Excel workbook's Table to read, once a read has listed them (`tableName`; blank reads the only one). A saved
+ *  pick the workbook no longer has stays listed, so the card's error can name it. */
+function WorkbookTablePick({ node }: { node: { id: string; tableName: string; xlsxTables: { name: string; sheet: string; rows: number }[]; edited(): void } }) {
+  useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
+  const [table, setTable] = useNodeField(node, "tableName");
+  const tables = node.xlsxTables;
+  if (tables.length === 0 && !table) return null;
+  const known = tables.some((t) => t.name === table);
+  return (
+    <label className="sol-conn__field" title="The Excel Table to read. Only named Tables are read: in Excel, select the data and press Ctrl+T to make one.">
+      Table
+      <LazySelect className="sol-conn__select" value={table || (tables.length === 1 ? tables[0].name : "")} onChange={(e) => setTable(e.target.value)} {...stopDrag}>
+        {tables.length !== 1 && !table && <option value="">Pick a Table…</option>}
+        {table && !known && <option value={table}>{table} (not in the workbook)</option>}
+        {tables.map((t) => <option key={t.name} value={t.name}>{t.name} · {t.sheet} · {t.rows} row{t.rows === 1 ? "" : "s"}</option>)}
+      </LazySelect>
+    </label>
+  );
+}
+
 export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>) {
   const [url, setUrl] = useState(data.url);
   useEffect(() => { setUrl(data.url); }, [data.url]);
@@ -178,7 +198,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           className="sol-conn__url sol-placeholder-example"
           type="text"
           value={url}
-          placeholder="https://…/data.csv"
+          placeholder="https://…/data.csv or .xlsx"
           spellCheck={false}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
@@ -190,6 +210,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           Dates
           <DateOrderToggle node={data} />
         </div>
+        <WorkbookTablePick node={data} />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField node={data} />
         <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)}
@@ -366,18 +387,18 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
             placeholder="Pick a file…"
             example
             missing={name !== "" && !isFilePattern(name) && !files.includes(name)}
-            title={name ? `${name}: choose another file` : "Choose a CSV or Parquet file in the data folder"}
+            title={name ? `${name}: choose another file` : "Choose a CSV, Parquet or Excel file in the data folder"}
             onPick={(from) => void chooseFile({
                 from,
               title: "Choose a file",
               root: folder,
-              extensions: ["csv", "parquet"],
+              extensions: ["csv", "parquet", "xlsx", "xlsm"],
               current: name || undefined,
               list: () => listLocalFiles(folder),
               readHead: (rel, chars) => readFileHead(folder, rel, chars),
               rootLabel: "Data folder",
               recentKey: "local-file",
-              empty: "No CSV or Parquet files in the data folder",
+              empty: "No CSV, Parquet or Excel files in the data folder",
             }).then((rel) => { if (rel) pick(rel); })}
           />
         )}
@@ -400,6 +421,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
             <DateOrderToggle node={data} />
           </div>
         )}
+        <WorkbookTablePick node={data} />
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {desktop && folder && (
           <RefreshIntervalField node={data} />

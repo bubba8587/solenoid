@@ -98,6 +98,28 @@ pub fn engine_csv_frame(text: &str, order: &str) -> String {
     reply(Ok(schema))
 }
 
+/// An Excel workbook's named Tables: name, sheet, columns and row count each (`xlsx::tables`).
+#[wasm_bindgen]
+pub fn engine_xlsx_tables(bytes: &[u8]) -> String {
+    reply(crate::xlsx::tables(bytes).map(|ts| {
+        serde_json::json!(ts
+            .into_iter()
+            .map(|t| serde_json::json!({ "name": t.name, "sheet": t.sheet, "columns": t.columns, "rows": t.rows }))
+            .collect::<Vec<_>>())
+    }))
+}
+
+/// Stages a workbook's Table `table` for the `take_*` calls and answers its schema, as `engine_csv_frame` does a CSV's
+/// (`xlsx::table_columnar`).
+#[wasm_bindgen]
+pub fn engine_xlsx_frame(bytes: &[u8], table: &str) -> String {
+    reply(crate::xlsx::table_columnar(bytes, table).map(|(out, rows)| {
+        let schema = serde_json::json!({ "columns": out.schema, "rowCount": rows });
+        STAGED.with(|s| *s.borrow_mut() = out);
+        schema
+    }))
+}
+
 /// Stages `inferColumn`'s reading of each column of a frame's cells for the `take_*` calls and answers its schema
 /// (`nodes::infer_cells`). A text column comes back empty: its cells are the trimmed text the caller sent. The schema
 /// is written as text, since a table of thousands of short columns spends more on building JSON values than on

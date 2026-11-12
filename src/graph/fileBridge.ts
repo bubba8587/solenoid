@@ -192,11 +192,16 @@ export function listLocalFiles(folder: string): Promise<string[]> {
   return listLocalFilesMatching(folder, "**/*");
 }
 
-/** The CSV and Parquet files under the data folder a pattern names (`fileGlob.ts`), relative to it. */
+/** The CSV, Parquet and Excel files under the data folder a pattern names (`fileGlob.ts`), relative to it. */
 export async function listLocalFilesMatching(folder: string, pattern: string): Promise<string[]> {
   if (!folder || !canReadRoot(folder)) return [];
   const readDir = async (rel: string) => fs().readDir(rel === "" ? folder : await fs().join(folder, ...rel.split("/")));
-  return (await matchFiles(pattern, readDir)).filter((p) => /\.(csv|parquet)$/i.test(p));
+  return (await matchFiles(pattern, readDir)).filter((p) => /\.(csv|parquet|xlsx|xlsm)$/i.test(p));
+}
+
+export async function readFileBytes(folder: string, name: string): Promise<Uint8Array> {
+  const path = await fs().join(folder, name);
+  return fs().readBinary(path);
 }
 
 export async function readFileText(folder: string, name: string): Promise<string> {

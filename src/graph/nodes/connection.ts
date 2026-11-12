@@ -19,11 +19,12 @@ import { isUnitCell, magnitudeOf, unitError } from "../unitValue";
 import { dimEqual, isDimensionless } from "../dimension";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
-import { isDesktop, hasFs, readFileText, listLocalFilesMatching, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
+import { isDesktop, hasFs, readFileText, readFileBytes, listLocalFilesMatching, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
-import { fetchText } from "../httpBridge";
+import { fetchText, fetchBytes } from "../httpBridge";
 import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, cubeFromColumns, retypeColumns, type FrameValue, type CubeValue, type FrameColType } from "../frame";
-import { readParquetFrame, csvToFrame, isFrameRef, readFrame } from "../frameBackend";
+import { readParquetFrame, csvToFrame, xlsxToFrame, xlsxTables, isFrameRef, readFrame } from "../frameBackend";
+import type { XlsxTableInfo } from "../engineWasm";
 import { isFilePattern } from "../fileGlob";
 import { AppendNode } from "./frame";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -64,6 +65,26 @@ function remoteTextToFrame(text: string, contentType: string, url: string, order
   return looksJson ? jsonToFrame(text) : csvToFrame(text, order);
 }
 
+/** An Excel workbook by its name or address (`.xlsx`, `.xlsm`). */
+export function isWorkbookName(name: string): boolean {
+  return /\.(xlsx|xlsm)(?=$|[?#])/i.test(name.trim());
+}
+
+/** A zip's first bytes, which every workbook starts with: a workbook behind an address with no extension. */
+function looksLikeZip(text: string): boolean {
+  return text.startsWith("PK\u0003\u0004");
+}
+
+/** A workbook's Table (`tree/specs/computation/live-connections.md` § Excel workbooks): the one `tableName` names, or
+ *  the only one there is. `tables` lists every Table for the card's picker; `prompt` asks for a pick among several. */
+export function readWorkbookTable(bytes: Uint8Array, tableName: string): { frame: FrameValue | SolError | null; tables: XlsxTableInfo[]; prompt?: string } {
+  const tables = xlsxTables(bytes);
+  if (isSolError(tables)) return { frame: tables, tables: [] };
+  const name = tableName.trim() || (tables.length === 1 ? tables[0].name : "");
+  if (!name && tables.length > 1) return { frame: null, tables, prompt: `Pick a Table: ${tables.map((t) => t.name).join(", ")}` };
+  return { frame: xlsxToFrame(bytes, name), tables };
+}
+
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
 
 export class WebSourceNode extends GraphNode {
@@ -72,6 +93,10 @@ export class WebSourceNode extends GraphNode {
   };
   label: string;
   url: string;
+  /** An Excel workbook's Table to read; blank reads the only one. */
+  tableName: string;
+  /** The fetched workbook's Tables, for the picker. */
+  xlsxTables: XlsxTableInfo[] = [];
   refreshMinutes: number;
   /** The CSV's date order: a column of dates written in numbers alone reads as dates in it. */
   dateOrder: DateOrder;
@@ -85,10 +110,11 @@ export class WebSourceNode extends GraphNode {
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
 
-  constructor(init?: { label?: string; url?: string; refreshMinutes?: number; dateOrder?: DateOrder; columnTypes?: Record<string, FrameColType> }) {
+  constructor(init?: { label?: string; url?: string; refreshMinutes?: number; dateOrder?: DateOrder; columnTypes?: Record<string, FrameColType>; tableName?: string }) {
     super("WebSource");
     this.label = init?.label ?? "Web Source";
     this.url = init?.url ?? "";
+    this.tableName = typeof init?.tableName === "string" ? init.tableName : "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     this.columnTypes = pickedColumnTypes(init?.columnTypes);
@@ -98,9 +124,9 @@ export class WebSourceNode extends GraphNode {
   data(): { frame: FrameValue | null } {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const ref = this.url.trim();
-    const key = connectionStore.key(this.id, `${ref}\u0000${this.dateOrder}\u0000${JSON.stringify(this.columnTypes)}`);
+    const key = connectionStore.key(this.id, `${ref}\u0000${this.dateOrder}\u0000${JSON.stringify(this.columnTypes)}\u0000${this.tableName}`);
     if (key === this.lastKey) { this.inflightKey = key; return { frame: this.cachedResult }; }
-    if (ref !== "" && !requestNetwork(this.id)) return { frame: this.cachedResult };
+    if (ref !== "" && !requestNetwork(this.id, undefined, ref)) return { frame: this.cachedResult };
     if (this.inflightKey !== key) {
       this.inflightKey = key;
       fetchInBackground(this.id, this.fetchFrame(ref, key));
@@ -117,9 +143,30 @@ export class WebSourceNode extends GraphNode {
     }
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      const { text: body, contentType } = await fetchText(ref, { from: this.id });
+      let bytes: Uint8Array | null = null;
+      let asRead: FrameValue | null = null;
+      if (isWorkbookName(ref)) {
+        bytes = (await fetchBytes(ref, { from: this.id })).bytes;
+      } else {
+        const { text: body, contentType } = await fetchText(ref, { from: this.id });
+        // A workbook behind an address with no extension (a share link) is fetched again as the bytes it is.
+        if (looksLikeZip(body)) bytes = (await fetchBytes(ref, { from: this.id })).bytes;
+        else asRead = remoteTextToFrame(body, contentType, ref, this.dateOrder);
+      }
       if (this.inflightKey !== key) return { frame: this.cachedResult };
-      const asRead = remoteTextToFrame(body, contentType, ref, this.dateOrder);
+      this.xlsxTables = [];
+      if (bytes) {
+        const book = readWorkbookTable(bytes, this.tableName);
+        this.xlsxTables = book.tables;
+        if (!book.frame || isSolError(book.frame)) {
+          this.cachedResult = null;
+          this.lastKey = key;
+          connectionStore.setState(this.id, book.prompt ? { status: "idle", message: book.prompt } : { status: "error", message: (book.frame as SolError).message });
+          return { frame: null };
+        }
+        asRead = book.frame;
+      }
+      if (!asRead) throw new Error("Nothing to read");
       this.readTypes = Object.fromEntries(asRead.columns.map((c) => [c.name, c.type]));
       const frame = retypeColumns(asRead, this.columnTypes, this.dateOrder);
       this.cachedResult = frame;
@@ -150,7 +197,7 @@ async function fetchParsed<T>(
   size: (v: T) => { rows: number; cols: number },
 ): Promise<T | null> {
   if (url === "") { connectionStore.setState(nodeId, { status: "idle" }); return null; }
-  if (!requestNetwork(nodeId)) return null;
+  if (!requestNetwork(nodeId, undefined, url)) return null;
   connectionStore.setState(nodeId, { status: "loading" });
   try {
     const { text, contentType } = await fetchText(url, { from: nodeId });
@@ -281,14 +328,16 @@ export class ImportXmlNode extends GraphNode {
 /** Every file read and stacked into one table, a first column naming each row's file ([[B11]] maximalMerge):
  *  columns meet by name as Append's do, and a file that doesn't read is named in `failed` while the rest load.
  *  Null once `stale` says a newer read took over. */
-async function readFilesAsOne(folder: string, files: string[], stale: () => boolean, order: string, types: Record<string, FrameColType> = {}): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[]; readTypes: Record<string, FrameColType> } | null> {
+async function readFilesAsOne(folder: string, files: string[], stale: () => boolean, order: string, types: Record<string, FrameColType> = {}, tableName = ""): Promise<{ frame: FrameValue | SolError; perFile: CubeValue | null; failed: string[]; readTypes: Record<string, FrameColType> } | null> {
   const readTypes: Record<string, FrameColType> = {};
   const frames: FrameValue[] = [];
   const read: Array<{ file: string; table: FrameValue }> = [];
   const failed: string[] = [];
   for (const rel of files) {
     try {
-      const asRead = /\.parquet$/i.test(rel) ? await readParquetFrame(folder, rel) : csvToFrame(await readFileText(folder, rel), order);
+      const asRead = /\.parquet$/i.test(rel) ? await readParquetFrame(folder, rel)
+        : isWorkbookName(rel) ? workbookFrame(readWorkbookTable(await readFileBytes(folder, rel), tableName))
+          : csvToFrame(await readFileText(folder, rel), order);
       if (!isSolError(asRead)) for (const c of asRead.columns) readTypes[c.name] ??= c.type;
       // Each file is retyped from its own source text before stacking, which keeps no `raw`.
       const f = isSolError(asRead) ? asRead : retypeColumns(asRead, types, order);
@@ -316,6 +365,11 @@ async function readFilesAsOne(folder: string, files: string[], stale: () => bool
   return stale() ? null : { frame: frame as FrameValue | SolError, perFile, failed, readTypes };
 }
 
+/** A workbook's read as one file of many: a pick asked for is that file's error. */
+function workbookFrame(book: ReturnType<typeof readWorkbookTable>): FrameValue | SolError {
+  return book.frame ?? solError("#REF!", book.prompt ?? "No Table");
+}
+
 // ─── LOCAL FILE (a file in the Settings target folder) ──────────────────────────
 export class LocalFileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
@@ -331,6 +385,10 @@ export class LocalFileNode extends GraphNode {
   columnTypes: Record<string, FrameColType> = {};
   /** The types the file read as before `columnTypes`, so picking that type again drops the pick. */
   readTypes: Record<string, FrameColType> = {};
+  /** An Excel workbook's Table to read (with a pattern, in every file); blank reads the only one. */
+  tableName: string;
+  /** The workbook's Tables, for the picker. */
+  xlsxTables: XlsxTableInfo[] = [];
   cachedPlan: CubeValue | null = null;
   /** A pattern's files unstacked: a row per file, its name and its table. */
   cachedFiles: CubeValue | null = null;
@@ -343,10 +401,11 @@ export class LocalFileNode extends GraphNode {
   private inflightKey: string | undefined;
   private inflight: Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> | undefined;
 
-  constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number; dateOrder?: DateOrder; columnTypes?: Record<string, FrameColType> }) {
+  constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number; dateOrder?: DateOrder; columnTypes?: Record<string, FrameColType>; tableName?: string }) {
     super("LocalFile");
     this.label = init?.label ?? "Local File";
     this.fileName = init?.fileName ?? "";
+    this.tableName = typeof init?.tableName === "string" ? init.tableName : "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.dateOrder = isDateOrder(init?.dateOrder) ? init.dateOrder : "";
     if (init?.columnTypes && typeof init.columnTypes === "object") {
@@ -369,7 +428,7 @@ export class LocalFileNode extends GraphNode {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const folder = getCsvFolder();
     const name = this.fileName.trim();
-    const key = connectionStore.key(this.id, `${folder}\u0000${name}\u0000${this.dateOrder}\u0000${JSON.stringify(this.columnTypes)}`);
+    const key = connectionStore.key(this.id, `${folder}\u0000${name}\u0000${this.dateOrder}\u0000${JSON.stringify(this.columnTypes)}\u0000${this.tableName}`);
     if (key === this.lastKey) return { frame: this.cachedResult, plan: this.cachedPlan, files: this.cachedFiles };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;
@@ -381,14 +440,16 @@ export class LocalFileNode extends GraphNode {
 
   private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> {
     const parquet = LocalFileNode.isParquet(name);
+    const workbook = isWorkbookName(name);
     const stale = () => this.inflightKey !== key;
     const superseded = { frame: null, plan: null };
     this.cachedPlan = null;
     this.cachedFiles = null;
     this.planNotes = [];
+    if (!workbook) this.xlsxTables = [];
     const fail = (message: string, status: "idle" | "error" = "error", err?: SolError) => {
       if (stale()) return superseded;
-      const out = status === "error" && parquet ? (err ?? solError("#REF!", message)) : null;
+      const out = status === "error" && (parquet || workbook) ? (err ?? solError("#REF!", message)) : null;
       this.cachedResult = out;
       this.lastKey = key;
       connectionStore.setState(this.id, { status, message });
@@ -407,8 +468,8 @@ export class LocalFileNode extends GraphNode {
       if (isFilePattern(name)) {
         const files = await listLocalFilesMatching(folder, name);
         if (stale()) return superseded;
-        if (files.length === 0) return fail(`No CSV or Parquet file matches ${name}`);
-        const read = await readFilesAsOne(folder, files, stale, this.dateOrder, this.columnTypes);
+        if (files.length === 0) return fail(`No CSV, Parquet or Excel file matches ${name}`);
+        const read = await readFilesAsOne(folder, files, stale, this.dateOrder, this.columnTypes, this.tableName);
         if (!read) return superseded;
         this.readTypes = read.readTypes;
         if (isSolError(read.frame)) return fail(read.frame.message, "error", read.frame);
@@ -430,6 +491,20 @@ export class LocalFileNode extends GraphNode {
         this.cachedResult = frame;
         connectionStore.setState(this.id, { status: "ok", rows: frameRowCount(frame), cols: frame.columns.length, fetchedAt: Date.now() });
         return { frame, plan: null };
+      }
+      if (workbook) {
+        const book = readWorkbookTable(await readFileBytes(folder, name), this.tableName);
+        if (stale()) return superseded;
+        this.xlsxTables = book.tables;
+        if (!book.frame) return fail(book.prompt ?? "Pick a Table", "idle");
+        if (isSolError(book.frame)) return fail(book.frame.message, "error", book.frame);
+        this.readTypes = Object.fromEntries(book.frame.columns.map((c) => [c.name, c.type]));
+        const frame = retypeColumns(book.frame, this.columnTypes, this.dateOrder);
+        this.lastKey = key;
+        this.cachedResult = frame;
+        this.cachedPlan = csvPlanToCube(frame);
+        connectionStore.setState(this.id, { status: "ok", rows: frameRowCount(frame), cols: frame.columns.length, fetchedAt: Date.now() });
+        return { frame, plan: this.cachedPlan };
       }
       if (LocalFileNode.isPlanFile(name)) {
         const text = await readFileText(folder, name);

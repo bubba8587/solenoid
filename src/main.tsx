@@ -17,6 +17,7 @@ import { initFullscreenHotkey } from "./graph/fullscreen";
 import { initAndroidBack } from "./graph/androidBack";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop, isAndroidApp } from "./graph/fileBridge";
+import { loadDeploymentConfig } from "./graph/deploymentConfig";
 import { OWN_WINDOW_CONTROLS } from "./graph/WindowControls";
 import { IS_PHONE, deviceModeStore, isMobile, isTablet } from "./graph/coarse";
 import { installChromeZoom, landscapeFit } from "./graph/chromeZoom";
@@ -30,6 +31,8 @@ import "@fontsource-variable/atkinson-hyperlegible-mono/wght-italic.css";
 import "./desktopFrame.css";
 
 if (isDesktop()) document.documentElement.dataset.shell = isAndroidApp() ? "android" : "desktop";
+// A company hosting the web build vouches for its own data hosts here (docs/self-hosting.md).
+else void loadDeploymentConfig();
 // linux shim for crisp canvas zoom (tree/specs/canvas/layout-chrome.md)
 if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 

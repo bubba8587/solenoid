@@ -6,6 +6,22 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-12: Excel workbook Tables, self-hosting groundwork, a Bluesky link; cloud session)
+- Local File and Web Source read an Excel workbook's named Table on the core (`xlsx.rs`, the `calamine` crate,
+  default features off): the answers Excel saved, types off the cells, an uncalculated formula a per-cell `#N/A`
+  naming it (calamine tells it from a formula that answered `""`). Tables only, by the author's call; sheets and
+  ranges are left out with a reopen trigger (`tree/specs/computation/live-connections.md` § Excel workbooks). The engine grew 484 KB.
+- `retypeColumns` now keeps an error with no text behind it under any picked type (a workbook's error cell), and a
+  stray reads again from its text.
+- Web Source: `fetchBytes` (`httpBridge.ts`), and the desktop shell's `net_fetch` answers base64 for `binary`. That
+  shell change is unbuilt here (the author's no-`src-tauri`-builds rule): the Android or desktop CI build is its
+  first compile.
+- Self-hosting: `docs/self-hosting.md` is the proposal for the engineering team (SharePoint via Microsoft Graph, or
+  same-origin hosting). Built: `solenoid.config.json` with `trustedSources`, hosts that skip the network prompt
+  (`deploymentConfig.ts`). Not built: the Microsoft sign-in, opening a graph from a link; the product call comes first.
+- This container lacked the `wasm-bindgen` CLI: `cargo install wasm-bindgen-cli --version 0.2.130 --locked`.
+- Site: a Bluesky icon in the header and a footer link; the site review is a backlog item under Landing pages.
+
 ### SESSION DIGEST (2026-11-11c: the Probability pack, pads that dragged their card; cloud session)
 - New pack, Probability (off by default, Analysis): Probability Between, A/B Test, Bootstrap, each drawing the
   distribution behind its answer (`tree/specs/computation/probability-pack.md`). A/B Test integrates Beta beliefs

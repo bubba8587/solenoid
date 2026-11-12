@@ -275,6 +275,17 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 
 - [ ] **Hand-tidied groups then a canvas Tidy, twice, moved personal finance ~530 px** (2026-09-30). A canvas Tidy run twice from the seed is a fixed point now (`tidy-drift-probe.mjs personal-finance`, 2026-10-26); the path that tidies each group by hand first is still unchecked.
 
+## Self-hosting (`self-hosting.md`, proposed 2026-11-12; the author returns to it later)
+
+- [ ] **The product call:** a company hosting the web build is a supported deployment, recorded as a leaf before the
+  rest ships (`self-hosting.md` § Open questions).
+- [ ] **Sign in with Microsoft** (MSAL, token in memory only) and SharePoint/OneDrive share links in Web Source through
+  Graph's `/shares/…/driveItem/content`; `microsoft.tenantId`/`clientId` in `solenoid.config.json`. Needs a Microsoft
+  365 developer tenant to test.
+- [ ] **Open a graph from a link** (`?doc=<url>`), designed with the cloud library (`v2.0/21-collaboration.md`).
+- [ ] **First compile of the `binary` `net_fetch`** (`src-tauri/src/net.rs`, written 2026-11-12 without a build): check
+  the desktop or Android CI build, then a desktop Web Source on an `.xlsx` address.
+
 ## Landing pages
 
 The site is five pages (`/about` is the landing page; `/` is the app) sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:

@@ -34,6 +34,12 @@ the decision tree (`dte.md`).
 
 ## Reopen only if the trigger returns
 
+- **Reading an Excel sheet or range, not a Table** (author 2026-11-12: "only enable it on named Tables… just note that
+  in case people really need sheet-wide reading / typed range"). Local File and Web Source read only a workbook's
+  named Tables (`tree/specs/computation/live-connections.md` § Excel workbooks). Reopen when a real workbook's data
+  can't be made a Table (a protected file, a report someone else owns). calamine's `worksheet_range` and
+  `Range::range` already give both; the open questions are the header row and where the data ends.
+
 - **Drawn cables in the composite drill-in** (author 2026-09-06: drop if overly complex — it is).
   The drawn-cable store is one module-global singleton wired main-only; a drill-in layer needs it
   instanced per surface, a store seam through the layer / capture / inspector, per-composite
