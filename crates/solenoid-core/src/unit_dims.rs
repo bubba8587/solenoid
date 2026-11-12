@@ -624,10 +624,9 @@ pub fn dim_eval_with_code(
     fns: Option<&NamedLambdas>,
 ) -> OpResult {
     let Some(fns) = fns else { return op_eval(node, env, codes) };
-    let outer = SCOPE_FNS.with(|f| f.replace(fns.clone()));
-    let r = op_eval(node, env, codes);
-    SCOPE_FNS.with(|f| *f.borrow_mut() = outer);
-    r
+    let outer = SCOPE_FNS.replace(fns.clone());
+    let _scope = std::mem::DropGuard::new(outer, |outer| SCOPE_FNS.set(outer));
+    op_eval(node, env, codes)
 }
 
 // ─── Affine units (°C, °F): `affine_weight` ──────────────────────────────────────
