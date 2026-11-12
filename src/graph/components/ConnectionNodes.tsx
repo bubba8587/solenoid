@@ -3,7 +3,7 @@ import { CardSection } from "./CardSection";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { collapseStore } from "../collapseStore";
 import type React from "react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type {
   TaskNotesNode as TaskNotesNodeType,
   WebSourceNode as WebSourceNodeType,
@@ -96,6 +96,17 @@ function RefreshIntervalField({ node }: { node: { id: string; refreshMinutes: nu
         onMouseDown={(e) => e.stopPropagation()}
       />
     </label>
+  );
+}
+
+/** A connection card's Options fold: the refinements the read works without, ending on Auto-refresh. It opens when any
+ *  of them is set (`set`) or the card refreshes on a timer (DESIGN.md § Card sections). */
+function ConnOptions({ node, set = false, children }: { node: { id: string; refreshMinutes: number }; set?: boolean; children?: ReactNode }) {
+  return (
+    <CardSection label="Options" collapsible defaultOpen={set || node.refreshMinutes > 0}>
+      {children}
+      <RefreshIntervalField node={node} />
+    </CardSection>
   );
 }
 
@@ -209,13 +220,12 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
         />
         <WorkbookTablePick node={data} />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <CardSection label="Options" collapsible defaultOpen={data.dateOrder !== "" || data.refreshMinutes > 0}>
+        <ConnOptions node={data} set={data.dateOrder !== ""}>
           <div className="sol-conn__field" title="How the source writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
             <span className="sol-conn__label">Dates</span>
             <DateOrderToggle node={data} />
           </div>
-          <RefreshIntervalField node={data} />
-        </CardSection>
+        </ConnOptions>
         <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)}
           popupOverrides={{ onRetypeColumn: (col, t) => void retypeAndReopen(data, col, t) }} />
       </div>
@@ -518,18 +528,19 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
             {preset.frequencies.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
           </LazySelect>
         )}
-        {preset.supportsDateRange && (
-          <div className="sol-conn__dates">
-            <input className="sol-conn__date" type="date" value={start} max={end || undefined} onChange={(e) => setParam("start", e.target.value)} title="Start date" {...stopDrag} />
-            <span className="sol-conn__date-sep">→</span>
-            <input className="sol-conn__date" type="date" value={end} min={start || undefined} onChange={(e) => setParam("end", e.target.value)} title="End date" {...stopDrag} />
-          </div>
-        )}
         {data.needsKey() && (
           <div className="sol-conn__note">Add a {preset.label} API key in Settings ▸ Data.</div>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField node={data} />
+        <ConnOptions node={data} set={start !== "" || end !== ""}>
+          {preset.supportsDateRange && (
+            <div className="sol-conn__dates">
+              <input className="sol-conn__date" type="date" value={start} max={end || undefined} onChange={(e) => setParam("start", e.target.value)} title="Start date" {...stopDrag} />
+              <span className="sol-conn__date-sep">→</span>
+              <input className="sol-conn__date" type="date" value={end} min={start || undefined} onChange={(e) => setParam("end", e.target.value)} title="End date" {...stopDrag} />
+            </div>
+          )}
+        </ConnOptions>
         <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
@@ -618,11 +629,12 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
       </div>
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
-        {numField("Past days", past, setPast)}
-        {numField("Forecast days", fwd, setFwd)}
         <div className="sol-conn__note">Open-Meteo forecast.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField node={data} />
+        <ConnOptions node={data} set={data.pastDays !== 0 || data.forecastDays !== 7}>
+          {numField("Past days", past, setPast)}
+          {numField("Forecast days", fwd, setFwd)}
+        </ConnOptions>
       </div>
       {daily && (
         <MeasuredSocketRow side="output" socketKey="daily" nodeId={data.id} emit={emit} payload={daily.socket}>
@@ -688,16 +700,17 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
             onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
           />
         </label>
-        <input
-          className="sol-conn__url sol-placeholder-example" type="text" value={region} placeholder="Region, for example US-CA (optional)"
-          spellCheck={false}
-          onChange={(e) => setRegion(e.target.value)} onBlur={commitRegion}
-          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
-          onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-        />
         <div className="sol-conn__note">Nager.Date public holidays.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField node={data} />
+        <ConnOptions node={data} set={data.region !== ""}>
+          <input
+            className="sol-conn__url sol-placeholder-example" type="text" value={region} placeholder="Region, for example US-CA (optional)"
+            spellCheck={false}
+            onChange={(e) => setRegion(e.target.value)} onBlur={commitRegion}
+            onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
+            onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+          />
+        </ConnOptions>
       </div>
       {frame && (
         <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frame.socket}>
@@ -829,7 +842,7 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
       <div className="sol-conn">
         <div className="sol-conn__note">Frankfurter: ECB reference rates, once per business day.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField node={data} />
+        <ConnOptions node={data} />
       </div>
       {mode === "spot" ? (
         <InlineOutputRows
@@ -958,16 +971,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               />
             </label>
-            <label className="sol-conn__field" title="Reads a date out of each note's name. Blank detects the format.">
-              <span className="sol-conn__label">Date in name</span>
-              <input
-                className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="[auto]" spellCheck={false}
-                onChange={(e) => setNameFormat(e.target.value)}
-                onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
-                onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
-                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-              />
-            </label>
             <CardSection label="From each note">
               <div className="sol-conn__checks">
                 {VAULT_BODY_READS.map(({ key, label, title }) => (
@@ -983,7 +986,18 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               </div>
             </CardSection>
             <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
-            <RefreshIntervalField node={data} />
+            <ConnOptions node={data} set={data.nameFormat !== ""}>
+              <label className="sol-conn__field" title="Reads a date out of each note's name. Blank detects the format.">
+                <span className="sol-conn__label">Date in name</span>
+                <input
+                  className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="[auto]" spellCheck={false}
+                  onChange={(e) => setNameFormat(e.target.value)}
+                  onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
+                  onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
+                  onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+                />
+              </label>
+            </ConnOptions>
             {cols.length > 0 && (
               <div className="sol-conn__preview" title={`${cols.length} columns`}>
                 {cols.slice(0, 6).map((c, i) => <div key={i} className="sol-conn__preview-row">{c}</div>)}
@@ -1061,7 +1075,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
         />
         <div className="sol-conn__note">TaskNotes plugin, local HTTP API.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField node={data} />
+        <ConnOptions node={data} />
       </div>
       {tasks && (
         <MeasuredSocketRow side="output" socketKey="tasks" nodeId={data.id} emit={emit} payload={tasks.socket}>

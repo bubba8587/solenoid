@@ -1740,3 +1740,11 @@ body.solenoid-scrubbing * {
 }
 .solenoid-const__symbol { margin-right: 6px; }
 .solenoid-const__unit { margin-left: 6px; font-size: 0.85em; }
+
+/* A pair of small toggles under a card's fields (TEXTAFTER's Aa and End), on the fields' right edge. */
+.solenoid-node__toggle-pair {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 4px;
+}

@@ -35,12 +35,12 @@ async function applyCast(node: Producer, dim: ResultDim, castTo: CastTo): Promis
   node.edited(); await processGraph();
 }
 
-/** The Cast section on a card's result. */
+/** The Cast section on a card's result, folded while it casts nothing (∅). */
 export function InlineCast({ node, dim }: { node: Producer; dim: ResultDim }) {
   const [castTo, setCastTo] = useState<CastTo>(node.castTo);
   useEffect(() => { setCastTo(node.castTo); }, [node.castTo]);
   return (
-    <CardSection label="Cast">
+    <CardSection label="Cast" collapsible defaultOpen={castTo !== "none"}>
       <SegToggle
         value={castTo}
         options={OPTIONS}

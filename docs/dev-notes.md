@@ -25,6 +25,11 @@ specific item.
   set by the rows that stay. A number row with an overlong label (Auto-refresh at 180 px) keeps one line out of the
   column. `sol-conn__num` is the inline number box (no spinner, its height), and dropdowns on a row match field height.
   The plan measures a wrapped label unwrapped (its line boxes summed), or a wrapped label would read as narrow and stick.
+- Folding sections added (DESIGN.md § Card sections lists them): the connection cards' Options end on Auto-refresh
+  (`ConnOptions`, Weather, Holidays, Data Feed, Currency, Vault Folder, TaskNotes; Web Source moved onto it), the Cast
+  on formula and LAMBDA-helper results (opens when a cast is set), TEXTAFTER/BEFORE's and XMATCH's Options, Find Peaks'
+  Thresholds. The split cards hand every input to one InlineInputs while collapsed; the collapse sweep, wired and not,
+  is clean for all of them.
 
 ### SESSION DIGEST (2026-11-12: Excel workbook Tables, self-hosting groundwork, a Bluesky link; cloud session)
 - Local File and Web Source read an Excel workbook's named Table on the core (`xlsx.rs`, the `calamine` crate,
