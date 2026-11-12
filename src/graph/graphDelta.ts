@@ -106,8 +106,13 @@ export function diffGraphs(from: SavedGraph, to: SavedGraph): GraphDelta | null 
   const cablesRemoved = from.connections.filter((c) => touches(c) || !toKeys.has(connKey(c)));
   const cablesAdded = to.connections.filter((c) => touches(c) || !fromKeys.has(connKey(c)));
 
-  const freshCards = rebuilt.length + added.length > 0;
-  const sides = SIDE_KINDS.filter((k) => freshCards || removed.length > 0 || !same(from[k], to[k]));
+  // A side table is replaced when it differs, or when it holds an entry for a card built afresh (whose entries went
+  // with its old node). A removed card's entries go with it, as `to` has them gone.
+  const built = new Set([...rebuilt.map((n) => n.id), ...added.map((n) => n.id)]);
+  const names = (k: SideKind): string[] => (to[k] ?? []).flatMap((e) =>
+    "a" in e ? [(e as { a: { nodeId: string }; b: { nodeId: string } }).a.nodeId, (e as { b: { nodeId: string } }).b.nodeId]
+      : [(e as { nodeId: string }).nodeId]);
+  const sides = SIDE_KINDS.filter((k) => !same(from[k], to[k]) || names(k).some((id) => built.has(id)));
 
   const kept = from.nodes.filter((n) => toById.has(n.id)).map((n) => n.id);
   const keptInTo = to.nodes.filter((n) => fromById.has(n.id)).map((n) => n.id);
@@ -185,14 +190,15 @@ export async function applyGraphDelta(target: SavedGraph): Promise<SavedGraph | 
       .filter((sn) => (editor.getNode(live.get(sn.id)!) as { selected?: boolean } | undefined)?.selected === true)
       .map((sn) => sn.id));
     const swapped = new Map<string, string>();
+    // Every cable on a card that goes, found in one walk ([[C120]] linearWork), removed before the cards.
+    for (const c of editor.getConnections().filter((c) => gone.has(c.source) || gone.has(c.target))) {
+      await editor.removeConnection(c.id);
+      if (!gone.has(c.target)) dirty.add(c.target);
+      cablesChanged = true;
+    }
     for (const id of gone) {
       const node = editor.getNode(id);
       if (!node) continue;
-      for (const c of editor.getConnections().filter((c) => c.source === id || c.target === id)) {
-        await editor.removeConnection(c.id);
-        if (!gone.has(c.target)) dirty.add(c.target);
-        cablesChanged = true;
-      }
       await editor.removeNode(id);
       // The rebuild gate holds back the delete settle, which would also take a relocation for a delete.
       forgetNodeDeep(node as SolenoidNode);

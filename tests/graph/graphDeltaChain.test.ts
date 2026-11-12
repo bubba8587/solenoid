@@ -15,7 +15,6 @@ import { applyGraphDelta } from "../../src/graph/graphDelta";
 import { sameLanding } from "../../src/graph/flow/flowHistoryDigest";
 import { SEEDS } from "../../src/graph/seeds";
 
-const SKIPPED = new Set(["null-and-logical", "composite-workbench", "garden-dashboard"]);
 const STEPS = Number(process.env.STEPS ?? 6);
 
 let editor: GraphEditor<Schemes>;
@@ -77,13 +76,14 @@ async function whole(g: SavedGraph): Promise<{ save: SavedGraph; answers: Record
 
 const asStep = (g: SavedGraph): SavedGraph => { const { nodes, ...head } = structuredClone(g); return { ...head, nodes }; };
 
-/** One edit: a card deleted, moved, relabeled, folded, renamed or copied, a cable cut, or a cut cable wired back. */
+/** One edit: a card deleted, moved, relabeled, folded, renamed, pinned and commented, or copied, a cable cut, or a cut
+ *  cable wired back. */
 function step(g: SavedGraph, r: () => number, cut: SavedGraph["connections"]): { save: SavedGraph; what: string } {
   const out = structuredClone(g);
   const pick = <T,>(xs: T[]): T => xs[Math.floor(r() * xs.length)];
   if (out.nodes.length === 0) return { save: out, what: "nothing" };
   const n = pick(out.nodes);
-  switch (Math.floor(r() * 8)) {
+  switch (Math.floor(r() * 9)) {
     case 0: {
       // As Delete does: an FC docked to the card goes with it, and every group lets the card go.
       const doomed = new Set([n.id, ...out.nodes.filter((m) => m.init?.hostNodeId === n.id).map((m) => m.id)]);
@@ -125,6 +125,12 @@ function step(g: SavedGraph, r: () => number, cut: SavedGraph["connections"]): {
       n.id = to; n.name = to;
       return { save: out, what: `rename to ${to}` };
     }
+    case 7: {
+      const key = Object.keys(n.literals ?? {})[0] ?? "value";
+      out.pins = [...(out.pins ?? []).filter((p) => p.nodeId !== n.id), { nodeId: n.id, outputKey: key }];
+      out.comments = [...(out.comments ?? []), { id: `cm${900 + Math.floor(r() * 99)}`, nodeId: n.id, author: "Ann", text: "check", resolved: false, time: 1 }];
+      return { save: out, what: `pin and comment ${n.id}` };
+    }
     default: {
       const copy = { ...structuredClone(n), id: `${n.id}_c`, name: `${n.id}_c`, x: n.x + 50, y: n.y + 50 };
       if (out.nodes.some((m) => m.id === copy.id)) return { save: out, what: "copy taken" };
@@ -136,7 +142,7 @@ function step(g: SavedGraph, r: () => number, cut: SavedGraph["connections"]): {
 
 describe("a run of edits undone and redone by delta", () => {
   for (const [id, seed] of Object.entries(SEEDS)) {
-    if (!Array.isArray(seed.graph.nodes) || SKIPPED.has(id)) continue;
+    if (!Array.isArray(seed.graph.nodes)) continue;
 
     it(`seed ${id}`, async () => {
       const r = rng([...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7 + Number(process.env.SALT ?? 0)));

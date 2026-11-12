@@ -18,8 +18,6 @@ import { deleteSelection } from "../../src/graph/canvasActions";
 import { createCompositeFromSelection, unpackComposite } from "../../src/graph/compositeLogic";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 
-/** Seeds left out: the ones `seedsCompute.test.ts` leaves out, and those whose answers roll on every pass. */
-const SKIPPED = new Set(["null-and-logical", "composite-workbench", "garden-dashboard"]);
 
 let editor: GraphEditor<Schemes>;
 let engine: DataflowEngine<Schemes>;
@@ -135,7 +133,7 @@ describe("the delta between two saves", () => {
 
 describe("undo by delta lands where a whole load does", () => {
   for (const [id, seed] of Object.entries(SEEDS)) {
-    if (!Array.isArray(seed.graph.nodes) || SKIPPED.has(id)) continue;
+    if (!Array.isArray(seed.graph.nodes)) continue;
 
     for (const [how, edit] of [["deleted, moved, cut", edited], ["renamed, folded, typed, pinned", restyled]] as const)
     it(`seed ${id}: ${how}`, async () => {
@@ -221,7 +219,7 @@ describe("what the change doesn't reach keeps its value", () => {
 
 
   it("wrapping a card as a composite, and unpacking it, each compute only what they reach", async () => {
-    await whole(readTextForm(TEXT));
+    const before = await whole(readTextForm(TEXT));
     const passes: Array<string[] | undefined> = [];
     const pass = engine.pass.bind(engine);
     const name = (id: string) => nodeNameStore.get(id) ?? editor.getNode(id)?.constructor.name ?? id;
@@ -232,7 +230,13 @@ describe("what the change doesn't reach keeps its value", () => {
     expect(passes).toEqual([[name(id!)]]);
     const wrapped = answers();
     engine.pass = pass;
-    expect((await whole(serializeGraph()!)).answers).toEqual(wrapped);
+    const wrappedSave = serializeGraph()!;
+    // Undo the wrap and redo it by delta: the composite goes and its card comes back, then the other way.
+    expect(await applyGraphDelta(asStep(before.save))).not.toBeNull();
+    expect(answers()).toEqual(before.answers);
+    expect(await applyGraphDelta(asStep(wrappedSave))).not.toBeNull();
+    expect(answers()).toEqual(wrapped);
+    expect((await whole(wrappedSave)).answers).toEqual(wrapped);
 
     const comp = editor.getNodes().find((n) => n.constructor.name === "CompositeNode")!;
     engine.pass = (changed, renderOnly, topology) => { passes.push(renderOnly && [...renderOnly].map(name).sort()); return pass(changed, renderOnly, topology); };
