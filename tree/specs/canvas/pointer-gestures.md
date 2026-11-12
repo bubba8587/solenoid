@@ -42,9 +42,9 @@ The pinch is installed on the canvas wrapper in capture, listening to touch even
 
 ## Zoom steps
 
-Zooming in steps (a wheel notch, the zoom pill, a key, a fit) lands on a 10% step. A pinch zooms smoothly and never snaps while the fingers move, and the next stepped zoom rounds back onto a step ([[C92]] pinchUnvetoable). Snapping mid-pinch would jump the canvas under the fingers, so the pinch follows them. Fixed steps everywhere else keep the zoom readout tidy and the steps repeatable. `MIN_ZOOM` and `MAX_ZOOM` are themselves on the step grid. **Reopen if:** the step size should change with the zoom level.
+Zooming in steps (a wheel notch, the zoom pill, a key) lands on a 10% step. A fit (Fit all, the load fit, framing a card) frames at the exact zoom that fits, off the grid: a fit snapped down to a step lost up to a third of the screen at 30% and half at 20%. A pinch zooms smoothly and never snaps while the fingers move, and the next stepped zoom after a pinch or a fit rounds back onto a step ([[C92]] pinchUnvetoable). Snapping mid-pinch would jump the canvas under the fingers, so the pinch follows them. Fixed steps everywhere else keep the zoom readout tidy and the steps repeatable. `MIN_ZOOM` and `MAX_ZOOM` are themselves on the step grid. **Reopen if:** the step size should change with the zoom level.
 
-Tests: `viewPresets.test.ts`: `clampZoom` snaps to the nearest step within range, `boundZoom` bounds without snapping (and a non-finite input never gives NaN), `floorZoom` snaps down, and both bounds sit on the grid.
+Tests: `viewPresets.test.ts`: `clampZoom` snaps to the nearest step within range, `boundZoom` bounds without snapping (and a non-finite input never gives NaN), and both bounds sit on the grid.
 
 ## Wheel zoom
 
@@ -60,9 +60,9 @@ Wheel zoom listens on the canvas wrapper in capture, like the pinch. It is the o
 
 - `wheelZoomDelta` normalizes the wheel to pixels (a line is 16 px, a page 400 px), multiplies by `−ZOOM_SCALE` (0.0028), and caps the result at ±`ZOOM_STEP_CAP` (0.24); the new scale is `k × (1 + delta)`. The slope is much gentler per pixel than d3's default, so a trackpad scroll glides instead of lurching, and the cap is higher, so a mouse notch still moves.
 - The scale stays between `MIN_ZOOM` (0.1), past which the dot grid is long gone and cards are specks, and `MAX_ZOOM`, where a card fills the viewport.
-- `boundZoom` clamps without snapping (for the pinch).
-- `clampZoom` clamps and snaps to the nearest `ZOOM_SNAP` step (0.1), so every discrete zoom, whether a wheel notch, the zoom pill, a key or a fit, lands on a 10% step, and the first discrete step after a pinch rounds back onto one.
-- Fits snap down (`floorZoom`), so the framed content still fits after snapping.
+- `boundZoom` clamps without snapping (for the pinch and the fits).
+- `clampZoom` clamps and snaps to the nearest `ZOOM_SNAP` step (0.1), so every discrete zoom, whether a wheel notch, the zoom pill or a key, lands on a 10% step, and the first discrete step after a pinch or a fit rounds back onto one.
+- Fits bound without snapping and set the whole camera at once (`View.setCamera`), since `View.zoom` snaps.
 
 ## One finger on a card
 

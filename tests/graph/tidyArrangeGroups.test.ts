@@ -115,6 +115,7 @@ function makeFakeView() {
     container: { clientWidth: 1200, clientHeight: 800 },
     async pan() {},
     async zoom() {},
+    async setCamera() {},
   };
   return { view: view as unknown as FakeViewHandle, addView };
 }

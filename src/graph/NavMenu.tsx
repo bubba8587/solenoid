@@ -1,5 +1,5 @@
 // [[C88]] collapsedGroupCard (collapsedAwareNodesRect), [[C92]] pinchUnvetoable
-import { floorZoom } from "./viewPresets";
+import { boundZoom } from "./viewPresets";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
 import { getActiveView, getActiveEditor } from "./activeGraph";
 import { collapsedAwareNodesRect } from "./components/Minimap";
@@ -91,14 +91,14 @@ export async function fitAll() {
   const availW = Math.max(60, c.width - ins.left - ins.right);
   const availH = Math.max(60, c.height - ins.top - ins.bottom);
 
-  const k = floorZoom(Math.min(availW / bw, availH / bh, 1.5) * 0.92);
+  // Unsnapped, like a pinch: a 10% step rounded down costs a third of the screen at 30% zoom.
+  const k = boundZoom(Math.min(availW / bw, availH / bh, 1.5) * 0.97);
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
   const ax = ins.left + availW / 2;   // free-region center, container coords
   const ay = ins.top + availH / 2;
 
-  await view.zoom(k);
-  await view.pan(ax - cx * k, ay - cy * k);
+  await view.setCamera({ x: ax - cx * k, y: ay - cy * k, k });
 }
 
 /** How far a swipe must carry the pill to tuck it, or pull it back out, and how long it then slides. */

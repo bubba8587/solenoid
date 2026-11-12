@@ -22,3 +22,17 @@ export function toggleAllChrome(): number {
   for (const t of toggles) t.setOpen(open);
   return toggles.length;
 }
+
+// Menus, popups and dialogs keep Tab for moving between their own controls.
+const TAB_KEEPERS =
+  '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [aria-modal="true"], ' +
+  ".sol-popup, .sol-popup-menu, .sol-mpanel, .solenoid-menubar__top--open, .solenoid-menubar__dropdown, .solenoid-add-menu, " +
+  ".solenoid-doctitle__menu, .conn-dialog";
+
+/** Tab toggles the chrome anywhere on the main screen, focused button or card included, rather than walking its
+ *  controls; a text field (filtered out by the caller), a popup, or anything outside the app shell keeps native Tab. */
+export function tabTogglesChrome(target: Element | null): boolean {
+  if (target == null || target === document.body || target === document.documentElement) return true;
+  if (!target.closest(".solenoid-app")) return false;
+  return !target.closest(TAB_KEEPERS);
+}

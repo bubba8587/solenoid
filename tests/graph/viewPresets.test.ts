@@ -1,6 +1,6 @@
 // [[B3]] sameNodeEverywhere, [[pointer-gestures#Zoom steps]], [[pointer-gestures#Wheel zoom]]
 import { describe, it, expect } from "vitest";
-import { boundZoom, clampZoom, floorZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_SNAP } from "../../src/graph/viewPresets";
+import { boundZoom, clampZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_SNAP } from "../../src/graph/viewPresets";
 
 describe("zoom snap", () => {
   it("clampZoom snaps to the nearest step and stays in range", () => {
@@ -17,11 +17,6 @@ describe("zoom snap", () => {
     expect(boundZoom(9)).toBeCloseTo(MAX_ZOOM, 10);
   });
 
-  it("floorZoom snaps down", () => {
-    expect(floorZoom(0.79)).toBeCloseTo(0.7, 10);
-    expect(floorZoom(0.8)).toBeCloseTo(0.8, 10);
-    expect(floorZoom(0.02)).toBeCloseTo(MIN_ZOOM, 10);
-  });
   it("the bounds are themselves on the grid", () => {
     expect(Math.round(MIN_ZOOM / ZOOM_SNAP) * ZOOM_SNAP).toBeCloseTo(MIN_ZOOM, 10);
     expect(Math.round(MAX_ZOOM / ZOOM_SNAP) * ZOOM_SNAP).toBeCloseTo(MAX_ZOOM, 10);
