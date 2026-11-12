@@ -1,0 +1,86 @@
+/* [[table-popup#The Pivot view]] */
+
+.describe-profile__scroll {
+  margin: 10px 14px 12px;
+  max-height: 60vh;
+  max-height: 60dvh;
+  overflow: auto;
+}
+.describe-profile__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.describe-profile__tile {
+  box-sizing: border-box;
+  padding: 8px 10px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.describe-profile__head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.describe-profile__icon { display: inline-flex; color: var(--text-dim); }
+.describe-profile__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.describe-profile__distinct { flex: none; font-size: 11px; color: var(--text-muted); }
+
+.describe-profile__fill { display: flex; align-items: center; gap: 6px; }
+.describe-profile__fillbar,
+.describe-profile__topbar {
+  flex: 1 1 auto;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  overflow: hidden;
+}
+.describe-profile__fillbar > span,
+.describe-profile__topbar > span { display: block; height: 100%; border-radius: 2px; }
+.describe-profile__fillbar > span { background: color-mix(in srgb, var(--text) 45%, transparent); }
+.describe-profile__filltext { flex: none; font-size: 11px; color: var(--text-dim); }
+
+.describe-profile__chart { position: relative; }
+.describe-profile__range,
+.describe-profile__stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+}
+.describe-profile__range > span,
+.describe-profile__stats > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.describe-profile__statname { font-family: var(--font-sans); color: var(--text-muted); }
+.describe-profile__trend { margin-top: 2px; }
+
+.describe-profile__top { display: flex; flex-direction: column; gap: 3px; }
+.describe-profile__toprow {
+  display: grid;
+  grid-template-columns: minmax(0, 46%) 1fr auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.describe-profile__toplabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.describe-profile__topbar { height: 6px; }
+.describe-profile__topcount { font-family: var(--font-mono); color: var(--text-dim); }
+.describe-profile__other { font-size: 11px; color: var(--text-muted); }
+
+@container table-popup (max-width: 640px) {
+  .describe-profile__scroll { margin: 6px 6px 8px; }
+  .describe-profile__range,
+  .describe-profile__stats { font-size: 10px; gap: 4px; }
+}

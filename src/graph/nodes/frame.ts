@@ -2051,7 +2051,7 @@ export class DescribeNode extends GraphNode {
     return ctx.wired("frame") ? shapeOnCore("describeFrame", [{ columns: [] }]) : null;
   }
 
-  /** The Dashboard view's tiles, which the body shows beside its summary; they ride beside the frame ([[table-popup#The Pivot view]]). */
+  /** The Profile view's tiles, which the body shows beside its summary; they ride beside the frame ([[table-popup#The Pivot view]]). */
   describeTiles?: DescribeTile[];
   static coreWatch = "describeTiles";
   coreWatched(): void {

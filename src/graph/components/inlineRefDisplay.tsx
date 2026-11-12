@@ -26,8 +26,7 @@ import { SvgFigure } from "./SvgFigure";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
 import { lambdaToLatex } from "../excelFormula";
 import { FrameDisplay } from "./FrameDisplay";
-import { PivotFigure } from "./PivotFigure";
-import { pivotLayoutOf } from "../pivotLayout";
+import { specialFrameView } from "./SpecialFrameView";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
 import { isSolError } from "../errorValue";
@@ -264,8 +263,8 @@ function figureFor(
     };
   }
   if (isFrameValue(value)) {
-    const pivot = rich ? pivotLayoutOf(value) : null;
-    if (pivot) return { title: refKey, caption: null, body: <PivotFigure frame={value} layout={pivot} sourceId={frameNodeId} /> };
+    const special = rich ? specialFrameView(value, frameNodeId) : null;
+    if (special) return { title: refKey, caption: null, body: special };
     return {
       title: refKey,
       caption: null,

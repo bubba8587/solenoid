@@ -10,7 +10,7 @@ Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C118]] formatTr
 
 The Table popup is the one full-size viewer and editor for a table-shaped value: a list, a matrix or a Frame. It shows the value as a grid, a CSV text block, a frame as a stack of cards, a PIVOTBY output as a pivot table or, on a Frame Input, a one-record form. It sorts, formats, summarizes, copies and exports, and on a literal source it is the editor that writes back to the node. A Cube opens the sibling Cube popup, described at the end. Both sit in the shared popup shell.
 
-Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupStore.ts` (its state), `src/graph/valuePopup.ts` (the openers), `FrameChip.tsx`, `ArrayChip.tsx`, `TableInputNode.tsx` and `FrameNodes.tsx` (the editing openers), `tableFooterStats.ts` (the summary footer), `PopupShell.tsx`, `PopupResizeGrip.tsx`, `PopupOverflowMenu.tsx` and `popupNodeItems.ts` (the shell), `popupChrome.css` and `TablePopup.css`, and `CubePopup.tsx` with `cubeCell.tsx`, `cubeEditCell.tsx` and `cubeLevelTable.ts` (the Cube popup). The helpers it leans on have their own files: `columnSort.tsx`, `gridKeyboard.ts`, `CellEditAffix.tsx`, `CellSuggest.tsx`, `CsvEditor.tsx`, `columnHeadControls.tsx`, and `TableCards.tsx`, `AutoCard.tsx` and `cardLayout.ts` (the Cards view), `recordCardsFromPopup.ts` (Add Cards), `PivotTableView.tsx` with `pivotLayout.ts` and `pivotFromPopup.ts` (the Pivot view), `DescribeDashboard.tsx` with `describeProfile.ts` (the Dashboard view), and `frameSidecar.ts` (the side tables both views read).
+Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupStore.ts` (its state), `src/graph/valuePopup.ts` (the openers), `FrameChip.tsx`, `ArrayChip.tsx`, `TableInputNode.tsx` and `FrameNodes.tsx` (the editing openers), `tableFooterStats.ts` (the summary footer), `PopupShell.tsx`, `PopupResizeGrip.tsx`, `PopupOverflowMenu.tsx` and `popupNodeItems.ts` (the shell), `popupChrome.css` and `TablePopup.css`, and `CubePopup.tsx` with `cubeCell.tsx`, `cubeEditCell.tsx` and `cubeLevelTable.ts` (the Cube popup). The helpers it leans on have their own files: `columnSort.tsx`, `gridKeyboard.ts`, `CellEditAffix.tsx`, `CellSuggest.tsx`, `CsvEditor.tsx`, `columnHeadControls.tsx`, and `TableCards.tsx`, `AutoCard.tsx` and `cardLayout.ts` (the Cards view), `recordCardsFromPopup.ts` (Add Cards), `PivotTableView.tsx` with `pivotLayout.ts` and `pivotFromPopup.ts` (the Pivot view), `DescribeProfile.tsx` with `describeProfile.ts` (the Profile view), and `frameSidecar.ts` (the side tables both views read).
 
 ## The store and the openers
 
@@ -32,7 +32,7 @@ flowchart LR
 
 - **`popOutKindFor(value)`** names the popup a value has: `frame`, `cube`, `table` (a 2-D array) or `list` (a non-empty 1-D array), from `POP_OUT_KINDS`. A scalar or a chart has none (a chart has its own popup, [[chart-figures]]).
 - **`openValuePopup(value, opts)`** is the read-only dispatcher the expand button calls. Editing chips call the typed openers directly so their Save callback keeps its shape.
-- **`openFramePopup(frame, opts)`** first resolves a head-N preview (one carrying `__totalRows` and `__ref`) to the whole frame through `readFrame`, so the popup never shows the truncated sample. It opens with the title (the label, else `Frame`), `cellType: "number"`, per-column format controls and `framePopupData`: the cells, the column names, the column types, the column units, the column formats that arrived, the `raw` text as `sourceCells` for the Source view when any column carries it, the frame's pivot layout when it has one (§ The Pivot view), and Describe's tiles when it has them (§ The Dashboard view).
+- **`openFramePopup(frame, opts)`** first resolves a head-N preview (one carrying `__totalRows` and `__ref`) to the whole frame through `readFrame`, so the popup never shows the truncated sample. It opens with the title (the label, else `Frame`), `cellType: "number"`, per-column format controls and `framePopupData`: the cells, the column names, the column types, the column units, the column formats that arrived, the `raw` text as `sourceCells` for the Source view when any column carries it, the frame's pivot layout when it has one (§ The Pivot view), and Describe's tiles when it has them (§ The Profile view).
 - **`openArrayPopup(value, opts)`** opens a table as its rows and a list as one row (`list: true`), titled by the label, else `Table` or `List`. The cell type comes from the declared socket family when known (`complex` shows as text, since complex cells arrive as strings), else from the first cell alone, which matters only for a mixed list (a homogeneous one has a family, blanks and errors not voting): its first cell decides, and a leading `null` reads it as numeric. A numeric table gets one whole-sheet format control (`formatControls: "matrix"`) and its one matrix unit (`matrixUnitOf`). `popupOverrides` merge last.
 - **`openCubePopup(cube, opts)`** opens the Cube popup (below).
 - **`elemFamilyOfCells(value)`** answers only for a homogeneous container: blanks and errors don't vote, a unit cell counts as a number, and anything mixed or unknown is `undefined`. A chip must not guess, since a date can't be told from a number by its value.
@@ -204,7 +204,7 @@ In Formatted mode each field shows the formatted value until it is focused, and 
 
 ## The Cards view
 
-Every frame popup, read-only or editable, has a Cards view ([[C114]] cardsView): each row is a card in one column at most 460 pixels wide, for reading a frame on a phone. Every popup opens in Grid, or in Pivot on a pivot's output and Dashboard on a Describe's; Cards is chosen from the view switch. A list or matrix has no Cards view.
+Every frame popup, read-only or editable, has a Cards view ([[C114]] cardsView): each row is a card in one column at most 460 pixels wide, for reading a frame on a phone. Every popup opens in Grid, or in Pivot on a pivot's output and Profile on a Describe's; Cards is chosen from the view switch. A list or matrix has no Cards view.
 
 **The plan.** `planCards` (`cardLayout.ts`, the core's `plan_cards` in `card_helpers.rs`, which the Record card's Cards also draw) assigns each column to one part of the card, once per table, from the column names, types, raw cells and shown text, so every card has the same shape and the same frame always gets the same plan. It profiles at most the first 2000 rows (`PROFILE_ROWS`); a column with no filled cell goes to the stats. Name words are the header split at spaces, punctuation and camelCase humps (`name_words`). Each step takes the leftmost column that fits, from the columns still free, in this order:
 
@@ -248,12 +248,12 @@ Tests: `cardLayout.test.ts`: the Cards plan; `recordCardsFromPopup.test.ts`: the
 
 **The footer** has two parts: the tools (the view switch, the Source checkbox, the Insert and Delete menus, the Pivot's sheet button), which wrap onto as many lines as they need (`table-popup__tools`), and the actions, Done or Cancel and Save, which never wrap and stay pinned to the right of the last line (`table-popup__actions`). The Cube popup's footer is built the same way.
 
-The footer's view switch offers the views the value has, in this order: Dashboard (a Describe's output), Pivot (a pivot's output), Grid, Cards (a frame), Form (a frame-source editor) and CSV. It is a row of segments while the footer has room for them, else a dropdown in the same pill (`PopupChoice`, `PopupChoice.tsx`): the room is the footer's width less its other items in the flow (`useFitsWidth`: an open sheet or menu takes none), which never change size with the switch, so the choice can't flip back and forth, measured only when the row or an item resizes or an item comes or goes, against the segments' width estimated from their labels (`segmentsWidth`). Only whether they fit is state, held by the switch itself (`FittingChoice`, which measures the row it sits in), so a resize re-renders the switch alone when the answer flips and never the popup: on a frame of thousands of cells one popup render costs most of a second. While the resize grip is held the overlay drops its backdrop blur (`sol-popup-resizing`), which otherwise re-rasterizes behind the card on every step. The same rule turns the Pivot view's Report layout into segments when the ribbon has room.
+The footer's view switch offers the views the value has, in this order: Profile (a Describe's output), Pivot (a pivot's output), Grid, Cards (a frame), Form (a frame-source editor) and CSV. It is a row of segments while the footer has room for them, else a dropdown in the same pill (`PopupChoice`, `PopupChoice.tsx`): the room is the footer's width less its other items in the flow (`useFitsWidth`: an open sheet or menu takes none), which never change size with the switch, so the choice can't flip back and forth, measured only when the row or an item resizes or an item comes or goes, against the segments' width estimated from their labels (`segmentsWidth`). Only whether they fit is state, held by the switch itself (`FittingChoice`, which measures the row it sits in), so a resize re-renders the switch alone when the answer flips and never the popup: on a frame of thousands of cells one popup render costs most of a second. While the resize grip is held the overlay drops its backdrop blur (`sol-popup-resizing`), which otherwise re-rasterizes behind the card on every step. The same rule turns the Pivot view's Report layout into segments when the ribbon has room.
 
 ```mermaid
 mindmap
   root(("the views a popup offers"))
-    ["Dashboard: Describe's output"]
+    ["Profile: Describe's output"]
     ["Pivot: a pivot's output"]
     ["Grid"]
     ["Cards: a frame"]
@@ -303,9 +303,9 @@ A PIVOTBY output opens on the Pivot view: the frame drawn as Excel draws a pivot
 
 Tests: `pivotLayout.test.ts`: the Pivot view's layout, model, filter, totals, saved options and Details. `pivotViewMenu.test.ts`: each menu line against the setting it writes.
 
-## The Dashboard view
+## The Profile view
 
-A Describe output opens on the Dashboard view, laid out for reading while the Describe node's output stays the plain summary Frame: one tile per column of the frame Describe read, with how full it is, its key numbers and a small chart of what it holds. The summary frame is unchanged; Grid, Cards and CSV show it as it is, and Copy and Export copy it.
+A Describe output opens on the Profile view, laid out for reading while the Describe node's output stays the plain summary Frame: one tile per column of the frame Describe read, with how full it is, its key numbers and a small chart of what it holds. The summary frame is unchanged; Grid, Cards and CSV show it as it is, and Copy and Export copy it.
 
 **The tiles.** The Describe node builds them beside its summary (`describe_tiles`, `nodes/frames.rs`) and shows them as `describeTiles`; the class's `coreWatched` keeps them in a side map keyed by the summary Frame (`setDescribeTiles`, `describeTilesOf`, `describeProfile.ts`, on the shared `frameSidecar`, which also carries them through a format stamp's copy and refuses them once the row count no longer matches). Each tile takes its counts from the summary row and adds what its charts draw, in one pass over the column:
 
@@ -319,9 +319,9 @@ Every tile heads with the type icon, the column name (ellipsized) and its distin
 
 **The layout.** Tiles fill rows, as many a row as fit at 220 pixels each (160 in a popup 640 pixels wide or less, so a phone shows two a row), stretched to fill it, and a row's tiles share their height. The view is a `sol-popup__view` with one scroll region, so a resized or phone popup gives it the height it has. The header's filter keeps the tiles whose column name holds every word typed.
 
-**The seam.** The popup reaches the view only through `getDashboardView` (`tablePopupStore.ts`), which the app installs at startup (`installDescribeDashboard`). The Obsidian plugin installs none, since a note's frame never carries Describe's tiles, so it never bundles the chart renderers ([[obsidian-plugin]]).
+**The seam.** The popup reaches the view only through `getProfileView` (`tablePopupStore.ts`), which the app installs at startup (`installDescribeProfile`). The Obsidian plugin installs none, since a note's frame never carries Describe's tiles, so it never bundles the chart renderers ([[obsidian-plugin]]).
 
-Tests: `describeProfile.test.ts`: the Dashboard view's tiles.
+Tests: `describeProfile.test.ts`: the Profile view's tiles.
 
 ## The CSV view
 

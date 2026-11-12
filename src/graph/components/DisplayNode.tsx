@@ -8,6 +8,8 @@ import { NodeShell, PortSockets, ValueDisplay, type NodeProps } from "./nodeKit"
 import { TableDisplay } from "./TableDisplay";
 import { nodeOutputElemFamily, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { FrameDisplay } from "./FrameDisplay";
+import { specialFrameView } from "./SpecialFrameView";
+import { getOwningEditor } from "../activeGraph";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure, type ChartShape } from "./chartView";
 import { ChartChip } from "./ChartChip";
@@ -115,7 +117,9 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (
-        <FrameDisplay frame={v} label={nodeDisplayName(data)} full={full} />
+        // Open, a frame shows as its popup opens on it (a Pivot, Describe's tiles); collapsed, as its chip.
+        (full && specialFrameView(v, getOwningEditor(data.id)?.getConnections().find((c) => c.target === data.id && c.targetInput === "in")?.source))
+          || <FrameDisplay frame={v} label={nodeDisplayName(data)} full={full} />
       ) : isCube ? (
         <CubeDisplay cube={v} label={nodeDisplayName(data)} full={full} />
       ) : isChart ? (

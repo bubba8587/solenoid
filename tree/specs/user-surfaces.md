@@ -138,7 +138,7 @@ An object popup shows one object at full size. It opens from the object's chip, 
 ```mermaid
 flowchart LR
     from["a chip, or a Display's<br>expand button"] --> kind{"the object's kind"}
-    kind -->|"a list, a matrix, a Frame"| table["Table popup:<br>Grid, CSV, Cards, Form,<br>Pivot and Dashboard views"]
+    kind -->|"a list, a matrix, a Frame"| table["Table popup:<br>Grid, CSV, Cards, Form,<br>Pivot and Profile views"]
     kind -->|"a Cube"| cube["Cube popup"]
     kind -->|"a chart"| chart["chart popup:<br>the figure at full size,<br>Record paging, Gantt rows"]
     kind -->|"a number or text"| none["no popup:<br>the card shows it whole"]

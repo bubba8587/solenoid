@@ -4,7 +4,7 @@ import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
 import { copyText } from "../clipboard";
-import { tablePopup, getRecordCardsAction, getPivotHostAction, getDashboardView, type PivotHost, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
+import { tablePopup, getRecordCardsAction, getPivotHostAction, getProfileView, type PivotHost, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows, joinCsvRows } from "../csv";
@@ -58,7 +58,7 @@ import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGr
 import { isEnter } from "../enterKey";
 
 type CellType = "number" | "string" | "date" | "logical";
-type PopupView = "dashboard" | "pivot" | "grid" | "cards" | "form" | "csv";
+type PopupView = "profile" | "pivot" | "grid" | "cards" | "form" | "csv";
 
 function isTextType(t: CellType): boolean { return t === "string" || t === "logical"; }
 
@@ -267,7 +267,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     const live = state.pivot ? livePivotFolds(state.pivot, seeded.collapsed) : seeded.collapsed;
     if (live.length !== seeded.collapsed.length) pivotHost.current?.setView({ ...seeded, collapsed: live });
     setPivotOpts(live.length !== seeded.collapsed.length ? { ...seeded, collapsed: live } : seeded);
-    setView(state.pivot ? "pivot" : state.describe && getDashboardView() ? "dashboard" : "grid");
+    setView(state.pivot ? "pivot" : state.describe && getProfileView() ? "profile" : "grid");
     setDisplayMode("formatted");
     setEditCell(null);
     setFormRow(0);
@@ -963,9 +963,9 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     }
   };
 
-  const Dashboard = getDashboardView();
+  const ProfileView = getProfileView();
   const viewOptions: { value: PopupView; label: string }[] = [
-    ...(state.describe && Dashboard ? [{ value: "dashboard" as const, label: "Dashboard" }] : []),
+    ...(state.describe && ProfileView ? [{ value: "profile" as const, label: "Profile" }] : []),
     ...(state.pivot ? [{ value: "pivot" as const, label: "Pivot" }] : []),
     { value: "grid", label: "Grid" },
     ...(cardsCapable ? [{ value: "cards" as const, label: "Cards" }] : []),
@@ -1059,7 +1059,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
       resizable={{ min: { w: 320, h: 220 } }}
       fitNarrow
       filter={view !== "csv" && (view !== "grid" || sortable)
-        ? { value: query, onChange: setQuery, count: filtering && view !== "pivot" && view !== "dashboard" ? `${matchedOrder.length} of ${viewRows}` : undefined }
+        ? { value: query, onChange: setQuery, count: filtering && view !== "pivot" && view !== "profile" ? `${matchedOrder.length} of ${viewRows}` : undefined }
         : undefined}
       headerExtra={<>
         <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
@@ -1105,8 +1105,8 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
           ) : null}
         </div>
       )}
-      {view === "dashboard" && state.describe && Dashboard ? (
-        <Dashboard tiles={state.describe} query={query} />
+      {view === "profile" && state.describe && ProfileView ? (
+        <ProfileView tiles={state.describe} query={query} />
       ) : view === "pivot" && state.pivot ? (
         <PivotTableView
           layout={state.pivot}
