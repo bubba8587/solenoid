@@ -217,15 +217,27 @@ export interface LadderPayload {
   /** Options left out before the ladder: failing a deal-breaker, marked Never, or needing one of those. */
   ruledOut: string[];
 }
+/** A daily weather forecast, a day per index; `today` is the day it was made, which the figure marks. */
+export interface ForecastPayload {
+  kind: "forecast";
+  days: number[];
+  high: (number | null)[];
+  low: (number | null)[];
+  rainMm: (number | null)[];
+  rainPct: (number | null)[];
+  conditions: string[];
+  unit: "C" | "F";
+  today: number;
+}
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
   | CalHeatPayload | HeatmapPayload | QuiverPayload | RecordPayload | OverlayPayload
-  | XYPayload | GanttPayload | LadderPayload;
+  | XYPayload | GanttPayload | LadderPayload | ForecastPayload;
 
 const CHART_SPECIAL_OPS = [
   "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",
-  "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt", "ladder",
+  "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt", "ladder", "forecast",
 ] as const;
 
 export type ChartValueOp = ChartOp | (typeof CHART_SPECIAL_OPS)[number];

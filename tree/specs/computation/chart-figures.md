@@ -44,7 +44,7 @@ mindmap
     ["title: popup, embed and chip only"]
 ```
 
-`ChartValueOp` is the union of the Chart node's eleven ops (`column`, `bar`, `line`, `area`, `scatter`, `xyline`, `pie`, `radar`, `radialbar`, `funnel`, `bubble`, the keys of `CHART_OP_META`) and the sixteen special ops in `CHART_SPECIAL_OPS` (`kpi`, `scale`, `proportion`, `sankey`, `surface`, `contour`, `waterfall`, `candle`, `boxplot`, `calheat`, `heatmap`, `quiver`, `record`, `overlay`, `gantt`, `ladder`). `chartValueOps()` enumerates all 27 at runtime, and `chartPopupCoverage.test.ts` checks that every one reaches the shared popup path.
+`ChartValueOp` is the union of the Chart node's eleven ops (`column`, `bar`, `line`, `area`, `scatter`, `xyline`, `pie`, `radar`, `radialbar`, `funnel`, `bubble`, the keys of `CHART_OP_META`) and the seventeen special ops in `CHART_SPECIAL_OPS` (`kpi`, `scale`, `proportion`, `sankey`, `surface`, `contour`, `waterfall`, `candle`, `boxplot`, `calheat`, `heatmap`, `quiver`, `record`, `overlay`, `gantt`, `ladder`, `forecast`). `chartValueOps()` enumerates all 28 at runtime, and `chartPopupCoverage.test.ts` checks that every one reaches the shared popup path.
 
 ### Payloads
 
@@ -58,6 +58,7 @@ The figure picks its renderer, not the surface ([[C100]] chartIsAValue): rechart
 | `scale` | `style: "dial" \| "bar"`, `value`, `target: number \| null`, `min`, `max`. Dial pins `min 0`, `max 1`, `target null`. |
 | `proportion` | `layout: "treemap" \| "waffle"`, `names: string[]`, `values: number[]`. |
 | `sankey` | `sources: string[]`, `targets: string[]`, `values: number[]`, parallel: flow `i` runs from `sources[i]` to `targets[i]` carrying `values[i]`. Nodes are the unique names across both ends, in first-seen order. |
+| `forecast` | `days: number[]` (date serials), `high`, `low`, `rainMm`, `rainPct: (number \| null)[]`, `conditions: string[]` (Open-Meteo's WMO words), `unit: "C" \| "F"`, `today: number` (the day the value was made). Built by the Weather card (`forecastChart`, `weatherProvider.ts`) from its Daily frame, not on the core: the card fetches in TypeScript and the payload is the frame's columns renamed. Drawn by `ForecastView` (`forecastView.tsx`, SVG): a column a day with its weekday and sky (`CardArt.tsx`'s pictures), the high-to-low band in an amber-to-blue gradient with each day's labels, and rain bars along the foot, the wettest carrying `mm`; days before `today` fade and today's column is shaded. Narrow columns drop names, labels and icons by width (the hottest high and coldest low stay), and type and icons grow with the box up to 1.7×. |
 | `surface` | `xs: number[]`, `ys: number[]`, `z: (number \| null)[][]` with `z[iy][ix]` the height at `(xs[ix], ys[iy])` and null a hole; `yaw`, `pitch` in degrees. |
 | `contour` | `xs`, `ys`, `z` as Surface; `levels`: the iso-line count. |
 | `waterfall` | `names: string[]`, `values: (number \| null)[]` (signed deltas; null is an unknown step), `total: boolean` (append a computed Total bar). |

@@ -258,3 +258,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Weather's forecast preview, the figure its Forecast output carries. */
+.sol-conn__figure {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  padding: 6px 0 8px;
+}

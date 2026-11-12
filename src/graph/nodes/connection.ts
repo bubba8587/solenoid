@@ -1,10 +1,10 @@
 // [[B11]], [[C103]] untrustedContentSeams, [[C1]] demoVault
 import { dayOf } from "../dateValue";
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
-import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput, readTextInput } from "./shared";
-import { serialToJsDate } from "./dateSerial";
+import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, chartOut, readInput, readTextInput } from "./shared";
+import { serialToJsDate, wallClockSerial } from "./dateSerial";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
-import { weatherUrl, parseWeather, type TempUnit, type WeatherResult } from "../weatherProvider";
+import { weatherUrl, parseWeather, forecastChart, type TempUnit, type WeatherResult } from "../weatherProvider";
 import { holidaysUrl, holidaysOnCore } from "../holidaysProvider";
 import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, fxSeriesFrame, type FxRate } from "../fxProvider";
 import { notesToCube, type VaultNote, type VaultTypeSources } from "../vaultCube";
@@ -29,6 +29,7 @@ import { isFilePattern } from "../fileGlob";
 import { AppendNode } from "./frame";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { planFileToPlan, csvPlanToCube } from "../planImport";
+import type { ChartValue } from "../chartValue";
 import { isDateOrder, type DateOrder } from "../dateOrder";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
@@ -609,6 +610,7 @@ export class WeatherNode extends GraphNode {
     lon: "Longitude.",
     daily: "One row per day: date, rain mm, rain %, high, low, ET₀, condition. Past and future in one frame; split with a Frame Filter against TODAY.",
     temp: "The current temperature, carrying its °C/°F unit downstream.",
+    chart: "The forecast as a figure: each day's high and low, rain and sky, today marked. Wire it into a Dashboard or a Display.",
   };
   label: string;
   literals: Record<string, number> = { lat: 0, lon: 0 };
@@ -618,6 +620,8 @@ export class WeatherNode extends GraphNode {
   refreshMinutes: number;
   width = 240; height = 280;
   cached: WeatherResult | null = null;
+  /** The forecast figure the last pass made, which the card previews. */
+  cachedChart: ChartValue | null = null;
   private _lastKey: string | undefined;
 
   constructor(init?: { label?: string; unit?: TempUnit; pastDays?: number; forecastDays?: number; refreshMinutes?: number }) {
@@ -632,13 +636,14 @@ export class WeatherNode extends GraphNode {
     this.addOutput("daily", frameOut("Daily"));
     this.addOutput("temp", numOut("Now"));
     this.addOutput("condition", strOut("Condition"));
+    this.addOutput("chart", chartOut("Forecast"));
   }
 
   frameShape(): Shape {
     return shapeOfFrameValue(parseWeather("{}", this.unit).daily);
   }
 
-  data(inputs: { lat?: number[]; lon?: number[] }): { daily: FrameValue | null; temp: unknown; condition: string | null } {
+  data(inputs: { lat?: number[]; lon?: number[] }): { daily: FrameValue | null; temp: unknown; condition: string | null; chart: ChartValue | null } {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const lat = readInput(inputs.lat, this.literals.lat);
     const lon = readInput(inputs.lon, this.literals.lon);
@@ -656,10 +661,12 @@ export class WeatherNode extends GraphNode {
     }
     const c = this.cached;
     const fcUnit = this.unit === "F" ? "degF" : "degC";
+    this.cachedChart = c ? forecastChart(c.daily, this.unit, wallClockSerial(new Date(), true), this.label) : null;
     return {
       daily: c?.daily ?? null,
       temp: c?.nowTemp != null ? applyFcUnit(c.nowTemp, fcUnit) : null,
       condition: c?.nowCondition ?? null,
+      chart: this.cachedChart,
     };
   }
 

@@ -65,6 +65,25 @@ export function SkyIcon({ condition }: { condition: string | null }) {
   const sky = skyOf(condition ?? "");
   return (
     <svg className={`sol-art sol-art--sky${sky ? "" : " sol-art--unknown"}`} viewBox="0 0 54 46" aria-hidden="true">
+      <SkyGlyph sky={sky} />
+    </svg>
+  );
+}
+
+/** A condition's picture in a 54×46 box, for an SVG that places several (the forecast figure). */
+export function SkyAt({ condition, x, y, width }: { condition: string; x: number; y: number; width: number }) {
+  const sky = skyOf(condition);
+  if (!sky) return null;
+  return (
+    <svg className="sol-art" x={x} y={y} width={width} height={(width * 46) / 54} viewBox="0 0 54 46" aria-hidden="true">
+      <SkyGlyph sky={sky} />
+    </svg>
+  );
+}
+
+function SkyGlyph({ sky }: { sky: Sky | null }) {
+  return (
+    <>
       {sky === "clear" && <Sun x={27} y={23} r={8} />}
       {sky === "partly" && <Sun x={20} y={17} r={6} />}
       {sky === "cloud" && <path className="sol-art__cloud sol-art__cloud--back" d={CLOUD} transform="translate(8 -7) scale(0.8)" />}
@@ -73,6 +92,6 @@ export function SkyIcon({ condition }: { condition: string | null }) {
       {sky === "rain" && [20, 27, 34].map((x) => <line key={x} className="sol-art__drop" x1={x} y1="38" x2={x - 2} y2="43" />)}
       {sky === "snow" && [20, 27, 34].map((x, i) => <circle key={x} className="sol-art__flake" cx={x} cy={i % 2 ? 42 : 39} r="1.5" />)}
       {sky === "storm" && <path className="sol-art__bolt" d="M29 33l-5 7h4l-2 6 7-8h-4l2-5z" />}
-    </svg>
+    </>
   );
 }

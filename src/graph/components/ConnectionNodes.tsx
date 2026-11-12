@@ -38,6 +38,9 @@ import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineIn
 import { MeasuredSocketRow } from "./NodeSocket";
 import { RefreshIcon } from "./RefreshIcon";
 import { SkyIcon } from "./CardArt";
+import { ChartFigure } from "./chartView";
+import { forecastWindow } from "./forecastView";
+import type { ChartValue } from "../chartValue";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
 import { isFilePattern } from "../fileGlob";
@@ -590,6 +593,17 @@ const WEATHER_UNIT_OPTIONS: { value: "C" | "F"; label: string }[] = [
   { value: "C", label: "°C" },
   { value: "F", label: "°F" },
 ];
+const FORECAST_PREVIEW_W = 216;
+const FORECAST_PREVIEW_H = 128;
+/** The card shows the next few days; the Forecast output carries them all. */
+const FORECAST_PREVIEW_DAYS = 5;
+const previews = new WeakMap<ChartValue, ChartValue>();
+function preview(cv: ChartValue): ChartValue {
+  if (cv.payload?.kind !== "forecast") return cv;
+  let v = previews.get(cv);
+  if (!v) { v = { ...cv, payload: forecastWindow(cv.payload, FORECAST_PREVIEW_DAYS) }; previews.set(cv, v); }
+  return v;
+}
 export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the Now rows when a fetch lands
   const [past, setPast] = useState(String(data.pastDays));
@@ -642,7 +656,6 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
           <span className="solenoid-node__output-value">{rows > 0 ? `${rows} days` : "—"}</span>
         </MeasuredSocketRow>
       )}
-      <SkyIcon condition={data.cached?.nowCondition || null} />
       <InlineOutputRows
         node={data}
         emit={emit}
@@ -651,6 +664,15 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
           { key: "condition", label: "CONDITION",         value: data.cached?.nowCondition || null },
         ]}
       />
+      {data.outputs.chart && (
+        <MeasuredSocketRow side="output" socketKey="chart" nodeId={data.id} emit={emit} payload={data.outputs.chart.socket}>
+          <div className="sol-conn__figure">
+            {data.cachedChart
+              ? <ChartFigure value={preview(data.cachedChart)} width={FORECAST_PREVIEW_W} height={FORECAST_PREVIEW_H} />
+              : <SkyIcon condition={null} />}
+          </div>
+        </MeasuredSocketRow>
+      )}
     </NodeShell>
   );
 }
