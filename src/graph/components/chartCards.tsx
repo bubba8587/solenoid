@@ -1,6 +1,6 @@
 // [[B11]] maximalMerge, [[C100]] chartIsAValue, [[C114]] cardsView
 import { CellImage } from "./cubeCell";
-import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useMemo, useSyncExternalStore, type CSSProperties } from "react";
 import { appThemeStore } from "../appTheme";
 import { paletteStore, resolveColor } from "../palette";
 import { boxTintVars, namedColor } from "./boxTint";
@@ -8,7 +8,7 @@ import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../cha
 import { recordFieldText, recordLaneText, recordNumberText, titleIndexFor } from "../chartValue";
 import { formatScalar } from "./format";
 import { formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
-import { planColumns, packMasonry } from "./masonryLayout";
+import { MasonryGallery, type Track } from "./MasonryGallery";
 import { stopDragStart } from "../coarse";
 import { AutoCard, cardChipColors } from "./AutoCard";
 import "./chartCards.css";
@@ -71,80 +71,11 @@ function RecordGrid({ fields, cols, flow }: { fields: RecordPayload["cards"][num
   );
 }
 
-const GALLERY_GAP = 6;
 const GALLERY_TRACK_BY_SIZE: Record<RecordSize, { ideal: number; min: number; max: number }> = {
   s: { ideal: 120, min: 100, max: 150 },
   m: { ideal: 170, min: 145, max: 210 },
   l: { ideal: 250, min: 215, max: 310 },
 };
-
-type Track = { ideal: number; min: number; max: number };
-
-/** The masonry both galleries pack into; `layoutKey` changes when the tiles do, so they are re-measured. */
-function MasonryGallery({ count, track, className, layoutKey, tile }: {
-  count: number;
-  track: Track;
-  className: string;
-  layoutKey: unknown;
-  tile: (i: number) => React.ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const shownOnce = useRef(false);
-  const n = count;
-  const [box, setBox] = useState<{ w: number; heights: number[]; settled: boolean } | null>(null);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => {
-      const w = el.clientWidth;
-      const tiles = tileRefs.current.slice(0, n);
-      const heights = tiles.map((t) => (t ? t.offsetHeight : 0));
-      const want = Math.floor(planColumns(w, GALLERY_GAP, { ...track, items: n }).colWidth);
-      const settled = tiles.every((t) => !t || t.offsetWidth === want);
-      setBox((prev) =>
-        prev && prev.w === w && prev.settled === settled &&
-        prev.heights.length === heights.length && prev.heights.every((h, i) => h === heights[i])
-          ? prev
-          : { w, heights, settled },
-      );
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    for (const t of tileRefs.current.slice(0, n)) if (t) ro.observe(t);
-    return () => ro.disconnect();
-  }, [n, layoutKey]);
-
-  const plan = planColumns(box?.w ?? 0, GALLERY_GAP, { ...track, items: n });
-  // Floored, never rounded: a track rounded up makes the columns a pixel or two wider than the box, whose scrollbar then
-  // takes room, re-plans the tracks and goes again, flashing on and off.
-  const colWidth = Math.floor(plan.colWidth);
-  if (box?.settled) shownOnce.current = true;
-  const show = box !== null && (box.settled || shownOnce.current);
-  // Heights measured for another count of tiles (Rows just changed) place nothing: the layout effect measures the new
-  // ones before the browser paints.
-  const packed = box && box.heights.length === n ? packMasonry(box.heights, plan.count, GALLERY_GAP) : null;
-  return (
-    <div ref={ref} className={className} style={show && packed ? { height: packed.height } : undefined}>
-      {Array.from({ length: n }, (_, i) => (
-        <div
-          key={i}
-          ref={(t) => { tileRefs.current[i] = t; }}
-          className="sol-record-tile"
-          style={
-            show && packed
-              ? { width: colWidth, transform: `translate(${packed.slots[i].col * (colWidth + GALLERY_GAP)}px, ${Math.round(packed.slots[i].y)}px)` }
-              : { width: colWidth, visibility: "hidden" }
-          }
-        >
-          {tile(i)}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function RecordGallery({ payload }: { payload: RecordPayload }) {
   return (
