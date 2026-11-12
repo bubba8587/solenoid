@@ -37,6 +37,7 @@ flowchart TD
 
 - **npm.** `npm-check-updates` raises every range in `package.json` to the newest release, majors included. The lockfile and `node_modules` are deleted and installed fresh, so transitive packages move to their newest too; when the install fails on a peer range the newest versions don't satisfy, it runs again with `--legacy-peer-deps`, and the report says so.
 - **Cargo.** `cargo upgrade --incompatible allow --pinned allow` raises every manifest in the crates and the desktop shell, then `cargo update` refreshes each lockfile.
+- **No cooldown.** The work branches hold a crate version back until it has been public for 7 days (`.cargo/config.toml`, `global-min-publish-age`). This branch sets it to `"0"` in a commit of its own, `Bleeding edge: stable Rust, and no crate cooldown here`. If a rebase drops that commit, the hold is back and `cargo update` refuses each requirement that `cargo upgrade` raised to a release under a week old; put the commit back. The port check runs on the base, where the hold applies, so a `Fix:` whose `Upgrades:` line names a crate under a week old doesn't port until the week is up.
 - **The engine module.** The checks rebuild it with plain `npm run build:wasm`, never the optimized build. Its `wasm-bindgen-cli` must match the `wasm-bindgen` crate in the lockfile exactly, so the run installs that version first when the installed one differs.
 - **What a bump breaks.** A failing check is reported, never silenced, skipped or pinned back. An agent then fixes it in its own `Fix:` commit on the branch.
 
