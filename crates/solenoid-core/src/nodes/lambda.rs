@@ -54,7 +54,7 @@ fn param_name(p: &str) -> Option<String> {
 
 fn lambda(c: &mut Call) -> Answer {
     let written: Vec<String> =
-        c.field_str("params", "x").split(',').map(trim_space).filter(|p| !p.is_empty()).map(String::from).collect();
+        c.field_str("params", "").split(',').map(trim_space).filter(|p| !p.is_empty()).map(String::from).collect();
     let named: Vec<Option<String>> = written.iter().map(|p| param_name(p)).collect();
     let expr = c.field_str("expr", "").to_string();
     let refuse = |c: &mut Call, shown: Option<String>, result: V| {

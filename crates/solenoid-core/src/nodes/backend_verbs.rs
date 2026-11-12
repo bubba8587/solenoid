@@ -584,15 +584,10 @@ fn calc_cell(f: &Frame, lam: &crate::eval::LambdaV, rows: &[usize]) -> (FrameCel
             items
         }
     };
-    // A parameter naming no column hands the body its #NAME? as a value, so a body that reads it answers #NAME? and
-    // one that never does (a new LAMBDA card's `x`, left in place) is unharmed. One off a column only by letter case
-    // is a typo for it, refused at once with the hint.
     let mut args = Vec::with_capacity(lam.params.len());
     for p in &lam.params {
         match slice(p) {
-            V::Err(e) if case_twin(p, f.columns.iter().map(|k| k.name.as_str())).is_some() => {
-                return (FrameCell::Err(e), false);
-            }
+            V::Err(e) => return (FrameCell::Err(e), false),
             v => args.push(v),
         }
     }

@@ -23,7 +23,8 @@ specific item.
   the card read only the parameters' columns, so a body's brackets and bare names read the empty slot's 0 and every
   cell was `#DIV/0!`. It now reads every name the body uses (`body_names`, `backend_verbs.rs`). The unit tests had
   called the card on a plain frame, which never takes that path: a test against a `planned` (lazy) input now guards it,
-  and fails without the fix. A parameter naming no column now only errors where the body reads it (a new card's `x`).
+  and fails without the fix. A new LAMBDA card has no parameter (it was `x`); its params field shows `x, y` as its Example (author 2026-11-12:
+  the empty-slot kinds, not a silent rule for unused parameters).
 - Seen, not touched: the table popup's footer Sum skips error cells (a column holding `#UNCALC!` still sums).
 - Self-hosting: `docs/self-hosting.md` is the proposal for the engineering team (SharePoint via Microsoft Graph, or
   same-origin hosting). Built: `solenoid.config.json` with `trustedSources`, hosts that skip the network prompt
