@@ -15,7 +15,7 @@ import { LazySelect } from "./LazySelect";
 import { CardSection } from "./CardSection";
 import { TypeIcon } from "./TypeIcon";
 import { FormatStyleSelect, DateStyleSelect, TextCaseSelect, LogicalStyleSelect, UnitSelect, CustomPatternField } from "./fcControls";
-import { useDraftCommit, useNumberScrub, QuotedTextInput, INVALID_DRAFT, LogicalCheck } from "./inlineInput";
+import { useDraftCommit, QuotedTextInput, INVALID_DRAFT, LogicalCheck } from "./inlineInput";
 import { DateEntry } from "./DateEntry";
 import { CollapsedCell } from "./CollapsedCell";
 import type { DisplayValue } from "./valueDisplayFormat";
@@ -322,7 +322,7 @@ function CustomUnitRow({ node, pick }: { node: ValueInputNodeType; pick: (set: (
   );
 }
 
-/** A number Value Input's field: typed text commits on Enter or blur, and a drag scrubs. A blank stays blank and reads as 0. */
+/** A number Value Input's field: typed text commits on Enter or blur. A blank stays blank and reads as 0. */
 function NumberEntry({ text, onCommit }: { text: string; onCommit: (text: string) => void }) {
   const field = useDraftCommit<string>(
     text,
@@ -333,12 +333,6 @@ function NumberEntry({ text, onCommit }: { text: string; onCommit: (text: string
     },
     onCommit,
   );
-  const n = Number(text.trim());
-  const scrub = useNumberScrub(
-    Number.isFinite(n) ? n : 0,
-    (v) => field.setDraft(v == null ? "" : String(v)),
-    (next) => onCommit(String(next)),
-  );
   return (
     <input
       className="solenoid-node__value-input"
@@ -347,7 +341,6 @@ function NumberEntry({ text, onCommit }: { text: string; onCommit: (text: string
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}
-      {...scrub}
       onMouseDown={(e) => e.stopPropagation()}
       step="any"
     />

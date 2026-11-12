@@ -1089,7 +1089,6 @@ describe("[[pointer-gestures#Opt-out classes]] — a pad dragged inside a card c
     "components/DrawnCableLayer.tsx": "the canvas's own drawing layer, not inside a card",
     "components/IsolateEndpoints.tsx": "canvas chrome around an isolated card, not inside one",
     "components/PopupResizeGrip.tsx": "a popup outside the canvas",
-    "components/inlineInput.tsx": "the scrub is an <input>, which FlowSurface already shields",
   };
 
   it("every component that captures the pointer marks its surface .nodrag (or is sanctioned, with a reason)", () => {

@@ -1021,12 +1021,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   border-color: var(--node-accent, var(--accent));
 }
 
-/* !important is a drag-lock: under pointer capture the cursor would otherwise flicker to whatever is beneath. */
-body.solenoid-scrubbing,
-body.solenoid-scrubbing * {
-  cursor: ns-resize !important;
-}
-
 /* A list reads left to right, as text does, whatever its items are. */
 .solenoid-node__inline-input--list {
   text-align: left;
