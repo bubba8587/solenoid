@@ -98,7 +98,7 @@ The Schedule node is in the Add menu's Plan category.
 | `links` | frame | Optional flat dependencies, added to Predecessors. |
 | `start` | date | The project start. Unwired, it is today's local day (`TODAY` on the call's clock). A wired value that is not a finite number gives null on every output. |
 | `holidays` | date list | Days to skip alongside the weekend. Read only in Working days mode. The Holidays node feeds it. |
-| `weekend_code` | number | Excel's `WORKDAY.INTL` code: 1 is Saturday and Sunday (the default), 2 is Sunday and Monday, 11 to 17 a single day off. |
+| `weekend_code` | setting, no socket | Excel's `WORKDAY.INTL` code: 1 is Saturday and Sunday (the default), 2 is Sunday and Monday, 11 to 17 a single day off. The card picks it by name from a dropdown (`WeekendPick.tsx`: "Sat and Sun", "Sun only"…) and saves the code in `literals`; a weekend is a setting of the card, never driven from a cable ([[C26]] opArgDistinct). Schedule, Gantt and Earned Value list it in `savedFields`. |
 | `status` | date | The status date. Work left on a started task is scheduled after it. Unwired, Complete only fills the bars. |
 | `hours` | number | Hours in a working day, default 8 (a value of 0 or less reads as 8). It converts hour durations and Work, and in Minutes mode it is the length of the working day from 08:00 (a day longer than 16 hours starts earlier, so it ends at midnight). |
 
@@ -115,7 +115,7 @@ flowchart LR
     s --> mspdi["mspdi: Microsoft Project XML"]
 ```
 
-The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, with the same `WORKDAY.INTL` codes. The scheduling crate carries its own copy of the code table (`weekend_days` in `crates/solenoid-schedule/src/calendar.rs`, so it stands alone) beside the core's (`date_ops.rs`); the two agree on every code. Schedule, Gantt and Earned Value refuse a code outside the table with the Workdays card's `#VALUE!` before the scheduler sees it, so the scheduler's fallback to Saturday and Sunday is never reached from a card.
+The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, with the same `WORKDAY.INTL` codes; the Workdays card keeps a socket for its code, since it mirrors the formula's argument, and the scheduling cards pick theirs by name. The scheduling crate carries its own copy of the code table (`weekend_days` in `crates/solenoid-schedule/src/calendar.rs`, so it stands alone) beside the core's (`date_ops.rs`); the two agree on every code. Schedule, Gantt and Earned Value refuse a code outside the table with the Workdays card's `#VALUE!` before the scheduler sees it, so the scheduler's fallback to Saturday and Sunday is never reached from a card.
 
 The card has four options, each persisted with the node:
 
@@ -231,7 +231,7 @@ Tests:
 
 ## The Gantt figure
 
-The Gantt node reads a scheduled plan and emits a `chart` value of kind `gantt`. Its sockets, its column reading and its title are in [[chart-figures]] § Gantt; its inputs are `schedule`, `baseline`, `holidays`, `weekend_code` (default 1), `status` and `options`. It computes no dates, and it reads the computed columns by name, so a Filter or Sort between Schedule and Gantt still draws.
+The Gantt node reads a scheduled plan and emits a `chart` value of kind `gantt`. Its sockets, its column reading and its title are in [[chart-figures]] § Gantt; its inputs are `schedule`, `baseline`, `holidays`, `status` and `options`, and its Weekend is a setting (default 1, Saturday and Sunday). It computes no dates, and it reads the computed columns by name, so a Filter or Sort between Schedule and Gantt still draws.
 
 ### The payload is data
 

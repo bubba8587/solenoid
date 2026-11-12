@@ -39,12 +39,13 @@ export const SCHEDULE_MODE_OPTIONS: ReadonlyArray<{ value: ScheduleMode; label: 
 export const SCHEDULE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1, hours: 8 };
 
 export class ScheduleNode extends GraphNode {
+  /** The weekend, a WORKDAY.INTL code kept in `literals` with no socket (`WeekendPick`). */
+  static savedFields: ReadonlySet<string> = new Set(["weekend_code"]);
   static socketDocs: Record<string, string> = {
     tasks: "One row per task: Task, Duration in days (blank or 0 is a milestone) and Predecessors, the tasks it waits on. A Tasks cell holding a table makes the row a summary. Start, Finish, Deadline, Complete, Manual, Project and the calendar columns are optional; Help lists them under Plans.",
     start: "The project start. Unwired, the schedule starts today.",
     holidays: "Dates to skip alongside the weekend. Only read in Working days mode.",
     links: "Dependencies as a flat table, one per row: Successor, Predecessor, and an optional Type (FS, SS, FF, SF) and Lag in days. Adds to each task's Predecessors.",
-    weekend_code: "Which days are the weekend. Excel: WORKDAY.INTL codes, 1 = Sat+Sun, 2 = Sun+Mon, 11 to 17 = a single day off.",
     status: "The day progress is measured on. Work left on a started task is scheduled after it. Unwired, Complete only fills the bars.",
     hours: "Hours in a working day. Converts a Duration column given in hours; in Minutes mode it is the length of the working day, from 08:00.",
     cube: "The rows plus Start, Finish, Float, Critical, Free Float, early and late dates, Driving and Late. Float is the slip that keeps the finish.",
@@ -98,7 +99,6 @@ export class ScheduleNode extends GraphNode {
     this.addInput("links", frameIn("Links"));
     this.addInput("start", dateIn("Start"));
     this.addInput("holidays", dateListIn("Holidays"));
-    this.addInput("weekend_code", numIn("Weekend"));
     this.addInput("status", dateIn("Status date"));
     this.addInput("hours", numIn("Hours per day"));
     this.addOutput("cube", cubeOut("Schedule"));
