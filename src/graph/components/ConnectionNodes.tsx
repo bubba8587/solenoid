@@ -62,7 +62,8 @@ function statusText(s: ConnectionState): string {
   switch (s.status) {
     case "loading": return "Loading…";
     case "error":   return s.message || "Failed";
-    case "ok":      return `${s.files ? `${s.files} file${s.files === 1 ? "" : "s"} · ` : ""}${s.rows ?? 0}×${s.cols ?? 0}${s.fetchedAt ? ` · ${new Date(s.fetchedAt).toLocaleTimeString()}` : ""}`;
+    // The size is the output's to show (a frame chip's 11×6), so the status says only when and how many files.
+    case "ok":      return [s.files ? `${s.files} file${s.files === 1 ? "" : "s"}` : "", s.fetchedAt ? new Date(s.fetchedAt).toLocaleTimeString() : "Loaded"].filter(Boolean).join(" · ");
     case "gated":   return "Waiting for permission";
     default:        return s.message || "Not connected";
   }
