@@ -766,19 +766,18 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   max-width: none;
 }
 :is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="below"] > :is(.solenoid-node__io-label, .sol-conn__label) + * {
-  /* A basis past what's left beside the full-width label forces the break; it grows to the line below. */
+  /* A basis past what's left beside the full-width label forces the break; it grows to the line below, from the
+     label's left edge to the right edge every other field ends on. */
   flex: 1 1 50%;
   min-width: 0;
-  margin-left: -4px;
-}
-:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="below"] > :is(.solenoid-node__io-label, .sol-conn__label) + :last-child {
-  margin-right: -4px;
+  margin-left: 0;
 }
 .solenoid-node__io-row[data-io-fit="below"] > .solenoid-node__io-label + .solenoid-node__quoted--inline {
-  margin-left: calc(-4px - var(--quote-hang));
+  max-width: none;
+  margin-left: calc(0px - var(--quote-hang));
 }
 .solenoid-node__io-row[data-io-fit="below"] > .solenoid-node__io-label + .solenoid-node__quoted--inline:last-child {
-  margin-right: calc(-4px - var(--quote-hang));
+  margin-right: calc(0px - var(--quote-hang));
 }
 :is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="solo"] > :is(.solenoid-node__io-label, .sol-conn__label) {
   flex: 0 0 auto;

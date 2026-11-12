@@ -700,17 +700,16 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
             onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
           />
         </label>
+        <input
+          className="sol-conn__url sol-placeholder-example" type="text" value={region} placeholder="Region, for example US-CA (optional)"
+          spellCheck={false}
+          onChange={(e) => setRegion(e.target.value)} onBlur={commitRegion}
+          onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
+          onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+        />
         <div className="sol-conn__note">Nager.Date public holidays.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <ConnOptions node={data} set={data.region !== ""}>
-          <input
-            className="sol-conn__url sol-placeholder-example" type="text" value={region} placeholder="Region, for example US-CA (optional)"
-            spellCheck={false}
-            onChange={(e) => setRegion(e.target.value)} onBlur={commitRegion}
-            onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
-            onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-          />
-        </ConnOptions>
+        <RefreshIntervalField node={data} />
       </div>
       {frame && (
         <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frame.socket}>
@@ -842,7 +841,7 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
       <div className="sol-conn">
         <div className="sol-conn__note">Frankfurter: ECB reference rates, once per business day.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <ConnOptions node={data} />
+        <RefreshIntervalField node={data} />
       </div>
       {mode === "spot" ? (
         <InlineOutputRows
@@ -1075,7 +1074,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
         />
         <div className="sol-conn__note">TaskNotes plugin, local HTTP API.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <ConnOptions node={data} />
+        <RefreshIntervalField node={data} />
       </div>
       {tasks && (
         <MeasuredSocketRow side="output" socketKey="tasks" nodeId={data.id} emit={emit} payload={tasks.socket}>

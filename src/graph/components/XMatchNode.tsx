@@ -3,7 +3,6 @@ import { XMATCH_MATCH_MODE_META, XMATCH_SEARCH_MODE_META } from "../nodeClasses"
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
-import { CardSection } from "./CardSection";
 
 const MATCH_MODES: { value: XMatchMatchMode; label: string }[] = (
   Object.keys(XMATCH_MATCH_MODE_META) as XMatchMatchMode[]
@@ -21,10 +20,7 @@ export function XMatchComponent({ data, emit }: NodeProps<XMatchNodeType>) {
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <ArgSelect value={matchMode} onChange={setMatchMode} options={MATCH_MODES} />
-      {/* XLOOKUP's Options hold the same argument. */}
-      <CardSection label="Options" collapsible defaultOpen={searchMode !== "first"}>
-        <SegToggle value={searchMode} options={SEARCH_MODES} onChange={setSearchMode} />
-      </CardSection>
+      <SegToggle value={searchMode} options={SEARCH_MODES} onChange={setSearchMode} />
       <ValueDisplay value={data.cachedResult} empty="not found" />
     </NodeShell>
   );
