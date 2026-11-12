@@ -40,6 +40,7 @@ beforeEach(() => {
     container: { clientWidth: 800, clientHeight: 600 },
     pan: async () => {},
     zoom: async () => {},
+    setCamera: async () => {},
     rerenderNode: async () => {},
     transform: { x: 0, y: 0, k: 1 },
   } as unknown as View;
