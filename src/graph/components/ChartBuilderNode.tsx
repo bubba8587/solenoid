@@ -19,7 +19,7 @@ const isOnValue = (s: string | undefined) => {
   return v === "on" || v === "true" || v === "1" || v === "yes";
 };
 
-/** The checkboxes in a run of rows, side by side in one wrapping row: a pick, so no socket ([[C26]] opArgDistinct). */
+/** The checkboxes in a run of rows, on a two-column grid: a pick, so no socket ([[C26]] opArgDistinct). */
 function TogglePicks({ node, toggles }: {
   node: ChartBuilderNodeType;
   toggles: readonly { key: string; label: string; on: boolean }[];
