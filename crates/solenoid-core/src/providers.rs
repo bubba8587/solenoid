@@ -81,7 +81,7 @@ pub fn weather(text: &str, unit: &str) -> (FrameValue, V, V, V) {
     let time = d["time"].as_array().map_or(&[][..], Vec::as_slice);
     let nums = |key: &str| -> Vec<FrameCell> {
         let a = d[key].as_array();
-        (0..time.len()).map(|i| a.and_then(|a| a.get(i)).map_or(FrameCell::Null, num)).collect()
+        Vec::from_fn(time.len(), |i| a.and_then(|a| a.get(i)).map_or(FrameCell::Null, num))
     };
     let id = if unit == "F" { "degF" } else { "degC" };
     let temp_unit = fc_unit_to_unit(id).map(|u| Rc::new(ColumnUnit { dim: u.dim, display: Some(id.into()) }));
@@ -104,12 +104,10 @@ pub fn weather(text: &str, unit: &str) -> (FrameValue, V, V, V) {
         column(
             "Condition",
             FrameColType::String,
-            (0..time.len())
-                .map(|i| match codes.and_then(|c| c.get(i)).and_then(Json::as_f64) {
-                    Some(c) => FrameCell::Str(wmo_text(c).into()),
-                    None => FrameCell::Null,
-                })
-                .collect(),
+            Vec::from_fn(time.len(), |i| match codes.and_then(|c| c.get(i)).and_then(Json::as_f64) {
+                Some(c) => FrameCell::Str(wmo_text(c).into()),
+                None => FrameCell::Null,
+            }),
         ),
     ];
     let cur = &root["current"];

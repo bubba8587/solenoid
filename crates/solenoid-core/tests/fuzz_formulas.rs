@@ -83,9 +83,8 @@ impl Gen {
             _ => {
                 let name = self.names[self.rng.usize(..self.names.len())].clone();
                 let n = self.rng.usize(0..6);
-                let args: Vec<String> = (0..n)
-                    .map(|_| if self.rng.u32(0..8) == 0 { String::new() } else { self.expr(depth - 1) })
-                    .collect();
+                let args: Vec<String> =
+                    Vec::from_fn(n, |_| if self.rng.u32(0..8) == 0 { String::new() } else { self.expr(depth - 1) });
                 format!("{name}({})", args.join(", "))
             }
         }

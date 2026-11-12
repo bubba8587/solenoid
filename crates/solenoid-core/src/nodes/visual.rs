@@ -408,9 +408,7 @@ fn finite(v: &V) -> Option<f64> {
 
 /// Each cell as shown, a blank as "".
 fn col_strings(col: Option<&Column>) -> Vec<String> {
-    col.map_or_else(Vec::new, |col| {
-        (0..col.values.len()).map(|r| shown_text(col, r, None).unwrap_or_default()).collect()
-    })
+    col.map_or_else(Vec::new, |col| Vec::from_fn(col.values.len(), |r| shown_text(col, r, None).unwrap_or_default()))
 }
 
 /// Each cell as a number, read from its shown text where that is text.
@@ -449,30 +447,28 @@ fn typed_column(name: &str, cells: &[V], rows: usize, known: Option<FrameColType
             FrameColType::String
         }
     });
-    let values = (0..rows)
-        .map(|i| match cells.get(i) {
-            None | Some(V::Null | V::Undef) => V::Null,
-            Some(e @ V::Err(_)) => e.clone(),
-            Some(c) => match ty {
-                FrameColType::String => match c {
-                    V::Str(_) => c.clone(),
-                    _ => V::str(&value_text(c)),
-                },
-                FrameColType::Logical => match c {
-                    V::Bool(_) => c.clone(),
-                    V::Num(n) => V::Bool(*n != 0.0),
-                    V::Str(s) => V::Bool(lower_text(trim_space(s)) == "true"),
-                    _ => V::Bool(false),
-                },
-                FrameColType::Number | FrameColType::Date => match c {
-                    V::Num(_) => c.clone(),
-                    V::Bool(b) => V::Num(f64::from(u8::from(*b))),
-                    V::Str(s) => V::Num(crate::value_kinds::decimal_from_text(s)),
-                    _ => V::Num(f64::NAN),
-                },
+    let values = Vec::from_fn(rows, |i| match cells.get(i) {
+        None | Some(V::Null | V::Undef) => V::Null,
+        Some(e @ V::Err(_)) => e.clone(),
+        Some(c) => match ty {
+            FrameColType::String => match c {
+                V::Str(_) => c.clone(),
+                _ => V::str(&value_text(c)),
             },
-        })
-        .collect();
+            FrameColType::Logical => match c {
+                V::Bool(_) => c.clone(),
+                V::Num(n) => V::Bool(*n != 0.0),
+                V::Str(s) => V::Bool(lower_text(trim_space(s)) == "true"),
+                _ => V::Bool(false),
+            },
+            FrameColType::Number | FrameColType::Date => match c {
+                V::Num(_) => c.clone(),
+                V::Bool(b) => V::Num(f64::from(u8::from(*b))),
+                V::Str(s) => V::Num(crate::value_kinds::decimal_from_text(s)),
+                _ => V::Num(f64::NAN),
+            },
+        },
+    });
     Column { name: name.to_string(), ty, values, unit: None, format: None, raw: None }
 }
 
@@ -677,21 +673,19 @@ fn build_xy(op: &str, raw: &Cv, opts: &Obj) -> Result<Option<Obj>, V> {
     let text = |i: usize, r: usize| shown_text(&cols[i], r, cols[i].format.as_ref());
     let mut xcats: Option<Vec<String>> = None;
     let x_at: Vec<Option<f64>> = match x_col {
-        None => (0..rows).map(|r| Some((r + 1) as f64)).collect(),
+        None => Vec::from_fn(rows, |r| Some((r + 1) as f64)),
         Some(x) if cols[x].ty == FrameColType::Number || cols[x].ty == FrameColType::Date => {
-            (0..rows).map(|r| finite(&cell(&cols[x], r))).collect()
+            Vec::from_fn(rows, |r| finite(&cell(&cols[x], r)))
         }
         Some(x) => {
             let (mut cats, mut idx) = (Vec::new(), HashMap::new());
-            let out = (0..rows)
-                .map(|r| {
-                    let t = text(x, r)?;
-                    Some(*idx.entry(t.clone()).or_insert_with(|| {
-                        cats.push(t);
-                        cats.len() - 1
-                    }) as f64)
-                })
-                .collect();
+            let out = Vec::from_fn(rows, |r| {
+                let t = text(x, r)?;
+                Some(*idx.entry(t.clone()).or_insert_with(|| {
+                    cats.push(t);
+                    cats.len() - 1
+                }) as f64)
+            });
             xcats = Some(cats);
             out
         }
@@ -930,23 +924,18 @@ fn chart(c: &mut Call) -> Answer {
             let label_col = &cols[0];
             let num_cols: Vec<&Column> = cols[1..].iter().filter(|c| c.ty == FrameColType::Number).collect();
             labels = Some(num_cols.iter().map(|c| V::str(&c.name)).collect());
-            let rows: Vec<(String, Vec<V>)> = (0..label_col.values.len())
-                .map(|r| {
-                    let name = shown_text(label_col, r, None).unwrap_or_else(|| format!("Row {}", r + 1));
-                    (name, num_cols.iter().map(|c| finite(&cell(c, r)).map_or(V::Null, V::Num)).collect())
-                })
-                .collect();
+            let rows: Vec<(String, Vec<V>)> = Vec::from_fn(label_col.values.len(), |r| {
+                let name = shown_text(label_col, r, None).unwrap_or_else(|| format!("Row {}", r + 1));
+                (name, num_cols.iter().map(|c| finite(&cell(c, r)).map_or(V::Null, V::Num)).collect())
+            });
             v = rows.first().map_or(V::Null, |(_, vs)| list(vs.clone()));
             series = many(&rows);
         } else if cols.len() >= 2 {
-            labels = Some(
-                (0..cols[0].values.len())
-                    .map(|r| match format_cell(cols[0].ty, &cell(&cols[0], r), None) {
-                        V::Null => V::str(""),
-                        x => x,
-                    })
-                    .collect(),
-            );
+            labels =
+                Some(Vec::from_fn(cols[0].values.len(), |r| match format_cell(cols[0].ty, &cell(&cols[0], r), None) {
+                    V::Null => V::str(""),
+                    x => x,
+                }));
             let rows: Vec<(String, Vec<V>)> = cols[1..]
                 .iter()
                 .filter(|c| c.ty == FrameColType::Number)
@@ -1462,7 +1451,7 @@ fn bin_count(k: &V) -> Result<f64, V> {
 /// The lower edges over `[min, max]` (min < max), and each value's bin by them, the last closed.
 pub(crate) fn equal_width_bins(min: f64, max: f64, bins: usize) -> (Vec<f64>, impl Fn(f64) -> usize) {
     let w = (max - min) / bins as f64;
-    let edges: Vec<f64> = (0..bins).map(|i| min + i as f64 * w).collect();
+    let edges: Vec<f64> = Vec::from_fn(bins, |i| min + i as f64 * w);
     let e = edges.clone();
     let idx = move |v: f64| {
         let f = ((v - min) / w).floor();
@@ -1768,7 +1757,7 @@ fn heatmap_from_columns(cols: &[Column]) -> Grid {
     let named = cols.len() >= 2 && cols[0].ty != FrameColType::Number;
     let data: Vec<&Column> = cols[usize::from(named)..].iter().filter(|c| c.ty == FrameColType::Number).collect();
     let n_rows = data.iter().map(|c| c.values.len()).max().unwrap_or(0);
-    let z = (0..n_rows).map(|r| data.iter().map(|col| col.values.get(r).and_then(finite)).collect()).collect();
+    let z = Vec::from_fn(n_rows, |r| data.iter().map(|col| col.values.get(r).and_then(finite)).collect());
     let mut rows: Vec<String> =
         if named { col_strings(cols.first()).into_iter().take(n_rows).collect() } else { index_names(n_rows) };
     rows.resize(n_rows, String::new());
@@ -1783,7 +1772,7 @@ fn heatmap_from_table(t: &[V]) -> Grid {
         vec![t.to_vec()]
     };
     let n_cols = rows.iter().map(Vec::len).max().unwrap_or(0);
-    let z = rows.iter().map(|r| (0..n_cols).map(|c| r.get(c).and_then(finite)).collect()).collect();
+    let z = rows.iter().map(|r| Vec::from_fn(n_cols, |c| r.get(c).and_then(finite))).collect();
     (z, index_names(rows.len()), index_names(n_cols))
 }
 
@@ -1832,7 +1821,7 @@ fn grid_axes(z: &V, xs: Option<&V>, ys: Option<&V>) -> Option<Axes> {
     }
     let zg = z
         .iter()
-        .map(|r| (0..cols).map(|j| if let V::List(r) = r { r.get(j).and_then(finite) } else { None }).collect())
+        .map(|r| Vec::from_fn(cols, |j| if let V::List(r) = r { r.get(j).and_then(finite) } else { None }))
         .collect();
     let axis = |raw: Option<&V>, n: usize| -> Option<Vec<f64>> {
         let items = match raw {
@@ -2536,7 +2525,7 @@ fn conditional_regions(c: &mut Call) -> Answer {
     });
     let rows = cols[0].values.len().max(cols[1].values.len());
     let at: Vec<Option<(f64, f64)>> =
-        (0..rows).map(|r| Some((finite(&cell(&cols[0], r))?, finite(&cell(&cols[1], r))?))).collect();
+        Vec::from_fn(rows, |r| Some((finite(&cell(&cols[0], r))?, finite(&cell(&cols[1], r))?)));
     let present: Vec<(f64, f64)> = at.iter().flatten().copied().collect();
     let grid = flips.as_deref().map(|pieces| PieceGrid::build(pieces, &present));
     let (mut answers, mut margins, mut shown) = (Vec::with_capacity(rows), Vec::with_capacity(rows), Vec::new());
@@ -2574,7 +2563,7 @@ fn conditional_regions(c: &mut Call) -> Answer {
     let axis = |k: usize| {
         let mut col = cols[k].clone();
         col.name = names[k].clone();
-        col.values = (0..rows).map(|r| cell(&cols[k], r)).collect();
+        col.values = Vec::from_fn(rows, |r| cell(&cols[k], r));
         col
     };
     let plain = |name: &str, ty: FrameColType, values: Vec<V>| Column {
@@ -2742,7 +2731,7 @@ mod tests {
             seed = seed * 48271 % 2147483647;
             seed as f64 / 2147483647.0 * 14.0 - 2.0
         };
-        let pts: Vec<(f64, f64)> = (0..3000).map(|_| (r(), r())).collect();
+        let pts: Vec<(f64, f64)> = Vec::from_fn(3000, |_| (r(), r()));
         for &(x, y) in &pts {
             assert_eq!(region_key(&cuts, x, y), plain_key(x, y), "at ({x}, {y})");
         }

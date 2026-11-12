@@ -124,7 +124,7 @@ const E24: [f64; 24] = [
 
 /// `E_SERIES[op]`: E3 to E24 are IEC 60063's published tables; E48 and E96 are generated.
 pub(crate) fn e_series_table(op: &str) -> Option<Vec<f64>> {
-    let generated = |n: f64| (0..n as usize).map(|k| to_precision(pow(10.0, k as f64 / n), 3)).collect();
+    let generated = |n: f64| Vec::from_fn(n as usize, |k| to_precision(pow(10.0, k as f64 / n), 3));
     Some(match op {
         "E3" => vec![1.0, 2.2, 4.7],
         "E6" => vec![1.0, 1.5, 2.2, 3.3, 4.7, 6.8],

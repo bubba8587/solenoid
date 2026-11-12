@@ -454,13 +454,9 @@ fn groups_of(m: &V) -> Option<Vec<V>> {
     }
     let rows = items(m);
     let cols = len(rows.first()?);
-    Some(
-        (0..cols)
-            .map(|j| {
-                list(rows.iter().filter_map(|r| items(r).get(j)).filter(|v| finite_num(v).is_some()).cloned().collect())
-            })
-            .collect(),
-    )
+    Some(Vec::from_fn(cols, |j| {
+        list(rows.iter().filter_map(|r| items(r).get(j)).filter(|v| finite_num(v).is_some()).cloned().collect())
+    }))
 }
 
 fn mean(xs: &[f64]) -> f64 {
@@ -901,7 +897,7 @@ fn distributions(c: &mut Call) -> Answer {
                 None => (c.rolls("", 1, false)[0] * 4_294_967_296.0) as u32,
             };
             let mut rng = crate::planners::mulberry32(seed);
-            let us: Vec<f64> = (0..if n.is_nan() { 0 } else { n as usize }).map(|_| rng()).collect();
+            let us: Vec<f64> = Vec::from_fn(if n.is_nan() { 0 } else { n as usize }, |_| rng());
             let &(_, continuous, inverse, _) =
                 crate::fns_random::FAMILIES.iter().find(|f| f.0 == op).unwrap_or(&("", true, false, &[]));
             list(

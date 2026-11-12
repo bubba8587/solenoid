@@ -1098,7 +1098,7 @@ fn on_core(rows: usize, cols: Vec<FrameColumn>, op: Json) -> Result<FrameValue, 
     let numbers = FrameColumn::new(
         CUBE_ROW,
         crate::frame::FrameColType::Number,
-        (0..rows).map(|i| FrameCell::Num(i as f64)).collect(),
+        Vec::from_fn(rows, |i| FrameCell::Num(i as f64)),
     );
     let flat = FrameValue { columns: std::iter::once(numbers).chain(cols).collect() };
     let op: TaggedOp = serde_json::from_value(op).map_err(|e| sol_error(ErrorCode::Error, e.to_string()))?;

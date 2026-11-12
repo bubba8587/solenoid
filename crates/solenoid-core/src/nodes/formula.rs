@@ -665,14 +665,12 @@ fn check_equals(l: &V, r: &V) -> V {
             V::List(x) => x.get(i).cloned().unwrap_or(V::Undef),
             other => other.clone(),
         };
-        let out = (0..len(l).max(len(r)))
-            .map(|i| match (at(l, i), at(r, i)) {
-                (a @ V::Err(_), _) => a,
-                (_, b @ V::Err(_)) => b,
-                (V::Num(a), V::Num(b)) => V::Bool(equals_within(a, b)),
-                _ => V::Null,
-            })
-            .collect();
+        let out = Vec::from_fn(len(l).max(len(r)), |i| match (at(l, i), at(r, i)) {
+            (a @ V::Err(_), _) => a,
+            (_, b @ V::Err(_)) => b,
+            (V::Num(a), V::Num(b)) => V::Bool(equals_within(a, b)),
+            _ => V::Null,
+        });
         return list(out);
     }
     match (l, r) {

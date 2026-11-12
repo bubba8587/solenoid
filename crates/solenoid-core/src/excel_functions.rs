@@ -2063,21 +2063,17 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
                     return V::List(Rc::new(lists.into_iter().map(V::List).collect()));
                 }
                 let first = lists.first().map_or_default(|l| l.len());
-                return V::List(Rc::new(
-                    (0..first)
-                        .map(|i| {
-                            V::List(Rc::new(
-                                lists
-                                    .iter()
-                                    .map(|c| match c.get(i) {
-                                        None | Some(V::Undef) => V::Null,
-                                        Some(x) => x.clone(),
-                                    })
-                                    .collect(),
-                            ))
-                        })
-                        .collect(),
-                ));
+                return V::List(Rc::new(Vec::from_fn(first, |i| {
+                    V::List(Rc::new(
+                        lists
+                            .iter()
+                            .map(|c| match c.get(i) {
+                                None | Some(V::Undef) => V::Null,
+                                Some(x) => x.clone(),
+                            })
+                            .collect(),
+                    ))
+                })));
             }
         }
     }
@@ -2114,27 +2110,23 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
             None => short(),
         }
     };
-    let out: Vec<V> = (0..h)
-        .map(|i| {
-            V::List(Rc::new(
-                (0..w)
-                    .map(|j| {
-                        let (r, c) = (at(&rg, i, j), at(&cg, i, j));
-                        let (r, c) = match (r, c) {
-                            (Err(e), _) | (_, Err(e)) => return e,
-                            (Ok(r), Ok(c)) => (r, c),
-                        };
-                        match index_at(v, r, c) {
-                            V::List(_) => {
-                                V::err(sol_error(ErrorCode::Value, "Each pair of positions must pick one value"))
-                            }
-                            x => x,
-                        }
-                    })
-                    .collect(),
-            ))
-        })
-        .collect();
+    let out: Vec<V> = Vec::from_fn(h, |i| {
+        V::List(Rc::new(
+            (0..w)
+                .map(|j| {
+                    let (r, c) = (at(&rg, i, j), at(&cg, i, j));
+                    let (r, c) = match (r, c) {
+                        (Err(e), _) | (_, Err(e)) => return e,
+                        (Ok(r), Ok(c)) => (r, c),
+                    };
+                    match index_at(v, r, c) {
+                        V::List(_) => V::err(sol_error(ErrorCode::Value, "Each pair of positions must pick one value")),
+                        x => x,
+                    }
+                })
+                .collect(),
+        ))
+    });
     if h == 1 {
         out.into_iter().next().unwrap_or(V::Null)
     } else {
@@ -4695,7 +4687,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         | F::GAMMA_INV => {
             use crate::dists::{bisection_inv, chi_sq_cdf, f_cdf, gamma_cdf, t_cdf, t_pdf};
             let want = if matches!(arm, F::F_INV_RT | F::GAMMA_INV) { 3 } else { 2 };
-            let ns: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
+            let ns: Vec<f64> = Vec::from_fn(want, |i| to_num(arg(a, i)));
             if ns.iter().any(|x| x.is_nan()) {
                 return V::Null;
             }
@@ -5238,7 +5230,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             combinatoric(name, &v)
         }
         F::BINOM_DIST_RANGE => {
-            let v: Vec<f64> = (0..3).map(|i| to_num(arg(a, i))).collect();
+            let v: Vec<f64> = Vec::from_fn(3, |i| to_num(arg(a, i)));
             let hi = if matches!(arg(a, 3), V::Null | V::Undef) { None } else { Some(to_num(arg(a, 3))) };
             if v.iter().any(|x| x.is_nan()) || hi.is_some_and(f64::is_nan) {
                 return value_err("BINOM.DIST.RANGE");
@@ -5248,7 +5240,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         F::CLEAN => V::str(&to_str(arg(a, 0)).chars().filter(|&c| c > '\u{1F}').collect::<String>()),
         F::FISHEREXACT | F::PROPTEST | F::BINOMTEST => {
             let want = if arm == F::BINOMTEST { 3 } else { 4 };
-            let v: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
+            let v: Vec<f64> = Vec::from_fn(want, |i| to_num(arg(a, i)));
             if v.iter().any(|x| x.is_nan()) {
                 return value_err(name);
             }
@@ -5744,7 +5736,7 @@ fn t_test_p(kind: TTestKind, a: &[f64], b: &[f64]) -> Option<f64> {
     let (t, df) = match kind {
         TTestKind::Paired => {
             let n = a.len().min(b.len());
-            let diffs: Vec<f64> = (0..n).map(|i| a[i] - b[i]).collect();
+            let diffs: Vec<f64> = Vec::from_fn(n, |i| a[i] - b[i]);
             let d_var = arr_sample_var(&diffs);
             if d_var <= 0.0 {
                 return None;
@@ -6007,7 +5999,7 @@ pub(crate) fn usd_text(x: f64, fd: usize) -> String {
         vec![u8::from(keep == 0 && digits.first().is_some_and(|&d| d >= 5))]
     } else {
         let k = keep as usize;
-        let mut v: Vec<u8> = (0..k).map(|i| digits.get(i).copied().unwrap_or(0)).collect();
+        let mut v: Vec<u8> = Vec::from_fn(k, |i| digits.get(i).copied().unwrap_or(0));
         if digits.get(k).is_some_and(|&d| d >= 5) {
             let mut i = k;
             loop {
@@ -6394,7 +6386,7 @@ fn finance_function(name: &str, a: &[V]) -> Result<V, Thrown> {
             if nums.len() <= 1 {
                 return Ok(V::Null);
             }
-            let exps: Vec<f64> = (0..nums.len()).map(|t| t as f64).collect();
+            let exps: Vec<f64> = Vec::from_fn(nums.len(), |t| t as f64);
             match f::solve_discount_rate(&nums, &exps) {
                 Some(r) => V::Num(r),
                 None => V::err(sol_error(

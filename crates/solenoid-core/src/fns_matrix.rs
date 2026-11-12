@@ -455,7 +455,7 @@ fn wrap_cells(items: &[V], w: usize, rows: bool, pad: &dyn Fn() -> V) -> Mat {
             .collect();
     }
     let n_cols = items.len().div_ceil(w);
-    let mut mat: Mat = (0..w).map(|_| (0..n_cols).map(|_| pad()).collect()).collect();
+    let mut mat: Mat = Vec::from_fn(w, |_| (0..n_cols).map(|_| pad()).collect());
     for (i, v) in items.iter().enumerate() {
         mat[i % w][i / w] = v.clone();
     }
@@ -537,14 +537,10 @@ fn expand_mat(m: &Mat, req_r: f64, req_c: f64, fill: V) -> V {
         return e;
     }
     let (r, c) = (r as usize, c as usize);
-    mat_v(
-        (0..r)
-            .map(|i| {
-                let src: &[V] = m.get(i).map_or(&[], |x| x);
-                (0..c).map(|j| src.get(j).cloned().unwrap_or_else(|| fill.clone())).collect()
-            })
-            .collect(),
-    )
+    mat_v(Vec::from_fn(r, |i| {
+        let src: &[V] = m.get(i).map_or(&[], |x| x);
+        (0..c).map(|j| src.get(j).cloned().unwrap_or_else(|| fill.clone())).collect()
+    }))
 }
 
 fn mat_rank(m: &NumMat, tol: f64) -> f64 {
@@ -625,7 +621,7 @@ pub(crate) fn right_singular_vectors(v: &V) -> V {
         Err(Stop::Thrown(t)) => return V::err(t.0),
     };
     let cols = mat_cols(&m);
-    let at: NumMat = (0..cols).map(|j| m.iter().map(|r| r[j]).collect()).collect();
+    let at: NumMat = Vec::from_fn(cols, |j| m.iter().map(|r| r[j]).collect());
     match mat_mul(&at, &m).and_then(|g| mat_eigh(&g, 1e-14)) {
         Some((_, vectors)) => {
             let k = m.len().min(cols);
@@ -649,7 +645,7 @@ pub(crate) fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
         }
     }
     let mut a = m.clone();
-    let mut v: NumMat = (0..n).map(|i| (0..n).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect();
+    let mut v: NumMat = Vec::from_fn(n, |i| (0..n).map(|j| if i == j { 1.0 } else { 0.0 }).collect());
     for _ in 0..100 {
         let mut off = 0.0;
         for i in 0..n {
@@ -700,7 +696,7 @@ pub(crate) fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
         }
     });
     let values: Vec<f64> = order.iter().map(|&i| a[i][i]).collect();
-    let mut vectors: NumMat = (0..n).map(|r| order.iter().map(|&i| v[r][i]).collect()).collect();
+    let mut vectors: NumMat = Vec::from_fn(n, |r| order.iter().map(|&i| v[r][i]).collect());
     for c in 0..n {
         let mut big = 0;
         for r in 1..n {
@@ -935,12 +931,10 @@ fn poly_roots(coeffs: &[f64]) -> Option<Vec<(f64, f64)>> {
         (pr, pi)
     };
     let radius = 1.0 + a[1..].iter().fold(f64::NEG_INFINITY, |m, v| js_max(m, v.abs()));
-    let mut roots: Vec<(f64, f64)> = (0..n)
-        .map(|k| {
-            let th = (2.0 * std::f64::consts::PI * k as f64) / n as f64 + 0.4;
-            (radius * libm::cos(th), radius * libm::sin(th))
-        })
-        .collect();
+    let mut roots: Vec<(f64, f64)> = Vec::from_fn(n, |k| {
+        let th = (2.0 * std::f64::consts::PI * k as f64) / n as f64 + 0.4;
+        (radius * libm::cos(th), radius * libm::sin(th))
+    });
     for _ in 0..500 {
         let mut max_step: f64 = 0.0;
         for i in 0..n {
@@ -1218,7 +1212,7 @@ fn histogram2d(xs: &[V], ys: &[V], kx: f64, ky: f64) -> V {
         }
         let bins = k.floor().clamp(1.0, 100.0);
         let w = (max - min) / bins;
-        ((0..bins as usize).map(|i| min + i as f64 * w).collect(), w, min)
+        (Vec::from_fn(bins as usize, |i| min + i as f64 * w), w, min)
     };
     let idx = |ax: &(Vec<f64>, f64, f64), v: f64| -> usize {
         let (edges, w, min) = ax;
@@ -1306,7 +1300,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
         "TRANSPOSE" => {
             let Some(m) = tri!(to_matrix(arg(a, 0))) else { return Ok(V::Null) };
             let cols = mat_cols(&m);
-            mat_v((0..cols).map(|j| m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect()).collect())
+            mat_v(Vec::from_fn(cols, |j| m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect()))
         }
         "ROWS" | "COLUMNS" => {
             let v = arg(a, 0);
@@ -1384,7 +1378,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 return Ok(e);
             }
             let k = k as usize;
-            num_mat_v((0..k).map(|i| (0..k).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect())
+            num_mat_v(Vec::from_fn(k, |i| (0..k).map(|j| if i == j { 1.0 } else { 0.0 }).collect()))
         }
         "DIAGONAL" => {
             let v = arg(a, 0);
@@ -1423,7 +1417,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if let Some(e) = cell_cap("DIAGONAL", n as f64, n as f64) {
                 return Ok(e);
             }
-            mat_v((0..n).map(|i| (0..n).map(|j| if i == j { vs[i].clone() } else { V::Num(0.0) }).collect()).collect())
+            mat_v(Vec::from_fn(n, |i| (0..n).map(|j| if i == j { vs[i].clone() } else { V::Num(0.0) }).collect()))
         }
         "OUTER" => {
             let nums = |v: &V| -> Vec<Option<f64>> {
@@ -1485,7 +1479,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 return Ok(list(Vec::new()));
             }
             // The singular values are the square roots of AᵀA's eigenvalues, its eigenvectors the right singular vectors.
-            let at: NumMat = (0..cols).map(|j| m.iter().map(|r| r[j]).collect()).collect();
+            let at: NumMat = Vec::from_fn(cols, |j| m.iter().map(|r| r[j]).collect());
             let Some(gram) = mat_mul(&at, &m) else {
                 return Ok(err(ErrorCode::Shape, format!("{name} needs a matrix")));
             };
@@ -1515,9 +1509,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if (xr * xc * yr * yc) as f64 > MAX_GENERATED {
                 return Ok(err(ErrorCode::Overflow, "KRON's answer would pass the 1,000,000 element limit"));
             }
-            num_mat_v(
-                (0..xr * yr).map(|i| (0..xc * yc).map(|j| x[i / yr][j / yc] * y[i % yr][j % yc]).collect()).collect(),
-            )
+            num_mat_v(Vec::from_fn(xr * yr, |i| (0..xc * yc).map(|j| x[i / yr][j / yc] * y[i % yr][j % yc]).collect()))
         }
         "ROT90" => {
             let Some(m) = tri!(to_matrix(arg(a, 0))) else { return Ok(V::Null) };
@@ -1529,9 +1521,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             let mut out = m;
             for _ in 0..(k.rem_euclid(4.0) as usize) {
                 let (r, c) = (out.len(), mat_cols(&out));
-                out = (0..c)
-                    .map(|i| (0..r).map(|j| out[j].get(c - 1 - i).cloned().unwrap_or(V::Undef)).collect())
-                    .collect();
+                out = Vec::from_fn(c, |i| (0..r).map(|j| out[j].get(c - 1 - i).cloned().unwrap_or(V::Undef)).collect());
             }
             mat_v(out)
         }
@@ -1601,7 +1591,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 ));
             }
             let n = if total.is_nan() { 0 } else { total.floor().max(0.0) as usize };
-            let flat: Vec<V> = (0..n).map(|i| V::Num(s0 + i as f64 * st)).collect();
+            let flat: Vec<V> = Vec::from_fn(n, |i| V::Num(s0 + i as f64 * st));
             if c == 1.0 {
                 return Ok(list(flat));
             }

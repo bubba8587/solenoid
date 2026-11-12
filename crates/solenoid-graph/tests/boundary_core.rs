@@ -376,9 +376,9 @@ fn the_direct_classes_are_sorted() {
 
 #[test]
 fn many_distinct_errors_tag_in_linear_time_and_repeats_share_a_copy() {
-    let errs: Vec<V> = (0..40_000)
-        .map(|i| V::err(sol_error(ErrorCode::DivZero, format!("row {i}"))))
-        .collect();
+    let errs: Vec<V> = Vec::from_fn(40_000, |i| {
+        V::err(sol_error(ErrorCode::DivZero, format!("row {i}")))
+    });
     let mut cells = errs.clone();
     cells.push(errs[7].clone());
     let t0 = std::time::Instant::now();

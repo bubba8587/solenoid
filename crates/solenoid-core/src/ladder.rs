@@ -151,15 +151,13 @@ fn best_plan(
         tail[i] = tail[i + 1] + nan_max(0.0, opts[open[i]].score);
     }
     let need0: Vec<f64> = if need.is_empty() { vec![0.0; left.len()] } else { need.to_vec() };
-    let reach: Vec<Vec<f64>> = (0..need0.len())
-        .map(|r| {
-            let mut t = vec![0.0; n + 1];
-            for i in (0..n).rev() {
-                t[i] = t[i + 1] + nan_max(0.0, opts[open[i]].costs[r]);
-            }
-            t
-        })
-        .collect();
+    let reach: Vec<Vec<f64>> = Vec::from_fn(need0.len(), |r| {
+        let mut t = vec![0.0; n + 1];
+        for i in (0..n).rev() {
+            t[i] = t[i + 1] + nan_max(0.0, opts[open[i]].costs[r]);
+        }
+        t
+    });
     let capped: Vec<usize> = (0..left.len()).filter(|&r| left[r].is_some()).collect();
     let by_ratio: Vec<Vec<usize>> = capped
         .iter()
@@ -893,14 +891,10 @@ fn ladder_inner(
     let mut values: Vec<Vec<f64>> = Vec::with_capacity(order.len());
     for (n, &k) in order.iter().enumerate() {
         let i = row_at[n];
-        values.push(
-            (0..ds.criteria.len())
-                .map(|j| {
-                    let ws = ds.weight_share[j];
-                    nan_max(0.0, if ws >= 0.0 { ds.contrib[j][k] } else { -ws + ds.contrib[j][k] })
-                })
-                .collect(),
-        );
+        values.push(Vec::from_fn(ds.criteria.len(), |j| {
+            let ws = ds.weight_share[j];
+            nan_max(0.0, if ws >= 0.0 { ds.contrib[j][k] } else { -ws + ds.contrib[j][k] })
+        }));
         let costs = (0..resources.len())
             .map(|r| cost_of(r, i).map(|c| if is_rough(&res[r]) { c } else { nan_max(0.0, c) }))
             .collect::<Res<Vec<f64>>>()?;
@@ -1170,14 +1164,12 @@ mod tests {
     fn problem(seed: u32) -> (Vec<Opt>, f64, f64) {
         let mut r = Rng(seed as f64);
         let n = 3 + r.below(6);
-        let mut opts: Vec<Opt> = (0..n)
-            .map(|_| {
-                let score = round_half_up((r.next() * 1.2 - 0.2) * 100.0) / 100.0;
-                let c0 = 1.0 + r.below(5) as f64;
-                let c1 = if r.next() < 0.4 { 1.0 } else { 0.0 };
-                opt(score, &[c0, c1], &[], &[])
-            })
-            .collect();
+        let mut opts: Vec<Opt> = Vec::from_fn(n, |_| {
+            let score = round_half_up((r.next() * 1.2 - 0.2) * 100.0) / 100.0;
+            let c0 = 1.0 + r.below(5) as f64;
+            let c1 = if r.next() < 0.4 { 1.0 } else { 0.0 };
+            opt(score, &[c0, c1], &[], &[])
+        });
         for i in 0..n {
             if r.next() < 0.25 {
                 let j = r.below(n);

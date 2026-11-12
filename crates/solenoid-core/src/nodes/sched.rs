@@ -527,31 +527,25 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
             };
             let n = repeat as usize;
             let occ: Vec<String> = (1..=n).map(|k| format!("{name} {k}")).collect();
-            let pred_cells: Vec<Cv> = (0..n)
-                .map(|k| {
-                    if k == 0 {
-                        predecessor_cell(&preds, !preds.iter().all(plain_link))
-                    } else {
-                        super::frames::cube_from_columns(vec![
-                            col_of("Predecessor", vec![V::str(&occ[k - 1])], Some(FrameColType::String)),
-                            col_of("Type", vec![V::str("SS")], Some(FrameColType::String)),
-                            col_of("Lag", vec![V::Num(every)], Some(FrameColType::Number)),
-                            col_of("Elapsed", vec![V::Bool(true)], Some(FrameColType::Logical)),
-                        ])
-                    }
-                })
-                .collect();
+            let pred_cells: Vec<Cv> = Vec::from_fn(n, |k| {
+                if k == 0 {
+                    predecessor_cell(&preds, !preds.iter().all(plain_link))
+                } else {
+                    super::frames::cube_from_columns(vec![
+                        col_of("Predecessor", vec![V::str(&occ[k - 1])], Some(FrameColType::String)),
+                        col_of("Type", vec![V::str("SS")], Some(FrameColType::String)),
+                        col_of("Lag", vec![V::Num(every)], Some(FrameColType::Number)),
+                        col_of("Elapsed", vec![V::Bool(true)], Some(FrameColType::Logical)),
+                    ])
+                }
+            });
             let mut made = vec![
                 col_of("Task", occ.iter().map(|s| V::str(s)).collect(), Some(FrameColType::String)),
                 col_of("Duration", vec![V::Num(dur); n], Some(FrameColType::Number)),
                 col_of("Predecessors", pred_cells, None),
             ];
             if let Some(b) = base {
-                made.push(col_of(
-                    "Start",
-                    (0..n).map(|k| V::Num(b + k as f64 * every)).collect(),
-                    Some(FrameColType::Date),
-                ));
+                made.push(col_of("Start", Vec::from_fn(n, |k| V::Num(b + k as f64 * every)), Some(FrameColType::Date)));
             }
             let Cv::Cube(made) = super::frames::cube_from_columns(made) else {
                 unreachable!("cube_from_columns makes a cube")

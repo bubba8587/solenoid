@@ -2086,9 +2086,7 @@ fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
             }
             let lists: Vec<&[V]> =
                 slices.iter().map(|s| if let V::List(l) = s { l.as_slice() } else { &[][..] }).collect();
-            return list(
-                (0..lists[0].len()).map(|i| list(lists.iter().map(|c| or_null(c.get(i))).collect())).collect(),
-            );
+            return list(Vec::from_fn(lists[0].len(), |i| list(lists.iter().map(|c| or_null(c.get(i))).collect())));
         }
     }
     let as_grid = |x: &V| -> Vec<V> {
@@ -2116,27 +2114,25 @@ fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
             Some(x) => position_of(x),
         }
     };
-    let out: Vec<V> = (0..h)
-        .map(|i| {
-            list(
-                (0..w)
-                    .map(|j| {
-                        let (r, cc) = (at(&rg, i, j), at(&cg, i, j));
-                        if r.is_sol_error() {
-                            return r;
-                        }
-                        if cc.is_sol_error() {
-                            return cc;
-                        }
-                        match index_into(v, &r, &cc, unit) {
-                            V::List(_) => err(ErrorCode::Value, "Each pair of positions must pick one value"),
-                            x => x,
-                        }
-                    })
-                    .collect(),
-            )
-        })
-        .collect();
+    let out: Vec<V> = Vec::from_fn(h, |i| {
+        list(
+            (0..w)
+                .map(|j| {
+                    let (r, cc) = (at(&rg, i, j), at(&cg, i, j));
+                    if r.is_sol_error() {
+                        return r;
+                    }
+                    if cc.is_sol_error() {
+                        return cc;
+                    }
+                    match index_into(v, &r, &cc, unit) {
+                        V::List(_) => err(ErrorCode::Value, "Each pair of positions must pick one value"),
+                        x => x,
+                    }
+                })
+                .collect(),
+        )
+    });
     if h == 1 {
         out.into_iter().next().unwrap_or(V::Null)
     } else {
@@ -2196,9 +2192,9 @@ fn shuffle(c: &mut Call) -> Answer {
             if !(0..arr.len()).any(|i| matches!(w.get(i), Some(V::Num(x)) if *x > 0.0)) {
                 return refuse(c, err(ErrorCode::Value, "The weights are all zero, so nothing can be drawn"));
             }
-            (0..held.len())
-                .map(|i| weighted_shuffle_key(key_at(i), if let Some(V::Num(x)) = w.get(i) { *x } else { 0.0 }))
-                .collect()
+            Vec::from_fn(held.len(), |i| {
+                weighted_shuffle_key(key_at(i), if let Some(V::Num(x)) = w.get(i) { *x } else { 0.0 })
+            })
         }
         None => held.clone(),
     };

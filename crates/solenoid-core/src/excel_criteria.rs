@@ -1425,7 +1425,7 @@ impl Rolled {
             }
             (e, n, lo, hi)
         };
-        let at: Vec<f64> = (0..len).map(|p| finite(p).unwrap_or(0.0)).collect();
+        let at: Vec<f64> = Vec::from_fn(len, |p| finite(p).unwrap_or(0.0));
         let mut checkpoints = Vec::with_capacity(len / CHECKPOINT + 1);
         let mut whole = crate::exact_sum::ExactSum::default();
         for (p, &x) in at.iter().enumerate() {

@@ -64,7 +64,7 @@ fn median_of(mut known: Vec<f64>) -> f64 {
 }
 
 fn criterion_scores(c: &FrameColumn, rows: usize) -> Vec<f64> {
-    let cells: Vec<&FrameCell> = (0..rows).map(|i| c.cell_at(i)).collect();
+    let cells: Vec<&FrameCell> = Vec::from_fn(rows, |i| c.cell_at(i));
     if c.ty == FrameColType::Logical {
         return cells
             .iter()
@@ -374,8 +374,8 @@ pub(crate) fn decision_scores(
         }
     }
     let labels = match label {
-        Some(l) => (0..rows).map(|i| f.columns[l].cell_at(i).clone()).collect(),
-        None => (0..rows).map(|i| FrameCell::str(&format!("Option {}", i + 1))).collect(),
+        Some(l) => Vec::from_fn(rows, |i| f.columns[l].cell_at(i).clone()),
+        None => Vec::from_fn(rows, |i| FrameCell::str(&format!("Option {}", i + 1))),
     };
     let effective: Vec<Vec<f64>> = criteria
         .iter()
@@ -394,20 +394,18 @@ pub(crate) fn decision_scores(
         .enumerate()
         .map(|(j, e)| e.iter().map(|e| if sum_abs > 0.0 { (e * weight_of(j)) / sum_abs } else { 0.0 }).collect())
         .collect();
-    let scores = (0..rows)
-        .map(|i| {
-            let mut sw = 0.0;
-            for c in &contrib {
-                sw += c[i];
-            }
-            round4(sw)
-        })
-        .collect();
+    let scores = Vec::from_fn(rows, |i| {
+        let mut sw = 0.0;
+        for c in &contrib {
+            sw += c[i];
+        }
+        round4(sw)
+    });
     Ok(Scores {
         label_name: label.map_or("Option".to_string(), |l| f.columns[l].name.clone()),
         labels,
         criteria: criteria.iter().map(|&ci| f.columns[ci].name.clone()).collect(),
-        weight_share: (0..criteria.len()).map(|j| if sum_abs > 0.0 { weight_of(j) / sum_abs } else { 0.0 }).collect(),
+        weight_share: Vec::from_fn(criteria.len(), |j| if sum_abs > 0.0 { weight_of(j) / sum_abs } else { 0.0 }),
         contrib,
         effective,
         scores,
@@ -523,44 +521,42 @@ pub fn flip_points(f: &FrameValue, wf: Option<&FrameValue>, normalize: Normalize
     }
     let r = resolve_weights(wf, &criteria)?;
     let w: Vec<f64> =
-        (0..criteria.len()).map(|j| r.weights.as_ref().and_then(|w| w.get(j)).copied().unwrap_or(1.0)).collect();
+        Vec::from_fn(criteria.len(), |j| r.weights.as_ref().and_then(|w| w.get(j)).copied().unwrap_or(1.0));
     let failed = decision_screen(f, r.bounds.as_deref());
     let pass: Vec<usize> = (0..failed.len()).filter(|&i| failed[i].is_empty()).collect();
     let ds = decision_scores(&frame_rows(f, &pass), Some(&w), normalize, &r.overrides)?;
     let labels = decision_scores(f, Some(&w), normalize, &r.overrides)?.labels;
     let n = pass.len();
     let eff = &ds.effective;
-    let total: Vec<f64> = (0..n).map(|i| (0..criteria.len()).fold(0.0, |s, j| s + eff[j][i] * w[j])).collect();
+    let total: Vec<f64> = Vec::from_fn(n, |i| (0..criteria.len()).fold(0.0, |s, j| s + eff[j][i] * w[j]));
     let win = ds.scores.iter().enumerate().fold(0, |b, (i, &v)| if v > ds.scores[b] { i } else { b });
 
-    let rows: Vec<(f64, Option<Flip>, Option<Flip>)> = (0..criteria.len())
-        .map(|j| {
-            let (mut below, mut above): (Option<Flip>, Option<Flip>) = (None, None);
-            if n > 1 {
-                let a: Vec<f64> = total.iter().enumerate().map(|(i, v)| v - eff[j][i] * w[j]).collect();
-                let lo = if w[j] > 0.0 { 0.0 } else { f64::NEG_INFINITY };
-                let hi = if w[j] < 0.0 { 0.0 } else { f64::INFINITY };
-                for i in 0..n {
-                    if i == win {
-                        continue;
-                    }
-                    let de = eff[j][i] - eff[j][win];
-                    if de.abs() < 1e-12 {
-                        continue;
-                    }
-                    let t = (a[win] - a[i]) / de;
-                    let at_zero = t.abs() < 1e-9 && w[j] != 0.0;
-                    if de > 0.0 && t <= hi && !at_zero && above.is_none_or(|x| t < x.t) {
-                        above = Some(Flip { t: nan_max(t, w[j]), who: i });
-                    }
-                    if de < 0.0 && t >= lo && !at_zero && below.is_none_or(|x| t > x.t) {
-                        below = Some(Flip { t: nan_min(t, w[j]), who: i });
-                    }
+    let rows: Vec<(f64, Option<Flip>, Option<Flip>)> = Vec::from_fn(criteria.len(), |j| {
+        let (mut below, mut above): (Option<Flip>, Option<Flip>) = (None, None);
+        if n > 1 {
+            let a: Vec<f64> = total.iter().enumerate().map(|(i, v)| v - eff[j][i] * w[j]).collect();
+            let lo = if w[j] > 0.0 { 0.0 } else { f64::NEG_INFINITY };
+            let hi = if w[j] < 0.0 { 0.0 } else { f64::INFINITY };
+            for i in 0..n {
+                if i == win {
+                    continue;
+                }
+                let de = eff[j][i] - eff[j][win];
+                if de.abs() < 1e-12 {
+                    continue;
+                }
+                let t = (a[win] - a[i]) / de;
+                let at_zero = t.abs() < 1e-9 && w[j] != 0.0;
+                if de > 0.0 && t <= hi && !at_zero && above.is_none_or(|x| t < x.t) {
+                    above = Some(Flip { t: nan_max(t, w[j]), who: i });
+                }
+                if de < 0.0 && t >= lo && !at_zero && below.is_none_or(|x| t > x.t) {
+                    below = Some(Flip { t: nan_min(t, w[j]), who: i });
                 }
             }
-            (w[j], below, above)
-        })
-        .collect();
+        }
+        (w[j], below, above)
+    });
     let nearer = |below: Option<Flip>, above: Option<Flip>| -> Option<Flip> {
         let mut xs: Vec<Flip> = [below, above].into_iter().flatten().collect();
         sort_by_num(&mut xs, |a, b| a.t.abs() - b.t.abs());
@@ -627,7 +623,7 @@ fn allocate_budget(mins: &[f64], maxs: &[f64], weights: &[f64], budget: f64) -> 
     }
     let w = read_weights(weights);
     let at = |lambda: f64| -> Vec<f64> {
-        (0..n).map(|i| if w[i] > 0.0 { clamp_range(lambda * w[i], mins[i], maxs[i]) } else { mins[i] }).collect()
+        Vec::from_fn(n, |i| if w[i] > 0.0 { clamp_range(lambda * w[i], mins[i], maxs[i]) } else { mins[i] })
     };
     // `[...new Set(…)]`: SameValueZero, first seen kept.
     let mut seen = std::collections::HashSet::new();
@@ -719,7 +715,7 @@ fn allocate_proportional(mins: &[f64], maxs: &[f64], weights: &[f64]) -> Vec<f64
             k = nan_max(k, mins[i] / w[i]);
         }
     }
-    (0..mins.len()).map(|i| clamp_range(if w[i] > 0.0 { k * w[i] } else { mins[i] }, mins[i], maxs[i])).collect()
+    Vec::from_fn(mins.len(), |i| clamp_range(if w[i] > 0.0 { k * w[i] } else { mins[i] }, mins[i], maxs[i]))
 }
 
 /// None for a mode it doesn't know.
@@ -768,8 +764,8 @@ fn allocate_inner(f: &FrameValue, mode: &str, amount: f64) -> Res<FrameValue> {
             Some(v) => v.clone(),
         });
     }
-    let lo: Vec<f64> = (0..rows).map(|i| nan_min(mins[i], maxs[i])).collect();
-    let hi: Vec<f64> = (0..rows).map(|i| nan_max(maxs[i], mins[i])).collect();
+    let lo: Vec<f64> = Vec::from_fn(rows, |i| nan_min(mins[i], maxs[i]));
+    let hi: Vec<f64> = Vec::from_fn(rows, |i| nan_max(maxs[i], mins[i]));
     let alloc = match mode {
         "budget" => allocate_budget(&lo, &hi, &weights, amount),
         "minTarget" => allocate_min_target(&lo, &hi, &weights, amount)?,

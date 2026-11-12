@@ -74,7 +74,7 @@ fn join_side(v: &Cv, tag: &str) -> Result<(Rc<FrameValue>, Vec<CubeColumn>), V> 
         flat.columns.push(Column {
             name: tag.to_string(),
             ty: FrameColType::Number,
-            values: (0..rows).map(|i| V::Num(i as f64)).collect(),
+            values: Vec::from_fn(rows, |i| V::Num(i as f64)),
             unit: None,
             format: None,
             raw: None,
@@ -501,16 +501,12 @@ fn combine_filter(f: &Frame, exclude: &Map<String, Json>, wired: &V) -> Option<V
     if active.is_empty() {
         return wired.map(|items| items.iter().map(|v| if let V::Bool(b) = v { Some(*b) } else { None }).collect());
     }
-    Some(
-        (0..row_count(f))
-            .map(|i| {
-                let hidden = active.iter().any(|(ks, col)| {
-                    col.is_some_and(|k| ks.contains(&pivot_cell_key(k.values.get(i).unwrap_or(&V::Null))))
-                });
-                Some(!hidden && wired.is_none_or(|w| matches!(w.get(i), Some(V::Bool(true)))))
-            })
-            .collect(),
-    )
+    Some(Vec::from_fn(row_count(f), |i| {
+        let hidden = active
+            .iter()
+            .any(|(ks, col)| col.is_some_and(|k| ks.contains(&pivot_cell_key(k.values.get(i).unwrap_or(&V::Null)))));
+        Some(!hidden && wired.is_none_or(|w| matches!(w.get(i), Some(V::Bool(true)))))
+    }))
 }
 
 /// The cube's flat columns, cells in one unit read in it.

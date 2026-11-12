@@ -101,21 +101,19 @@ fn edit_frame(c: &mut Call) -> Answer {
         }
     }
     let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0);
-    let keys: Vec<String> = (0..rows)
-        .map(|r| {
-            if key_cols.is_empty() {
-                return (r + 1).to_string();
-            }
-            let parts: Vec<String> = key_cols
-                .iter()
-                .map(|&i| {
-                    let col = &f.columns[i];
-                    cell_text(col, col.values.get(r).unwrap_or(&V::Null))
-                })
-                .collect();
-            parts.join(KEY_JOIN)
-        })
-        .collect();
+    let keys: Vec<String> = Vec::from_fn(rows, |r| {
+        if key_cols.is_empty() {
+            return (r + 1).to_string();
+        }
+        let parts: Vec<String> = key_cols
+            .iter()
+            .map(|&i| {
+                let col = &f.columns[i];
+                cell_text(col, col.values.get(r).unwrap_or(&V::Null))
+            })
+            .collect();
+        parts.join(KEY_JOIN)
+    });
     let mut by_key: HashMap<&str, Vec<usize>> = HashMap::new();
     for (r, k) in keys.iter().enumerate() {
         by_key.entry(k.as_str()).or_default().push(r);

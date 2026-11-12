@@ -65,7 +65,7 @@ impl Rows {
     }
 
     pub fn to_vecs(&self) -> Vec<Vec<String>> {
-        (0..self.len()).map(|i| self.row(i).map(String::from).collect()).collect()
+        Vec::from_fn(self.len(), |i| self.row(i).map(String::from).collect())
     }
 
     /// Drops every row of blank fields (`skipEmptyLines: "greedy"`).

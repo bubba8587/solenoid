@@ -450,7 +450,7 @@ pub fn serialize_lambda<S: serde::Serializer>(l: &crate::eval::LambdaV, s: S) ->
         fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             let Body(l, src, captured) = *self;
             let read: Vec<&V> = captured.iter().map(|n| l.env.get(n).unwrap_or(&V::Undef)).collect();
-            let units: Vec<&V> = (0..captured.len()).map(|i| l.units.get(i).unwrap_or(read[i])).collect();
+            let units: Vec<&V> = Vec::from_fn(captured.len(), |i| l.units.get(i).unwrap_or(read[i]));
             let mut m = s.serialize_map(None)?;
             m.serialize_entry("params", &l.params)?;
             m.serialize_entry("expr", src)?;
