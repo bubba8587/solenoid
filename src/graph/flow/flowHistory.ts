@@ -39,6 +39,12 @@ function snapshotOf(g: SavedGraph, prev: Snapshot | undefined): { snap: Snapshot
 
 const fullBytes = (s: Snapshot): number => s.head.length * 2 + s.nodes.reduce((n, j) => n + j.length * 2, 0);
 
+/** The bytes `s` holds beyond `prev`, as `snapshotOf` counts them for a new step. */
+function bytesOver(s: Snapshot, prev: Snapshot | undefined): number {
+  const held = new Set(prev?.nodes);
+  return s.head.length * 2 + s.nodes.reduce((n, j) => (held.has(j) ? n : n + j.length * 2), 0);
+}
+
 const sameSnapshot = (a: Snapshot, b: Snapshot | undefined): boolean =>
   !!b && a.head === b.head && a.nodes.length === b.nodes.length && a.nodes.every((j, i) => j === b.nodes[i]);
 
@@ -70,8 +76,8 @@ async function restore(entry: Entry): Promise<void> {
     // The step becomes the canvas as it landed (a measure re-stamped, a settled type, a dead reference a load drops),
     // so the next record compares with what is there and an untouched canvas records nothing, which would cut the redo tail.
     if (landed) {
-      const c = snapshotOf(landed, snap);
-      entry.snap = c.snap;
+      entry.snap = snapshotOf(landed, snap).snap;
+      entry.ownBytes = bytesOver(entry.snap, _stack[_stack.indexOf(entry) - 1]?.snap);
       _topGraph = landed;
     } else _topGraph = null;
     if (perfEnabled()) console.log(`[perf] undo total=${(performance.now() - t0).toFixed(1)}ms${applied ? "" : " (whole load)"}`);

@@ -2,6 +2,8 @@
 // A run of edits a person might make, each made live and captured as the history captures it, then undone step by
 // step and redone again by delta: every step lands the save and the answers the canvas had when it was captured.
 // Stress it with more steps and other draws: STEPS=25 SALT=3 npx vitest run tests/graph/graphDeltaChain.test.ts The edits are drawn from a fixed seed per example, so a failure reproduces.
+// Known at 20 steps (pack-fluids, SALT=1 and 6): a list of errors alone keeps the type its output last carried ([[D117]]
+// emptyKeepsLastType), which no save holds, so Frame from Lists types that column Number live and Text after an undo or a reload.
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -13,6 +15,7 @@ import { nodeNameStore } from "../../src/graph/nodeNameStore";
 import { serializeGraph, loadGraph, type SavedGraph } from "../../src/graph/persistence";
 import { applyGraphDelta } from "../../src/graph/graphDelta";
 import { sameLanding } from "../../src/graph/flow/flowHistoryDigest";
+import { readFrame } from "../../src/graph/frameBackend";
 import { SEEDS } from "../../src/graph/seeds";
 
 const STEPS = Number(process.env.STEPS ?? 6);
@@ -56,14 +59,17 @@ function rng(seed: number): () => number {
   };
 }
 
-function answers(): Record<string, string> {
+/** Every output as the last pass landed it, comparable across loads: a lazy frame read whole (its handle is new on
+ *  every run) and a card's per-load id (an error's origin) written as its name. */
+async function answers(): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
+  const named = (text: string) => text.replace(/\b[0-9a-f]{16}\b/g, (id) => nodeNameStore.get(id) ?? id);
   for (const n of editor.getNodes()) {
     const name = nodeNameStore.get(n.id) ?? n.id;
     for (const key of Object.keys(n.outputs)) {
       let v: unknown;
-      try { v = engine.landed(n.id, key); } catch { v = "<unreadable>"; }
-      out[`${name}.${key}`] = JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? String(x) : x)) ?? "undefined";
+      try { v = await readFrame(engine.landed(n.id, key)); } catch { v = "<unreadable>"; }
+      out[`${name}.${key}`] = named(JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? String(x) : x)) ?? "undefined");
     }
   }
   return out;
@@ -71,7 +77,7 @@ function answers(): Record<string, string> {
 
 async function whole(g: SavedGraph): Promise<{ save: SavedGraph; answers: Record<string, string> }> {
   expect(await loadGraph(structuredClone(g), { curtain: false })).toBe(true);
-  return { save: serializeGraph()!, answers: answers() };
+  return { save: serializeGraph()!, answers: await answers() };
 }
 
 const asStep = (g: SavedGraph): SavedGraph => { const { nodes, ...head } = structuredClone(g); return { ...head, nodes }; };
@@ -170,13 +176,13 @@ describe("a run of edits undone and redone by delta", () => {
         const s = step(chain[i].save, r, cut);
         whats.push(s.what);
         if (!(await applyGraphDelta(asStep(s.save)))) await loadGraph(structuredClone(s.save), { curtain: false });
-        chain.push({ save: serializeGraph()!, answers: answers() });
+        chain.push({ save: serializeGraph()!, answers: await answers() });
       }
       const land = async (k: number, dir: string) => {
         const why = `${dir} to step ${k} (${whats.join("; ")})`;
         expect(await applyGraphDelta(asStep(chain[k].save)), why).not.toBeNull();
         expect(sameLanding(serializeGraph()!, chain[k].save), why).toBe(true);
-        if (steady) expect(answers(), why).toEqual(chain[k].answers);
+        if (steady) expect(await answers(), why).toEqual(chain[k].answers);
       };
       for (let k = STEPS - 1; k >= 0; k--) await land(k, "undo");
       for (let k = 1; k <= STEPS; k++) await land(k, "redo");

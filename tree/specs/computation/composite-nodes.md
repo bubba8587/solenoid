@@ -400,7 +400,7 @@ Tests:
 5. Inside the surface's edit scope (`editScopeFor`: the main canvas's rebuild gate, or an open drill-in's own): remove all three sets of cables from the outer editor; move each member instance (not a copy) from the outer editor into the new composite's internal editor, recording its position relative to the origin in `internalPositions`; re-add the internal cables inside. A member keeps its id, so its store entries (size, pins, comments, frame formats, and a standoff to another member) stay with it; a standoff between a member and a card left outside is removed, since a standoff binds two cards on one canvas ([[standoffs]]).
 6. For each incoming cable, separately: create a `CompositeInputNode` labeled `<target label or class name> · <target input label or key>`, add it, cable it to the member's input, place it 220 left of the member, add an exposed basic input port on it, and cable the outer source to that port on the card. Two cables into the selection give two ports even from one source.
 7. For each outgoing cable, separately: create a `CompositeOutputNode` labeled `<source label or class name> · <source output label or key>`, cable the member's output to it, place it 80 right of the member's right edge (member width, or 220 when unknown), add an output port, and cable that port to the outer target. One member output feeding two outer targets gives two ports.
-8. Settle internal types, add the composite to the outer editor, and move it to the origin. Close the scope and run its settle once (`bulkSettle()` on the main canvas, a full pass).
+8. Settle internal types, add the composite to the outer editor, and move it to the origin. Close the scope and run its settle once: on the main canvas a pass over the new card and every card whose input cables changed, with what they feed (`changedReach`, `editReach.ts`), every other card keeping its cache; in a drill-in, that level's own settle.
 
 The new composite is labeled `Composite`, in `single` mode, and returns its id. A group that held a wrapped card holds the composite in its place (the first such group, as a card sits in one), and Unpack hands the composite's group its cards back (`swapMembers`), with group tints rebuilt after either.
 
@@ -416,11 +416,11 @@ Tests: `compositeLogic.test.ts`: nothing selected returns null; a mixed selectio
 4. Re-add every internal cable that touches no marker.
 5. Collapse each input port: for every outer cable into the port and every internal cable out of its marker, add one cable from the outer source to the internal target.
 6. Collapse each output port: the internal cable into its marker, joined to each outer cable out of the port.
-7. Remove the card, close the scope, and run its settle once.
+7. Remove the card, close the scope, and run its settle once, on the main canvas over the cards that came out and the cards whose input cables changed, as making one does.
 
 Any re-added cable the editor refuses is dropped silently. What only the boundary held is gone after unpack: marker seeds, port defaults, Monte Carlo spreads, the run mode and its config. An unwired input that relied on a seed arrives unwired.
 
-Tests: `compositeLogic.test.ts`: unpack restores the nodes, wiring and computation, and is a no-op on a card that is no composite.
+Tests: `compositeLogic.test.ts`: unpack restores the nodes, wiring and computation, and is a no-op on a card that is no composite. `graphEditReach.test.ts`: on every example, after a run of wraps, unpacks, deletes and cut cables, each card's answer is the one a whole pass from empty caches gives.
 
 ## Save and load
 
