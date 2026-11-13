@@ -162,6 +162,11 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
   border: 2px solid var(--box-border);
   background: linear-gradient(var(--box-fill), var(--box-fill)), var(--surface);
 }
+/* A chart keeps a neutral ground under a tint: its own colors are its meaning, and a wash shifts every one of them. The
+   color stays on the header and the border. */
+.dashboard-box--tinted:has(.solenoid-ref-chartbody) {
+  background: var(--surface);
+}
 .dashboard-box--tinted .dashboard-box__label {
   min-height: 30px;
   padding: 0 6px 0 12px;

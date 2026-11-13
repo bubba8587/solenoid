@@ -492,7 +492,7 @@ A ⋯ menu on each label, shown on hover (always on a touch screen), rendered ou
 | Expand, Back to Board | Shows the box alone across the board; Back to Board (the same item there), Esc, the header's back button or a double-click on the label returns. A double-click on a label also expands. |
 | Show on Canvas | Closes the board and flies to the node feeding the box. |
 | Show as Cards / Table | On a box holding a Frame: the Table popup's Cards view, laid out as a grid across the box (`boxViews`). |
-| Color swatches, No Color | Tints the box as a Group is colored: a solid header bar in the palette slot's color with contrast ink, a 2 px border (darkened in light mode) and the Group's body wash, 8% dark and 14% light (`boxColors`, name → slot). |
+| Color swatches, No Color | Tints the box as a Group is colored: a solid header bar in the palette slot's color with contrast ink, a 2 px border (darkened in light mode) and the Group's body wash, 8% dark and 14% light (`boxColors`, name → slot). A box holding a chart (a KPI card, a gauge and a Record or Cards figure among them) keeps a neutral body: the wash would shift every color the chart means something by. |
 | Rename | Edits the name in the label; Enter or a click away commits, Esc cancels. Refused when blank, another box's name ignoring case, or holding the grammar's marks (`\|`, `*`, `:`, a leading `#`, a lone `.`). |
 | Remove | Writes the layout without the box. |
 
