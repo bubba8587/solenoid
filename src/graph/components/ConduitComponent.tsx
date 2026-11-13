@@ -192,9 +192,15 @@ export function ConduitComponent({ data }: Props) {
     return () => { if (el) el.style.zIndex = ""; };
   }, [node.id]);
 
-  // Not during a load: this mount effect fires mid-addNode, before the graph is built, and the rebuild's own final pass
-  // recomputes anyway. A lane count moves only this Conduit's sockets, so its reach recomputes.
-  useEffect(() => { if (isGraphRebuilding()) return; void processEdited(node.id, [], { topology: true }); }, [realLanes]);
+  // A lane count moves only this Conduit's sockets, so its reach recomputes. Not when the Conduit appears: whatever
+  // placed it (Insert Conduit, Extend, the Add menu, a paste, a load or an undo) runs its own pass over it.
+  const lanesSeen = useRef(realLanes);
+  useEffect(() => {
+    if (lanesSeen.current === realLanes) return;
+    lanesSeen.current = realLanes;
+    if (isGraphRebuilding()) return;
+    void processEdited(node.id, [], { topology: true });
+  }, [realLanes]);
 
   const extendToNewConduit = async () => {
     const editor = getOwningEditor(node.id);
