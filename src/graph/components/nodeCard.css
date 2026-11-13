@@ -738,7 +738,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 /* The label column: every labeled input row's field starts at one x, the card's widest label (`--io-label-w`,
    NodeCard measures it), capped so the field keeps 60px, room for six digits or a short word. A label past the cap
    wraps onto a second, balanced line rather than squeezing its field. Same selector as NodeCard's IO_LABEL_COLUMN. */
-.solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero):not([data-io-fit]) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child) {
+.solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero):not(.solenoid-node__io-row--phrase):not([data-io-fit]) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child) {
   flex: 0 0 auto;
   min-width: min(var(--io-label-w, 0px), 100% - 72px);
   max-width: calc(100% - 72px);

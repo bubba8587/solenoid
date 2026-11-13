@@ -33,7 +33,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
 
   return (
     <NodeShell node={node} emit={emit}>
-      <div className="solenoid-node__io-row solenoid-lambda__params-row">
+      <div className="solenoid-node__io-row solenoid-node__io-row--phrase solenoid-lambda__params-row">
         <span className="solenoid-node__io-label">λ(</span>
         <input
           className="solenoid-node__inline-input solenoid-lambda__params sol-placeholder-example"

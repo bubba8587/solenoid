@@ -107,6 +107,11 @@
   max-width: 100%;
   text-align: left;
 }
+/* A phrase, not a labeled field: the box hugs its brackets, out of the label column's spacing and floor. */
+.solenoid-node__io-row--phrase > .solenoid-node__io-label + .solenoid-lambda__params {
+  margin-left: 0;
+  min-width: 0;
+}
 
 .solenoid-lambda__hint {
   padding: 0 8px 3px;
