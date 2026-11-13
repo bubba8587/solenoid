@@ -123,7 +123,7 @@ describe("Pivot on a lazy upstream reads only its field columns", () => {
     p.stringLiterals.values = "A";
     const { out } = await chain([source(), new DistinctNode(), p]);
     const frame = (out as { frame: { columns: { name: string; values: unknown[] }[] } }).frame;
-    expect(frame.columns.map((c) => c.name)).toEqual(["B", "A"]);
+    expect(frame.columns.map((c) => c.name)).toEqual(["B", "Sum of A"]);
     expect(frame.columns[0].values).toEqual([0, 1]);
     expect(frame.columns[1].values).toEqual([75 * 75, 75 * 76]);
     expect(frameStats().collects).toBe(0);

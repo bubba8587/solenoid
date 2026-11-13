@@ -33,6 +33,6 @@ describe("a pivot field's filter values", () => {
     expect(id.distinct.length).toBe(10_000);
     expect(id.distinct[0]).toBe("1");
     expect(id.distinctTotal).toBe(n);
-    expect(out.columns.find((c) => c.name === "X")!.values).toEqual([n - 5000]);
+    expect(out.columns.find((c) => c.name === "Sum of X")!.values).toEqual([n - 5000]);
   });
 });

@@ -284,7 +284,7 @@ describe("pivotFrame — Excel PIVOTBY parity", () => {
 
   it("grand total RE-AGGREGATES the source (AVERAGE total ≠ average of cell averages)", () => {
     const out = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty"], funcs: ["avg"], rowTotalDepth: 1 });
-    const qty = col(out, "qty") as number[];
+    const qty = col(out, "Average of qty") as number[];
     expect(qty[0]).toBeCloseTo(35 / 3); // East avg of 10,20,5
     expect(qty[1]).toBeCloseTo(7.5);    // West avg of 7,8
     expect(qty[2]).toBe(10);            // grand = 50/5, NOT (35/3 + 7.5)/2 ≈ 9.583
@@ -295,28 +295,28 @@ describe("pivotFrame — Excel PIVOTBY parity", () => {
     const out = pivotFrame(sales, { rowFields: ["region", "product"], colFields: [], values: ["qty"], funcs: ["sum"], rowTotalDepth: 2 });
     expect(col(out, "region")).toEqual(["East", "East", "East", "West", "West", "West", "Grand Total"]);
     expect(col(out, "product")).toEqual(["A", "B", "Total", "A", "B", "Total", null]);
-    expect(col(out, "qty")).toEqual([30, 5, 35, 7, 8, 15, 50]);
+    expect(col(out, "Sum of qty")).toEqual([30, 5, 35, 7, 8, 15, 50]);
   });
 
   it("negative depth places the grand total at the top", () => {
     const out = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty"], funcs: ["sum"], rowTotalDepth: -1 });
     expect(col(out, "region")).toEqual(["Grand Total", "East", "West"]);
-    expect(col(out, "qty")).toEqual([50, 35, 15]);
+    expect(col(out, "Sum of qty")).toEqual([50, 35, 15]);
   });
 
   it("subtotals at top (depth -2): grand then each group's subtotal above its rows", () => {
     const out = pivotFrame(sales, { rowFields: ["region", "product"], colFields: [], values: ["qty"], funcs: ["sum"], rowTotalDepth: -2 });
     expect(col(out, "region")).toEqual(["Grand Total", "East", "East", "East", "West", "West", "West"]);
     expect(col(out, "product")).toEqual([null, "Total", "A", "B", "Total", "A", "B"]);
-    expect(col(out, "qty")).toEqual([50, 35, 30, 5, 15, 7, 8]);
+    expect(col(out, "Sum of qty")).toEqual([50, 35, 30, 5, 15, 7, 8]);
   });
 
   it("per-value functions: one function per value column", () => {
     const out = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty", "price"], funcs: ["sum", "avg"] });
-    expect(out.columns.map((c) => c.name)).toEqual(["region", "qty", "price"]);
-    expect(col(out, "qty")).toEqual([35, 15]);
-    expect((col(out, "price") as number[])[0]).toBeCloseTo(350 / 3);
-    expect((col(out, "price") as number[])[1]).toBeCloseTo(75);
+    expect(out.columns.map((c) => c.name)).toEqual(["region", "Sum of qty", "Average of price"]);
+    expect(col(out, "Sum of qty")).toEqual([35, 15]);
+    expect((col(out, "Average of price") as number[])[0]).toBeCloseTo(350 / 3);
+    expect((col(out, "Average of price") as number[])[1]).toBeCloseTo(75);
   });
 
   it("a grand total COLUMN re-aggregates across column groups", () => {
@@ -329,7 +329,7 @@ describe("pivotFrame — Excel PIVOTBY parity", () => {
     // ascending by qty (index = rowFields(1) + values(1) = 2): West(15) before East(35)
     const out = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty"], funcs: ["sum"], rowSort: 2 });
     expect(col(out, "region")).toEqual(["West", "East"]);
-    expect(col(out, "qty")).toEqual([15, 35]);
+    expect(col(out, "Sum of qty")).toEqual([15, 35]);
   });
 
   it("field-based sort orders a header level descending", () => {
@@ -341,31 +341,31 @@ describe("pivotFrame — Excel PIVOTBY parity", () => {
     // keep only rows 0,1,2 (the East rows)
     const out = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty"], funcs: ["sum"], filter: [true, true, true, false, false] });
     expect(col(out, "region")).toEqual(["East"]);
-    expect(col(out, "qty")).toEqual([35]);
+    expect(col(out, "Sum of qty")).toEqual([35]);
   });
 
   it("PERCENTOF — % of column total (relativeTo 0)", () => {
     const out = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty"], funcs: ["percentof"], relativeTo: 0 });
-    const qty = col(out, "qty") as number[];
+    const qty = col(out, "Share of qty") as number[];
     expect(qty[0]).toBeCloseTo(35 / 50); // East share of the single column's total
     expect(qty[1]).toBeCloseTo(15 / 50);
   });
 
   it("expanded function set: median, product, stdevp", () => {
     const m = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty"], funcs: ["median"] });
-    expect(col(m, "qty")).toEqual([10, 7.5]); // East median(10,20,5)=10, West median(7,8)=7.5
+    expect(col(m, "Median of qty")).toEqual([10, 7.5]); // East median(10,20,5)=10, West median(7,8)=7.5
     const p = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty"], funcs: ["product"] });
-    expect(col(p, "qty")).toEqual([1000, 56]); // East 10*20*5, West 7*8
+    expect(col(p, "Product of qty")).toEqual([1000, 56]); // East 10*20*5, West 7*8
     const s = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty"], funcs: ["stdevp"] });
-    expect((col(s, "qty") as number[])[1]).toBeCloseTo(0.5); // pop stdev of 7,8
+    expect((col(s, "StdDevp of qty") as number[])[1]).toBeCloseTo(0.5); // pop stdev of 7,8
   });
 
   it("multi-level column headers flatten to composite names", () => {
     const out = pivotFrame(sales, { rowFields: ["region"], colFields: ["product"], values: ["qty", "price"], funcs: ["sum", "sum"] });
-    // colGroup × value → "A | qty", "A | price", "B | qty", "B | price"
-    expect(out.columns.map((c) => c.name)).toEqual(["region", "A | qty", "A | price", "B | qty", "B | price"]);
-    expect(col(out, "A | qty")).toEqual([30, 7]);
-    expect(col(out, "A | price")).toEqual([300, 70]);
+    // colGroup × value → "A | Sum of qty", "A | Sum of price", "B | Sum of qty", "B | Sum of price"
+    expect(out.columns.map((c) => c.name)).toEqual(["region", "A | Sum of qty", "A | Sum of price", "B | Sum of qty", "B | Sum of price"]);
+    expect(col(out, "A | Sum of qty")).toEqual([30, 7]);
+    expect(col(out, "A | Sum of price")).toEqual([300, 70]);
   });
 });
 

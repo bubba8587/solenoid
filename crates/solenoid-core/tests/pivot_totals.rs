@@ -81,12 +81,12 @@ fn subtotals_and_several_values_name_their_totals() {
     assert_eq!(col(&split.plain, "Rep"), ["Ann", "Bo", "Cy"]);
     assert!(!names(&split.plain).iter().any(|n| n.contains("Grand Total")));
 
-    assert_eq!(names(&split.row_totals), ["Region", "Rep", "Grand Total | Sales", "Grand Total | Units"]);
-    assert_eq!(col(&split.row_totals, "Grand Total | Sales"), ["5", "2", "24"]);
+    assert_eq!(names(&split.row_totals), ["Region", "Rep", "Grand Total | Sum of Sales", "Grand Total | Sum of Units"]);
+    assert_eq!(col(&split.row_totals, "Grand Total | Sum of Sales"), ["5", "2", "24"]);
 
     // A row per leaf column item, its value named; a column per total row, subtotals first as the rows come.
     assert_eq!(names(&split.col_totals), ["Month", "Value", "East | Total", "West | Total", "Grand Total"]);
-    assert_eq!(col(&split.col_totals, "Value"), ["Sales", "Units", "Sales", "Units"]);
+    assert_eq!(col(&split.col_totals, "Value"), ["Sum of Sales", "Sum of Units", "Sum of Sales", "Sum of Units"]);
     assert_eq!(col(&split.col_totals, "East | Total"), ["6", "60", "1", "10"]);
     assert_eq!(col(&split.col_totals, "Grand Total"), ["22", "220", "9", "90"]);
 }

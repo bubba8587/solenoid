@@ -69,12 +69,12 @@ describe("pivot-tables seed", () => {
     // p2 — Revenue by Rep, sorted high→low by the measure, with grand total.
     const p2 = await frameOf("p2");
     expect(col(p2, "Rep")).toEqual(["Bo", "Cy", "Ada", "Di", "Grand Total"]);
-    expect(col(p2, "Revenue")).toEqual([14975, 13425, 13275, 11175, 52850]);
+    expect(col(p2, "Sum of Revenue")).toEqual([14975, 13425, 13275, 11175, 52850]);
 
     // p3 — per-value functions: SUM(Units) and AVERAGE(Price) by Category.
     const p3 = await frameOf("p3");
-    expect(col(p3, "Units")).toEqual([62, 60, 154]);
-    expect(col(p3, "Price")).toEqual([500, 300, 25]);
+    expect(col(p3, "Sum of Units")).toEqual([62, 60, 154]);
+    expect(col(p3, "Average of Price")).toEqual([500, 300, 25]);
 
     // p4 — Region × Month, the months as text in character-code order + col total.
     const p4 = await frameOf("p4");
@@ -84,12 +84,12 @@ describe("pivot-tables seed", () => {
 
     // p5 — PERCENTOF (% of grand total) by Region.
     const p5 = await frameOf("p5");
-    expect((col(p5, "Revenue")[north(p5)] as number)).toBeCloseTo(10675 / 52850);
-    expect((col(p5, "Revenue") as number[]).reduce((a, b) => a + b, 0)).toBeCloseTo(1);
+    expect((col(p5, "Share of Revenue")[north(p5)] as number)).toBeCloseTo(10675 / 52850);
+    expect((col(p5, "Share of Revenue") as number[]).reduce((a, b) => a + b, 0)).toBeCloseTo(1);
 
     // p6 — multi-level rows with subtotals (region subtotal + grand total).
     const p6 = await frameOf("p6");
-    const reg6 = col(p6, "Region"), prod6 = col(p6, "Category"), rev6 = col(p6, "Revenue");
+    const reg6 = col(p6, "Region"), prod6 = col(p6, "Category"), rev6 = col(p6, "Sum of Revenue");
     // East group, first now: 3 leaf rows then a "Total" subtotal of 17850.
     expect(prod6[3]).toBe("Total");
     expect(rev6[3]).toBe(17850);
@@ -107,8 +107,8 @@ describe("pivot-tables seed", () => {
     // p8 — MEDIAN(Revenue) and MAX(Units) per Rep (expanded function set).
     const p8 = await frameOf("p8");
     expect(col(p8, "Rep")).toEqual(["Ada", "Bo", "Cy", "Di"]);
-    expect(col(p8, "Revenue")[0]).toBe(1500); // Ada median revenue
-    expect(col(p8, "Units")[0]).toBe(16);     // Ada max units
+    expect(col(p8, "Median of Revenue")[0]).toBe(1500); // Ada median revenue
+    expect(col(p8, "Max of Units")[0]).toBe(16);     // Ada max units
 
     // Source reshape (Power Query column ops on the same Orders frame).
     const sp = await frameOf("splitDate");

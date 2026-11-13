@@ -29,7 +29,7 @@ describe("grouped date fields", () => {
     const { out, col } = await pivot(log, ["Years (When)", "Months (When)"]);
     expect(col("Years (When)")).toEqual([2025, 2026, 2026, 2026, null]);
     expect(col("Months (When)")).toEqual([serial("2025-12-01"), serial("2026-01-01"), serial("2026-02-01"), serial("2026-04-01"), null]);
-    expect(col("Amt")).toEqual([5, 31, 30, 40, 50]);
+    expect(col("Sum of Amt")).toEqual([5, 31, 30, 40, 50]);
     const layout = pivotLayoutOf(out)!;
     expect(layout.rowFormats?.[1]).toMatchObject({ format: "date_custom", customPattern: "MMM YYYY" });
   });
@@ -66,7 +66,7 @@ describe("grouped date fields", () => {
   it("reads the date column off a lazy input", async () => {
     const { col } = await pivot(lazy(log), ["Quarters (When)"]);
     expect(col("Quarters (When)")).toEqual(["2025 Q4", "2026 Q1", "2026 Q2", null]);
-    expect(col("Amt")).toEqual([5, 61, 40, 50]);
+    expect(col("Sum of Amt")).toEqual([5, 61, 40, 50]);
   });
 });
 

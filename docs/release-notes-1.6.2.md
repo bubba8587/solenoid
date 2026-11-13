@@ -20,6 +20,7 @@ Highlights
   - Cards, and a Record's Gallery, Board and List, scroll inside their box.
   - A table runs to its box's edges on its own ground, and a colored box keeps charts and tables on a neutral ground, the color on its header and border.
   - A collapsed Dashboard card ends on a chip that opens the board.
+  - On a colored box, the header's magnifier and the Edit Layout grip take the header's text color.
 - A Display, a Dashboard box and a Report show a Pivot as its Pivot view and a Describe output as its Profile, the way their popups open.
 - Describe's Profile (the view its popup opens on, renamed from Dashboard) is rebuilt: tiles pack with no gaps, each column in its own color, number and date columns get a Min, Median, Mean and Max strip with the median marked on the histogram, and key, constant and empty columns say so.
 - Undo and redo change only what changed. The canvas, the camera and every untouched card stay as they are, and undoing a typed value keeps that card's focus. On the Personal Finance example an undo went from about 2.7 seconds to a third of one.
@@ -33,6 +34,8 @@ Highlights
 - Weather has a Forecast output: a chart of each day's high and low, rain and sky, with today marked, for a Dashboard or a Display. The card shows the next five days.
 - Pivot calculated fields drag among the values in Configure Fields, and out of the pivot without losing their cable. Sort takes a calculated field.
   - A pivot keeps its sort and its calculated fields' places by name, so removing or reordering a field never hands the sort to another one.
+- A Pivot's value columns are headed by their summary, `Sum of Cost` or `Count of Projected Year`, as the Pivot view heads them, so a chart's tooltip or a lookup downstream reads a total or a count for what it is. A formula or chart that named a value column by its plain name needs the new name. GROUPBY keeps the plain name, as Excel's does.
+- Chart colormaps start with — (one color) and Theme palette. With no color column wired, a colormap colors the points in order, so a bubble chart can be colorful with nothing extra wired; a color column still decides when it is.
 - The Chart Builder is shorter: on/off options are checkboxes side by side, and choices nobody wires (grid, colormap, line style, the Gantt's switches) are plain settings with no socket. Schedule, Gantt and Earned Value pick their weekend by name.
 - Card fields line up. Every input field on a card starts at one column, a field too narrow beside its label moves below it, and the long connection cards fold their extras into Options. Equation and TVM are about half as tall.
 

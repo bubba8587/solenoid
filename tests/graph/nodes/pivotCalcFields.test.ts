@@ -60,7 +60,7 @@ describe("PIVOTBY calculated fields", () => {
 
   it("sits beside the ordinary value fields, named in the headers as a value is", () => {
     const { col } = pivot("SUM(Miles) / SUM(Gallons)", "Miles, Gallons", "Miles, Gallons");
-    expect(col("2026-01 | Miles")).toEqual([300, 200, 500]);
+    expect(col("2026-01 | Sum of Miles")).toEqual([300, 200, 500]);
     expect(col("2026-01 | MPG")).toEqual([30, 10, 500 / 30]);
   });
 
@@ -337,10 +337,10 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     }
   });
 
-  it("several fields keep their order; a name a value already has is told apart; blank names and unwired slots", async () => {
+  it("several fields keep their order; one named as a value is told apart by the value's caption; blank names and unwired slots", async () => {
     const two = await run({ values: ["Miles"], calcs: [["Miles", MPG], ["", lambda("Gallons", "SUM(Gallons)")], ["Nothing", undefined]] });
-    expect(two.names).toEqual(["Plate", "Miles", "Miles2", "Calculated 2"]);
-    expect(two.col("Miles2")!.values).toEqual([25, 20, 22]);
+    expect(two.names).toEqual(["Plate", "Sum of Miles", "Miles", "Calculated 2"]);
+    expect(two.col("Miles")!.values).toEqual([25, 20, 22]);
     expect(two.col("Calculated 2")!.values).toEqual([20, 30, 50]);
   });
 
@@ -352,14 +352,14 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
       const out = n.data({ frame: [lazy], rowFields: [["Plate"]], colFields: [[]], values: [["Miles", "Gallons"]], calcFn0: [MPG], calcFn1: [lambda("", "SUM(Gallons) / SUM(Miles)")] }).frame;
       return ((await readFrame(out as FrameInput)) as FrameValue).columns.map((c) => c.name);
     };
-    expect(await order([])).toEqual(["Plate", "Miles", "Gallons", "MPG", "GPM"]);
-    expect(await order([["1", "Miles"], ["0", "Gallons"]])).toEqual(["Plate", "GPM", "Miles", "MPG", "Gallons"]);
-    expect(await order([["0", false]])).toEqual(["Plate", "Miles", "Gallons", "GPM"]);
+    expect(await order([])).toEqual(["Plate", "Sum of Miles", "Sum of Gallons", "MPG", "GPM"]);
+    expect(await order([["1", "Miles"], ["0", "Gallons"]])).toEqual(["Plate", "GPM", "Sum of Miles", "MPG", "Sum of Gallons"]);
+    expect(await order([["0", false]])).toEqual(["Plate", "Sum of Miles", "Sum of Gallons", "GPM"]);
     // Two fields before one value stand in the places' order, the second field first here; so do two after the values.
-    expect(await order([["1", "Gallons"], ["0", "Gallons"]])).toEqual(["Plate", "Miles", "GPM", "MPG", "Gallons"]);
-    expect(await order([["1", null], ["0", null]])).toEqual(["Plate", "Miles", "Gallons", "GPM", "MPG"]);
+    expect(await order([["1", "Gallons"], ["0", "Gallons"]])).toEqual(["Plate", "Sum of Miles", "GPM", "MPG", "Sum of Gallons"]);
+    expect(await order([["1", null], ["0", null]])).toEqual(["Plate", "Sum of Miles", "Sum of Gallons", "GPM", "MPG"]);
     // A place before a value that is away is after the values, and the field is back in its place when the value is.
-    expect(await order([["0", "Cost"]])).toEqual(["Plate", "Miles", "Gallons", "MPG", "GPM"]);
+    expect(await order([["0", "Cost"]])).toEqual(["Plate", "Sum of Miles", "Sum of Gallons", "MPG", "GPM"]);
   });
 
   it("the Values zone's order turns into places by name and back", () => {
@@ -382,7 +382,7 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     expect(layout.values).toEqual(["MPG", "Miles"]);
     expect(layout.funcs).toEqual(["calc", "sum"]);
     // Each column's header ends in the value the layout names for it, so a caption or a menu acts on that field.
-    expect(out.columns.slice(1).map((c) => c.name)).toEqual(["2026-01 | MPG", "2026-01 | Miles", "2026-02 | MPG", "2026-02 | Miles"]);
+    expect(out.columns.slice(1).map((c) => c.name)).toEqual(["2026-01 | MPG", "2026-01 | Sum of Miles", "2026-02 | MPG", "2026-02 | Sum of Miles"]);
     expect(layout.cols.map((co) => layout.values[co.value])).toEqual(["MPG", "Miles", "MPG", "Miles"]);
   });
 
@@ -461,7 +461,7 @@ describe("PIVOTBY calculated fields: what else they read and answer", () => {
     // ABC-123's MPG is 25, XYZ-789's 20; February's 30 and January's 50/3.
     expect(sorted({ by: "calc", name: "0" }).rows).toEqual(["XYZ-789", "ABC-123"]);
     expect(sorted({ by: "calc", name: "0", desc: true }).rows).toEqual(["ABC-123", "XYZ-789"]);
-    expect(sorted(null, { by: "calc", name: "0", desc: true }).cols).toEqual(["2026-02 | Miles", "2026-02 | MPG", "2026-01 | Miles", "2026-01 | MPG"]);
+    expect(sorted(null, { by: "calc", name: "0", desc: true }).cols).toEqual(["2026-02 | Sum of Miles", "2026-02 | MPG", "2026-01 | Sum of Miles", "2026-01 | MPG"]);
   });
 
   it("names every wired field in the layout by id, a wired name and one dragged out of the pivot included", () => {
@@ -539,8 +539,8 @@ describe("the Pivot calculated fields seed", () => {
     expect(r(m["Grand Total"])).toEqual(r([1090 / 39, 475 / 30, 970 / 45, 2535 / 114]));
 
     const b = await table("Beside");
-    expect(b.Miles).toEqual([1090, 475, 970, 2535]);
-    expect(b.Gallons).toEqual([39, 30, 45, 114]);
+    expect(b["Sum of Miles"]).toEqual([1090, 475, 970, 2535]);
+    expect(b["Sum of Gallons"]).toEqual([39, 30, 45, 114]);
     expect(r(b.MPG)).toEqual(r([1090 / 39, 475 / 30, 970 / 45, 2535 / 114]));
 
     // The wrong way: each fill's ratio averaged, so the 60-mile top-up weighs as much as a tank.

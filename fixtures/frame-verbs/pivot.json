@@ -135,7 +135,7 @@
       ]
      },
      {
-      "name": "sales",
+      "name": "Sum of sales",
       "type": "number",
       "values": [
        3,
@@ -247,7 +247,7 @@
       ]
      },
      {
-      "name": "a | w",
+      "name": "a | Sum of w",
       "type": "number",
       "values": [
        2,
@@ -261,7 +261,7 @@
       }
      },
      {
-      "name": "a | d",
+      "name": "a | Varp of d",
       "type": "number",
       "values": [
        0,
@@ -274,7 +274,7 @@
       }
      },
      {
-      "name": "b | w",
+      "name": "b | Sum of w",
       "type": "number",
       "values": [
        4,
@@ -288,7 +288,7 @@
       }
      },
      {
-      "name": "b | d",
+      "name": "b | Varp of d",
       "type": "number",
       "values": [
        0,

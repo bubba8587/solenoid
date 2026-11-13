@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[frame-verbs#pivot]]
-//! A Pivot's value column is headed by its field's name unless another column would answer to the same name: a value
-//! of a row or column field, or a field summarized twice, is headed by its caption instead (`Count of Year`).
+//! A Pivot's summarized value column is headed by its caption (`Sum of Cost`, `Count of Year`); a calculated field keeps
+//! the name it was given.
 
 use serde_json::json;
 use solenoid_core::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
@@ -30,7 +30,7 @@ fn a_value_of_a_row_field_is_headed_by_its_caption() {
     let got = names(
         json!({ "rowFields": ["Projected Year"], "colFields": [], "values": ["Projected Year", "Cost"], "funcs": ["count", "sum"] }),
     );
-    assert_eq!(got, ["Projected Year", "Count of Projected Year", "Cost"]);
+    assert_eq!(got, ["Projected Year", "Count of Projected Year", "Sum of Cost"]);
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn a_field_summarized_twice_heads_both_by_caption() {
 }
 
 #[test]
-fn a_value_no_other_column_shares_keeps_its_field_name() {
+fn a_lone_value_is_headed_by_its_caption_too() {
     let got = names(json!({ "rowFields": ["Projected Year"], "colFields": [], "values": ["Cost"], "funcs": ["sum"] }));
-    assert_eq!(got, ["Projected Year", "Cost"]);
+    assert_eq!(got, ["Projected Year", "Sum of Cost"]);
 }

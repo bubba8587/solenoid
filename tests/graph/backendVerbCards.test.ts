@@ -272,7 +272,7 @@ describe("PIVOTBY beyond the field filter", () => {
     ]);
     const n = pivot({ agg: "count" });
     const out = await n.data({ frame: [cube], rowFields: [["g"]], values: [["v"]] });
-    expect(cols(out.frame as FrameValue)?.v).toEqual([2, 1]);
+    expect(cols(out.frame as FrameValue)?.["Count of v"]).toEqual([2, 1]);
     expect(n.sourceColumns.map((c) => c.name)).toEqual(["g", "v"]);
   });
 

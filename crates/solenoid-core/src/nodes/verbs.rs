@@ -333,10 +333,14 @@ fn group_totals(f: &Cv, keys: &[String], col: &str, agg: &str, depth: f64) -> Cv
         Err(e) => return Cv::V(err(ErrorCode::Error, e.to_string())),
     };
     let core = to_core(&frame);
-    let (out, layout) = match pivot_frame(&core, &spec) {
+    let (mut out, layout) = match pivot_frame(&core, &spec) {
         Ok(r) => r,
         Err(e) => return Cv::V(V::err(e)),
     };
+    // GROUPBY heads its value column with the column's own name, as Excel's does and as it does with no totals.
+    if let Some(last) = out.columns.last_mut() {
+        last.name = col.to_string();
+    }
     let mut answer = from_core(&out);
     for (k, c) in answer.columns.iter_mut().zip(&out.columns) {
         k.unit = c.unit.as_ref().map(|u| u.to_json());

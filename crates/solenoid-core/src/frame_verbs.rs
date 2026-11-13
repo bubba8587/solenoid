@@ -2094,22 +2094,12 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     };
     let named = |v: usize| if v < v_n { value_names[v].clone() } else { calcs[v - v_n].name.clone() };
     let all_values: Vec<String> = Vec::from_fn(v_n + calcs.len(), named);
-    let value_names = &all_values;
-    // A value column is headed by its field's name, unless that name is a row or column field's, or another value's,
-    // when two columns would answer to one name and a reader take the wrong one: it is then headed by its caption,
-    // `Count of Projected Year`, as the Pivot view captions it.
-    let field_names: Vec<&str> = row_fields.iter().chain(&col_fields).map(String::as_str).collect();
+    // A summarized value column is headed by its caption, `Sum of Cost`, as the Pivot view heads it: a group's total
+    // is not one row's Cost, and a count of years is not a year. A calculated field keeps the name it was given.
     let header_names: Vec<String> = (0..all_values.len())
-        .map(|v| {
-            let name = &all_values[v];
-            let clashes =
-                field_names.contains(&name.as_str()) || value_names[..v_n].iter().filter(|n| *n == name).count() > 1;
-            if v < v_n && clashes {
-                format!("{} of {name}", agg_caption(funcs[v]))
-            } else {
-                name.clone()
-            }
-        })
+        .map(
+            |v| if v < v_n { format!("{} of {}", agg_caption(funcs[v]), all_values[v]) } else { all_values[v].clone() },
+        )
         .collect();
     let multi_val = all_values.len() > 1;
     let col_header = |co: &AxisOut, v: usize| -> String {
@@ -2225,7 +2215,7 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         "colFields": col_fields,
         "colTypes": col_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
         "colFormats": col_cols.iter().map(|c| c.format.as_deref().cloned().unwrap_or(Json::Null)).collect::<Vec<_>>(),
-        "values": slots.iter().map(|&v| value_names[v].clone()).collect::<Vec<_>>(),
+        "values": slots.iter().map(|&v| all_values[v].clone()).collect::<Vec<_>>(),
         "funcs": slots.iter().map(|&v| if v < v_n { serde_json::to_value(funcs[v]).unwrap_or(Json::Null) } else { json!("calc") }).collect::<Vec<_>>(),
         "rows": row_out
             .iter()
@@ -2343,7 +2333,12 @@ pub fn split_pivot_totals(src: &FrameValue, full: &FrameValue, layout: &Json) ->
             .iter()
             .map(|&j| {
                 let v = cols[j]["value"].as_u64().unwrap_or(0) as usize;
-                values.get(v).map_or(FrameCell::Null, |n| FrameCell::str(n))
+                // Captioned as the value's own columns are; a calculated field by its name.
+                let func = layout["funcs"].get(v).and_then(|f| serde_json::from_value::<AggOp>(f.clone()).ok());
+                values.get(v).map_or(FrameCell::Null, |n| match func {
+                    Some(op) => FrameCell::str(&format!("{} of {n}", agg_caption(op))),
+                    None => FrameCell::str(n),
+                })
             })
             .collect();
         ct.push(FrameColumn::new("Value", FrameColType::String, cells));
