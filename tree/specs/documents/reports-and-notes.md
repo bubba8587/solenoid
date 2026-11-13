@@ -441,7 +441,7 @@ Every placed name is one `trueany` input named exactly as the layout spells it, 
 
 ### The card
 
-`DashboardNode.tsx`: an Open Dashboard button, the layout field, and one row per name with the Report card's preview. A row whose figure is titled like the row shows the figure's kind instead (`chart`), so no row reads its name twice; this holds on the Report card too. Collapsed, every input converges on one pill.
+`DashboardNode.tsx`: an Open Dashboard button, the layout field, and one row per name with the Report card's preview. A row whose figure is titled like the row shows the figure's kind instead (`chart`), so no row reads its name twice; this holds on the Report card too. Collapsed, every input converges on one pill and the card ends on a Dashboard chip that opens the board (the Document chip's look, `DocumentChip` with its own label and opener), as a collapsed Report ends on its Document chip; the Open Dashboard button is the expanded card's.
 
 ### The board
 

@@ -5,6 +5,7 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { RecordLayoutField } from "./RecordLayoutField";
 import { CardOpenButton } from "./CardOpenButton";
+import { DocumentChip } from "./DocumentChip";
 import { ReportRefRow } from "./ReportNode";
 import { collapseStore } from "../collapseStore";
 import { cableValueStore } from "../cableValueStore";
@@ -30,11 +31,17 @@ export function DashboardComponent({ data, emit }: NodeProps<DashboardNodeType>)
 
   return (
     <NodeShell node={data} emit={emit}>
-      <CardOpenButton label="Open Dashboard" onOpen={() => dashboardStore.open(data.id)} />
       {collapsed ? (
-        <CollapsedInputPill node={data} emit={emit} keys={refKeys} />
+        <>
+          <CollapsedInputPill node={data} emit={emit} keys={refKeys} />
+          {/* As a collapsed Report ends on its Document chip, this one opens the board. */}
+          <div className="solenoid-node__display-value" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+            <DocumentChip size="sm" label="Dashboard" onOpen={() => dashboardStore.open(data.id)} />
+          </div>
+        </>
       ) : (
         <>
+          <CardOpenButton label="Open Dashboard" onOpen={() => dashboardStore.open(data.id)} />
           <RecordLayoutField value={data.layout} onCommit={(next) => void commitDashboardLayout(data, next)} />
           {refKeys.length > 0 && <div className="solenoid-node__section-divider" />}
           {refKeys.map((key) => (
