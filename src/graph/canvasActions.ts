@@ -27,7 +27,7 @@ import { drawnCableStore, commitDrawn } from "./drawnCables";
 import { PUSH_GAP } from "./groupPushCore";
 import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
-import { processGraph, getEditor } from "./process";
+import { processGraph, getEditor, processEdited } from "./process";
 import { cableTargets, changedReach } from "./editReach";
 import { MAIN_EDIT_SCOPE, editScopeFor, type EditScope } from "./activeGraph";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
@@ -396,5 +396,6 @@ export async function attachFormatController(
   const pos = computeDockedCanvasPos(view, container, fc.hostNodeId, fc.socketKey, fc.side, fc.width, fc.height);
   if (pos) await view.moveNode(fc.id, pos);
   await insertFcInline(editor, fc);
-  await processGraph();
+  // Its reach, its host's, and whatever the reconcile on the new wiring moved (the card it now stamps).
+  await processEdited(fc.id, [...(fc.hostNodeId ? [fc.hostNodeId] : []), ...reconcileFcs(editor, null)], { topology: true });
 }

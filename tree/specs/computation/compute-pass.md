@@ -146,7 +146,7 @@ flowchart TD
 
 | Trigger | Call |
 |---|---|
-| A value edit on a card (a committed field, a toggle, a pick, a formula, a row added or removed, an op switch) | `processEdited(node.id, retyped?, { topology? })`: the card's reach, a targeted pass that names it. `retyped` is what the edit's type settle moved (`reconcileTypesAfterEdit` returns it); a card in it outside the edited card's reach makes it the whole pass, every such card named. `topology` when the edit dropped cables, so the loops are found again. `node.edited()` then `processGraph()` stays only where the edit reaches past the card's cables: an FC's or Convert's reconcile (it re-resolves FCs upstream), a Note whose frontmatter retyped a field, a card's name, a Composite's default, a Conduit's lanes. Either way the edit names its node, since a full pass reads only named cards' calls afresh ([[graph-core]] § Direct calls) |
+| A value edit on a card (a committed field, a toggle, a pick, a formula, a row added or removed, an op switch, a name, an FC's or Convert's or Value Input's display pick) | `processEdited(node.id, moved?, { topology? })`: the card's reach, a targeted pass that names it. `moved` is what the edit changed beyond the card: the cards a type settle retyped (`reconcileTypesAfterEdit` returns them) and the FCs, Converts and stamped sources an FC reconcile moved (`reconcileFcs` returns them; an FC's annotation is stamped on the card feeding it, which its other readers see). With any outside the card's reach, the pass is `processChanged` over all of them: each named, its reach reset, one additive pass. `topology` when the edit added or removed cables, so the loops are found again. A Group computes nothing: making one records the change (`notifyGraphChanged`) with no pass |
 | A live cable created or removed (the canvas pipe, outside a rebuild scope) | FC type reconcile, then `processGraph(target, undefined, { topology: true })`, or a full topology pass when the target is gone |
 | A node added live (the Add menu, a catalog placement with its companions) | `processGraph(id, undefined, { topology: true })` |
 | Load or document switch | `processGraph()` at the end of the rebuild, still inside the rebuild scope |
@@ -202,7 +202,7 @@ Tests:
 - `calcModeStore.test.ts`: the mode and dirty-flag transitions, subscribers told on each transition and only then, and the version bumping with each notification.
 - `session.rs` (solenoid-graph): the session's transitions natively ([[graph-core#The session]]).
 - `namedEdits.test.ts`: an edit manual mode holds back is still read on F9's full pass, and every full pass a component asks for names its node first.
-- `processEdited.test.ts`: an edit recomputes its card's reach and no other card; one that retyped a card outside that reach recomputes the whole graph with that card read afresh; landed cards recompute their reaches together.
+- `processEdited.test.ts`: an edit recomputes its card's reach and no other card; a card it moved outside that reach is read afresh with its reach, and still nothing else; landed cards recompute their reaches together. `graphEditReach.test.ts` edits FCs, names and numbers in place on every example and holds each partial pass to a whole one.
 
 ### Only the calc-mode gate skips a pass
 

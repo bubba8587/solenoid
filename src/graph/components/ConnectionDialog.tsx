@@ -5,7 +5,7 @@ import { connectionDialog } from "../connectionDialogStore";
 import { listEndpoints, findEndpoint, type Endpoint } from "../nodeNames";
 import { fuzzyScore } from "../fuzzy";
 import { canConnect, type SocketDataType } from "../sockets";
-import { processGraph } from "../process";
+import { processChanged } from "../process";
 import { getActiveEditor as getEditor } from "../activeGraph";
 import { IS_COARSE } from "../coarse";
 import type { SolenoidConnection } from "../schemes";
@@ -174,6 +174,8 @@ export function ConnectionDialog() {
     const srcNode = editor.getNode(src.nodeId);
     const tgtNode = editor.getNode(tgt.nodeId);
     if (!srcNode || !tgtNode) return;
+    // The cards whose inputs this changes: the new target, and an edited cable's old one.
+    const touched = [tgt.nodeId, ...editor.getConnections().filter((c) => c.id === req?.editId).map((c) => c.target)];
     if (req?.editId) { try { await editor.removeConnection(req.editId); } catch { /* gone */ } }
       // Single-connection inputs: replace whatever is already on the target.
     for (const c of editor.getConnections().filter((c) => c.target === tgt.nodeId && c.targetInput === tgt.socketKey)) {
@@ -183,7 +185,7 @@ export function ConnectionDialog() {
       await editor.addConnection(
         new GraphConnection(srcNode, src.socketKey, tgtNode, tgt.socketKey) as unknown as SolenoidConnection,
       );
-      await processGraph();
+      await processChanged(touched, { topology: true });
     } catch { /* the connectioncreate pipe vetoed it */ }
     connectionDialog.close();
   }

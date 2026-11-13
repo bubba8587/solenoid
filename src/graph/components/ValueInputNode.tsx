@@ -46,11 +46,11 @@ async function applyValueOp(node: ValueInputNodeType, t: ValueInputOp): Promise<
   await processEdited(node.id, [], { topology: true });
 }
 
-/** A display pick changes no value, so it re-resolves every FC (one inheriting from this card) and redraws the whole graph, as the FC's own picks do. */
+/** A display pick changes no value: it re-resolves every FC (one inheriting from this card), and the pass reaches this
+ *  card and each card the reconcile moved, as the FC's own picks do. */
 function applyDisplayPick(node: ValueInputNodeType): void {
   const editor = getOwningEditor(node.id);
-  if (editor) reconcileFcs(editor, null);
-  node.edited(); void processGraph();
+  void processEdited(node.id, editor ? reconcileFcs(editor, null) : []);
 }
 
 export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType>) {

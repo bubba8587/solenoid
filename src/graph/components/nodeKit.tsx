@@ -6,7 +6,7 @@ import { copyText } from "../clipboard";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
 import type { GraphNode, GraphSocket } from "../graphModel";
-import { processGraph, processEdited } from "../process";
+import { processEdited } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { formatCxDisplay, isCx, type Cx } from "../cxValue";
@@ -294,7 +294,7 @@ export function NodeShell({
     node.label ?? "",
     (v) => v,
     (t) => t,
-    (v) => { node.label = v; node.edited(); void processGraph(); },
+    (v) => { node.label = v; void processEdited(node.id); },
   );
   const [editing, setEditing] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);

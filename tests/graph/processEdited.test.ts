@@ -1,6 +1,6 @@
 // [[C23]] calcModes, [[compute-pass#What triggers a pass]]
-// A card edited in place recomputes its own reach (`processEdited`), the whole graph only when the edit retyped a card
-// outside that reach; cards that changed on their own (fetches landing) recompute their reaches together
+// A card edited in place recomputes its own reach (`processEdited`), and the reach of each card the edit moved beyond
+// it; cards that changed on their own (fetches landing) recompute their reaches together
 // (`processChanged`). Each is read through what the cards answer: a card left out of the pass keeps its old answer.
 import { describe, expect, it, vi } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -11,7 +11,7 @@ import { processGraph, processEdited, processChanged, setEditorRefs } from "../.
 import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
 
-/** Two separate chains, a → b and c → d, each a product feeding a sum: a is 2 × 21, c is 3 × 1. */
+/** Three separate chains, a → b, c → d and e → f, each a product feeding a sum: a is 2 × 21, c is 3 × 1, e 4 × 1. */
 async function twoChains() {
   vi.stubGlobal("requestAnimationFrame", () => 0);
   const editor = new GraphEditor<Schemes>();
@@ -21,14 +21,15 @@ async function twoChains() {
   const card = (op: string, literals: Record<string, number>) => { const n = new ArithmeticNode({ op } as never); n.literals = literals; return n; };
   const a = card("mul", { a: 2, b: 21 }), b = card("add", { b: 0 });
   const c = card("mul", { a: 3, b: 1 }), d = card("add", { b: 0 });
-  for (const n of [a, b, c, d]) await editor.addNode(n as unknown as Schemes["Node"]);
-  for (const [from, to] of [[a, b], [c, d]]) {
+  const e = card("mul", { a: 4, b: 1 }), f = card("add", { b: 0 });
+  for (const n of [a, b, c, d, e, f]) await editor.addNode(n as unknown as Schemes["Node"]);
+  for (const [from, to] of [[a, b], [c, d], [e, f]]) {
     await editor.addConnection(new GraphConnection(from, "result", to, "a") as unknown as Schemes["Connection"]);
   }
   await processGraph();
   const answer = (n: ArithmeticNode) => engine.landed(n.id, "result");
-  expect([answer(b), answer(d)]).toEqual([42, 3]);
-  return { a, b, c, d, answer };
+  expect([answer(b), answer(d), answer(f)]).toEqual([42, 3, 4]);
+  return { a, b, c, d, e, f, answer };
 }
 
 describe("the pass after an edit", () => {
@@ -41,12 +42,13 @@ describe("the pass after an edit", () => {
     expect(answer(d)).toBe(3);
   });
 
-  it("is the whole graph when the edit retyped a card outside that reach, and that card is read afresh", async () => {
-    const { a, b, c, d, answer } = await twoChains();
+  it("covers a card the edit moved outside that reach, read afresh, and still no other card", async () => {
+    const { a, b, c, d, e, f, answer } = await twoChains();
     a.literals.b = 10;
     c.literals.b = 5;
+    e.literals.b = 9; // never reported
     await processEdited(a.id, [c.id]);
-    expect([answer(b), answer(d)]).toEqual([20, 15]);
+    expect([answer(b), answer(d), answer(f)]).toEqual([20, 15, 4]);
   });
 
   it("stays the card's reach when what it retyped is inside it", async () => {
