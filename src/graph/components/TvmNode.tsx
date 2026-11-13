@@ -3,7 +3,7 @@ import { PAYMENT_TIMING_META } from "../nodeClasses";
 import type { TvmNode as TvmNodeType, PaymentTiming } from "../nodeClasses";
 import { ArgSelect, type NodeProps } from "./nodeKit";
 import { EquationComponent } from "./EquationNode";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 const TIMING_OPTS = (Object.keys(PAYMENT_TIMING_META) as PaymentTiming[]).map((t) => ({
   value: t,
   label: PAYMENT_TIMING_META[t],
@@ -23,7 +23,7 @@ export function TvmComponent({ data, emit }: NodeProps<TvmNodeType>) {
           onChange={(t) => {
             data.setPaymentTiming(t);
             setTiming(t);
-            data.edited(); void processGraph();
+            void processEdited(data.id);
           }}
           options={TIMING_OPTS}
         />

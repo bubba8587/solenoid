@@ -3,7 +3,7 @@ import type { View } from "./view";
 import type { MutableRefObject } from "react";
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
-import { processGraph, requestRecalc, notifyGraphChanged } from "./process";
+import { requestRecalc, notifyGraphChanged, processChanged } from "./process";
 import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph, deleteSelected } from "./canvasCommands";
 import { bumpConduitAngle } from "./graphSignals";
 import { copySelected, pasteClipboard } from "./copyPaste";
@@ -92,20 +92,21 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     }
     const editor = editorRef.current;
     if (!editor) return 0;
-    let conduits = 0, dials = 0;
+    let conduits = 0;
+    const dials: string[] = [];
     for (const n of editor.getNodes()) {
       if ((n as { selected?: boolean }).selected !== true) continue;
       if (n instanceof ConduitNode) { n.rotateBy(dir); conduits++; }
       else if (n instanceof AngleDialNode) {
         const next = Math.round(n.value + dir * n.step);
         n.value = ((next % 360) + 360) % 360;
-        n.edited();
-        dials++;
+        dials.push(n.id);
       }
     }
     if (conduits) { bumpConduitAngle(); notifyGraphChanged(); }
-    if (dials) { void processGraph(); scheduleAutosave(); }
-    return conduits + dials;
+    // Each nudged dial and what it feeds; processChanged names them.
+    if (dials.length) { void processChanged(dials); scheduleAutosave(); }
+    return conduits + dials.length;
   }
   // Async, so the caller checks the selection synchronously to decide preventDefault.
   async function nudgeSelection(dx: number, dy: number) {
@@ -194,7 +195,8 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             e.preventDefault(); return;
           case "KeyG":
             if (!locked && editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
-              void createGroupFromSelection(editor, view).then(() => processGraph());
+              // A Group computes nothing: the change is recorded (undo, save) with no pass.
+              void createGroupFromSelection(editor, view).then(() => notifyGraphChanged());
             }
             e.preventDefault(); return;
           case "KeyT":

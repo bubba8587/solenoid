@@ -12,10 +12,26 @@ type TypedSource = {
   sourceOutput: string;
 };
 
-/** The output the value on `nodeId.outputKey` really comes from, through every Conduit lane, and its socket. */
+/** Each editor's traced origins, valid while its wiring is unchanged: every cable on screen asks on each render. */
+const traced = new WeakMap<AnyEditor, { topology: number; origins: Map<string, [string, string]> }>();
+
+/** The output the value on `nodeId.outputKey` really comes from, through every Conduit lane, and its socket. The walk
+ *  depends on the wiring alone, so it is kept until a card or cable comes or goes; the socket is read live. */
 export function resolveTypedSource(editor: AnyEditor | null | undefined, nodeId: string, outputKey: string): TypedSource {
-  const [source, sourceOutput] = editor ? editor.core().typedSource(nodeId, outputKey) : [nodeId, outputKey];
-  return { socket: editor?.getNode(source)?.outputs[sourceOutput]?.socket, source, sourceOutput };
+  if (!editor) return { socket: undefined, source: nodeId, sourceOutput: outputKey };
+  let memo = traced.get(editor);
+  if (!memo || memo.topology !== editor.topologyVersion) {
+    memo = { topology: editor.topologyVersion, origins: new Map() };
+    traced.set(editor, memo);
+  }
+  const key = `${nodeId}\u0001${outputKey}`;
+  let origin = memo.origins.get(key);
+  if (!origin) {
+    origin = editor.core().typedSource(nodeId, outputKey) as [string, string];
+    memo.origins.set(key, origin);
+  }
+  const [source, sourceOutput] = origin;
+  return { socket: editor.getNode(source)?.outputs[sourceOutput]?.socket, source, sourceOutput };
 }
 
 export interface PathConn {

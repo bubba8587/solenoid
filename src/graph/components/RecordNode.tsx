@@ -6,7 +6,7 @@ import { NodeSocket } from "./NodeSocket";
 import { InlineInputs, useConnectedInputs } from "./inlineInput";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { cableValueStore } from "../cableValueStore";
 import { isFrameValue } from "../frame";
@@ -58,7 +58,7 @@ async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void
   node.setOp(next);
   const view = getOwningView(node.id);
   if (view) await view.rerenderNode(node.id);
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }
 
 export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {

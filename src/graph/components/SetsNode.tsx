@@ -9,7 +9,7 @@ import { NodeShell, OpSelect, ValueDisplay, type NodeProps, type OpOption } from
 import type { DisplayValue } from "./valueDisplayFormat";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import "./SetOpNode.css";
 
 const OPS: ReadonlyArray<OpOption<SetOpAll>> = (Object.keys(SET_META) as SetOpAll[]).map((op) => ({
@@ -32,7 +32,7 @@ async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void> {
     if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
     if (view) await view.rerenderNode(node.id);
   }
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }
 
 export function SetsComponent({ data, emit }: NodeProps<SetNodeType>) {

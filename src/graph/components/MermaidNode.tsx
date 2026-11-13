@@ -7,7 +7,7 @@ import { DiagramChip } from "./DiagramChip";
 import { NodeSocket } from "./NodeSocket";
 import { useConnectedInputs, InlineInputs } from "./inlineInput";
 import { MermaidView } from "./MermaidView";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { FieldResizeGrip } from "./FieldResizeGrip";
 
 const MERMAID_TEMPLATES: ReadonlyArray<{ label: string; source: string }> = [
@@ -54,7 +54,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
   function applyTemplate(src: string) {
     data.stringLiterals.source = src;
     setDraft(src);
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   }
 
   // Enter must insert a newline in a diagram, so this can't use the Enter-commits helper.
@@ -63,7 +63,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
   function commit() {
     if (draft === (data.stringLiterals.source ?? "")) return;
     data.stringLiterals.source = draft;
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   }
 
   const feedRef = useRef<HTMLDivElement>(null);

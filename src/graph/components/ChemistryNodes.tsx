@@ -18,7 +18,7 @@ import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { makeNodeComponent } from "./standardNode";
 import { elementPicker } from "../elementPickerStore";
 import { getOwningView } from "../activeGraph";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { stopDragStart } from "../coarse";
 
 /** A fact's number at rest, with its unit; blank where nobody has measured it. */
@@ -54,7 +54,7 @@ export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
       onPick: (symbol) => {
         data.symbol = symbol;
         void getOwningView(data.id)?.rerenderNode(data.id);
-        data.edited(); void processGraph();
+        void processEdited(data.id);
       },
     });
   };

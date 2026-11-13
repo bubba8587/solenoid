@@ -21,7 +21,7 @@ import {
   conduitLaneOffset,
   conduitLayoutStore,
 } from "../ribbonCable";
-import { processGraph, isGraphRebuilding, notifyGraphChanged } from "../process";
+import { isGraphRebuilding, notifyGraphChanged, processEdited } from "../process";
 import { cableDragStore, connectionVersionStore, conduitAngleStore, bumpConduitAngle } from "../graphSignals";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { useFlowSocket } from "../flowSurface";
@@ -100,7 +100,7 @@ export function ConduitComponent({ data }: Props) {
       if (!Number.isFinite(n) || n < 1) return INVALID_DRAFT;
       return conduitSeqTaken(getOwningEditor(node.id)?.getNodes() ?? [], node, n) ? INVALID_DRAFT : n;
     },
-    (v) => { node.setSeq(v); node.edited(); void processGraph(); },
+    (v) => { node.setSeq(v); void processEdited(node.id); },
   );
 
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
@@ -192,8 +192,15 @@ export function ConduitComponent({ data }: Props) {
     return () => { if (el) el.style.zIndex = ""; };
   }, [node.id]);
 
-  // Not during a load: this mount effect fires mid-addNode, before the graph is built, and the rebuild's own final pass recomputes anyway.
-  useEffect(() => { if (isGraphRebuilding()) return; void processGraph(); }, [realLanes]);
+  // A lane count moves only this Conduit's sockets, so its reach recomputes. Not when the Conduit appears: whatever
+  // placed it (Insert Conduit, Extend, the Add menu, a paste, a load or an undo) runs its own pass over it.
+  const lanesSeen = useRef(realLanes);
+  useEffect(() => {
+    if (lanesSeen.current === realLanes) return;
+    lanesSeen.current = realLanes;
+    if (isGraphRebuilding()) return;
+    void processEdited(node.id, [], { topology: true });
+  }, [realLanes]);
 
   const extendToNewConduit = async () => {
     const editor = getOwningEditor(node.id);
@@ -211,7 +218,7 @@ export function ConduitComponent({ data }: Props) {
         );
       } catch { /* incompatible / duplicate — skip */ }
     }
-    await processGraph();
+    await processEdited(next.id, [], { topology: true });
   };
 
   const renderSocket = (side: "input" | "output", key: string, p: { x: number; y: number }, isPhantom: boolean) => (

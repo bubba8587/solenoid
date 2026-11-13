@@ -9,7 +9,7 @@ import { SegToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
 import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 const MODE_OPTIONS = (Object.keys(HISTOGRAM_MODE_META) as HistogramMode[]).map((m) => ({
   value: m, label: HISTOGRAM_MODE_META[m].label, title: HISTOGRAM_MODE_META[m].description,
 }));
@@ -32,7 +32,7 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
     if (drop.length) await dropInputCables(data.id, drop);
     data.setMode(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   return (

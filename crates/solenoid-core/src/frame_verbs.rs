@@ -1186,40 +1186,118 @@ pub(crate) fn unmatchable_key(cell: &FrameCell) -> bool {
     }
 }
 
-fn key_index(col: &FrameColumn, n: usize) -> FxHashMap<CellKey<'_>, Vec<usize>> {
-    let mut idx: FxHashMap<CellKey, Vec<usize>> = FxHashMap::default();
-    for i in 0..n {
-        let cell = col.cell_at(i);
-        if unmatchable_key(cell) {
-            continue;
+/// Each row's join key over one key column: `None` for a key that never matches (blank, error, non-finite).
+fn column_keys(col: &FrameColumn, n: usize) -> Vec<Option<CellKey<'_>>> {
+    (0..n).map(|i| col.cell_at(i)).map(|c| (!unmatchable_key(c)).then(|| cell_key(c))).collect()
+}
+
+/// Each row's identity over several columns, every cell by `cell_key` as Distinct reads it: a blank matches a blank
+/// and an error the same error, so a row is always found in a copy of its own frame.
+fn row_keys<'a>(cols: &[&'a FrameColumn], n: usize) -> Vec<Option<Vec<CellKey<'a>>>> {
+    (0..n).map(|i| Some(cols.iter().map(|c| cell_key(c.cell_at(i))).collect())).collect()
+}
+
+fn key_index<K: std::hash::Hash + Eq>(keys: &[Option<K>]) -> FxHashMap<&K, Vec<usize>> {
+    let mut idx: FxHashMap<&K, Vec<usize>> = FxHashMap::default();
+    for (i, k) in keys.iter().enumerate() {
+        if let Some(k) = k {
+            idx.entry(k).or_default().push(i);
         }
-        idx.entry(cell_key(cell)).or_default().push(i);
     }
     idx
 }
 
+/// The left rows a semi join keeps (those with a match) or an anti join keeps (those without), in order.
+fn semi_rows<K: std::hash::Hash + Eq>(semi: bool, lkeys: &[Option<K>], rkeys: &[Option<K>]) -> Vec<usize> {
+    let r_idx = key_index(rkeys);
+    (0..lkeys.len()).filter(|&i| lkeys[i].as_ref().is_some_and(|k| r_idx.contains_key(k)) == semi).collect()
+}
+
+/// The row pairs of an inner, left, right or outer join (the table in the spec's `join`).
+fn equality_pairs<K: std::hash::Hash + Eq>(how: JoinHow, lkeys: &[Option<K>], rkeys: &[Option<K>]) -> Vec<Pair> {
+    let mut pairs: Vec<Pair> = Vec::new();
+    if how == JoinHow::Right {
+        let l_idx = key_index(lkeys);
+        for (j, k) in rkeys.iter().enumerate() {
+            match k.as_ref().and_then(|k| l_idx.get(k)) {
+                Some(ms) => pairs.extend(ms.iter().map(|&i| (Some(i), Some(j)))),
+                None => pairs.push((None, Some(j))),
+            }
+        }
+        return pairs;
+    }
+    let r_idx = key_index(rkeys);
+    let mut matched_right = vec![false; rkeys.len()];
+    let keeps_left = matches!(how, JoinHow::Left | JoinHow::Outer);
+    for (i, k) in lkeys.iter().enumerate() {
+        match k.as_ref().and_then(|k| r_idx.get(k)) {
+            Some(ms) => {
+                for &j in ms {
+                    pairs.push((Some(i), Some(j)));
+                    matched_right[j] = true;
+                }
+            }
+            None if keeps_left => pairs.push((Some(i), None)),
+            None => {}
+        }
+    }
+    if how == JoinHow::Outer {
+        pairs.extend((0..rkeys.len()).filter(|&j| !matched_right[j]).map(|j| (None, Some(j))));
+    }
+    pairs
+}
+
+/// The right key read in the left key's unit when the two differ (`join_key_transform`); `None` when it reads as is.
+fn right_key_in_left_unit(lk: &FrameColumn, rk: &FrameColumn) -> Res<Option<FrameColumn>> {
+    match join_key_transform(lk, rk)? {
+        Some((scale, offset)) if (scale != 1.0 || offset != 0.0) && rk.ty == FrameColType::Number => {
+            let values =
+                rk.values
+                    .iter()
+                    .map(|v| {
+                        if let FrameCell::Num(n) = v {
+                            FrameCell::Num(convert_key(*n, scale, offset))
+                        } else {
+                            v.clone()
+                        }
+                    })
+                    .collect();
+            Ok(Some(FrameColumn::new(rk.name.clone(), rk.ty, values).with_unit(lk.unit.clone())))
+        }
+        _ => Ok(None),
+    }
+}
+
+/// `right` with each named column replaced by its converted copy.
+fn with_columns_replaced(right: &FrameValue, replaced: Vec<FrameColumn>) -> FrameValue {
+    frame(right.columns.iter().map(|c| replaced.iter().find(|r| r.name == c.name).unwrap_or(c).clone()).collect())
+}
+
 type Pair = (Option<usize>, Option<usize>);
 
+/// Every left column, then every right column but the keys; each key appears once, under the left name, filled from
+/// whichever side has the row. `keys` pairs a left column with the right column it matched on.
 fn assemble_join_output(
     left: &FrameValue,
     right: &FrameValue,
-    left_key: &str,
-    right_key: &str,
+    keys: &[(&str, &str)],
     pairs: &[Pair],
 ) -> Res<FrameValue> {
-    let rk = require_column(right, right_key)?;
-    let right_non_key: Vec<&FrameColumn> = right.columns.iter().filter(|c| c.name != right_key).collect();
+    let right_key_of = |left_name: &str| keys.iter().find(|(l, _)| *l == left_name).map(|(_, r)| *r);
+    let right_keys: Vec<&FrameColumn> = keys.iter().map(|(_, r)| require_column(right, r)).collect::<Res<_>>()?;
+    let right_non_key: Vec<&FrameColumn> =
+        right.columns.iter().filter(|c| !keys.iter().any(|(_, r)| *r == c.name)).collect();
     let all_names: Vec<String> =
         left.columns.iter().chain(right_non_key.iter().copied()).map(|c| c.name.clone()).collect();
     let names = make_headers(&all_names, all_names.len());
     let mut out = Vec::with_capacity(names.len());
     for (ci, c) in left.columns.iter().enumerate() {
-        let is_key = c.name == left_key;
+        let rk = right_key_of(&c.name).and_then(|r| right_keys.iter().find(|k| k.name == r).copied());
         let values = pairs
             .iter()
-            .map(|&(l, r)| match (l, r) {
-                (Some(l), _) => c.cell_at(l).clone(),
-                (None, Some(r)) if is_key => rk.cell_at(r).clone(),
+            .map(|&(l, r)| match (l, r, rk) {
+                (Some(l), _, _) => c.cell_at(l).clone(),
+                (None, Some(r), Some(rk)) => rk.cell_at(r).clone(),
                 _ => FrameCell::Null,
             })
             .collect();
@@ -1337,6 +1415,9 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
     if how == JoinHow::Cross {
         return Ok(cross_join_frames(left, right));
     }
+    if opts.left_key.trim().is_empty() && opts.right_key.trim().is_empty() {
+        return join_whole_rows(left, right, how);
+    }
     let lk = require_column(left, &opts.left_key)?;
     let rk0 = require_column(right, &opts.right_key)?;
     if lk.ty != rk0.ty {
@@ -1346,83 +1427,73 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
         ));
     }
     let scaled_right;
-    let right = if let Some((scale, offset)) = join_key_transform(lk, rk0)? {
-        if (scale != 1.0 || offset != 0.0) && rk0.ty == FrameColType::Number {
-            let values =
-                rk0.values
-                    .iter()
-                    .map(|v| {
-                        if let FrameCell::Num(n) = v {
-                            FrameCell::Num(convert_key(*n, scale, offset))
-                        } else {
-                            v.clone()
-                        }
-                    })
-                    .collect();
-            let clean = FrameColumn::new(rk0.name.clone(), rk0.ty, values).with_unit(lk.unit.clone());
-            scaled_right = frame(
-                right.columns.iter().map(|c| if std::ptr::eq(c, rk0) { clean.clone() } else { c.clone() }).collect(),
-            );
+    let right = match right_key_in_left_unit(lk, rk0)? {
+        Some(clean) => {
+            scaled_right = with_columns_replaced(right, vec![clean]);
             &scaled_right
-        } else {
-            right
         }
-    } else {
-        right
+        None => right,
     };
     let rk = require_column(right, &opts.right_key)?;
     let ln = frame_row_count(left);
     let rn = frame_row_count(right);
 
     if matches!(how, JoinHow::Semi | JoinHow::Anti) {
-        let r_idx = key_index(rk, rn);
-        let semi = how == JoinHow::Semi;
-        let keep: Vec<usize> = (0..ln)
-            .filter(|&i| {
-                let cell = lk.cell_at(i);
-                let matched = !cell.is_null() && !cell.is_err() && r_idx.contains_key(&cell_key(cell));
-                matched == semi
-            })
-            .collect();
-        return Ok(reorder_rows(left, &keep));
+        return Ok(reorder_rows(left, &semi_rows(how == JoinHow::Semi, &column_keys(lk, ln), &column_keys(rk, rn))));
     }
-
-    let mut pairs: Vec<Pair> = Vec::new();
-    if how == JoinHow::Asof {
-        pairs = asof_pairs(left, lk, right, rk, opts)?;
-    } else if how == JoinHow::Right {
-        let l_idx = key_index(lk, ln);
-        for j in 0..rn {
-            match l_idx.get(&cell_key(rk.cell_at(j))) {
-                Some(ms) if !unmatchable_key(rk.cell_at(j)) => pairs.extend(ms.iter().map(|&i| (Some(i), Some(j)))),
-                _ => pairs.push((None, Some(j))),
-            }
-        }
+    let pairs = if how == JoinHow::Asof {
+        asof_pairs(left, lk, right, rk, opts)?
     } else {
-        let r_idx = key_index(rk, rn);
-        let mut matched_right = vec![false; rn];
-        let keeps_left = matches!(how, JoinHow::Left | JoinHow::Outer);
-        for i in 0..ln {
-            let cell = lk.cell_at(i);
-            match r_idx.get(&cell_key(cell)) {
-                Some(ms) if !unmatchable_key(cell) => {
-                    for &j in ms {
-                        pairs.push((Some(i), Some(j)));
-                        matched_right[j] = true;
-                    }
-                }
-                _ => {
-                    if keeps_left {
-                        pairs.push((Some(i), None));
-                    }
-                }
-            }
-        }
-        if how == JoinHow::Outer {
-            pairs.extend((0..rn).filter(|&j| !matched_right[j]).map(|j| (None, Some(j))));
-        }
+        equality_pairs(how, &column_keys(lk, ln), &column_keys(rk, rn))
+    };
+    assemble_join_output(left, right, &[(&opts.left_key, &opts.right_key)], &pairs)
+}
+
+/// A join with no key matches whole rows: on every column the two frames share by name, so column order never matters,
+/// each cell compared as Distinct compares it. A shared column's two sides must share a type, and units convert as a
+/// key's do. Columns on one side only never decide a match and ride along as in a key join.
+fn join_whole_rows(left: &FrameValue, right: &FrameValue, how: JoinHow) -> Res<FrameValue> {
+    if how == JoinHow::Asof {
+        return Err(sol_error(ErrorCode::Value, "An as-of join needs a key column".to_string()));
     }
-    assemble_join_output(left, right, &opts.left_key, &opts.right_key, &pairs)
+    let shared: Vec<(&FrameColumn, &FrameColumn)> =
+        left.columns.iter().filter_map(|l| right.columns.iter().find(|r| r.name == l.name).map(|r| (l, r))).collect();
+    if shared.is_empty() {
+        return Err(sol_error(
+            ErrorCode::Value,
+            "The tables share no column to match rows on. Name a key, or give them a column in common".to_string(),
+        ));
+    }
+    if let Some((l, r)) = shared.iter().find(|(l, r)| l.ty != r.ty) {
+        return Err(sol_error(
+            ErrorCode::Type,
+            format!(
+                "Join columns must share a type (\"{}\" is {} on the left, {} on the right)",
+                l.name,
+                l.ty.as_str(),
+                r.ty.as_str()
+            ),
+        ));
+    }
+    let converted: Vec<FrameColumn> =
+        shared.iter().filter_map(|(l, r)| right_key_in_left_unit(l, r).transpose()).collect::<Res<_>>()?;
+    let scaled_right;
+    let right = if converted.is_empty() {
+        right
+    } else {
+        scaled_right = with_columns_replaced(right, converted);
+        &scaled_right
+    };
+    let names: Vec<&str> = shared.iter().map(|(l, _)| l.name.as_str()).collect();
+    let lcols: Vec<&FrameColumn> = shared.iter().map(|(l, _)| *l).collect();
+    let rcols: Vec<&FrameColumn> = names.iter().map(|n| require_column(right, n)).collect::<Res<_>>()?;
+    let lkeys = row_keys(&lcols, frame_row_count(left));
+    let rkeys = row_keys(&rcols, frame_row_count(right));
+    if matches!(how, JoinHow::Semi | JoinHow::Anti) {
+        return Ok(reorder_rows(left, &semi_rows(how == JoinHow::Semi, &lkeys, &rkeys)));
+    }
+    let keys: Vec<(&str, &str)> = names.iter().map(|n| (*n, *n)).collect();
+    assemble_join_output(left, right, &keys, &equality_pairs(how, &lkeys, &rkeys))
 }
 
 // ─── Reshape ────────────────────────────────────────────────────────────────────

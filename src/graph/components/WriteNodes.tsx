@@ -8,7 +8,7 @@ import { settingsStore } from "../settingsStore";
 import { documentStore } from "../documentStore";
 import { isDocumentValue } from "../documentValue";
 import { isFrameValue } from "../frame";
-import { notifyGraphChanged, processGraph } from "../process";
+import { notifyGraphChanged, processEdited } from "../process";
 import { getOwningView } from "../activeGraph";
 import { FrameDisplay } from "./FrameDisplay";
 import { DocumentChip } from "./DocumentChip";
@@ -62,7 +62,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
     setFormat(next);
     const view = getOwningView(d.id);
     if (view) await view.rerenderNode(d.id);
-    d.edited(); await processGraph();
+    await processEdited(d.id, [], { topology: true });
   }
 
   function commitPath() {
@@ -191,12 +191,12 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   // Tasks reads its rows alone: no document, no note to name, no keys to pick.
   const inputKeys = activeMode === "properties" ? ["in", "rows", "keys"] : activeMode === "tasks" ? ["rows"] : ["in", "path", "rows"];
 
-  function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); d.edited(); void processGraph(); }
+  function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); void processEdited(d.id); }
   function pickSubfolder(v: string) { d.subfolder = v; setSubfolder(v); notifyGraphChanged(); }
   function pickMode(v: ObsidianWriteMode) { d.mode = v; setMode(v); notifyGraphChanged(); }
   function toggleArmed() { d.enabled = !d.enabled; setArmed(d.enabled); }
   function toggleStamp() { d.stamp = !d.stamp; setStamp(d.stamp); notifyGraphChanged(); }
-  function toggleAddMissing() { d.addMissing = !d.addMissing; setAddMissing(d.addMissing); d.edited(); void processGraph(); }
+  function toggleAddMissing() { d.addMissing = !d.addMissing; setAddMissing(d.addMissing); void processEdited(d.id); }
   function toggleWriteBase() { d.writeBase = !d.writeBase; setWriteBase(d.writeBase); notifyGraphChanged(); }
 
   // Picking a note fills the folder select + the `path` literal (its bare name), so the
@@ -209,14 +209,14 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     d.subfolder = folder; setSubfolder(folder);
     (d.stringLiterals ??= {}).path = base;
     void getOwningView(d.id)?.rerenderNode(d.id);
-    d.edited(); void processGraph();
+    void processEdited(d.id);
   }
 
   async function preview() {
     setStatus("previewing");
     await d.preview();
     setStatus(d.status); setMessage(d.statusMessage);
-    d.edited(); void processGraph();
+    void processEdited(d.id);
   }
   async function run() {
     setStatus("writing");
@@ -365,7 +365,7 @@ export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType
     setStatus("previewing");
     await data.preview();
     setStatus(data.status); setMessage(data.statusMessage);
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   }
   async function run() {
     setStatus("writing");

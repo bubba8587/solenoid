@@ -31,6 +31,38 @@ export function setEditorRefs(
   _view = view;
 }
 
+/** The pass after a card is edited in place, a field or a pick ([[compute-pass#What triggers a pass]]): the card's
+ *  reach, a targeted pass that names it. `alsoChanged` is what else the edit moved (the cards a type settle retyped,
+ *  `reconcileTypesAfterEdit`; the FCs and annotated sources an FC reconcile touched, `reconcileFcs`): with any of them
+ *  outside the card's reach, the pass covers every one's reach too (`processChanged`), each named.
+ *  `topology` when the edit added or removed cables, so the loops are found again. */
+export function processEdited(nodeId: string, alsoChanged: Iterable<string> = [], opts?: { topology?: boolean }): Promise<void> {
+  const others = [...alsoChanged].filter((id) => id !== nodeId);
+  if (others.length === 0) return processGraph(nodeId, undefined, opts?.topology ? { topology: true } : undefined);
+  return processChanged([nodeId, ...others], opts);
+}
+
+/** The pass after several cards changed (fetches landing, an edit that moved cards beyond its own): each one's reach,
+ *  cleared and rendered in one additive pass, each card named. A card the main canvas does not hold (inside a
+ *  composite) makes it the whole pass, which finds the composite holding it. */
+export function processChanged(ids: Iterable<string>, opts?: { topology?: boolean }): Promise<void> {
+  const all = [...new Set(ids)];
+  const topology = opts?.topology ? { topology: true } : undefined;
+  if (all.length === 1 && _editor?.getNode(all[0])) return processGraph(all[0], undefined, topology);
+  if (all.length === 0 || !_engine || !all.every((id) => _editor?.getNode(id))) {
+    for (const id of all) _editor?.named(id);
+    return processGraph(undefined, undefined, topology);
+  }
+  const reach = new Set<string>();
+  for (const id of all) {
+    _editor!.named(id);
+    if (reach.has(id)) continue;
+    _engine.reset(id);
+    for (const r of _engine.downstreamClosure(id)) reach.add(r);
+  }
+  return processGraph(undefined, reach, topology);
+}
+
 export function getView() {
   return _view;
 }

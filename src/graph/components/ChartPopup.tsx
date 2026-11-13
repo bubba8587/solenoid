@@ -13,6 +13,7 @@ import { ganttMatching } from "./ganttFilter";
 import { ladderTarget, applyLadderAction } from "./ladderNav";
 import type { LadderAction } from "../nodes/ladderOps";
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
+import { stacksRecords } from "../chartValue";
 
 const MAX_W = 1000;
 const MAX_H = 380;
@@ -149,9 +150,8 @@ export function ChartPopup() {
       }
     : undefined;
 
-  // A Record view other than Detail is a stack of boxes taller than the popup, not a drawing that scales: it scrolls
-  // from its top, where centering would push its first rows out of reach. Detail scrolls inside its own grid.
-  const stacked = figValue?.op === "record" && figValue.payload?.kind === "record" && figValue.payload.view !== "detail";
+  // A stack scrolls from its top, where centering would push its first rows out of reach.
+  const stacked = stacksRecords(figValue);
   return (
     <PopupShell
       title={state.title}

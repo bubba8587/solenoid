@@ -38,6 +38,10 @@ import "./Markdown.css";
 import "./ReportOverlay.css";
 import "./DashboardOverlay.css";
 import { isEnter } from "../enterKey";
+import { SearchField } from "./SearchField";
+import { boxFilterKind, boxFilterCount } from "./boxFilter";
+import { recordFilterTarget, setRecordQuery } from "./recordNav";
+import { fullList } from "../listPreview";
 
 const GAP = 12;
 
@@ -86,7 +90,9 @@ function FrozenBox({ snap }: { snap?: Snapshot }) {
 }
 
 /** A Frame as the Table popup's Cards view, read-only: the box's alternative to the grid. */
-function FrameCards({ frame }: { frame: FrameValue }) {
+function FrameCards({ frame: given, query }: { frame: FrameValue; query: string }) {
+  // TableCards filters its own cards; a preview gives it the whole table to filter.
+  const frame = query.trim() ? fullList(given) : given;
   const [sort, setSort] = useState<ColumnSort>([]);
   const cols = frame.columns;
   const rows = cols[0]?.values.length ?? 0;
@@ -107,11 +113,23 @@ function FrameCards({ frame }: { frame: FrameValue }) {
       dataKey={frame}
       sort={sort}
       onSort={setSort}
-      query=""
+      query={query}
     />
   );
 }
 const NO_COLS: ReadonlySet<number> = new Set();
+
+/** A box narrower than this shows its Filter as a magnifier until tapped. */
+const BOX_NARROW = { selector: ".dashboard-box", px: 380 };
+
+/** A Record or Cards box's Filter narrows its records on the core, as the popup's does; it clears when the box goes
+ *  (the board closing, another box expanded). */
+function RecordQuery({ sourceId, query }: { sourceId: string; query: string }) {
+  const target = recordFilterTarget(sourceId);
+  useEffect(() => { if (target) void setRecordQuery(target, query); }, [target, query]);
+  useEffect(() => () => { if (target) void setRecordQuery(target, ""); }, [target]);
+  return null;
+}
 
 /** The board's motion window: every box's content animates within it, all at once (DashboardOverlay.css § Motion). */
 const COUNT_MS = 900;
@@ -276,6 +294,8 @@ export function DashboardOverlay() {
   const [focus, setFocus] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  // Each box's Filter, by name; the board starts unfiltered.
+  const [queries, setQueries] = useState<Record<string, string>>({});
   // The content's motion plays inside this window only, so a chart rebuilt by a later recompute does not replay it.
   const [intro, setIntro] = useState(false);
   const editing = !!edit;
@@ -286,7 +306,7 @@ export function DashboardOverlay() {
     return () => clearTimeout(t);
   }, [nodeId, focus, editing]);
 
-  useEffect(() => { setFocus(null); setEdit(null); setRenaming(null); }, [nodeId]);
+  useEffect(() => { setFocus(null); setEdit(null); setRenaming(null); setQueries({}); }, [nodeId]);
   useEscapeLayer(!!renaming, () => setRenaming(null));
   useEscapeLayer(!!focus, () => setFocus(null));
   useEscapeLayer(!!edit, () => setEdit(null));
@@ -442,6 +462,9 @@ export function DashboardOverlay() {
             const source = sourceOf(p.name);
             const value = node.refValue(p.name);
             const asCards = !!node.boxViews[p.name] && isFrameValue(value);
+            const filterKind = boxFilterKind(value, source);
+            const query = filterKind ? queries[p.name] ?? "" : "";
+            const setQuery = (q: string) => setQueries((all) => ({ ...all, [p.name]: q }));
             return (
               <section
                 key={p.name}
@@ -462,6 +485,19 @@ export function DashboardOverlay() {
                       onBlur={(e) => { if (renaming === p.name) void renameBox(p.name, e.currentTarget.value); }}
                     />
                   ) : <span className="dashboard-box__name">{p.name}</span>}
+                  {filterKind && (
+                    <SearchField
+                      collapsible
+                      within={BOX_NARROW}
+                      className="dashboard-box__filter"
+                      value={query}
+                      onChange={setQuery}
+                      placeholder="Filter"
+                      label={filterKind === "records" ? "Filter records" : filterKind === "gantt" ? "Filter tasks" : "Filter rows"}
+                      count={boxFilterCount(filterKind, value, query, source)}
+                    />
+                  )}
+                  {filterKind === "records" && source && <RecordQuery sourceId={source} query={query} />}
                   <BoxMenu
                     color={node.boxColors[p.name]}
                     cards={asCards}
@@ -482,8 +518,8 @@ export function DashboardOverlay() {
                     : typeof value === "number"
                       ? <CountUp nodeId={node.id} refKey={p.name} value={value} />
                     : asCards && isFrameValue(value)
-                      ? <FrameCards frame={value} />
-                      : <InlineRefValue nodeId={node.id} refKey={p.name} rich fill />}
+                      ? <FrameCards frame={value} query={query} />
+                      : <InlineRefValue nodeId={node.id} refKey={p.name} rich fill query={filterKind === "records" ? undefined : query} />}
                 </div>
               </section>
             );

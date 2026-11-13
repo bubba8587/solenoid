@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SortNode as SortNodeType, SortDir } from "../nodeClasses";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
 import { useConnectedInputs, InlineInputs } from "./inlineInput";
@@ -33,24 +33,24 @@ export function SortComponent({ data, emit }: NodeProps<SortNodeType>) {
     data.setByCol(next === "cols");
     setAxisState(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id);
   }
   const setKeyDir = (id: string, dir: SortDir) => {
     data.keyOrder[id] = dir;
     setKeyOrder((o) => ({ ...o, [id]: dir }));
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   };
   async function addKey() {
     data.addValueInput();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
   async function removeKey(key: string) {
     await dropInputCables(data.id, [key]);
     data.removeValueInput(key);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   return (

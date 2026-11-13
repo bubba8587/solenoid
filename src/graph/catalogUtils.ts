@@ -319,7 +319,8 @@ export async function addNodeFrom(create: () => unknown, companions?: () => Comp
   await view.moveNode(node.id, at);
   if (companions) await placeCompanions(editor, view, node as any, at, companions());
 
-  await processGraph();
+  // A new card changes nothing above it: its own answer and what its companions' cables feed.
+  await processGraph(node.id, undefined, { topology: true });
 
   unselectAllNodes();
   selectNode(node.id, false);

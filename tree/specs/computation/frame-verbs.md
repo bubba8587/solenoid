@@ -927,6 +927,17 @@ Tests: `frameBackend.test.ts`: format picks ride as one more op of the plan.
 - Key cells match by `cell_key` identity, case-sensitive.
 - A `null`, error or non-finite key never matches anything, including another of its kind; such rows still flow through the outer sides.
 
+**Whole rows.** With both keys blank (spaces count as blank), the join matches whole rows (`join_whole_rows`), so two tables can be compared whatever their column order: Anti lists the rows the left has and the right lacks, Semi the rows both hold.
+
+- The rows match on every column the two frames hold by name (case-sensitive), in the left frame's order; a column on one side only never decides a match and rides along as a non-key column does.
+- Each cell compares by `cell_key`, as Distinct compares rows: a blank matches a blank and an error the same error, so a row is always found in a copy of its own frame. A key join's rule, that a blank or error key never matches, would make every row holding an empty cell look missing.
+- Each shared column's two sides must share a type (`#TYPE!`, `Join columns must share a type ("<name>" is <l> on the left, <r> on the right)`), and a shared number column with units converts as a key does. No shared column is `#VALUE!` (`The tables share no column to match rows on. Name a key, or give them a column in common`): a join that could match nothing refuses rather than answering an empty or full anti.
+- Duplicates pair as keys do: identical rows fan out in inner, left, right and outer, and Anti drops every copy of a row the other side holds at all.
+- The output lays out as a key join's with every shared column a key: each appears once, under the left's name, filled from whichever side has the row.
+- As-of reads a sorted key, so the card waits for one (empty, and `#VALUE!` `An as-of join needs a key column` on the plan path). A right key with the left blank is `#VALUE!` (`Name the left key too, or leave both keys blank to match whole rows`), once both tables are wired. The empty Left key shows `whole rows`, the empty Right key `as left` ([[D96]] emptySlotShowsItsValue).
+
+Tests: `join_whole_rows.rs` (core): anti and semi in either column order, the shared columns' layout, blanks matching, one-sided columns, duplicates, units, and the refusals.
+
 **Keys with units** compare as quantities ([[C25]] firstClassUnits): `5 km` matches `5000 m`.
 
 - When both key columns carry a unit and the units differ, the join (`join_key_transform`) reads the right key in the left key's unit as `right × scale + offset` (the offset is for temperatures, so 0 °C matches 273.15 K).

@@ -1,7 +1,7 @@
 import type { CubeInputNode as CubeInputNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { CubeDisplay } from "./CubeDisplay";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { nodeDisplayName } from "../catalogUtils";
 import { parseCubeSource, cubeSourceToText, type CubeSource } from "../literalEditors";
@@ -16,7 +16,7 @@ export function CubeInputComponent({ data, emit }: NodeProps<CubeInputNodeType>)
       data.cubeText = cubeSourceToText(next);
       scheduleAutosave();
       // The popup shows the card's answer, which the pass recomputes.
-      data.edited(); void processGraph().then(() => cubePopup.refresh());
+      void processEdited(data.id).then(() => cubePopup.refresh());
     },
     cube: () => data.cachedResult,
   };

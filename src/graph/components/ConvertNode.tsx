@@ -6,7 +6,7 @@ import { reconcileFcs } from "../fcReconcile";
 import {
   applyFormatStyle, type FormatStyle,
 } from "../formatAnnotationStore";
-import { notifyGraphChanged, processGraph } from "../process";
+import { notifyGraphChanged, processEdited } from "../process";
 import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { LazySelect } from "./LazySelect";
@@ -78,10 +78,10 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
 
   // Convert primacy ([[C25]] firstClassUnits): adjacent FCs relock on a from/to change.
-  function refreshFcs() {
+  /** The FCs this Convert dictates to re-resolve; returns the cards that moved, for the pass to reach. */
+  function refreshFcs(): Set<string> {
     const editor = getOwningEditor(node.id);
-    if (!editor) return;
-    reconcileFcs(editor, null);
+    return editor ? reconcileFcs(editor, null) : new Set();
   }
 
   async function onFromChange(e: ChangeEvent<HTMLSelectElement>) {
@@ -97,16 +97,14 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
         setToUnit(firstInCat);
       }
     }
-    refreshFcs();
-    node.edited(); await processGraph();
+    await processEdited(node.id, refreshFcs());
   }
 
   async function onToChange(e: ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value;
     node.toUnit = next;
     setToUnit(next);
-    refreshFcs();
-    node.edited(); await processGraph();
+    await processEdited(node.id, refreshFcs());
   }
 
   // Display-only: these formats affect Convert's own boxes, so no recompute.

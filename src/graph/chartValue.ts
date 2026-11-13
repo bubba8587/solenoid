@@ -133,6 +133,12 @@ interface RecordDeck {
   /** Each drawn row's 1-based number in the frame. */
   rowNumbers: number[];
 }
+/** A Record or Cards figure other than Detail is a stack of boxes taller than its frame, not a drawing that scales: a
+ *  surface scrolls it from its top. Detail scrolls inside its own grid. */
+export function stacksRecords(v: ChartValue | null | undefined): boolean {
+  return v?.op === "record" && v.payload?.kind === "record" && (v.payload as RecordPayload).view !== "detail";
+}
+
 export interface RecordPayload {
   /** No layout was written, so the boxes flow into as many columns as fit rather than one stacked column. */
   flow?: boolean;

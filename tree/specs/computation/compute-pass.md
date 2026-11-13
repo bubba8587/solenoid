@@ -146,16 +146,16 @@ flowchart TD
 
 | Trigger | Call |
 |---|---|
-| A value edit on a card (a committed field, a toggle, a pick) | `processGraph(node.id)`, or `node.edited()` then `processGraph()` where the edit changes more than values; either way the edit names its node, since a full pass reads only named cards' calls afresh ([[graph-core]] § Direct calls) |
+| A value edit on a card (a committed field, a toggle, a pick, a formula, a row added or removed, an op switch, a name, an FC's or Convert's or Value Input's display pick) | `processEdited(node.id, moved?, { topology? })`: the card's reach, a targeted pass that names it. `moved` is what the edit changed beyond the card: the cards a type settle retyped (`reconcileTypesAfterEdit` returns them) and the FCs, Converts and stamped sources an FC reconcile moved (`reconcileFcs` returns them; an FC's annotation is stamped on the card feeding it, which its other readers see). With any outside the card's reach, the pass is `processChanged` over all of them: each named, its reach reset, one additive pass. `topology` when the edit added or removed cables, so the loops are found again. A Group computes nothing: making one records the change (`notifyGraphChanged`) with no pass |
 | A live cable created or removed (the canvas pipe, outside a rebuild scope) | FC type reconcile, then `processGraph(target, undefined, { topology: true })`, or a full topology pass when the target is gone |
-| A node added live | `processGraph(id, undefined, { topology: true })` |
+| A node added live (the Add menu, a catalog placement with its companions) | `processGraph(id, undefined, { topology: true })` |
 | Load or document switch | `processGraph()` at the end of the rebuild, still inside the rebuild scope |
 | Paste | `bulkSettle(pastedIds)`: an additive pass rendering only the pasted nodes |
-| Delete, Wrap as Composite, Unpack (main canvas) | a rebuild scope, then `bulkSettle(reach, { topology: true })`: each surviving card whose inputs lost or gained a cable, and each card new to the canvas (the composite, the unpacked cards), has its reach reset, and an additive pass renders that reach (`changedReach`, `editReach.ts`); removing cables from the cable menu does the same. In a drill-in, the drill-in's own settle |
+| Delete, Wrap as Composite, Unpack, Insert Conduit (main canvas) | a rebuild scope, then `bulkSettle(reach, { topology: true })`: each surviving card whose inputs lost or gained a cable, and each card new to the canvas (the composite, the unpacked cards), has its reach reset, and an additive pass renders that reach (`changedReach`, `editReach.ts`); removing cables from the cable menu does the same. Insert Conduit rewires a bundle under the scope, so its unplug and replug events run no per-cable settle or pass and its one pass renders only what the rewired cables feed. In a drill-in, the drill-in's own settle |
 | Undo, redo | the delta's own pass, inside its rebuild scope so Manual computes it as a load's: an additive pass over what the changed cards reach ([[react-flow-surface-contract#Undo history]]); a whole load where the delta falls back |
 | F9, Calculate now, the status bar's Calculate, switching to Automatic or Sketch, local midnight when the document holds a volatile date | `requestRecalc()` |
 | A sink's Run (Write File, Write Obsidian, Write Tasks) while Sketch is selected | `withExactPass(write)`: waits out a pass in flight, then `processGraph()` with `{ force: true }` inside a `beginForceExact` bracket held through the write; no new generation |
-| A live-data connection refresh or a background load landing | `processGraph()` outside any rebuild scope ([[#A refresh never runs inside a rebuild scope]]) |
+| A live-data connection refresh or a background load landing | `processChanged(ids)` outside any rebuild scope ([[#A refresh never runs inside a rebuild scope]]): the loads that land in one tick recompute together, each card named and its reach reset, in one additive pass; a card inside a composite, or a landing that names no card, runs `processGraph()`. Refresh All Connections runs `processGraph()` |
 
 `bulkSettle(renderOnly?, opts?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly, opts)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly, opts)`. An additive pass clears nothing itself, so a caller that changed values first resets each changed card's reach (`engine.reset(id)`) and names that reach.
 
@@ -202,6 +202,7 @@ Tests:
 - `calcModeStore.test.ts`: the mode and dirty-flag transitions, subscribers told on each transition and only then, and the version bumping with each notification.
 - `session.rs` (solenoid-graph): the session's transitions natively ([[graph-core#The session]]).
 - `namedEdits.test.ts`: an edit manual mode holds back is still read on F9's full pass, and every full pass a component asks for names its node first.
+- `processEdited.test.ts`: an edit recomputes its card's reach and no other card; a card it moved outside that reach is read afresh with its reach, and still nothing else; landed cards recompute their reaches together. `graphEditReach.test.ts` edits FCs, names and numbers in place on every example and holds each partial pass to a whole one.
 
 ### Only the calc-mode gate skips a pass
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BIN_MODE_OPTIONS } from "../nodeClasses";
 import type { BinNode as BinNodeType, BinMode } from "../nodeClasses";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -17,7 +17,7 @@ export function BinComponent({ data, emit }: NodeProps<BinNodeType>) {
     data.setMode(next);
     setMode(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   return (

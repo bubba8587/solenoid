@@ -145,10 +145,18 @@ fn join(c: &mut Call) -> Answer {
     }
     let lk = trimmed(&lk, "The left key")?;
     let rk = trimmed(&rk, "The right key")?;
-    let rk = if rk.is_empty() { lk.clone() } else { rk };
-    if left.is_nullish() || right.is_nullish() || (lk.is_empty() && how != "cross") {
+    // An as-of join reads a sorted key, so it waits for one; every join waits for both tables.
+    if left.is_nullish() || right.is_nullish() || (lk.is_empty() && how == "asof") {
         return one("frame", V::Null);
     }
+    // Both keys blank match whole rows (`join_whole_rows`); a right key alone names nothing to match it to.
+    if lk.is_empty() && !rk.is_empty() && how != "cross" {
+        return Err(V::err(sol_error(
+            ErrorCode::Value,
+            "Name the left key too, or leave both keys blank to match whole rows".to_string(),
+        )));
+    }
+    let rk = if rk.is_empty() { lk.clone() } else { rk };
     let direction = c.field_str("asofDirection", "backward").to_string();
     let mut opts = json!({ "leftKey": lk, "rightKey": rk, "how": how, "asofDirection": direction });
     match &tolerance {

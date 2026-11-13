@@ -110,20 +110,44 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 .dashboard-box .sol-kpi { flex: 1 1 auto; gap: 8px; }
 .dashboard-box .sol-kpi__delta { font-size: clamp(11px, min(7cqh, 8cqw), 18px); white-space: nowrap; }
 
-/* The box's label is the figure's title, so the figure's own caption would repeat it. */
-.dashboard-box .solenoid-ref-figure__title { display: none; }
+/* A chart's own title, under the box's name; one that repeats the name is left out (`figureFor`). */
+.dashboard-box__value > .solenoid-ref-figure > .solenoid-ref-figure__title { flex-shrink: 0; margin-bottom: 6px; font-size: 13px; color: var(--text); }
 /* A figure takes the box and fits what is left: a chart measures it, a diagram or picture scales into it. A document,
    a table or a cube keeps its own height instead, so the box scrolls it. */
 .dashboard-box__value > .solenoid-ref-figure { flex: 1 1 auto; min-height: 0; margin: 0; display: flex; flex-direction: column; }
 .dashboard-box__value > .solenoid-ref-figure:has(> .report-embed__body, > .solenoid-table-display) { flex: 0 0 auto; display: block; }
 .dashboard-box__value .solenoid-ref-chartbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+/* Cards and a Record's Gallery, Board or List are a stack taller than the box: the box scrolls it, as the popup does. */
+.dashboard-box__value .solenoid-ref-chartbody--stack { overflow: auto; overscroll-behavior: auto; }
 .dashboard-box__value .report-embed__body > :first-child { margin-top: 0; }
 /* A diagram scales to its box, keeping its shape, as in a resized Display. */
 .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid { flex: 1 1 auto; min-height: 0; overflow: hidden; align-items: center; }
 .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid svg { width: 100%; height: 100%; max-height: 100%; }
-/* A table or cube is the box's whole content, so it drops the sunken well a card value sits in: the box is its frame. */
-.dashboard-box__value .solenoid-table-display { background: none; border: none; padding: 0 !important; }
+/* A table is the box's whole content, so it runs to the box's edges on its own sunken ground, as a sheet does, under a
+   hairline from the box's name: no inset well inside the box, and no tint, since a table's ground stays neutral as a
+   chart's does. The first and last columns keep the box's inner margin, so the text lines up with the name. */
+.dashboard-box__value:has(> .solenoid-ref-figure > .solenoid-table-display) {
+  padding: 0;
+  margin-top: 8px;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--border);
+}
+.dashboard-box__value .solenoid-table-display { background: none; border: none; border-radius: 0; padding: 0 !important; }
 .dashboard-box__value .solenoid-table-display__grid { margin-top: 0; }
+.dashboard-box__value .solenoid-table-display__grid :is(th, td) { padding-top: 4px !important; padding-bottom: 4px !important; }
+.dashboard-box__value .solenoid-table-display__grid :is(th, td):first-child { padding-left: 14px !important; }
+.dashboard-box__value .solenoid-table-display__grid :is(th, td):last-child { padding-right: 14px !important; }
+.dashboard-box__value .solenoid-table-display__grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+.dashboard-box__value .solenoid-table-display__grid tbody tr + tr td { border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+.dashboard-box__value .solenoid-table-display__chip { padding: 6px 14px 8px; }
+/* Under a tint's solid name bar the bar is the edge, so the table starts right below it. */
+.dashboard-box--tinted .dashboard-box__value:has(> .solenoid-ref-figure > .solenoid-table-display) { margin-top: 0; border-top: none; }
 /* A Frame shown as cards: the popup's one 460 px column becomes a grid across the box, scrolling in the box and,
    at its end, handing the scroll on to the board (the popup's overscroll contain would keep it). */
 .dashboard-box__value > .table-cards-wrap { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; overscroll-behavior: auto; }
@@ -137,6 +161,9 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 
 .dashboard-crumb { color: var(--text-dim); font-weight: 400; }
 .dashboard-box__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* The Filter its value's popup carries, in the label's row, in the UI's own case; a narrow box shows it as a magnifier. */
+.dashboard-box__label .sol-search { flex: 0 1 200px; min-width: 90px; height: 24px; text-transform: none; letter-spacing: normal; font-weight: 400; }
+.dashboard-box__label .sol-search-btn { width: 24px; height: 24px; }
 .dashboard-box__rename {
   flex: 1 1 auto;
   min-width: 0;
@@ -156,6 +183,11 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 .dashboard-box--tinted {
   border: 2px solid var(--box-border);
   background: linear-gradient(var(--box-fill), var(--box-fill)), var(--surface);
+}
+/* A chart keeps a neutral ground under a tint: its own colors are its meaning, and a wash shifts every one of them. The
+   color stays on the header and the border. */
+.dashboard-box--tinted:has(.solenoid-ref-chartbody) {
+  background: var(--surface);
 }
 .dashboard-box--tinted .dashboard-box__label {
   min-height: 30px;
@@ -298,9 +330,10 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
   .dashboard-box--half .dashboard-box__value > .solenoid-ref-inline--text { font-size: clamp(16px, calc(140cqw / var(--chars, 8)), 34px); }
   .dashboard-box__value { container-type: inline-size; }
   .dashboard-box:not(.dashboard-box--half):has(.solenoid-ref-chartbody):not(:has(.sol-kpi)) { min-height: 300px; }
-  /* A document, table or cards grow with their content up to a tall cap, so one that still scrolls has room for a
+  /* A document, table or cards (a Frame's, or a Cards or Record stack) grow with their content up to a tall cap, so one that still scrolls has room for a
      thumb, and a short one stays short. */
   .dashboard-box:has(.report-embed__body, .solenoid-table-display, .table-cards-wrap) .dashboard-box__value { flex: 0 0 auto; max-height: min(480px, 65vh); }
+  .dashboard-box:has(.solenoid-ref-chartbody--stack) .dashboard-box__value { max-height: min(480px, 65vh); }
   /* A diagram scales to the box's width, so a tall one would take the whole screen. */
   .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid svg { max-height: 360px; }
   .dashboard-edit-btn { display: none; }

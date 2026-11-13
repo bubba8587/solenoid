@@ -53,9 +53,16 @@ describe("Join", () => {
     expect(cols(await shown(await join({ how }, { leftKey: " Rep ", rightKey: "" }, { left: [await lazy(sales)], right: [await lazy(reps)] })))).toEqual(want);
   });
 
-  it("a blank left key answers nothing, except for Cross", async () => {
-    expect(await join({ how: "inner" }, { leftKey: "  " }, { left: [sales], right: [reps] })).toBeNull();
+  it("both keys blank match whole rows on the shared columns; as-of waits for a key; Cross needs none", async () => {
+    // Rep is the one column both hold, so the whole-row anti is the rows whose Rep the right lacks.
+    expect(cols(await shown(await join({ how: "anti" }, { leftKey: "  " }, { left: [sales], right: [reps] })))?.Rep).toEqual(["Cy"]);
+    expect(cols(await shown(await join({ how: "semi" }, {}, { left: [sales], right: [reps] })))?.Rep).toEqual(["Ada", "Bo", "Ada"]);
+    expect(await join({ how: "asof" }, {}, { left: [times], right: [marks] })).toBeNull();
     expect(cols(await shown(await join({ how: "cross" }, {}, { left: [times], right: [marks] })))?.t).toHaveLength(9);
+  });
+
+  it("a right key with the left blank names nothing to match it to", async () => {
+    await expect(join({ how: "inner" }, { rightKey: "Rep" }, { left: [sales], right: [reps] })).rejects.toMatchObject({ code: "#VALUE!" });
   });
 
   it("a missing side or a wired blank key answers nothing", async () => {

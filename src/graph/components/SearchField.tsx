@@ -5,6 +5,7 @@ import "./SearchField.css";
 
 const NARROW_PX = 560;
 const NARROW = `(max-width: ${NARROW_PX}px)`;
+const POPUP = { selector: ".sol-popup", px: NARROW_PX };
 const narrowNow = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(NARROW).matches;
 const subscribeNarrow = (l: () => void) => {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
@@ -16,8 +17,9 @@ const subscribeNarrow = (l: () => void) => {
 /**
  * The one search field: a magnifier, the input, and `count` (`2 of 9`) trailing while it filters. Escape with text clears it first.
  * `collapsible` (a popup header): on a narrow screen it waits as its magnifier until tapped, so it costs the header no second line.
+ * `within` names the container whose width also collapses it, and at what width: a popup's card by default, a Dashboard box.
  */
-export function SearchField({ value, onChange, placeholder, label, count, className, collapsible = false }: {
+export function SearchField({ value, onChange, placeholder, label, count, className, collapsible = false, within = POPUP }: {
   value: string;
   onChange: (next: string) => void;
   placeholder: string;
@@ -25,6 +27,7 @@ export function SearchField({ value, onChange, placeholder, label, count, classN
   count?: string;
   className?: string;
   collapsible?: boolean;
+  within?: { selector: string; px: number };
 }) {
   const narrowScreen = useSyncExternalStore(subscribeNarrow, narrowNow, () => false);
   const [opened, setOpened] = useState(false);
@@ -33,12 +36,12 @@ export function SearchField({ value, onChange, placeholder, label, count, classN
   const [el, setEl] = useState<HTMLElement | null>(null);
   const [narrowCard, setNarrowCard] = useState(false);
   useLayoutEffect(() => {
-    const card = collapsible ? el?.closest<HTMLElement>(".sol-popup") : null;
+    const card = collapsible ? el?.closest<HTMLElement>(within.selector) : null;
     if (!card) return;
-    const ro = new ResizeObserver(() => setNarrowCard(card.clientWidth <= NARROW_PX));
+    const ro = new ResizeObserver(() => setNarrowCard(card.clientWidth <= within.px));
     ro.observe(card);
     return () => ro.disconnect();
-  }, [el, collapsible]);
+  }, [el, collapsible, within.selector, within.px]);
   const narrow = narrowScreen || narrowCard;
   useEffect(() => { if (opened) inputRef.current?.focus(); }, [opened]);
   if (collapsible && narrow && !opened && value === "") {

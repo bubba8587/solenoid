@@ -1,6 +1,6 @@
 // [[B11]] maximalMerge. Mechanics: [[input-cable-pruning]].
 import { getOwningEditor, getOwningView } from "../activeGraph";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import type { ShapeMode } from "../nodes/shared";
 
 type Shaped<M extends string> = { id: string; mode: M; _rebuildSockets(): void; edited(): void };
@@ -17,5 +17,5 @@ export async function applyShapeMode<M extends string = ShapeMode>(node: Shaped<
   node.mode = mode;
   node._rebuildSockets();
   await getOwningView(node.id)?.rerenderNode(node.id);
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }

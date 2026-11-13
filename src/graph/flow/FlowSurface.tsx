@@ -40,7 +40,7 @@ import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cab
 import { toFlowNodes, toFlowEdges, mergeFlowNodes, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
 import { canConnect, connect, moveNode } from "./flowModel";
 import type { FlowView } from "./flowView";
-import { notifyGraphChanged, processGraph } from "../process";
+import { notifyGraphChanged, processEdited } from "../process";
 import { cableDragStore, setCableDragging, stackOrderStore } from "../graphSignals";
 import { stackSelection } from "../selectionOps";
 import { useChromeZoom } from "../chromeZoom";
@@ -744,8 +744,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
               const pos = computeDockedCanvasPos(s.view, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
               if (pos) await s.view.moveNode(fc.id, pos);
               await insertFcInline(s.editor, fc);
-              fc.edited();
-              await processGraph();
+              await processEdited(fc.id, [...(fc.hostNodeId ? [fc.hostNodeId] : []), ...reconcileFcs(s.editor, null)], { topology: true });
             })();
           } else if (target) {
             fc.dockSelf(s.editor);

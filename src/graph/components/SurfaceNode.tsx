@@ -9,7 +9,7 @@ import { OpToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
 import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { stopDragStart } from "../coarse";
 import { ArrowIcon } from "./Icons";
 
@@ -65,7 +65,7 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
     data.setOp(next);
     setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   const rotate = (dYaw: number, dPitch: number) => {

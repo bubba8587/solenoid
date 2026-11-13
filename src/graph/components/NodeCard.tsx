@@ -18,9 +18,9 @@ export const HEADER_TAP_SLOP = 4;
 const noSubscribe = () => () => {};
 
 /** An input row's leading label (a row's second label, as in Rows/Cols, sits inside the field column), a connection
- *  card's field label, and an Equation card's variable. Shared with nodeCard.css and ConnectionNodes.css. */
+ *  card's field label, and an Equation card's variable. A row that reads as one phrase (LAMBDA's `λ( x )`) stays out. Shared with nodeCard.css and ConnectionNodes.css. */
 const IO_LABEL_COLUMN =
-  ".solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child), .sol-conn__field > .sol-conn__label, .solenoid-eq__var-row > .solenoid-node__io-label";
+  ".solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero):not(.solenoid-node__io-row--phrase) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child), .sol-conn__field > .sol-conn__label, .solenoid-eq__var-row > .solenoid-node__io-label";
 
 /** A field whose content is words or a date, and the input width it needs beside its label before it moves below it:
  *  about eleven characters of text, a full date, a short value beside a keyed slot's type button. */

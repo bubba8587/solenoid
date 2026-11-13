@@ -21,7 +21,7 @@ function LiteralField({ node, field, placeholder }: { node: QrCodeNodeType; fiel
   const [val, setVal] = useState(node.stringLiterals[field] ?? "");
   useEffect(() => { setVal(node.stringLiterals[field] ?? ""); }, [node.stringLiterals[field]]);
   function commit() {
-    if (val !== (node.stringLiterals[field] ?? "")) { node.stringLiterals[field] = val; node.edited(); void processGraph(); }
+    if (val !== (node.stringLiterals[field] ?? "")) { node.stringLiterals[field] = val; void processGraph(node.id); }
   }
   return (
     <input
@@ -40,7 +40,7 @@ export function QrCodeComponent({ data, emit }: NodeProps<QrCodeNodeType>) {
   function pickTemplate(next: QrTemplate) {
     setTemplate(next);
     data.qrTemplate = next;
-    data.edited(); void processGraph();
+    void processGraph(data.id);
   }
 
   const img = data.cachedResult;
@@ -63,7 +63,7 @@ export function QrCodeComponent({ data, emit }: NodeProps<QrCodeNodeType>) {
           <LiteralField node={data} field="wifiPass" placeholder="Password" />
           <LazySelect
             className="sol-conn__select" value={data.stringLiterals.wifiAuth || "WPA"} title="Security"
-            onChange={(e) => { data.stringLiterals.wifiAuth = e.target.value; data.edited(); void processGraph(); }} {...stopDrag}
+            onChange={(e) => { data.stringLiterals.wifiAuth = e.target.value; void processGraph(data.id); }} {...stopDrag}
           >
             <option value="WPA">WPA / WPA2</option>
             <option value="WEP">WEP</option>
@@ -72,7 +72,7 @@ export function QrCodeComponent({ data, emit }: NodeProps<QrCodeNodeType>) {
           <label className="sol-conn__field" title="The network doesn't broadcast its name">
             <input
               type="checkbox" checked={data.stringLiterals.wifiHidden === "true"}
-              onChange={(e) => { data.stringLiterals.wifiHidden = e.target.checked ? "true" : ""; data.edited(); void processGraph(); }}
+              onChange={(e) => { data.stringLiterals.wifiHidden = e.target.checked ? "true" : ""; void processGraph(data.id); }}
               onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
             />
             Hidden network

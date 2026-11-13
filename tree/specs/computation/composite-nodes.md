@@ -421,7 +421,7 @@ Tests: `compositeLogic.test.ts`: nothing selected returns null; a mixed selectio
 
 Any re-added cable the editor refuses is dropped silently. What only the boundary held is gone after unpack: marker seeds, port defaults, Monte Carlo spreads, the run mode and its config. An unwired input that relied on a seed arrives unwired.
 
-Tests: `compositeLogic.test.ts`: unpack restores the nodes, wiring and computation, and is a no-op on a card that is no composite. `graphEditReach.test.ts`: on every example, after a run of wraps, unpacks, deletes and cut cables, each card's answer is the one a whole pass from empty caches gives.
+Tests: `compositeLogic.test.ts`: unpack restores the nodes, wiring and computation, and is a no-op on a card that is no composite. `graphEditReach.test.ts`: on every example, after a run of wraps, unpacks, deletes, cut cables and inserted Conduits, each card's answer is the one a whole pass from empty caches gives.
 
 ## Save and load
 

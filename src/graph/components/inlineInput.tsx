@@ -32,29 +32,45 @@ export const INPUT_ROW_PITCH = 28;
 
 /** Derived at render time, never cached in state, so any re-render sees the current graph. */
 export function useConnectedInputs(nodeId: string): Set<string> {
-  // getOwningEditor, not getEditor: a node inside a drill-in must read its own graph's connections.
-  useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
-  const conns = getOwningEditor(nodeId)?.getConnections() ?? [];
-  const set = new Set<string>();
-  for (const c of conns) {
-    if (c.target === nodeId && typeof c.targetInput === "string") set.add(c.targetInput);
+  // getOwningEditor, not getEditor: a node inside a drill-in must read its own graph's connections. The snapshot is this
+  // card's own wired inputs, so a cable elsewhere re-renders no card but the ones it touches.
+  const key = useSyncExternalStore(connectionVersionStore.subscribe, () => wiredKeys(nodeId));
+  return useMemo(() => new Set(key ? key.split("\u0001") : []), [key]);
+}
+
+function wiredKeys(nodeId: string): string {
+  const keys: string[] = [];
+  for (const c of getOwningEditor(nodeId)?.connectionsInto(nodeId) ?? []) {
+    if (typeof c.targetInput === "string") keys.push(c.targetInput);
   }
-  return set;
+  return keys.sort().join("\u0001");
 }
 
 type IncomingSource = { sourceId: string; sourceOutput: string; label: string };
 
-/** Derived at render time because a source's label changes on rename, not only on connection changes. */
+/** Derived at render time because a source's label changes on rename, not only on connection changes; the snapshot is
+ *  this card's own incoming cables and their sources' names, so only a change to those re-renders it. */
 export function useIncomingSources(nodeId: string): Map<string, IncomingSource> {
-  useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
+  const key = useSyncExternalStore(connectionVersionStore.subscribe, () => incomingKey(nodeId));
+  return useMemo(() => {
+    const map = new Map<string, IncomingSource>();
+    if (!key) return map;
+    for (const row of key.split("\u0002")) {
+      const [input, sourceId, sourceOutput, label] = row.split("\u0001");
+      map.set(input, { sourceId, sourceOutput, label });
+    }
+    return map;
+  }, [key]);
+}
+
+function incomingKey(nodeId: string): string {
   const editor = getOwningEditor(nodeId);
-  const map = new Map<string, IncomingSource>();
-  for (const c of editor?.getConnections() ?? []) {
-    if (c.target !== nodeId || typeof c.targetInput !== "string") continue;
-    const src = editor?.getNode(c.source);
-    map.set(c.targetInput, { sourceId: c.source, sourceOutput: c.sourceOutput as string, label: cardName(src) });
+  const rows: string[] = [];
+  for (const c of editor?.connectionsInto(nodeId) ?? []) {
+    if (typeof c.targetInput !== "string") continue;
+    rows.push([c.targetInput, c.source, String(c.sourceOutput), cardName(editor?.getNode(c.source))].join("\u0001"));
   }
-  return map;
+  return rows.sort().join("\u0002");
 }
 
 /** `parse` result for a draft that can't become a value (commit reverts). */

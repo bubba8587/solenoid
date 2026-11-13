@@ -306,8 +306,8 @@ export class FilterFrameNode extends GraphNode {
 
 export class JoinNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    leftKey: "A blank or error key never matches any row, and the two key columns must share one type.",
-    rightKey: "An empty name reuses the left key's name for the right frame.",
+    leftKey: "With both keys blank, rows match whole: on every column both frames share by name, in any order, a blank matching a blank. With a key, a blank or error key never matches any row, and the two key columns must share one type.",
+    rightKey: "An empty name reuses the left key's name for the right frame; a right key alone is #VALUE!.",
     tolerance: "Only the as-of join reads this, as the widest key distance a match may span. An empty value allows any distance.",
     frame: "The right frame's non-key columns follow the left columns, and the key appears once, filled from whichever side has the row.",
   };

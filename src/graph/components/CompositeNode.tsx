@@ -12,7 +12,7 @@ import { SegToggle } from "./SegToggle";
 import { CardSection } from "./CardSection";
 import { MeasuredSocketRow } from "./NodeSocket";
 import type { DisplayValue } from "./valueDisplayFormat";
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { compositeEditorStore } from "../compositeEditorStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore } from "../connectionStore";
@@ -664,7 +664,7 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
       const n = Number(t);
       return Number.isFinite(n) ? n : INVALID_DRAFT;
     },
-    (v) => { data.defaultValue = v; data.edited(); void processGraph(); },
+    (v) => { data.defaultValue = v; void processEdited(data.id); },
   );
   return (
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">

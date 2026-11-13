@@ -441,7 +441,7 @@ Every placed name is one `trueany` input named exactly as the layout spells it, 
 
 ### The card
 
-`DashboardNode.tsx`: an Open Dashboard button, the layout field, and one row per name with the Report card's preview. A row whose figure is titled like the row shows the figure's kind instead (`chart`), so no row reads its name twice; this holds on the Report card too. Collapsed, every input converges on one pill.
+`DashboardNode.tsx`: an Open Dashboard button, the layout field, and one row per name with the Report card's preview. A row whose figure is titled like the row shows the figure's kind instead (`chart`), so no row reads its name twice; this holds on the Report card too. Collapsed, every input converges on one pill and the card ends on a Dashboard chip that opens the board (the Document chip's look, `DocumentChip` with its own label and opener), as a collapsed Report ends on its Document chip; the Open Dashboard button is the expanded card's.
 
 ### The board
 
@@ -451,14 +451,18 @@ Rows share the board's height with a 160 px floor, and the grid scrolls past tha
 
 ### A box
 
-A box is a grid placement, its name as the label, its value drawn by the shared renderer (`InlineRefValue`) with `rich` (a Frame's 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). The label is the figure's title, so the figure's own caption is hidden.
+A box is a grid placement, its name as the label, its value drawn by the shared renderer (`InlineRefValue`) with `rich` (a Frame's 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). A chart's own Title shows under the label, the chart's other options as the chart draws them anywhere; a Title that repeats the box's name, ignoring case, is left out (`figureFor`).
 
 - **A lone value** is the box's figure, centered and scaled to the box (container query units): a number, a KPI card's number, an error code or a date in the UI face at weight 750, 28 to 84 px; text, a list and a hint smaller, 18 to 40 px. Numbers take their format from a Format Controller, as everywhere; the box adds none.
 - **A frame whose popup opens on a view of its own** draws in that view (`specialFrameView`, `SpecialFrameView.tsx`), so a surface shows the frame the way its popup does: a PIVOTBY output as the Pivot view (`PivotFigure`, [[table-popup#The Pivot view]]) in the Pivot node's saved options, without the ribbon, a fold made here being the node's, as in the popup; Describe's profile as its Profile tiles (the popup's Profile view). A Report's expanded embed and an open Display card on the canvas draw it the same way; a card's three-row preview and a collapsed Display stay a table. A view a popup newly opens on joins `specialFrameView`, so every surface follows.
-- **A chart, diagram or picture** fits the box, a diagram scaled keeping its shape. **A document, a table, a cube or a Frame's cards** keep their own height and the box scrolls them; a table or cube drops the sunken well it wears on a card, since the box is its frame.
+- **A chart, diagram or picture** fits the box, a diagram scaled keeping its shape. Cards, and a Record in Gallery, Board or List, are a stack taller than the box, not a drawing that scales: the box scrolls it from its top, as the popup does (`stacksRecords`). **A document, a table, a cube or a Frame's cards** keep their own height and the box scrolls them; a table runs to the box's edges on its own sunken ground under a hairline from the name (right under a tint's name bar), its grid kept, its header row held at the top as it scrolls, its first and last columns inset to line up with the name; its ground stays neutral under a tint, as a chart's does.
 - **An error** shows its code, its message (else its explanation) and, when it knows its origin, a Caused by button that closes the board and flies to that node.
 - **Nothing wired** shows a muted dash, or the box's hint.
 - **Interactive figures** work as on a Display: a Record pages with its ‹ › buttons and a Choice Ladder takes its actions, both stepping the node feeding the box; a KPI card draws in its Value input's format.
+
+### The box's Filter
+
+A box whose value's popup carries a Filter carries the same one in its label row (`SearchField`, `boxFilter.ts`), narrowing the box as the popup narrows its view: a table's rows hold every word of it, read as the box shows each cell, across the whole table rather than the 25 rows drawn, the field trailing `n of N`; a Frame shown as Cards narrows its cards; a Pivot and a Profile narrow themselves; a Gantt keeps its matching tasks, and a Record or Cards figure its matching records, both trailing `n matches`. A Record's filter is the popup's, on the core (`setRecordQuery`), so it narrows that card's output while it holds, and clears when its box leaves the board (the board closing, another box expanded). Each box filters on its own, the board opens unfiltered, and Escape with text clears it before it closes anything. A box 380 px wide or less, and every box on a narrow screen, shows the Filter as its magnifier until tapped. A value whose popup has no Filter (a number, a chart, a cube, a document) shows none.
 
 ### Motion
 
@@ -488,7 +492,7 @@ A ⋯ menu on each label, shown on hover (always on a touch screen), rendered ou
 | Expand, Back to Board | Shows the box alone across the board; Back to Board (the same item there), Esc, the header's back button or a double-click on the label returns. A double-click on a label also expands. |
 | Show on Canvas | Closes the board and flies to the node feeding the box. |
 | Show as Cards / Table | On a box holding a Frame: the Table popup's Cards view, laid out as a grid across the box (`boxViews`). |
-| Color swatches, No Color | Tints the box as a Group is colored: a solid header bar in the palette slot's color with contrast ink, a 2 px border (darkened in light mode) and the Group's body wash, 8% dark and 14% light (`boxColors`, name → slot). |
+| Color swatches, No Color | Tints the box as a Group is colored: a solid header bar in the palette slot's color with contrast ink, a 2 px border (darkened in light mode) and the Group's body wash, 8% dark and 14% light (`boxColors`, name → slot). A box holding a chart (a KPI card, a gauge and a Record or Cards figure among them) keeps a neutral body: the wash would shift every color the chart means something by. |
 | Rename | Edits the name in the label; Enter or a click away commits, Esc cancels. Refused when blank, another box's name ignoring case, or holding the grammar's marks (`\|`, `*`, `:`, a leading `#`, a lone `.`). |
 | Remove | Writes the layout without the box. |
 

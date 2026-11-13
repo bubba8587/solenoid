@@ -91,20 +91,16 @@ const SRC = path.resolve(__dirname, "../../src");
 
 /** The modules that ask for a full pass with no card changed in place: each names why. */
 const NO_EDIT: Record<string, string> = {
-  "graph/components/ConnectionDialog.tsx": "a new cable",
-  "graph/components/ConduitComponent.tsx": "its lanes follow its cables, and a new Conduit is a new node",
   "graph/flow/FlowCanvas.tsx": "a cable's change, and the bulk settle after cables change",
   "graph/process.ts": "the pass itself: F9, an exact pass, a coalesced rerun, a bulk settle",
   "graph/devHarness.ts": "a column format, which frameFormatStore names itself",
-  "graph/catalogUtils.ts": "a new node",
   "graph/collapseSweep.ts": "new source nodes and their cables",
   "graph/landing/LandingGraph.tsx": "a new node or cable on a site page",
   "graph/landing/landingCompute.ts": "a site page's graph, built fresh",
   "graph/showcase/NodeShowcase.tsx": "a new node",
   "graph/modelFuzz.ts": "a new Clamp and its cables",
-  "graph/canvasKeyboard.ts": "a new group",
   "graph/connectionStore.ts": "a live connection's refresh, read in JavaScript by its cards, which are shells",
-  "graph/canvasActions.ts": "new Conduits, removed cables, a docked Format Controller: nodes and cables, no field",
+  "graph/canvasActions.ts": "cables removed in a drill-in, which the main pass finds through its composite",
   "graph/persistence.ts": "a document loaded: every node is new",
   "graph/graphDelta.ts": "an undo step: a changed card is rebuilt new, and each one's reach is reset before the pass",
 };

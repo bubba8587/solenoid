@@ -1,6 +1,6 @@
 Solenoid 1.6.2
 
-Excel workbooks as a source, a Categorize card for sorting a list into your own groups, stacked bar charts, undo that changes only what changed, a Probability pack, and a forecast chart on the Weather card. Runs free in your browser at solenoid-ngc.com; the Windows exe and the Linux .deb are below.
+Excel workbooks as a source, a Categorize card for sorting a list into your own groups, whole-row table comparison in Join, edits that recalculate only what they reach, Dashboard filters, stacked bar charts, undo that changes only what changed, a Probability pack, and a forecast chart on the Weather card. Runs free in your browser at solenoid-ngc.com; the Windows exe and the Linux .deb are below.
 
 Highlights
 
@@ -12,11 +12,20 @@ Highlights
 - Categorize: wire in a list (vendor names, expense memos, survey answers) and drag each distinct value into a category on the card's sorter. The card answers a two-column lookup table, Item and Category, to Join back onto your rows.
   - Categories come from a list you wire or type, or start as Category 1 to 3 to rename, add and remove in the sorter.
   - A sort is kept by value, so it holds when the list grows, shrinks or reorders. Long items wrap; Ctrl or Shift picks several to drop at once.
+- Join compares whole rows: leave both keys blank and rows match on every column the two tables share by name, in any order. Anti then lists the rows one table has and the other lacks, Semi the rows both hold, so comparing two versions of a table takes one card. A blank matches a blank, and units convert as a key's do.
 - Stacked charts: Column, Bar and Area take `stacked=True`, or `stacked=percent` for 100% stacked. The Chart Builder offers it as Stacking.
+- Dashboards:
+  - A box whose value has a Filter in its popup (a table, Frame cards, a Pivot, a Profile, a Gantt, a Record or Cards chart) has the same Filter in its header; a narrow box shows it as a magnifier.
+  - A chart's Title shows under the box's name.
+  - Cards, and a Record's Gallery, Board and List, scroll inside their box.
+  - A table runs to its box's edges on its own ground, and a colored box keeps charts and tables on a neutral ground, the color on its header and border.
+  - A collapsed Dashboard card ends on a chip that opens the board.
 - A Display, a Dashboard box and a Report show a Pivot as its Pivot view and a Describe output as its Profile, the way their popups open.
 - Describe's Profile (the view its popup opens on, renamed from Dashboard) is rebuilt: tiles pack with no gaps, each column in its own color, number and date columns get a Min, Median, Mean and Max strip with the median marked on the histogram, and key, constant and empty columns say so.
 - Undo and redo change only what changed. The canvas, the camera and every untouched card stay as they are, and undoing a typed value keeps that card's focus. On the Personal Finance example an undo went from about 2.7 seconds to a third of one.
   - Delete, removing a cable, Wrap as Composite and Unpack recalculate only the cards they reach.
+- Edits recalculate only what they reach. A dropdown, a field, a formula or a chart option used to recompute the whole graph, every upstream card included; now only the edited card and what it feeds recompute, so changing a chart's colormap under a large pivot no longer re-runs the pivot. Live sources (a web table, a vault folder, the weather) recompute only what they feed when their data lands.
+  - Insert Conduit on eight cables of a large graph: about 4 seconds down to a quarter of one.
 - The Probability pack (Settings, Packs): three cards that draw the distribution behind their answer.
   - Probability Between: the chance a value lands between two numbers, with handles to drag on the curve.
   - A/B Test: visitors and conversions for two versions give the chance B beats A, and the lift with its likely range.
@@ -36,6 +45,8 @@ Canvas
 
 Fixes
 
+- LAMBDA's λ( x ) row holds together again; the card-field alignment had pushed the parameter box into the middle of the row.
+- A card in a group no longer shows a dark fringe around its header.
 - SOLVE and MINVERSE no longer call a system singular because one variable is written in much larger or smaller units.
 - BETA.DIST's density at 0 and at 1 is the value Excel gives.
 - A calculated field over a large or filtered table reads the columns its formula names (it read blanks, so every cell was `#DIV/0!`).

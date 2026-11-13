@@ -2,7 +2,7 @@
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../nodeClasses";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables, reconcileTypesAfterEdit } from "../fcReconcile";
@@ -127,8 +127,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     // In One mode the output passes the active input through, so switching it can move the derived type (Cube to Frame) with no connection event; re-settle here.
     const ed = getOwningEditor(data.id);
     const view = getOwningView(data.id);
-    if (ed && view) reconcileTypesAfterEdit(ed, view);
-    data.edited(); void processGraph();
+    void processEdited(data.id, ed && view ? reconcileTypesAfterEdit(ed, view) : []);
   }
   function step(delta: number) {
     const next = Math.min(keys.length - 1, Math.max(0, data.activeIndex + delta));
@@ -147,19 +146,19 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
       await reconcilePendingOnRetype(ed, view, data.id, "out", before);
     }
     void view?.rerenderNode(data.id);
-    data.edited(); void processGraph();
+    void processEdited(data.id, [], { topology: true });
   }
   function toggleMulti(key: string) {
     const set = new Set(data.selectedKeys);
     if (set.has(key)) set.delete(key); else set.add(key);
     data.selectedKeys = [...set];
     setSelKeys(data.selectedKeys);
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   }
   async function addRow() {
     data.addValueInput();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
@@ -168,7 +167,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     setSelected(data.activeIndex);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   if (collapsed) {

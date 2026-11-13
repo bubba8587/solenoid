@@ -5,7 +5,7 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, type NodeProps } from "./nodeKit";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { retypeInputCables } from "../fcReconcile";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 
 /** The list socket follows the op ([[type-propagation-on-in-place-socket-retype]]): a cable the new type refuses goes. */
 async function applyAggregateOp(node: AggregateNodeType, op: ReduceOp): Promise<void> {
@@ -14,7 +14,7 @@ async function applyAggregateOp(node: AggregateNodeType, op: ReduceOp): Promise<
   const view = getOwningView(node.id);
   if (view) await view.rerenderNode(node.id);
   if (editor) await retypeInputCables(editor, view, node.id, "list");
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }
 
 // Record<ReduceOp, …> keeps this exhaustive: a new op fails the typecheck here.

@@ -27,9 +27,9 @@ import { drawnCableStore, commitDrawn } from "./drawnCables";
 import { PUSH_GAP } from "./groupPushCore";
 import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
-import { processGraph, getEditor } from "./process";
+import { processGraph, getEditor, processEdited } from "./process";
 import { cableTargets, changedReach } from "./editReach";
-import { MAIN_EDIT_SCOPE, type EditScope } from "./activeGraph";
+import { MAIN_EDIT_SCOPE, editScopeFor, type EditScope } from "./activeGraph";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 import { reconcileFcs } from "./fcReconcile";
 type SolenoidConnection = import("./schemes").SolenoidConnection;
@@ -96,61 +96,69 @@ export async function insertConduitForCables(
   cableSelectionStore.clear();
   unselectAllNodesFromProcess();
   const created: string[] = [];
-  for (let base = 0; base < lanes.length; base += CONDUIT_MAX_LANES) {
-    const chunk = lanes.slice(base, base + CONDUIT_MAX_LANES);
-    const cx = chunk.reduce((s2, it) => s2 + it.mid.x, 0) / chunk.length;
-    let cy = chunk.reduce((s2, it) => s2 + it.mid.y, 0) / chunk.length;
-    const dx = chunk.reduce((s2, it) => s2 + it.dir.x, 0);
-    const dy = chunk.reduce((s2, it) => s2 + it.dir.y, 0);
-    const angle = Math.round(((Math.atan2(dy, dx) * 180) / Math.PI) / 45) * 45;
-    for (let pass = 0; pass < 4; pass++) {
-      let bumped = false;
-      for (const n of editor.getNodes()) {
-        if (n instanceof GroupNode && !n.collapsed) continue;
-        if (groupCollapseStore.isNodeHidden(n.id)) continue;
-        const b = measuredBox(view, n.id, editor);
-        if (!b) continue;
-        const { w, h } = b;
-        const p = { x: b.x, y: b.y };
-        if (
-          cx + CONDUIT_PIVOT > p.x && cx - CONDUIT_PIVOT < p.x + w &&
-          cy + CONDUIT_PIVOT > p.y && cy - CONDUIT_PIVOT < p.y + h
-        ) {
-          cy = p.y + h + CONDUIT_PIVOT + 16;
-          bumped = true;
+  const scope = editScopeFor(editor);
+  const before = cableTargets(editor);
+  scope.begin();
+  try {
+    for (let base = 0; base < lanes.length; base += CONDUIT_MAX_LANES) {
+      const chunk = lanes.slice(base, base + CONDUIT_MAX_LANES);
+      const cx = chunk.reduce((s2, it) => s2 + it.mid.x, 0) / chunk.length;
+      let cy = chunk.reduce((s2, it) => s2 + it.mid.y, 0) / chunk.length;
+      const dx = chunk.reduce((s2, it) => s2 + it.dir.x, 0);
+      const dy = chunk.reduce((s2, it) => s2 + it.dir.y, 0);
+      const angle = Math.round(((Math.atan2(dy, dx) * 180) / Math.PI) / 45) * 45;
+      for (let pass = 0; pass < 4; pass++) {
+        let bumped = false;
+        for (const n of editor.getNodes()) {
+          if (n instanceof GroupNode && !n.collapsed) continue;
+          if (groupCollapseStore.isNodeHidden(n.id)) continue;
+          const b = measuredBox(view, n.id, editor);
+          if (!b) continue;
+          const { w, h } = b;
+          const p = { x: b.x, y: b.y };
+          if (
+            cx + CONDUIT_PIVOT > p.x && cx - CONDUIT_PIVOT < p.x + w &&
+            cy + CONDUIT_PIVOT > p.y && cy - CONDUIT_PIVOT < p.y + h
+          ) {
+            cy = p.y + h + CONDUIT_PIVOT + 16;
+            bumped = true;
+          }
         }
+        if (!bumped) break;
       }
-      if (!bumped) break;
-    }
-    const conduit = new ConduitNode({ angle }) as unknown as SolenoidNode;
-    await editor.addNode(conduit);
-    await view.moveNode(conduit.id, { x: cx - CONDUIT_PIVOT, y: cy - CONDUIT_PIVOT });
-    for (let i = 0; i < chunk.length; i++) {
-      const lane = chunk[i];
-      const src = editor.getNode(lane.conns[0].source);
-      if (!src) continue;
-      for (const conn of lane.conns) {
-        try { await editor.removeConnection(conn.id); } catch { /* already gone */ }
-      }
-      try {
-        await editor.addConnection(
-          new GraphConnection(src, lane.conns[0].sourceOutput, conduit, conduitInKey(i)) as SolenoidConnection,
-        );
-      } catch { /* incompatible — leave disconnected */ }
-      for (const conn of lane.conns) {
-        const tgt = editor.getNode(conn.target);
-        if (!tgt) continue;
+      const conduit = new ConduitNode({ angle }) as unknown as SolenoidNode;
+      await editor.addNode(conduit);
+      await view.moveNode(conduit.id, { x: cx - CONDUIT_PIVOT, y: cy - CONDUIT_PIVOT });
+      for (let i = 0; i < chunk.length; i++) {
+        const lane = chunk[i];
+        const src = editor.getNode(lane.conns[0].source);
+        if (!src) continue;
+        for (const conn of lane.conns) {
+          try { await editor.removeConnection(conn.id); } catch { /* already gone */ }
+        }
         try {
           await editor.addConnection(
-            new GraphConnection(conduit, conduitOutKey(i), tgt, conn.targetInput) as SolenoidConnection,
+            new GraphConnection(src, lane.conns[0].sourceOutput, conduit, conduitInKey(i)) as SolenoidConnection,
           );
         } catch { /* incompatible — leave disconnected */ }
+        for (const conn of lane.conns) {
+          const tgt = editor.getNode(conn.target);
+          if (!tgt) continue;
+          try {
+            await editor.addConnection(
+              new GraphConnection(conduit, conduitOutKey(i), tgt, conn.targetInput) as SolenoidConnection,
+            );
+          } catch { /* incompatible — leave disconnected */ }
+        }
       }
+      created.push(conduit.id);
     }
-    created.push(conduit.id);
+  } finally {
+    scope.end();
   }
   created.forEach((id, i) => selectNodeFromProcess(id, i > 0));
-  await processGraph();
+  // A Conduit passes its values through, so only the cards its cables now feed recompute, once.
+  await scope.settle(editor === getEditor() ? changedReach(editor, before, created) : undefined, { topology: true });
 }
 
 export function linkStandoffBetween(
@@ -388,5 +396,6 @@ export async function attachFormatController(
   const pos = computeDockedCanvasPos(view, container, fc.hostNodeId, fc.socketKey, fc.side, fc.width, fc.height);
   if (pos) await view.moveNode(fc.id, pos);
   await insertFcInline(editor, fc);
-  await processGraph();
+  // Its reach, its host's, and whatever the reconcile on the new wiring moved (the card it now stamps).
+  await processEdited(fc.id, [...(fc.hostNodeId ? [fc.hostNodeId] : []), ...reconcileFcs(editor, null)], { topology: true });
 }

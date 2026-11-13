@@ -18,7 +18,7 @@ import { describeAnnotation } from "../frameFormatStore";
 import type { FrameColType } from "../frame";
 import { SOCKET_COLORS } from "../sockets";
 import { clamp } from "../nodes/mathUtils";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { repositionDockedNodes } from "../canvasCommands";
 import { getOwningEditor } from "../activeGraph";
 import { NodeCard } from "./NodeCard";
@@ -101,11 +101,8 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
 
   function syncNode() {
     const editor = getOwningEditor(node.id);
-    if (editor) {
-      // Every FC: a downstream forwarding FC's unit is locked to this one.
-      reconcileFcs(editor, null);
-    }
-    node.edited(); void processGraph();
+    // Every FC: a downstream forwarding FC's unit is locked to this one. The pass reaches each card the reconcile moved.
+    void processEdited(node.id, editor ? reconcileFcs(editor, null) : []);
   }
 
   function onFormatChange(f: FormatStyleId | "") {

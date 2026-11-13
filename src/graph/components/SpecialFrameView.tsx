@@ -11,12 +11,13 @@ import { getProfileView } from "../tablePopupStore";
 import { PivotFigure } from "./PivotFigure";
 
 /** The frame's default popup view as a figure, or null for a frame whose popup opens on the grid. `sourceId` is the
- *  card the frame comes from, whose Pivot view options and folds the figure shares. */
-export function specialFrameView(frame: FrameValue, sourceId?: string): ReactNode | null {
+ *  card the frame comes from, whose Pivot view options and folds the figure shares; `query` is the surface's filter, as
+ *  the popup's narrows the view. */
+export function specialFrameView(frame: FrameValue, sourceId?: string, query = ""): ReactNode | null {
   const pivot = pivotLayoutOf(frame);
-  if (pivot) return <PivotFigure frame={frame} layout={pivot} sourceId={sourceId} />;
+  if (pivot) return <PivotFigure frame={frame} layout={pivot} sourceId={sourceId} query={query} />;
   const tiles = describeTilesOf(frame);
   const Profile = tiles ? getProfileView() : null;
-  if (tiles && Profile) return <Profile tiles={tiles} query="" />;
+  if (tiles && Profile) return <Profile tiles={tiles} query={query} />;
   return null;
 }

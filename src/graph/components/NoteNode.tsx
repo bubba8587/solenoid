@@ -12,7 +12,7 @@ import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useKnapRender } from "./useKnapRender";
 import { useEditableLabel } from "./inlineInput";
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
@@ -133,9 +133,9 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setFieldsVersion((v) => v + 1);
     await view?.rerenderNode(data.id);
-    if (editor && view && retyped.length) reconcileFcTypes(editor, view);
+    const moved = editor && view && retyped.length ? reconcileFcTypes(editor, view) : [];
     bumpConnectionVersion(); // re-route cables whose source row shifted
-    data.edited(); await processGraph();
+    await processEdited(data.id, moved, { topology: true });
   }
 
   // The body stays a local draft while typing and reaches the node here ([[B19]] spreadsheetHabits).
