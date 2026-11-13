@@ -16,9 +16,9 @@ off), the Android build (not in 1.6) and the headless CLI (unpublished).
 
 The deck shows 1.6.2's slides first, titled "What's new in 1.6, 1.6.1 and 1.6.2". The changelog is `release-notes-1.6.2.md`.
 
-- **[slide] Excel workbooks.** Local File and Web Source read a named Table straight out of an .xlsx or .xlsm file, with the answers Excel saved for its formulas. Point one at reports/*.xlsx and every workbook's Table comes in as one table.
-- **[slide] Categorize.** Got forty spellings of the same five vendors? Wire the list into the new Categorize card, drag each one into a category, and Join the lookup it builds back onto your rows. No more hand-typed mapping tables.
-- **[slide] Undo that stays put.** Undo and redo change only what changed. Your camera and every card you didn't touch stay right where they were, and on the Personal Finance example an undo went from about 2.7 seconds to a third of one.
+- **[slide] Excel workbooks.** The Local File and Web Source nodes can now read tables from Excel files.
+- **[slide] Categorize.** The Categorize node makes it easy to assign one list to another.
+- **[slide] Undo improvements.** "Undo" now recalculates much less of your document.
 
 ## 1.6.1
 

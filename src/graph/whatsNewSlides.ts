@@ -14,15 +14,15 @@ export const RELEASES: ReleaseSlides[] = [
     slides: [
       {
         title: "Excel workbooks",
-        body: "Local File and Web Source read a named Table straight out of an .xlsx or .xlsm file, with the answers Excel saved for its formulas. Point one at reports/*.xlsx and every workbook's Table comes in as one table.",
+        body: "The Local File and Web Source nodes can now read tables from Excel files.",
       },
       {
         title: "Categorize",
-        body: "Got forty spellings of the same five vendors? Wire the list into the new Categorize card, drag each one into a category, and Join the lookup it builds back onto your rows. No more hand-typed mapping tables.",
+        body: "The Categorize node makes it easy to assign one list to another.",
       },
       {
-        title: "Undo that stays put",
-        body: "Undo and redo change only what changed. Your camera and every card you didn't touch stay right where they were, and on the Personal Finance example an undo went from about 2.7 seconds to a third of one.",
+        title: "Undo improvements",
+        body: "\"Undo\" now recalculates much less of your document.",
       },
     ],
   },
