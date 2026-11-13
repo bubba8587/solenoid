@@ -79,22 +79,25 @@ export function reconcileFcs(editor: GraphEditor<Schemes>, view: View | null): v
     fcs: [string, SocketDataType, string][];
     converts: [string, boolean, boolean][];
   };
+  // Only a card the reconcile changed redraws: it runs after every cable change, on every FC and Convert.
   let anyRetyped = false;
+  const retyped = new Set<string>();
   for (const [id, type, dictated] of answer.fcs) {
     const n = editor.getNode(id);
-    if (n instanceof FormatControllerNode) anyRetyped = n.settle(type, dictated) || anyRetyped;
+    if (n instanceof FormatControllerNode && n.settle(type, dictated)) { anyRetyped = true; retyped.add(id); }
   }
   for (const [id, up, down] of answer.converts) {
     const n = editor.getNode(id);
-    if (!(n instanceof ConvertNode)) continue;
+    if (!(n instanceof ConvertNode) || (n.imposesUp === up && n.imposesDown === down)) continue;
     n.imposesUp = up;
     n.imposesDown = down;
     void view?.rerenderNode(id);
   }
   for (const n of editor.getNodes()) {
     if (!(n instanceof FormatControllerNode)) continue;
+    const inherited = JSON.stringify(n.inheritedAnnotation);
     n.refreshAnnotation(editor as never);
-    void view?.rerenderNode(n.id);
+    if (retyped.has(n.id) || JSON.stringify(n.inheritedAnnotation) !== inherited) void view?.rerenderNode(n.id);
   }
   // A retyped socket's cables stay detached until their paths recompute next frame.
   if (anyRetyped && view) requestAnimationFrame(() => { void view.rerenderCables(); });

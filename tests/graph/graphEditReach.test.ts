@@ -1,6 +1,6 @@
 // [[A1]] visualGraphCalculator, [[compute-pass#What triggers a pass]]
-// Delete, a cut cable, Wrap as Composite and Unpack pass over only what they reach (`editReach.ts`). On every example,
-// after each such edit made live, every card's answer is the one a whole pass from empty caches gives.
+// Insert Conduit, Delete, a cut cable, Wrap as Composite and Unpack pass over only what they reach (`editReach.ts`). On
+// every example, after each such edit made live, every card's answer is the one a whole pass from empty caches gives.
 // Other draws: SALT=3 npx vitest run tests/graph/graphEditReach.test.ts
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -12,7 +12,7 @@ import { settleCableChange } from "../../src/graph/cableSettle";
 import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { nodeNameStore } from "../../src/graph/nodeNameStore";
 import { loadGraph } from "../../src/graph/persistence";
-import { deleteSelection, deleteCables } from "../../src/graph/canvasActions";
+import { deleteSelection, deleteCables, insertConduitForCables } from "../../src/graph/canvasActions";
 import { createCompositeFromSelection, unpackComposite } from "../../src/graph/compositeLogic";
 import { CompositeNode } from "../../src/graph/nodeClasses";
 import { readFrame } from "../../src/graph/frameBackend";
@@ -108,6 +108,13 @@ async function edit(r: () => number): Promise<string> {
   const nodes = editor.getNodes();
   const name = (id: string) => nodeNameStore.get(id) ?? id;
   const kind = r();
+  if (kind < 0.1 && editor.getConnections().length) {
+    // Every cable off one output, as a person picks a bundle to route.
+    const c = pick(editor.getConnections());
+    const bundle = editor.getConnections().filter((x) => x.source === c.source && x.sourceOutput === c.sourceOutput);
+    await insertConduitForCables(editor, view, {} as HTMLElement, { connIds: bundle.map((x) => x.id) } as Parameters<typeof insertConduitForCables>[3]);
+    return `conduit ${bundle.length} off ${name(c.source)}.${c.sourceOutput}`;
+  }
   if (kind < 0.25 && editor.getConnections().length) {
     const c = pick(editor.getConnections());
     await deleteCables(editor, { connIds: [c.id] } as Parameters<typeof deleteCables>[1]);
