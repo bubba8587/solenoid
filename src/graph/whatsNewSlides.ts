@@ -10,6 +10,23 @@ export type ReleaseSlides = { version: Release; slides: Slide[] };
  *  with its patches combined (`deckReleases`), so 1.6.1 opens "What's new in 1.6 and 1.6.1" and 1.7 starts a fresh deck. */
 export const RELEASES: ReleaseSlides[] = [
   {
+    version: "1.6.2",
+    slides: [
+      {
+        title: "Excel workbooks",
+        body: "Local File and Web Source read a named Table straight out of an .xlsx or .xlsm file, with the answers Excel saved for its formulas. Point one at reports/*.xlsx and every workbook's Table comes in as one table.",
+      },
+      {
+        title: "Categorize",
+        body: "Got forty spellings of the same five vendors? Wire the list into the new Categorize card, drag each one into a category, and Join the lookup it builds back onto your rows. No more hand-typed mapping tables.",
+      },
+      {
+        title: "Undo that stays put",
+        body: "Undo and redo change only what changed. Your camera and every card you didn't touch stay right where they were, and on the Personal Finance example an undo went from about 2.7 seconds to a third of one.",
+      },
+    ],
+  },
+  {
     version: "1.6.1",
     slides: [
       {
