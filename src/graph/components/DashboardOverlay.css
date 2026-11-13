@@ -123,9 +123,31 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 /* A diagram scales to its box, keeping its shape, as in a resized Display. */
 .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid { flex: 1 1 auto; min-height: 0; overflow: hidden; align-items: center; }
 .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid svg { width: 100%; height: 100%; max-height: 100%; }
-/* A table or cube is the box's whole content, so it drops the sunken well a card value sits in: the box is its frame. */
-.dashboard-box__value .solenoid-table-display { background: none; border: none; padding: 0 !important; }
+/* A table is the box's whole content, so it runs to the box's edges on its own sunken ground, as a sheet does, under a
+   hairline from the box's name: no inset well inside the box, and no tint, since a table's ground stays neutral as a
+   chart's does. The first and last columns keep the box's inner margin, so the text lines up with the name. */
+.dashboard-box__value:has(> .solenoid-ref-figure > .solenoid-table-display) {
+  padding: 0;
+  margin-top: 8px;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--border);
+}
+.dashboard-box__value .solenoid-table-display { background: none; border: none; border-radius: 0; padding: 0 !important; }
 .dashboard-box__value .solenoid-table-display__grid { margin-top: 0; }
+.dashboard-box__value .solenoid-table-display__grid :is(th, td) { padding-top: 4px !important; padding-bottom: 4px !important; }
+.dashboard-box__value .solenoid-table-display__grid :is(th, td):first-child { padding-left: 14px !important; }
+.dashboard-box__value .solenoid-table-display__grid :is(th, td):last-child { padding-right: 14px !important; }
+.dashboard-box__value .solenoid-table-display__grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+.dashboard-box__value .solenoid-table-display__grid tbody tr + tr td { border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+.dashboard-box__value .solenoid-table-display__chip { padding: 6px 14px 8px; }
+/* Under a tint's solid name bar the bar is the edge, so the table starts right below it. */
+.dashboard-box--tinted .dashboard-box__value:has(> .solenoid-ref-figure > .solenoid-table-display) { margin-top: 0; border-top: none; }
 /* A Frame shown as cards: the popup's one 460 px column becomes a grid across the box, scrolling in the box and,
    at its end, handing the scroll on to the board (the popup's overscroll contain would keep it). */
 .dashboard-box__value > .table-cards-wrap { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; overscroll-behavior: auto; }
