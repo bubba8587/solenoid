@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 publish = false
-rust-version = "1.99"
+rust-version = "1.100"
 
 [lib]
 crate-type = ["rlib"]
@@ -23,6 +23,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
 ryu-js = "1"
 csv = "1.4"
+# Excel workbooks' named Tables (xlsx.rs); no default features, so no chrono or the ODS/XLS extras it gates.
+calamine = { version = "0.38.0", default-features = false }
+# A Table's own part is read here (its edges, which calamine keeps to itself): the two crates calamine already builds on.
+zip = { version = "9", default-features = false, features = ["deflate"] }
+quick-xml = "0.42"
 qrcodegen = "1.8"
 md-5 = { version = "0.11.0", default-features = false }
 sha1 = { version = "0.11.0", default-features = false }

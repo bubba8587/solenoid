@@ -138,94 +138,6 @@ const parseNum = (t: string): number | undefined | typeof INVALID_DRAFT => {
   return Number.isFinite(n) ? n : INVALID_DRAFT;
 };
 
-// Under this, pointerup is a no-op, so a plain click still focuses and places a caret.
-const SCRUB_MOVE_THRESHOLD = 4; // px
-const SCRUB_PX_PER_STEP = 6; // px of drag per unit step, at the unmodified rate
-
-type ScrubState = { startX: number; startY: number; startValue: number; currentValue: number; dragging: boolean };
-
-/** Drag-to-scrub handlers for a number field: `showValue` previews the live draft (and
- *  reverts on cancel), `commitValue` applies the final value and owns its undo entry. */
-export function useNumberScrub(
-  committed: number | undefined,
-  showValue: (v: number | undefined) => void,
-  commitValue: (next: number) => void,
-) {
-  const dragRef = useRef<ScrubState | null>(null);
-  // Window-level Escape listener, since a drag blurs the input; its ref unbinds it when a drag is interrupted.
-  const escRef = useRef<((e: KeyboardEvent) => void) | null>(null);
-  useEffect(() => () => {
-    if (escRef.current) window.removeEventListener("keydown", escRef.current);
-    // An unmount mid-drag skips endDrag; gated on this field owning the drag, so an unrelated unmount can't strip an active scrub's cursor class.
-    if (dragRef.current) {
-      dragRef.current = null;
-      document.body.classList.remove("solenoid-scrubbing");
-    }
-  }, []);
-
-  function endDrag(e: React.PointerEvent<HTMLInputElement>, commit: boolean) {
-    const d = dragRef.current;
-    dragRef.current = null;
-    if (escRef.current) { window.removeEventListener("keydown", escRef.current); escRef.current = null; }
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-    document.body.classList.remove("solenoid-scrubbing");
-    if (!d || !d.dragging) return;
-    if (commit) {
-      if (!Object.is(d.currentValue, committed)) commitValue(d.currentValue);
-    } else {
-      showValue(d.startValue);
-    }
-  }
-
-  function onPointerDown(e: React.PointerEvent<HTMLInputElement>) {
-    e.stopPropagation();
-    if (e.button !== 0) return;
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startValue: committed ?? 0, currentValue: committed ?? 0, dragging: false };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const target = e.currentTarget;
-    const pointerId = e.pointerId;
-    const onEsc = (ke: KeyboardEvent) => {
-      if (ke.key !== "Escape") return;
-      const d = dragRef.current;
-      dragRef.current = null;
-      window.removeEventListener("keydown", onEsc);
-      escRef.current = null;
-      if (target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId);
-      document.body.classList.remove("solenoid-scrubbing");
-      if (d) showValue(d.startValue);
-    };
-    escRef.current = onEsc;
-    window.addEventListener("keydown", onEsc);
-  }
-
-  function onPointerMove(e: React.PointerEvent<HTMLInputElement>) {
-    const d = dragRef.current;
-    if (!d) return;
-    const dx = e.clientX - d.startX;
-    const dy = d.startY - e.clientY;
-    if (!d.dragging) {
-      if (Math.hypot(dx, dy) < SCRUB_MOVE_THRESHOLD) return;
-      d.dragging = true;
-      (document.activeElement as HTMLElement | null)?.blur();
-      document.body.classList.add("solenoid-scrubbing");
-    }
-    const delta = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
-    // Count steps first, then scale: rounding the product would make Alt-fine a slow integer scrub instead of a 0.1 one.
-    const mult = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
-    const raw = d.startValue + Math.round(delta / SCRUB_PX_PER_STEP) * mult;
-    const next = mult < 1 ? Math.round(raw * 10) / 10 : raw;
-    d.currentValue = next;
-    showValue(next);
-  }
-
-  return {
-    onPointerDown,
-    onPointerMove,
-    onPointerUp: (e: React.PointerEvent<HTMLInputElement>) => endDrag(e, true),
-    onPointerCancel: (e: React.PointerEvent<HTMLInputElement>) => endDrag(e, false),
-  };
-}
-
 export function InlineNumberField({
   value,
   onChange,
@@ -236,13 +148,6 @@ export function InlineNumberField({
   placeholder?: string;
 }) {
   const field = useDraftCommit(value, numToText, parseNum, onChange);
-  const scrub = useNumberScrub(
-    value,
-    (v) => field.setDraft(numToText(v)),
-    (next) => {
-      onChange(next);
-    },
-  );
 
   return (
     <input
@@ -253,7 +158,6 @@ export function InlineNumberField({
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}
-      {...scrub}
       onMouseDown={(e) => e.stopPropagation()}
       spellCheck={false}
     />
@@ -452,18 +356,22 @@ export function InlineCsvField({
   value,
   onChange,
   listId,
+  placeholder,
 }: {
   value: string | undefined;
   onChange: (v: string) => void;
   listId?: string;
+  /** What the field's declared empty kind shows ([[D96]] emptySlotShowsItsValue), "" for one that shows nothing; a field
+   *  that declares none hints at the form. */
+  placeholder?: string;
 }) {
   const field = useDraftCommit(value ?? "", (v) => v, (t) => t, onChange);
   return (
     <input
       type="text"
-      className="solenoid-node__inline-input"
+      className="solenoid-node__inline-input solenoid-node__inline-input--list"
       value={field.draft}
-      placeholder="a, b, c"
+      placeholder={placeholder ?? "a, b, c"}
       list={listId}
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
@@ -616,7 +524,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
               pickerKeys.has(key) ? (
                 <ColumnListField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
               ) : (
-                <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} />
+                <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} placeholder={empty ? (placeholder ?? "") : undefined} />
               )
             ) : null}
             {trailing?.[key]}

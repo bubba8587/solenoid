@@ -163,7 +163,7 @@ describe("passthrough declarations", () => {
   });
 });
 
-// [[C136]] typesKnownAfterCalc, [[D117]] emptyKeepsLastType
+// [[C136]] typesKnownAfterCalc, [[socket-lattice#Requirements]]
 describe("every passthrough output can take the type of its value", () => {
   it("its socket is retypeable, and branches that vote declare `selected`", async () => {
     const { FLAT_CATALOG } = await import("../../src/graph/catalogUtils");

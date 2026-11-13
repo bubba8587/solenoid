@@ -56,9 +56,9 @@ export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
         <>
           <button
             type="button"
-            className="solenoid-node__inline-input"
+            className="solenoid-node__recalc-btn"
             disabled={busy}
-            style={{ width: "100%", cursor: busy ? "default" : "pointer", textAlign: "center", opacity: busy ? 0.6 : 1 }}
+            style={busy ? { cursor: "default", opacity: 0.6 } : undefined}
             onClick={onRun}
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}

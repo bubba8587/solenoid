@@ -203,7 +203,7 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
         lf: vec![0.0; n],
         driver: vec![None; n],
         floored: vec![false; n],
-        dur: (0..n).map(|i| cx.units(i, tasks[i].duration)).collect(),
+        dur: Vec::from_fn(n, |i| cx.units(i, tasks[i].duration)),
         split: vec![None; n],
     };
 
@@ -372,14 +372,14 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
     backward(&mut p, &mut summary_ls)?;
     if tasks.iter().any(|t| t.alap && !t.summary) {
         let floors: Vec<Option<f64>> =
-            (0..n).map(|i| (tasks[i].alap && !tasks[i].summary && !tasks[i].manual).then_some(p.ls[i])).collect();
+            Vec::from_fn(n, |i| (tasks[i].alap && !tasks[i].summary && !tasks[i].manual).then_some(p.ls[i]));
         forward(&mut p, &floors)?;
         backward(&mut p, &mut summary_ls)?;
     }
 
     let days = |i: usize, u: f64| if cx.cal(i).minutes { round_half_up(u / cx.u(i) * 1000.0) / 1000.0 } else { u };
     let float_of = |i: usize| nan_min(p.ls[i] - p.es[i], p.lf[i] - p.ef[i]);
-    let mut total_days: Vec<f64> = (0..n).map(|i| if tasks[i].summary { 0.0 } else { days(i, float_of(i)) }).collect();
+    let mut total_days: Vec<f64> = Vec::from_fn(n, |i| if tasks[i].summary { 0.0 } else { days(i, float_of(i)) });
     let mut critical = vec![false; n];
     for &i in order {
         let t = &tasks[i];

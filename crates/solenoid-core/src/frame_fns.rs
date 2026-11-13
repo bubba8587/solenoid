@@ -75,8 +75,8 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
         // The data providers' replies (`providers.rs`). args: the reply's text, then the card's picks.
         ("weatherFrame", _) => {
             let (text, unit) = (str_arg(args, 0)?, str_arg(args, 1)?);
-            let (daily, now, condition) = crate::providers::weather(&text, &unit);
-            Ok(FrameOut::FrameAnd(daily, V::List(Rc::new(vec![now, condition]))))
+            let (daily, now, condition, utc_offset) = crate::providers::weather(&text, &unit);
+            Ok(FrameOut::FrameAnd(daily, V::List(Rc::new(vec![now, condition, utc_offset]))))
         }
         ("holidaysFrame", _) => {
             let (text, region, today) = (str_arg(args, 0)?, str_arg(args, 1)?, num_arg(args, 2)?);
@@ -527,7 +527,7 @@ fn correlation_matrix(f: &FrameValue, method: &str) -> FrameValue {
         out.push(FrameColumn::new(
             names[j + 1].clone(),
             FrameColType::Number,
-            (0..n).map(|i| grid[i][j].map_or(FrameCell::Null, FrameCell::Num)).collect(),
+            Vec::from_fn(n, |i| grid[i][j].map_or(FrameCell::Null, FrameCell::Num)),
         ));
     }
     FrameValue { columns: out }
@@ -790,7 +790,7 @@ fn nest_groups(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
 
 /// `/^-?\d+(\.\d+)?$/`
 fn plain_decimal(t: &str) -> bool {
-    let body = t.strip_prefix('-').unwrap_or(t);
+    let body = t.trim_prefix('-');
     let (int, frac) = match body.split_once('.') {
         Some((i, f)) => (i, Some(f)),
         None => (body, None),
@@ -1020,20 +1020,18 @@ fn split_frame(f: &FrameValue) -> V {
     if f.columns.iter().any(|c| c.ty == FrameColType::String) {
         return V::List(Rc::new(vec![V::Null, headers]));
     }
-    let rows = (0..frame_row_count(f))
-        .map(|i| {
-            V::List(Rc::new(
-                f.columns
-                    .iter()
-                    .map(|c| match c.values.get(i) {
-                        Some(FrameCell::Num(n)) => V::Num(*n),
-                        Some(FrameCell::Bool(b)) => V::Num(if *b { 1.0 } else { 0.0 }),
-                        _ => V::Num(f64::NAN),
-                    })
-                    .collect(),
-            ))
-        })
-        .collect();
+    let rows = Vec::from_fn(frame_row_count(f), |i| {
+        V::List(Rc::new(
+            f.columns
+                .iter()
+                .map(|c| match c.values.get(i) {
+                    Some(FrameCell::Num(n)) => V::Num(*n),
+                    Some(FrameCell::Bool(b)) => V::Num(if *b { 1.0 } else { 0.0 }),
+                    _ => V::Num(f64::NAN),
+                })
+                .collect(),
+        ))
+    });
     V::List(Rc::new(vec![V::List(Rc::new(rows)), headers]))
 }
 
@@ -1063,25 +1061,23 @@ pub(crate) fn typed_column(
     } else {
         FrameColType::String
     });
-    let values = (0..length)
-        .map(|i| match cells.get(i).unwrap_or(&FrameCell::Null) {
-            c @ (FrameCell::Null | FrameCell::Err(_)) => c.clone(),
-            c => match ty {
-                FrameColType::String => match c {
-                    FrameCell::Str(_) => c.clone(),
-                    other => FrameCell::str(&js_string(other)),
-                },
-                FrameColType::Logical => match c {
-                    FrameCell::Bool(_) => c.clone(),
-                    other => FrameCell::Bool(lower_text(trim_space(&js_string(other))) == "true"),
-                },
-                _ => match c {
-                    FrameCell::Num(_) => c.clone(),
-                    other => FrameCell::Num(cell_to_number(other).unwrap_or(f64::NAN)),
-                },
+    let values = Vec::from_fn(length, |i| match cells.get(i).unwrap_or(&FrameCell::Null) {
+        c @ (FrameCell::Null | FrameCell::Err(_)) => c.clone(),
+        c => match ty {
+            FrameColType::String => match c {
+                FrameCell::Str(_) => c.clone(),
+                other => FrameCell::str(&js_string(other)),
             },
-        })
-        .collect();
+            FrameColType::Logical => match c {
+                FrameCell::Bool(_) => c.clone(),
+                other => FrameCell::Bool(lower_text(trim_space(&js_string(other))) == "true"),
+            },
+            _ => match c {
+                FrameCell::Num(_) => c.clone(),
+                other => FrameCell::Num(cell_to_number(other).unwrap_or(f64::NAN)),
+            },
+        },
+    });
     FrameColumn::new(name, ty, values)
 }
 

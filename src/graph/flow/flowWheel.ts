@@ -1,4 +1,4 @@
-// [[C92]] pinchUnvetoable
+// [[B20]], [[touch-gestures#Standing rules]]
 import { clampZoom, wheelZoomDelta, MIN_ZOOM, MAX_ZOOM } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };

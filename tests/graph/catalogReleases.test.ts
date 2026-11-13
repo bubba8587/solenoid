@@ -1,4 +1,4 @@
-// [[C138]] addMenuReachesAll
+// [[A1]] visualGraphCalculator, [[add-menu]]
 // Each card says the release that brought it and the last that reworked it; no `added` is 1.5 or earlier.
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";

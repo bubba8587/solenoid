@@ -1,5 +1,5 @@
 // [[C100]] chartIsAValue
-export const UNTITLED_FIGURES: ReadonlySet<string> = new Set(["kpi", "scale", "proportion", "sankey", "waterfall", "candle", "boxplot", "calheat", "heatmap", "contour", "surface", "quiver", "gantt", "ladder"]);
+export const UNTITLED_FIGURES: ReadonlySet<string> = new Set(["kpi", "scale", "proportion", "sankey", "waterfall", "candle", "boxplot", "calheat", "heatmap", "contour", "surface", "quiver", "gantt", "ladder", "forecast"]);
 
 export const titleHeight = (fs: number) => Math.ceil(16 * fs);
 

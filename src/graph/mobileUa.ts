@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType
+// [[B20]], [[touch-gestures#Standing rules]]
 /** "Request desktop site" flips it false, which is how users opt out of the mobile experience. Its own module so a
  *  host that knows its platform another way (the Obsidian plugin) swaps this one answer. */
 export const IS_MOBILE_UA =

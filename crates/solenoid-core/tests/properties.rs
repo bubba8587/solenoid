@@ -87,7 +87,7 @@ fn utf16_order_is_a_total_order() {
 fn stable_sort_is_a_stable_permutation_in_order() {
     let mut r = rng();
     for _ in 0..cases() / 20 {
-        let items: Vec<(i32, usize)> = (0..r.usize(0..60)).map(|i| (r.i32(-5..5), i)).collect();
+        let items: Vec<(i32, usize)> = Vec::from_fn(r.usize(0..60), |i| (r.i32(-5..5), i));
         let mut sorted = items.clone();
         stable_sort_by(&mut sorted, |a, b| a.0.cmp(&b.0));
         assert_eq!(sorted.len(), items.len());
@@ -120,13 +120,11 @@ fn sort_unique_and_sum_keep_their_laws() {
     let mut r = rng();
     for _ in 0..cases() / 20 {
         // Quarters and both zeros too: UNIQUE keys a number by its bits (-0 as 0), SORT compares them as pairs.
-        let xs: Vec<f64> = (0..r.usize(1..40))
-            .map(|_| match r.u32(0..4) {
-                0 => -0.0,
-                1 => f64::from(r.i32(-20..20)) / 4.0,
-                _ => f64::from(r.i32(-50..50)),
-            })
-            .collect();
+        let xs: Vec<f64> = Vec::from_fn(r.usize(1..40), |_| match r.u32(0..4) {
+            0 => -0.0,
+            1 => f64::from(r.i32(-20..20)) / 4.0,
+            _ => f64::from(r.i32(-50..50)),
+        });
         // A list is one row (D85 columnsStayColumns), so SORT and UNIQUE work across it with by_col.
         let sorted = nums(&run("SORT(l, 1, 1, TRUE)", &xs));
         let mut want = xs.clone();
@@ -199,9 +197,9 @@ fn with_matrix(src: &str, m: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
 
 /// A random well-conditioned n×n matrix: diagonally dominant, entries of mixed sign.
 fn dominant(r: &mut fastrand::Rng, n: usize) -> Vec<Vec<f64>> {
-    (0..n)
-        .map(|i| (0..n).map(|j| if i == j { f64::from(r.i32(20..40)) } else { f64::from(r.i32(-5..5)) }).collect())
-        .collect()
+    Vec::from_fn(n, |i| {
+        (0..n).map(|j| if i == j { f64::from(r.i32(20..40)) } else { f64::from(r.i32(-5..5)) }).collect()
+    })
 }
 
 /// mathlib `Matrix.det_smul`, `Matrix.det_mul_row`, `Matrix.det_mul_column` and `Matrix.inv_smul`: scaling a matrix,
@@ -214,7 +212,7 @@ fn matrix_functions_keep_their_scaling_laws() {
     for _ in 0..cases() / 200 {
         let n = r.usize(1..5);
         let a = dominant(&mut r, n);
-        let b: Vec<f64> = (0..n).map(|_| f64::from(r.i32(-9..9))).collect();
+        let b: Vec<f64> = Vec::from_fn(n, |_| f64::from(r.i32(-9..9)));
         let det = with_matrix("MDETERM(m)", &a, &b).expect("det")[0];
         let inv = with_matrix("MINVERSE(m)", &a, &b).expect("inverse");
         let x = with_matrix("SOLVE(m, b)", &a, &b).expect("solve");
@@ -241,6 +239,20 @@ fn matrix_functions_keep_their_scaling_laws() {
         let got = with_matrix("SOLVE(m, b)", &col, &b)
             .map(|g| g.iter().enumerate().map(|(j, v)| if j == k { v * c } else { *v }).collect::<Vec<_>>());
         assert!(got.as_ref().is_some_and(|g| close_all(g, &x, 1e-9)), "solve, variable {k} of {a:?} by {c:e}: {got:?}");
+        // An equation and a variable in other units at once: still solvable, the variable's answer scaled back.
+        let (kr, d) = (r.usize(0..n), libm::pow(10.0, f64::from(r.i32(-15..16))));
+        let both: Vec<Vec<f64>> = col
+            .iter()
+            .enumerate()
+            .map(|(i, rw)| rw.iter().map(|v| if i == kr { v * d } else { *v }).collect())
+            .collect();
+        let db: Vec<f64> = b.iter().enumerate().map(|(i, v)| if i == kr { v * d } else { *v }).collect();
+        let got = with_matrix("SOLVE(m, b)", &both, &db)
+            .map(|g| g.iter().enumerate().map(|(j, v)| if j == k { v * c } else { *v }).collect::<Vec<_>>());
+        assert!(
+            got.as_ref().is_some_and(|g| close_all(g, &x, 1e-9)),
+            "solve, equation {kr} by {d:e} and variable {k} by {c:e} of {a:?}: {got:?}"
+        );
     }
 }
 
@@ -291,14 +303,12 @@ fn order_free_aggregates_survive_a_shuffle() {
     let mut r = rng();
     for f in FNS {
         for _ in 0..cases() / 200 {
-            let xs: Vec<f64> = (0..r.usize(4..30))
-                .map(|_| match *f {
-                    "GCD" | "LCM" => f64::from(r.u32(1..40)),
-                    "GEOMEAN" | "HARMEAN" => f64::from(r.u32(1..10_000)) / 7.0,
-                    "PRODUCT" => f64::from(r.i32(-9_000..9_000)) / 4_096.0,
-                    _ => f64::from(r.i32(-10_000..10_000)) / 7.0,
-                })
-                .collect();
+            let xs: Vec<f64> = Vec::from_fn(r.usize(4..30), |_| match *f {
+                "GCD" | "LCM" => f64::from(r.u32(1..40)),
+                "GEOMEAN" | "HARMEAN" => f64::from(r.u32(1..10_000)) / 7.0,
+                "PRODUCT" => f64::from(r.i32(-9_000..9_000)) / 4_096.0,
+                _ => f64::from(r.i32(-10_000..10_000)) / 7.0,
+            });
             let mut ys = xs.clone();
             r.shuffle(&mut ys);
             let a = run(&format!("{f}(l)"), &xs);
@@ -336,7 +346,7 @@ fn equation(expr: &str, known: &[(&str, f64)], unknown: &str) -> String {
 }
 
 /// mathlib `mul_right_inj'`: for k ≠ 0, k·a = k·b exactly when a = b, so multiplying both sides of an equation by the
-/// same nonzero k changes none of its solutions, at any scale ([[C47]] equationNode). The tiny cubic is the case the
+/// same nonzero k changes none of its solutions, at any scale ([[equation-solver]]). The tiny cubic is the case the
 /// solver's old tolerance floor of 1 got wrong (x = 8).
 #[test]
 fn an_equation_scaled_by_k_keeps_its_solutions() {

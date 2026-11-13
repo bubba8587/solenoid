@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault
+// [[composite-nodes#Packs]]
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";

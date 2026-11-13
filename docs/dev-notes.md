@@ -6,6 +6,220 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-12d: Rust 1.100, the crate cooldown; cloud session)
+
+- **The pin is Rust 1.100.0** (`rust-toolchain.toml`, the author's word). The crates needed no change: fmt, clippy, the three crates'
+  release tests and the whole TypeScript suite pass through a module rebuilt with it.
+- **Bleeding-edge's Rust 1.100 findings are ported** (`port.mjs`, seven `Edge:` commits, no conflict): `rust-version = "1.100"`,
+  the never type, `bool::toggle`, `Box::map` in the bracket-parameter rewrite, `DropGuard` for the call depth, ROW()'s row,
+  the LAMBDA root and the scoped LAMBDAs, `trim_prefix`/`trim_suffix`, `Vec::from_fn` at 210 sites. No answer moved. The
+  allocation probe and the sweep script stay on bleeding-edge, beside its Rust 1.100 report.
+- **Dependencies for 1.6.2, a week old only:** jiff 0.2.39, crc32fast 1.5.4, log 0.4.35, cc 1.11.0 (`cargo update -p`, under
+  the cooldown); marked 18.1.3, @lezer/common 1.5.5, @anthropic-ai/sdk 1.5.0, vitest 5.1.0, @vitejs/plugin-react 6.2.1
+  (`npm install --before=2026-11-05`). zip stays at 9.5.1, locked by the workbook work before the cooldown existed: a full
+  `cargo update` would take it down to 9.4.0, which the reader was never run on; it passes a week old on 2026-11-17. Left on
+  bleeding-edge: React Flow 13 (a prerelease), eslint 10, tsrs 0.25, magic-string 1.4, three 0.187. `npm audit`'s one
+  moderate (minimatch under typescript-eslint, lint only) predates this.
+  A crate bump also moves `public/third-party-licenses-rust.txt`: run `node scripts/rust-licenses.mjs` (needs
+  `cargo install --locked cargo-about --features cli`), or Rust supply chain's `licenses` job goes red. `port.mjs` doesn't
+  regenerate it either, so a ported `Fix:` with an `Upgrades:` crate needs the same step.
+- **Crates wait a week** (`.cargo/config.toml`, `global-min-publish-age = "7 days"`, the author's word): Cargo 1.100 skips a version
+  published more recently when it resolves a lockfile, and refuses a requirement only such a version meets, naming the override.
+  A build from the lockfile as it stands is untouched. Cargo 1.99 ignored the setting with a warning, which is why the pin moved
+  with it. `bleeding-edge` sets it to "0" in a commit of its own, since that branch takes every release the day it ships. What would reopen it: a port from bleeding-edge
+  whose `Upgrades:` line names a crate under a week old fails its port check until the week is up; that is the hold working.
+- **`crates/solenoid-parquet/Cargo.lock`** had fallen behind the core's manifest (the `zip` and `quick-xml` edges of the workbook
+  Tables work); the check run recorded them, no version moved.
+- **Cargo 1.100 reports `wasm-bindgen-futures` as unused** in the graph crate's plugin build; `check-rust.sh` shows the warning and
+  passes. The fix is the author's call (backlog, Rust core).
+
+### SESSION DIGEST (2026-11-12c: tree pruned from 126 leaves to 80, with the author; cloud session)
+
+- **46 leaves moved to specs** (`dte to-spec`): obvious practice (B14 one design system, C101, C103, C106, C120 linear work, C78 …),
+  feature design that predates the 2026-11-10 rule (Add menu, gestures, Pivot popup, Obsidian plugin, …), and process (C121 motion,
+  C140 function records). Each one's text is a `## <title>` section at the end of its spec. The leaves' children moved to their parents.
+- **Citations:** code, tests and docs cite the spec section (`[[spec#Title]]`); where that was a file's only citation, the
+  retired leaf's live parent is cited beside it, so coverage stays 100%. Spec header lines cite the parent.
+- **B12** is now noForwardCompat (only the version gate); the general "a save loses nothing quietly" goal is a section of the
+  save-format spec (`tree/specs/documents/save-format.md`), with no leaf. **B28 wysiwygValues** (new, the author's) holds C28, C35, C58. **C3** rewritten by the author.
+- Temporary states (Isolate off, Charts refusing dates, publishing the function library) are backlog lines under "Held for later".
+- **Open:** inbox items `operators-read-blank-as-zero` (parent D124, retired), `paste-carries-card-state` and
+  `ghost-cables-feed-and-save` (parent B12, now narrow) need new parents when placed.
+
+### SESSION DIGEST (2026-11-12c: hardening for 1.6.2; cloud session)
+- A review of everything since 1.6.1, two read-only review agents (workbooks; the Probability pack and pivot fields),
+  the fuzzers run deeper, and the new cards used in the app. What needs the author is in `backlog.md` § From the
+  2026-11-12 hardening run.
+- **SOLVE and MINVERSE called an invertible matrix singular** when one variable was in other units (a column scaled
+  past about 1e13): the verdict's rows-then-columns scaling left every row's largest entry in the big column.
+  `balance_exps` (`fns_matrix.rs`) balances by least squares on the logs instead. The property test had passed only on
+  its default seed: run the Rust property and formula fuzzers on other seeds (`PROP_SEED`, `FUZZ_SEED`) before
+  believing them.
+- **Pivot:** a calculated field placed among the values left each layout column pointing at the old value index, so
+  the Pivot view's captions, Summarize By, Remove and value formats acted on the wrong field (`frame_verbs.rs`, the
+  layout's `cols[].value` is now the place in `values`). A field handing its rows to a LAMBDA wired into it reads that
+  LAMBDA's columns from a lazy input (`lambda_names`), and a column a lazy read left out is `#REF!`, not blanks.
+- **Workbooks:** the reader takes a Table's edges from the Table's own part and streams the sheet's cells
+  (`table_parts`, `read_table`, `xlsx.rs`); calamine's read of a Table decodes the whole sheet densely, which a stray
+  cell in a far row made gigabytes, asserted on a header-only Table and read a totals row under no header row as data.
+  `fixtures/xlsx/edges.xlsx` holds all four. Retyping a column with a blank cell threw (`raw` arrived as null); a Text
+  column's error cell stays under a pick; the Table picker matches ignoring case and lists a pattern's Tables.
+- **Probability:** BETA.DIST's density at 0 with alpha 1 (and at 1 with beta 1) answered 1, not the other parameter;
+  Bootstrap over dates blanked silently and is `#TYPE!`, and counts a logical as 1 or 0.
+- **Weather's forecast** marks today by the forecast place's clock (the reply's `utc_offset_seconds`, `placeToday`)
+  and Weather joins the midnight rollover. Drag-to-scrub is gone from number fields. A table wired into Frame from
+  Lists is `#TYPE!` naming the input. A trusted source written `host:443` matches.
+- **Tests:** `graphEditReach.test.ts` compares every card after a live delete, cut, wrap or unpack with a whole pass
+  from empty caches, on every example. The undo fuzz (`graphDeltaChain.test.ts`) had skipped its answer check on 39 of
+  52 examples, since a lazy frame's handle and an error's per-load card id differ between loads; it reads frames whole
+  and writes ids as names, and checks 50. A test that drives a bulk edit outside the app must install the app's bulk
+  settle (`setBulkSettle` with `settleCableChange` first), or types settle after the pass and Frame from Lists reads
+  a stale one.
+- Checked and left: Tab and Shift+Tab toggling chrome is the spec's (`tree/specs/canvas/react-flow-surface-contract.md` § The
+  canvas keyboard); the collapse sweep against 1.6.1 shows no card the layout sweep broke; the label column's measuring is
+  about 0.1 ms for a canvas of cards; the deployed script worker carries its `Content-Security-Policy`.
+- **The author's calls on what the run found (2026-11-12):** a calculated field's bare name that is no column and
+  has no value on its LAMBDA card is `#NAME?` (the LAMBDA carries the captures its card left empty, `empty`). Frame
+  from Lists types a list of errors alone Text, whatever its socket last settled to, after which the undo fuzz passes
+  at 20 steps on the six draws tried. Bootstrap never draws fewer than 200 resamples (it was 1,000). An end of
+  Probability Between wired to a blank blanks the answer. The wrap that makes a loop waits in the backlog.
+- **A pivot saves names, not positions** (the author: "fully fix" it). `rowSort` and `colSort` are what the axis
+  sorts by (`PivotSort`: a field or a value by name, a calculated field by id), and `calcPlace` lists each calculated
+  field's place as the name of the value it sits before (`CalcPlaces`, in the Values zone's order); the core resolves
+  both on every pass (`sort_position`, `calc_fields_all`, `nodes/backend_verbs.rs`), so no edit to the fields, typed,
+  wired or in an editor, can pass a sort or a place to another field. A first try that kept positions and moved them
+  in the editors (`movedSort`) missed the card's own edits and wired lists, and is gone. Old saves' numbers read as no
+  sort and no places ([[B7]] preAlphaBreakFreely); no seed held either.
+- **For the 1.6.2 cut:** `scripts/release-version.mjs` froze the `NEXT_RELEASE` marks in `nodeCatalog.ts` alone and
+  stopped with an error on a patch (the next guess was already 1.7); it now freezes the packs' own files too
+  (`src/graph/packs/probability.ts` holds the first marks outside the catalog) and a dry run of `1.6.2` in a scratch
+  worktree finishes: 6 marks. Weather is marked updated. `docs/release-notes-1.6.2.md` is a draft. Left for the
+  release itself: the What's New deck's 1.6.2 slides, and the author's `build:wasm:opt`.
+- Another session pushes to `develop` at the same time: `git pull --rebase` before each push, and rebuild the wasm
+  when both sides touched Rust (`source-stamp.txt` conflicts; take either side and run `npm run build:wasm`).
+- **Later the same session, with the author:** stacked Column, Bar and Area charts (`stacked=True` or `percent`); a
+  new card, **Categorize** (`tree/specs/computation/categorize.md`), whose sorter shares the Pivot editor's Fields list
+  and chips (`FieldChips.tsx`) and saves its sort by item and category name; the Chart Builder's picks lose their
+  sockets (`CB_PICK_FIELDS`, a class's `savedFields` for the validator) and every on/off option is a checkbox on a
+  two-column grid that knows the figure's default; Schedule, Gantt and Earned Value pick their weekend by name
+  (`WeekendPick.tsx`). A Display, a Dashboard box and a Report show a frame in its popup's default view
+  (`specialFrameView`); Describe's view is Profile, rebuilt on the Record Gallery's masonry (`MasonryGallery.tsx`) with
+  a stat strip, a median rule and a color per column from `useDataColors` (the series colors without the error red and
+  the gray; Categorize uses them too). Fixed on the way: a Cards figure's tracks rounded up past their box, so a sized
+  Display's scrollbar flashed (tracks floor now); a list field showed "a, b, c" whatever it declared.
+- **What the author caught that a test had not:** DESIGN.md was skipped before the sorter's first draft (colored
+  borders round neutral bodies, ad-hoc mixes, a text ×, gesture-narrating hints); read it before the first line of any
+  UI. A popup laid out by width snapped categories between rows on resize; lay out by count. Long items and 16 to 24
+  categories were not tried until asked; try the extremes of the data before showing a view.
+- **Ways to check a UI here:** `shot-graph.mjs` `--wait` is one wait before every step, not a pause between them, so a
+  check of undo after an edit belongs in a delta test (`graphDelta.test.ts` § Categorize), not a screenshot. A real
+  HTML5 drag works with `--drag`. On a phone (`--size 390x844`) a card's button takes two taps, the first selects.
+- **Open, small:** a light-mode Profile shot once came out one narrow column with no header and never again in three
+  runs; if it is seen in the app, the masonry measured the popup mid-open.
+
+### SESSION DIGEST (2026-11-12b: card body spacing and alignment sweep; cloud session)
+- Every catalog card was mounted and shot (a scratch gallery script: `FLAT_CATALOG` create, `view.zoom(1)`, element
+  screenshot) and reviewed before and after. The repeat offender was input rows: each field started where its label
+  ended, so fields zigzagged and a long label crushed its field (Accrued Interest showed `0.6` for `0.06`).
+- The label column (`tree/specs/floors/components.md` § Input rows): `NodeCard` measures the widest leading input-row
+  label into `--io-label-w`; CSS caps it so the field keeps 60 px; a label past the cap wraps to two balanced lines and
+  its row grows (`io-row` is `min-height: 22px` now, so a 26 px picker on an output row no longer overlaps its
+  neighbor). Connection cards' field labels (`sol-conn__label`) join the same column.
+- Quoted text fields hang their quote marks, so the box lines up with number fields. Dropdowns step from 13 px to the
+  12 px body size. Connection cards drop their own mini-kit (11 px values, 5 px corners, an inset focus ring DESIGN.md
+  rules out, a fixed 60 px left-aligned number) for the card kit; Date Range's pickers take the inline size, so a full
+  date fits a 180 px card.
+- `LazySelect` publishes its measured floor as `--lazy-min` (`.sol-lazy-select`) instead of an inline min-width: the
+  inline one beat every stylesheet rule and held Currency's FROM/TO wider than their row.
+- Follow-up: a word or date field whose own label would leave it too narrow moves below its label (IF, XMATCH, SWITCH's
+  Expression, IFS's Otherwise, TEXTAFTER's If not found, FIND's Within text: six cards grow a row), and the column is
+  set by the rows that stay. A number row with an overlong label (Auto-refresh at 180 px) keeps one line out of the
+  column. `sol-conn__num` is the inline number box (no spinner, its height), and dropdowns on a row match field height.
+  The plan measures a wrapped label unwrapped (its line boxes summed), or a wrapped label would read as narrow and stick.
+- Folding sections, kept only where the card or the run is long (author: "reserve it for when cards are genuinely
+  long"): Weather, Data Feed and Vault Folder fold their refinements and Auto-refresh into Options (`ConnOptions`, Web
+  Source moved onto it). Tried and taken back as too small to fold: Currency, TaskNotes, Holidays, the Cast row,
+  TEXTAFTER's and XMATCH's options, Find Peaks' thresholds. The collapse sweep, wired and not, is clean.
+- A field below its label runs from the label's left edge to the right edge the other fields end on (the quote marks
+  hang outside); it had kept `max-width: 100%` while pulled outward, so it sat left and ended short.
+- Equation, TVM and the geometry Valid row put each variable on one line on the label column, in a slimmer box (TVM
+  about 45% shorter). List fields (`a, b, c`, column lists) read left-aligned. Tornado's Run Sensitivity is the
+  standard action button, not a field styled as one. Seen: the collapse sweep's TVM/Compound Growth "no pill" flags
+  predate this session (equation rows stay open when collapsed).
+
+### SESSION DIGEST (2026-11-12: Excel workbook Tables, self-hosting groundwork, a Bluesky link, undo by delta; cloud session)
+- Local File and Web Source read an Excel workbook's named Table on the core (`xlsx.rs`, the `calamine` crate,
+  default features off): the answers Excel saved, types off the cells, an uncalculated formula a per-cell `#N/A`
+  naming it (calamine tells it from a formula that answered `""`). Tables only, by the author's call; sheets and
+  ranges are left out with a reopen trigger (`tree/specs/computation/live-connections.md` § Excel workbooks). The engine grew 484 KB.
+- `retypeColumns` now keeps an error with no text behind it under any picked type (a workbook's error cell), and a
+  stray reads again from its text.
+- Web Source: `fetchBytes` (`httpBridge.ts`), and the desktop shell's `net_fetch` answers base64 for `binary`. That
+  shell change was unbuilt here (the author's no-`src-tauri`-builds rule); CI's Rust supply chain `shell` job compiled
+  and tested it. A new crate means `node scripts/rust-licenses.mjs` (needs `cargo install cargo-about --features cli`).
+- A workbook formula with no saved answer is its own code, `#UNCALC!` (ERROR.TYPE 8, as Excel's #GETTING_DATA;
+  `tree/specs/values/error-values.md`). Local File and Web Source fold All matching, Dates and Auto-refresh into Options, and an idle
+  card's message replaces "Not connected". The demo vault holds `Data/sales-targets.xlsx` and reads binary files.
+- Pivot calculated fields over a lazy input (the author's `SUM([Mileage Driven])/SUM([Gallons])`, no parameters):
+  the card read only the parameters' columns, so a body's brackets and bare names read the empty slot's 0 and every
+  cell was `#DIV/0!`. It now reads every name the body uses (`body_names`, `backend_verbs.rs`). The unit tests had
+  called the card on a plain frame, which never takes that path: a test against a `planned` (lazy) input now guards it,
+  and fails without the fix. A new LAMBDA card has no parameter (it was `x`); its params field shows `x, y` as its Example (author 2026-11-12:
+  the empty-slot kinds, not a silent rule for unused parameters).
+- Pivot calculated fields drag in Configure Fields (author 2026-11-12): a λ chip among the Values, its column where
+  its chip is; dragged to the Fields list it leaves the pivot, cable kept (`calcPlace`, `tree/specs/computation/frame-verbs.md` § pivot).
+  Checked with real HTML5 drags in Chromium (Playwright's `dragTo`; grab a chip by its name, not its function menu).
+  Pulling a field's cable and wiring it again brings it back; Sort takes a calculated field; a wired Name shows in
+  the popup (the layout's `calcNames`).
+- Seen, not touched: the table popup's footer Sum skips error cells (a column holding `#UNCALC!` still sums).
+- Self-hosting: `docs/self-hosting.md` is the proposal for the engineering team (SharePoint via Microsoft Graph, or
+  same-origin hosting). Built: `solenoid.config.json` with `trustedSources`, hosts that skip the network prompt
+  (`deploymentConfig.ts`). Not built: the Microsoft sign-in, opening a graph from a link; the product call comes first.
+- Desktop build, Linux: `cache-apt-pkgs-action` reports a failed install as success (a mirror 404'd GStreamer
+  debs; the build died at the linker), so `desktop-build.yml` now checks with `pkg-config` and installs directly once.
+- This container lacked the `wasm-bindgen` CLI: `cargo install wasm-bindgen-cli --version 0.2.130 --locked`.
+- Site: a Bluesky icon in the header and a footer link; the site review is a backlog item under Landing pages.
+- Undo and redo apply a delta instead of reloading the graph (`src/graph/graphDelta.ts`,
+  `tree/specs/canvas/react-flow-surface-contract.md` § Undo history): only changed cards rebuild, under fresh live ids
+  so their views remount, and one additive pass covers their reach. On `personal-finance`, a value undo went from
+  two whole passes (about 2.7 s, Local File re-reading its files) to about 340 ms (below). A read-back falls back
+  to the whole load on any miss; the dev console warns with the cards that differed. Two bugs from before: a history step rebuilt
+  from the stack put `nodes` after the other top-level keys, so every compare after an undo saw a change and
+  recorded a spurious step (redo lost); and a whole load inside `withGraphRebuild` ran a second whole pass.
+- Delete (and removing cables from the cable menu) passes over only what lost a cable (`deleteReach`,
+  `src/graph/canvasActions.ts`), not the whole graph. Composite create and unpack still settle whole.
+- Undo, second pass: a fuzz of live edit chains on every example (`tests/graph/graphDeltaChain.test.ts`, stressed to
+  8 draws of 25 steps) found two real bugs. A deleted group member stayed in the group, so the save wrote its per-load
+  id where a name belongs (pre-existing; `dropFromGroups`, `src/graph/groupMembership.ts`). And a Format Controller's
+  saved type depends on the edit path ([[socket-lattice#Requirements]]), so it is no longer an edit or a miss (`SETTLED_INIT`). In Manual the
+  delta's pass runs inside the rebuild scope, so undo still computes as the whole load did.
+- Measured on `personal-finance` (an undo of a slider edit): the whole undo is about 340 ms, of which about 270 ms is
+  the recompute the edit itself cost; the old reload was about 2.7 s. An earlier note here said 25 ms: that was one
+  pass, not the whole undo. `window.__solenoidPerf = true` prints an `[perf] undo` line with the phases.
+- Wrap as Composite and Unpack pass over only what they reach, as Delete does (`src/graph/editReach.ts`).
+- Undoing a typed value sets it on the live card (`IN_PLACE`, `src/graph/graphDelta.ts`): the inline fields, the
+  title, and the field each input card's edit assigns (a value, a table's text, a group's members). The card keeps
+  its node, focus and drafts; checked in the browser (the same input element survives an undo showing the old
+  value). Anything else still rebuilds the one card. In the edit-chain fuzz about five cards patch for each rebuild.
+- Open: a drill-in's undo still rebuilds the composite's inside whole
+  (`src/graph/flow/FlowCompositeOverlay.tsx`, `restoreInternal`).
+
+### SESSION DIGEST (2026-11-11c: the Probability pack, pads that dragged their card; cloud session)
+- New pack, Probability (off by default, Analysis): Probability Between, A/B Test, Bootstrap, each drawing the
+  distribution behind its answer (`tree/specs/computation/probability-pack.md`). A/B Test integrates Beta beliefs
+  rather than sampling: B beats A matches Evan Miller's closed form to 10⁻⁵ (Rust tests), the lift interval matched
+  200k Monte Carlo draws. Bootstrap's draws are seeded, so the interval never moves on recalculation.
+  Bootstrap's Seed input: empty seeds from a fingerprint of the values (one shared constant had tied two cards'
+  shuffles together); a typed or wired number picks the shuffle.
+  Probabilities and lifts author a `percent` format (`annotationFor`): shown 92.45%, computed as 0.9245.
+- Pads dragged their whole card (Curve, XY Pad, Point Plotter, Grid Painter): React Flow's d3-drag listens natively on
+  the card wrapper, below React's root, so a React `stopPropagation()` is too late. They now carry `.nodrag nopan`, and
+  `sourceInvariants.test.ts` fails a component that captures the pointer without it
+  (`tree/specs/canvas/pointer-gestures.md` § Opt-out classes). Angle Dial was immune only because it `preventDefault`s pointerdown.
+- Seen, not touched: `scripts/gen-pack-seeds.test.ts` rewrites every pack seed with a `dateOrder: ""` field the
+  committed seeds lack; the other seeds were left as committed. Recipes number the seed menu by position, so a new
+  pack's recipe goes last.
+
 ### SESSION DIGEST (2026-11-11b: Solenoid 1.6.1, Solenoid Properties 0.1.11; cloud session)
 - Released from `develop`: `main` at `342cb77be`, versions 1.6.1 by `scripts/release-version.mjs`, which also froze the
   cards' `NEXT_RELEASE` marks and moved the guess to 1.7 (`src/graph/release.ts`). Tags are the author's: `v1.6.1` on
@@ -15,7 +229,7 @@ specific item.
   card) is a plain one with a space, and an unbound `[Column]` in a field's body reads the cell's rows
   (`Eval::with_slices`). Configure Fields lists the fields by name (`calcFieldNames`). A wired λ's parameter naming no
   column reads blank through a side input, by design (as an unknown name in a formula does), not a silent bug.
-- PIVOTBY's totals are its view's ([[C127]] pivotView, the exception it carried removed): the card's Frame is leaf rows
+- PIVOTBY's totals are its view's ([[table-popup#The Pivot view]], the exception it carried removed): the card's Frame is leaf rows
   by leaf columns, the totals ride on the layout (`split_pivot_totals`, `pivotAddress`, `pivotViewFrame`), and Export
   totals adds Row Totals and Column Totals. `PIVOTBY()` in a formula keeps Excel's spill, an exception the author took.
 - The plugin export had started carrying `nodes/frame.ts` (a type import in `pivotConfig.ts`), which `plugin:lint` failed
@@ -78,7 +292,7 @@ specific item.
   0.2.130 for `plugin:build`; neither is in the cloud image.
 
 ### SESSION DIGEST (2026-11-09c: open-latitude fixes after 1.6, the headless runner for agents; cloud session)
-- **Align, Distribute and a card opening end with the No-Overlap Pass** ([[C112]] noOverlapsEver; `selectionOps.ts`
+- **Align, Distribute and a card opening end with the No-Overlap Pass** ([[group-expand-push#LayoutFx]]; `selectionOps.ts`
   `settle`, `cardsExpanded`), the cards just placed or opened holding still.
 - **A Chart plots a table** (an HSTACK, a matrix) as the frame of its columns, one row as a list; it drew an empty plot
   (`nodes/visual.rs` `chart`, `chartTable.test.ts`). **List Input keeps a typed gap** (`1,,3`) as a blank item
@@ -98,7 +312,7 @@ specific item.
   lists them. GROUPBY, Rollup and Group Lists' aggregator is `agg`, which both now say ([[C26]] opArgDistinct); the
   validator had checked it under `op`, a field those cards never read.
 - **The No-Overlap Pass runs inside a group** (`settleMemberOverlaps`), the box growing over a member pushed past an
-  edge: [[C112]] noOverlapsEver has no Unenforced bullet left.
+  edge: [[group-expand-push#LayoutFx]] has no Unenforced bullet left.
 - **Get Column answers `#REF!` for a column the table lacks**, naming the columns it has; it answered a blank that a
   SUM showed as 0.
 - **`CLAUDE.md` opens with what the project is for**, in the author's words of 2026-11-09 and a model's account of
@@ -292,7 +506,7 @@ specific item.
   calls wait at the bundle's end.
 
 ### SESSION DIGEST (2026-11-07: function records, the Text family organized; cloud session)
-- **Function records** ([[C140]] functionRecords, `tree/specs/computation/function-records.md`): one Cube-form record per function under `fixtures/functions/`, Excel's answer beside Solenoid's, a kind of truth, a verdict and a citation per case. Excel's answers come only from a workbook Excel saved, through `from-excel.ts`, which refuses anything else or a wrong calibration sheet.
+- **Function records** ([[function-records]], `tree/specs/computation/function-records.md`): one Cube-form record per function under `fixtures/functions/`, Excel's answer beside Solenoid's, a kind of truth, a verdict and a citation per case. Excel's answers come only from a workbook Excel saved, through `from-excel.ts`, which refuses anything else or a wrong calibration sheet.
 - **Text is organized**: 33 records, 43,771 cases (the old tests and specs, IronCalc's workbooks vendored under `fixtures/functions/sources/ironcalc`, the edge grid); `harvest.json` gives every mention a case or a reason. No answer is filled: the run waits until every family is organized.
 - **Traps the workbook handles**: bound values sit in cells, not constants (Excel reads them differently); every formula is a marked dynamic array (an unmarked one is intersected); Excel's `_xlfn.` prefixes come from Excel-saved files; arrays come back through ARRAYTOTEXT beside a shape cell.
 - **Viewer**: the Excel Coverage tab's parity mark opens a function's record in the Cube popup.
@@ -341,7 +555,7 @@ specific item.
   offered under Packs while the pack is on; each charts what it computes (`frameOf` + `chart`), but Geometry's figures
   and Timesavers' QR code are already the visual. Comparison is core. **Seeds open as examples** (`SolDoc.seed`): out
   of the file tree until changed and kept, "Discard changes?" on leaving an edited one (`requestChoice`).
-- **Pack constants are cards** ([[C76]] formulaPackDefault, `pack-architecture.md` § Physical constants): a preset
+- **Pack constants are cards** ([[composite-nodes#Packs]], `pack-architecture.md` § Physical constants): a preset
   names a physical constant as a variable and declares it (`constants`); placing the card places a Physics Constant
   cabled in (`companions`, `src/graph/companions.ts`, both placement paths). The variable is required (`varRequired`,
   `nodes/formula.rs`): cut and untyped, it answers `#SYNTAX!` naming it, never a hidden CODATA copy. Physics Constant
@@ -409,5 +623,5 @@ specific item.
 - **Two temperature scales never meet** ([[C25]] firstClassUnits): `temperatures_mix` (`unit_value.rs`) refuses K with °C or °C with °F on the Arithmetic card, in an aggregate or running list, in a formula whose inputs carry two scales (a list mixing scales mapped item by item doesn't count) and in a computed column. Δ°C is still owed: two °C readings subtract to K.
 - **AVERAGEIF(S) over nothing is blank**, as AVERAGE's is, in the formula and on the SUMIFS card.
 - **CSV junk cells are NaN** (`infer_text_column`): missing markers and up to a tenth of other text keep a number or date column, their text in `raw`. A stopgap until the NaN walk; the full CSV pass is in the backlog.
-- **Query is Pipeline, a run mode** ([[C53]] pipelineIsCompositePreset, author 2026-11-06): computes as Manual refresh (`refreshes()`), plus `pipelineChain()` (one chain from the Table marker to the Result marker; side inputs through the Pipeline's own ports; the first fault named) and the read-only `PipelineSteps` list on the card, numbered, with a folded Preview of the selected step off its `cachedResult`. Nothing on the card edits the graph. Shot graph: `scripts/shot-graphs/pipeline-steps.json`.
+- **Query is Pipeline, a run mode** ([[composite-nodes#Manual refresh and Pipeline]], author 2026-11-06): computes as Manual refresh (`refreshes()`), plus `pipelineChain()` (one chain from the Table marker to the Result marker; side inputs through the Pipeline's own ports; the first fault named) and the read-only `PipelineSteps` list on the card, numbered, with a folded Preview of the selected step off its `cachedResult`. Nothing on the card edits the graph. Shot graph: `scripts/shot-graphs/pipeline-steps.json`.
 - **Freezing**: `bodies_over_values_with_a_unit`, `fold-units` and `tests/csv.rs` now refreeze under `FREEZE_NATIVE` like the other suites.

@@ -1,13 +1,13 @@
 import {
   Children, isValidElement, useLayoutEffect, useRef, useState,
-  type ReactNode, type SelectHTMLAttributes,
+  type CSSProperties, type ReactNode, type SelectHTMLAttributes,
 } from "react";
 import { measureThenWrite } from "./layoutBatch";
 import { textOf } from "../textOf";
 
 /** Options stay out of the DOM until hover or focus, which both precede the native picker, and never unmount while focused; the first render mounts them all to lock a min-width, since a max-content card is held wide by its widest option. */
 export function LazySelect({
-  children, value, style, onPointerEnter, onPointerLeave, onFocus, onBlur, ...rest
+  children, value, style, className, onPointerEnter, onPointerLeave, onFocus, onBlur, ...rest
 }: SelectHTMLAttributes<HTMLSelectElement>) {
   const ref = useRef<HTMLSelectElement>(null);
   const [hot, setHot] = useState(false);
@@ -40,8 +40,10 @@ export function LazySelect({
       {...rest}
       ref={ref}
       value={value}
-      // A re-measure runs without the old floor, or a select whose options shrank could never narrow.
-      style={minWidth != null && !needMeasure ? { ...style, minWidth } : style}
+      className={className ? `${className} sol-lazy-select` : "sol-lazy-select"}
+      // A re-measure runs without the old floor, or a select whose options shrank could never narrow. A variable, not an
+      // inline min-width, so a labeled row's field floor (nodeCard.css) still outranks it there.
+      style={minWidth != null && !needMeasure ? { ...style, "--lazy-min": `${minWidth}px` } as CSSProperties : style}
       onPointerEnter={(e) => { setHot(true); onPointerEnter?.(e); }}
       onFocus={(e) => { setHot(true); onFocus?.(e); }}
       onBlur={(e) => { setHot(false); onBlur?.(e); }}

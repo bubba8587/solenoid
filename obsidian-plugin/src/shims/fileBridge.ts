@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 export function isDesktop(): boolean {
   return false;
 }

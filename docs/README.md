@@ -58,9 +58,12 @@ is parked there.
   1.6 and its patch releases (1.6.1 on top), with the bar for what earns a spot.
 - **`release-notes-1.6.md`** — the GitHub release notes for 1.6, in 1.5's shape.
 - **`release-notes-1.6.1.md`** — the GitHub release notes for 1.6.1, in 1.6's shape.
+- **`release-notes-1.6.2.md`** — the GitHub release notes for 1.6.2, drafted 2026-11-12 for the author to edit before the release.
 - **`android.md`** — the Android app: what is prepared, the first build on the author's
   machine, and what to check then.
 - **`out-of-scope.md`** — the standing NO list.
+- **`self-hosting.md`** — proposed: a company hosting the web build, reading its workbooks from SharePoint or its own
+  server (the routes, what Web Source needs, the deployment config, open questions). For the engineering team.
 - **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
   ring map and everyday commands. Read before creating or changing a decision leaf;
   `python3 tools/dte.py validate` must print `OK` before you finish.
@@ -123,14 +126,18 @@ results get retried and settled rulings relapse.
 | `FunctionReference.tsx`, `CardReference.tsx`, `FolderPage.tsx`, `ExcelCoverage.tsx`, `FunctionReference.css` | `../tree/specs/canvas/layout-chrome.md` (the Reference panel); `../DESIGN.md` § the Tinted-Box Rule and the Accent-Mix Ladder |
 | `nodeExcel.ts`, `excelSections.ts`, `formulaCards.ts`, `catalogTags.ts` | `../tree/specs/computation/excel-divergences.md` § The parity mark; `../tree/specs/canvas/add-menu.md` (tags); [[B16]] oneFormulaSurface |
 | `emptySlots.ts`, `crates/solenoid-core/data/call_traits.json` (`blanks`) | `../tree/specs/values/input-roles.md` § Empty slots, § Placeholders; [[D96]] emptySlotShowsItsValue |
-| `nodes/equation.ts`, `crates/solenoid-core/src/nodes/formula.rs` (Equation) | [[C47]] equationNode; `../tree/specs/computation/equation-solver.md` |
+| `nodes/equation.ts`, `crates/solenoid-core/src/nodes/formula.rs` (Equation) | [[equation-solver]]; `../tree/specs/computation/equation-solver.md` |
+| `nodes/probability.ts`, `packs/probability.ts`, `crates/solenoid-core/src/nodes/probability.rs`, `components/ProbabilityBetweenNode.tsx`, `AbTestNode.tsx`, `BootstrapNode.tsx`, `probabilityPlot.tsx` | `../tree/specs/computation/probability-pack.md`; [[B15]] leanCore |
 | `semanticZoomStore.ts` | [[A1]] visualGraphCalculator; `../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom |
-| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[A1]] visualGraphCalculator |
-| `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; `../tree/specs/canvas/pointer-gestures.md` |
+| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[html-in-canvas]]; `../tree/specs/canvas/html-in-canvas.md`; [[A1]] visualGraphCalculator |
+| `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[touch-gestures#Standing rules]]; `../tree/specs/canvas/pointer-gestures.md` |
 | `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | [[B3]] sameNodeEverywhere; `../tree/specs/canvas/react-flow-surface-contract.md`; [[A1]] visualGraphCalculator |
-| `graphCompute.ts`, `process.ts`, `passSession.ts`, `calcModeStore.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs`, `session.rs`, `pass.rs` (the pass and the input boundary) | `../tree/specs/computation/compute-pass.md`; [[C23]] calcModes; `../tree/specs/values/error-values.md` |
+| `flow/flowHistory.ts`, `flow/flowHistoryDigest.ts`, `graphDelta.ts` | [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]; `../tree/specs/canvas/react-flow-surface-contract.md` § Undo history |
+| `graphCompute.ts`, `process.ts`, `editReach.ts`, `passSession.ts`, `calcModeStore.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs`, `session.rs`, `pass.rs` (the pass and the input boundary) | `../tree/specs/computation/compute-pass.md`; [[C23]] calcModes; `../tree/specs/values/error-values.md` |
 | `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | [[B3]] sameNodeEverywhere; `../tree/specs/canvas/react-flow-surface-contract.md`; [[A1]] visualGraphCalculator; `../DESIGN.md` § Cards |
 | `connectionStore.ts`, `httpBridge.ts`, `src-tauri/src/net.rs`, `dataProviders.ts`, `crates/solenoid-core/src/providers.rs`, live-source fetch | [[C23]] calcModes; `../tree/specs/computation/live-connections.md` |
+| `crates/solenoid-core/src/xlsx.rs`, `fixtures/xlsx/`, the workbook read in `nodes/connection.ts` | `../tree/specs/computation/live-connections.md` § Excel workbooks |
+| `deploymentConfig.ts`, `public/solenoid.config.json` | `../tree/specs/computation/live-connections.md` § The network gate; `self-hosting.md` |
 | `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapsedGroupCard; `../tree/specs/canvas/group-collapse.md` (camera targets) |
 | `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
 | `fns_lists.rs` `fill_grid` | [[C102]] gridFillThenForecast; `../tree/specs/computation/bordered-grid-fill.md` |
@@ -142,19 +149,19 @@ results get retried and settled rulings relapse.
 | `OutlinePanel.tsx` | `../tree/specs/canvas/outline-panel.md` |
 | `WorkspaceTree.tsx`, `workspacePreview.ts` | [[C132]] workspaceTree; `../tree/specs/documents/workspace-tree.md` |
 | `cablePaths.ts`, `ribbonCable.ts`, `conduitTrace.ts`, `crates/solenoid-graph/src/conduit.rs` | [[A1]] visualGraphCalculator, [[C10]] socketLattice; `../tree/specs/canvas/cable-rendering-knobs.md` |
-| `groupPush.ts`, `groupPushCore.ts`, `groupLogic.ts` | [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[A1]] visualGraphCalculator; `../tree/specs/canvas/group-expand-push.md` |
-| `standoffSolver.ts`, `standoffs.ts` | [[C89]] standoffsSolveLast; `../tree/specs/canvas/standoffs.md` |
+| `groupPush.ts`, `groupPushCore.ts`, `groupLogic.ts` | [[group-expand-push]], [[group-expand-push#Who is a member]], [[A1]] visualGraphCalculator; `../tree/specs/canvas/group-expand-push.md` |
+| `standoffSolver.ts`, `standoffs.ts` | [[standoffs#The solver runs last]]; `../tree/specs/canvas/standoffs.md` |
 | `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | `../tree/specs/canvas/drawn-cables.md` |
-| `tidyArrange.ts` (ELK), `nodeSize.ts` | [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver; `../tree/specs/canvas/auto-arrange-tidy.md` |
+| `tidyArrange.ts` (ELK), `nodeSize.ts` | [[A1]] visualGraphCalculator, [[group-expand-push#LayoutFx]]; `../tree/specs/canvas/auto-arrange-tidy.md` |
 | `errorValue.ts`, `valueKinds.ts` | `tree/specs/values/value-semantics.md`; [[C24]] arraySemantics; `../tree/specs/values/error-values.md` |
 | `inputRoles.ts`, `readRole` (`nodes/shared.ts`) | `../tree/specs/values/input-roles.md`; [[D86]] blankRoles |
 | `fcReconcile.ts`, `fcFacts.ts`, `crates/solenoid-graph/src/fc.rs`, `settleFacts.ts`, `crates/solenoid-graph/src/settle.rs`, in-place socket retype | [[B11]] maximalMerge; `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` |
 | `unitFlow.ts`, `annotationFacts.ts`, `crates/solenoid-graph/src/annotate.rs`, `unitBridge.ts`, `unitValue.ts`, `crates/solenoid-graph/src/boundary.rs` (the unit boundary), `crates/solenoid-core/src/unit_*.rs` | `../tree/specs/values/unit-flow.md`; [[C25]] firstClassUnits |
 | `formatModel.ts`, `formatController.ts`, FC controls | `tree/specs/values/format-model.md` |
-| `alertStore.ts` | [[D79]] effectsEdgeTriggered; `../tree/specs/computation/alert-node-alerts-hud.md` |
+| `alertStore.ts` | [[alert-node-alerts-hud#When it fires]]; `../tree/specs/computation/alert-node-alerts-hud.md` |
 | `nodeNameStore.ts` | [[B16]] oneFormulaSurface; `../tree/specs/documents/addressable-model.md` |
-| `persistence.ts`, `textForm.ts`, `crates/solenoid-graph/src/text_form.rs`, `graphValidate.ts`, `fileSession.ts` | [[B12]] losslessSaves; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
-| `documentStore.ts`, `documentStoreCore.ts` | [[B12]] losslessSaves; `../tree/specs/documents/per-doc-autosave-persistence.md` |
+| `persistence.ts`, `textForm.ts`, `crates/solenoid-graph/src/text_form.rs`, `graphValidate.ts`, `fileSession.ts` | [[save-format#A save loses nothing quietly]]; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
+| `documentStore.ts`, `documentStoreCore.ts` | [[save-format#A save loses nothing quietly]]; `../tree/specs/documents/per-doc-autosave-persistence.md` |
 | `persistence.ts` (load gate, literal maps), `literalFields.ts`, `crates/solenoid-core/src/nodes/fields.rs`, `components/inlineInput.tsx` (`KeyedField`, `LogicalCheck`), `ExtensibleInputs.tsx`, `PairedExtensibleInputs.tsx` | [[C28]] literalsIffEditable; `../tree/specs/documents/inline-literal-maps.md` (§ One field per input, § Wildcard slots) |
 | `components/CollapsedCell.tsx` + `.css`, `NodeShell cellCollapse` | `../tree/specs/floors/components.md` § Card chrome (Cell collapse) |
 | `flow/FlowCompositeOverlay.tsx`, `flow/drillStack.ts`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` |
@@ -163,20 +170,20 @@ results get retried and settled rulings relapse.
 | `knapTemplate.ts`, `templateValue.ts`, `nodes/report.ts`, `nodes/annotation.ts` NoteNode.data, `components/useKnapRender.ts`, `ReportOverlay.tsx`, `reportExport.ts`, `nodes/dashboard.ts`, `DashboardNode.tsx`, `DashboardOverlay.tsx`, `dashboardStore.ts` | `../tree/specs/documents/reports-and-notes.md`; [[C68]] knapIsTheDocumentSyntax; `knap-upstream.md` (which workarounds are upstream bugs) |
 | `nodes/composite.ts`, `compositeLogic.ts`, `components/CompositeNode.tsx` | `../tree/specs/computation/composite-nodes.md`; [[C77]] compositeIsSubgraph, [[C23]] calcModes |
 | `nodes/visual.ts`, `nodes/chartOptions.ts`, `components/chartView.tsx`, `components/chartRender.tsx`, `chartCanvasViews.tsx`, `chartCards.tsx`, `ladderView.tsx`, `ladderLayout.ts`, `ladderNav.ts` | `../tree/specs/computation/chart-figures.md`; [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib |
-| `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[C66]] scriptNode; `out-of-scope.md` §4 (the bounded form); `../tree/specs/computation/script-sandbox.md` |
+| `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[script-sandbox]]; `out-of-scope.md` §4 (the bounded form); `../tree/specs/computation/script-sandbox.md` |
 | `excelFunctions.ts`, `excelFormula.ts`, `formulaSignatures.ts`, `crates/solenoid-core/src/excel_formula.rs`, `eval.rs`, Expression/LAMBDA | `../tree/specs/computation/formula-language.md`; `../tree/specs/computation/excel-divergences.md`; the formula-surface nodes (`python3 tools/dte.py tree --under B16`) |
 | `crates/solenoid-core/src/relative_date.rs` (relative date phrases), `DateEntry.tsx` | [[C44]] dateSerials; `../tree/specs/computation/formula-language.md` § Date kernels |
 | A card body in `crates/solenoid-core/src/nodes/` that shares a formula function's kernel, `fns_packs.rs` over `nodes/packs.rs`, `nodes/dateSerial.ts`, `nodes/convertUnits.ts` (+ the generated `convert_units.rs`), a family's `nodes/*Ops.ts` vocabulary, `packs/*Formulas.ts` — and ANY new shared node↔formula module | [[C17]] shareImpl (one impl, two surfaces) |
 | `crates/solenoid-core/src/nodes/columns.rs`, `ComputedColumnNode`, Frame Input and Cube Input Fx columns | [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas; `../tree/specs/computation/computed-columns.md` |
-| Cube Input's typed columns (`crates/solenoid-core/src/nodes/cube_source.rs`, `parseCubeSource`, `typedCubeCell`), `cubeTypes.ts`, `cubeEditCell.tsx`, `CellKindMenu.tsx` | [[D90]] cubeTypesAtDepth; `../tree/specs/computation/frame-verbs.md` § The Cube value, `../tree/specs/documents/table-popup.md` § Editing a Cube Input |
-| `SPARKLINE` (`sparkline` in `crates/solenoid-core/src/fns_lists.rs`), picture cells (`cellImageSrc`, `CellImage`) | [[D82]] sparklineCell, [[C103]] untrustedContentSeams; `../tree/specs/computation/formula-language.md` § Lists, `../tree/specs/documents/table-popup.md` § Formatted and Source |
+| Cube Input's typed columns (`crates/solenoid-core/src/nodes/cube_source.rs`, `parseCubeSource`, `typedCubeCell`), `cubeTypes.ts`, `cubeEditCell.tsx`, `CellKindMenu.tsx` | [[frame-verbs#The Cube value]]; `../tree/specs/computation/frame-verbs.md` § The Cube value, `../tree/specs/documents/table-popup.md` § Editing a Cube Input |
+| `SPARKLINE` (`sparkline` in `crates/solenoid-core/src/fns_lists.rs`), picture cells (`cellImageSrc`, `CellImage`) | [[formula-language#Lists]], [[engineering#Untrusted content]]; `../tree/specs/computation/formula-language.md` § Lists, `../tree/specs/documents/table-popup.md` § Formatted and Source |
 | `planImport.ts`, `planTypes.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*`, `crates/solenoid-schedule`, `plan_files.rs` | `../tree/specs/computation/schedule-and-gantt.md` (the tasks cube, the nodes, the figure, dates and precision); `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule); [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing |
 | `crates/solenoid-graph/`, `graphEditor.ts`, `graphModel.ts`, `dataflowEngine.ts` | `../tree/specs/computation/graph-core.md`; [[C130]] rustCore |
 | `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `heldValues.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[C130]] rustCore |
 | `crates/solenoid-core/`, `engineWasm.ts`, `engineWasm/`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D99]] rustIsSpec |
 | `nodes/edit_frame.rs`, `EditFrameNode` and `EditFrameComponent` (`nodes/frame.ts`, `FrameNodes.tsx`), `editFramePopup.ts` | `../tree/specs/computation/edit-frame.md` (a row's key, applying an edit, stale and settled edits, the Edits table, the edit list, the popup) |
 | `frameOps.ts`, `frameBackend.ts`, `binaryCells.ts`, `frame.ts`, `frameShape.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `crates/solenoid-core/src/frame_verbs.rs`, `frame_backend.rs`, `binary.rs`, `crates/solenoid-parquet` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
-| `csv.ts` (and the core's `csv` module) | `../tree/specs/computation/frame-verbs.md` § Reading CSV text; [[C103]] untrustedContentSeams |
+| `csv.ts` (and the core's `csv` module) | `../tree/specs/computation/frame-verbs.md` § Reading CSV text; [[engineering#Untrusted content]] |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |
 | `nodeCatalog.ts` | `node-coverage.md`; [[B16]] oneFormulaSurface (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |
@@ -186,7 +193,7 @@ results get retried and settled rulings relapse.
 | `obsidianWrite.ts`, `frontmatterPatch.ts`, `obsidianTypes.ts`, `pluginColumnTypes.ts` | `../tree/specs/integrations/vault-bridge.md` (VaultBridge Nodes and VaultBridgeFx: which spec governs each), under [[B1]] obsidianBet |
 | `vaultCube.ts`, `noteBody.ts`, `dailyNotesConfig.ts`, the Vault Folder node in `nodes/connection.ts` | `../tree/specs/integrations/vault-read.md` (which notes are read, the file columns, how a property column gets its shape and type, and the body as data: tasks, tables and inline fields), under [[B1]] obsidianBet |
 | `taskNotesApi.ts`, `nodes/taskNotes.ts` | `../tree/specs/integrations/tasknotes.md` (the TaskNotes node's three reads and their columns, Write Tasks' plan, Preview and Run), under [[B1]] obsidianBet |
-| `obsidian-plugin/**` | `../tree/specs/integrations/obsidian-plugin.md` (what it has, how it is built, every divergence from the app), under [[C107]] obsidianPlugin |
+| `obsidian-plugin/**` | `../tree/specs/integrations/obsidian-plugin.md` (what it has, how it is built, every divergence from the app), under [[obsidian-plugin]] |
 | `ConduitComponent.tsx`, conduit faces/lanes | [[C10]] socketLattice; `../tree/specs/canvas/conduit-lane-faces.md` |
 
 ## Task → docs cheat-sheet

@@ -54,7 +54,7 @@ fn param_name(p: &str) -> Option<String> {
 
 fn lambda(c: &mut Call) -> Answer {
     let written: Vec<String> =
-        c.field_str("params", "x").split(',').map(trim_space).filter(|p| !p.is_empty()).map(String::from).collect();
+        c.field_str("params", "").split(',').map(trim_space).filter(|p| !p.is_empty()).map(String::from).collect();
     let named: Vec<Option<String>> = written.iter().map(|p| param_name(p)).collect();
     let expr = c.field_str("expr", "").to_string();
     let refuse = |c: &mut Call, shown: Option<String>, result: V| {
@@ -98,6 +98,11 @@ fn lambda(c: &mut Call) -> Answer {
     at_col_names(&ast, &mut names);
     let captured: Vec<String> = names.into_iter().filter(|n| !params.contains(n)).collect();
     let units: Vec<V> = captured.iter().map(|v| c.read_variable(v)).collect();
+    let empty: Vec<String> = captured
+        .iter()
+        .filter(|v| c.wired(v).is_none_or(<[V]>::is_empty) && matches!(c.unwired(v), V::Undef | V::Null))
+        .cloned()
+        .collect();
     // The body reads its captures unit-blind; a computed column reads their units ([[C25]] firstClassUnits).
     let env: Env = captured.iter().cloned().zip(units.iter().map(strip_unit_cells)).collect();
     let descriptions =
@@ -111,6 +116,7 @@ fn lambda(c: &mut Call) -> Answer {
         src: Some(expr),
         units,
         descriptions,
+        empty,
     }));
     c.show("cachedValue", lam.clone());
     c.show("cachedError", V::Null);

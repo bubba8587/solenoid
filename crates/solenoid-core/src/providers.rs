@@ -71,16 +71,17 @@ pub fn wmo_text(code: f64) -> String {
 }
 
 /// The daily frame, a row per day of `time`; the temperatures carry the °C or °F `unit` picked. Beside it: the
-/// temperature now (null when absent) and the condition now ("" when absent).
-pub fn weather(text: &str, unit: &str) -> (FrameValue, V, V) {
+/// temperature now (null when absent), the condition now ("" when absent), and the seconds the place's clock runs
+/// ahead of UTC (null when absent), which say what day it is there.
+pub fn weather(text: &str, unit: &str) -> (FrameValue, V, V, V) {
     let Ok(root) = serde_json::from_str::<Json>(text) else {
-        return (FrameValue { columns: Vec::new() }, V::Null, V::str(""));
+        return (FrameValue { columns: Vec::new() }, V::Null, V::str(""), V::Null);
     };
     let d = &root["daily"];
     let time = d["time"].as_array().map_or(&[][..], Vec::as_slice);
     let nums = |key: &str| -> Vec<FrameCell> {
         let a = d[key].as_array();
-        (0..time.len()).map(|i| a.and_then(|a| a.get(i)).map_or(FrameCell::Null, num)).collect()
+        Vec::from_fn(time.len(), |i| a.and_then(|a| a.get(i)).map_or(FrameCell::Null, num))
     };
     let id = if unit == "F" { "degF" } else { "degC" };
     let temp_unit = fc_unit_to_unit(id).map(|u| Rc::new(ColumnUnit { dim: u.dim, display: Some(id.into()) }));
@@ -103,18 +104,17 @@ pub fn weather(text: &str, unit: &str) -> (FrameValue, V, V) {
         column(
             "Condition",
             FrameColType::String,
-            (0..time.len())
-                .map(|i| match codes.and_then(|c| c.get(i)).and_then(Json::as_f64) {
-                    Some(c) => FrameCell::Str(wmo_text(c).into()),
-                    None => FrameCell::Null,
-                })
-                .collect(),
+            Vec::from_fn(time.len(), |i| match codes.and_then(|c| c.get(i)).and_then(Json::as_f64) {
+                Some(c) => FrameCell::Str(wmo_text(c).into()),
+                None => FrameCell::Null,
+            }),
         ),
     ];
     let cur = &root["current"];
     let now = cur["temperature_2m"].as_f64().map_or(V::Null, V::Num);
     let condition = cur["weather_code"].as_f64().map_or_else(String::new, wmo_text);
-    (FrameValue { columns }, now, V::str(&condition))
+    let utc_offset = root["utc_offset_seconds"].as_f64().map_or(V::Null, V::Num);
+    (FrameValue { columns }, now, V::str(&condition), utc_offset)
 }
 
 /// The year's public holidays that apply in `region` (blank: all; else nationwide days and that subdivision's), a row

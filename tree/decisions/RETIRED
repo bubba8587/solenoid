@@ -188,3 +188,49 @@ C125	2026-10-30	reverted	-	Claude Opus 5.5	-	flipPoints: How close a call is sho
 C126	2026-10-30	reverted	-	Claude Opus 5.5	-	chainedDecisions: A choice that opens a further choice is scored with the best option it opens
 D121	2026-11-04	folded	C138	Claude	the author	hiddenUntilTheirPass: Choice Ladder, Gantt, Schedule and Earned Value stay out of the menus until their own pass
 D126	2026-11-09	reverted	-	Claude Fable 5.2	-	folderAsOneTable: A Local File name with a wildcard reads every matching file as one table
+D87	2026-11-12	to-spec	tree/specs/integrations/obsidian-plugin.md	Claude	author	knapNotes: A note can opt in to read in Obsidian as its Note card does, chips included
+D89	2026-11-12	to-spec	tree/specs/integrations/obsidian-plugin.md	Claude	author	pluginApi: Other Obsidian plugins can use the Frame chip through a versioned API
+D116	2026-11-12	to-spec	tree/specs/integrations/vault-bridge.md	Claude	author	writeSolenoidTypes: Write to Obsidian types a new property with the Solenoid Properties types
+C107	2026-11-12	to-spec	tree/specs/integrations/obsidian-plugin.md	Claude	author	obsidianPlugin: An Obsidian plugin shows Solenoid's values with the app's own chips
+C78	2026-11-12	to-spec	tree/specs/computation/composite-nodes.md	Claude	author	packLegibility: Packs stay easy to read: only the exception gets a mark
+C101	2026-11-12	to-spec	tree/specs/integrations/vault-bridge.md	Claude	author	onePatchPath: Writing a note's properties changes only what it targets
+C103	2026-11-12	to-spec	tree/specs/floors/engineering.md	Claude	author	untrustedContentSeams: Content entering or leaving the app is guarded where it crosses
+C106	2026-11-12	to-spec	tree/specs/floors/components.md	Claude	author	noNativeDialogs: The app never uses the browser's own pop-up boxes
+C120	2026-11-12	to-spec	tree/specs/floors/engineering.md	Claude	author	linearWork: Table work grows with the rows, never with rows squared, and drawing stops at the screen
+C89	2026-11-12	to-spec	tree/specs/canvas/standoffs.md	Claude	author	standoffsSolveLast: No layout action breaks a standoff you set
+C86	2026-11-12	to-spec	tree/specs/canvas/group-expand-push.md	Claude	author	membershipByGesture: A node joins or leaves a group only when you put it there
+C92	2026-11-12	to-spec	tree/specs/canvas/touch-gestures.md	Claude	author	pinchUnvetoable: A pinch always zooms, and nothing under the fingers can stop it
+D79	2026-11-12	to-spec	tree/specs/computation/alert-node-alerts-hud.md	Claude	author	effectsEdgeTriggered: An alert fires when its status changes, and never on load
+D120	2026-11-12	to-spec	tree/specs/values/date-values.md	Claude	author	rangeBoundsTakeTheValuesKind: A range check bounds a date by dates and a number by numbers
+D90	2026-11-12	to-spec	tree/specs/computation/frame-verbs.md	Claude	author	cubeTypesAtDepth: Each table in a Cube, nested or not, types its own columns
+D68	2026-11-12	to-spec	tree/specs/computation/schedule-and-gantt.md	Claude	author	importUnsupportedIsNamed: An unsupported imported field is named, never dropped and never a new column
+D119	2026-11-12	to-spec	tree/specs/values/date-values.md	Claude	author	datesBefore1900: Days before 1900 are dates everywhere, as days after it are
+C1	2026-11-12	to-spec	tree/specs/integrations/vault-read.md	Claude	author	demoVault: The app ships a read-only demo vault to try the vault nodes on
+C42	2026-11-12	to-spec	tree/specs/canvas/html-in-canvas.md	Claude	author	htmlInCanvasRenderer: Big graphs can optionally pan and zoom on pictures of their nodes
+C47	2026-11-12	to-spec	tree/specs/computation/equation-solver.md	Claude	author	equationNode: The Equation node solves a relation for whichever variable is unwired
+C53	2026-11-12	to-spec	tree/specs/computation/composite-nodes.md	Claude	author	pipelineIsCompositePreset: Pipeline is a composite set up as one chain, not a new kind of node
+C66	2026-11-12	to-spec	tree/specs/computation/script-sandbox.md	Claude	author	scriptNode: Script runs your own code, and only typed values come out
+C73	2026-11-12	to-spec	tree/specs/canvas/layout-chrome.md	Claude	author	inspectorIsStatic: The Inspector is a static reference, never live values
+C76	2026-11-12	to-spec	tree/specs/computation/composite-nodes.md	Claude	author	formulaPackDefault: A pack node is a ready-made formula unless it says it needs custom code
+C85	2026-11-12	to-spec	tree/specs/canvas/group-expand-push.md	Claude	author	groupPushDeterministic: Expanding a group nudges its neighbors aside, and collapsing puts them back
+C93	2026-11-12	to-spec	tree/specs/canvas/touch-gestures.md	Claude	author	gestureByPointerType: A gesture follows what touches the screen, not the device
+C98	2026-11-12	to-spec	tree/specs/canvas/command-palette.md	Claude	author	paletteMirrorsMenubar: The Command Palette is the menubar in searchable form
+C112	2026-11-12	to-spec	tree/specs/canvas/auto-arrange-tidy.md	Claude	author	noOverlapsEver: No layout action leaves two nodes or groups overlapping
+C115	2026-11-12	to-spec	tree/specs/computation/formula-language.md	Claude	author	closeParensOnCommit: Missing closing parentheses are added when a formula is committed
+C119	2026-11-12	to-spec	tree/specs/canvas/layout-chrome.md	Claude	author	landscapePhoneIsTablet: A phone turned sideways runs the tablet layout, scaled to fit
+C127	2026-11-12	to-spec	tree/specs/documents/table-popup.md	Claude	author	pivotView: A Pivot's or Describe's popup opens on a view for reading, while its output stays a plain Frame
+C138	2026-11-12	to-spec	tree/specs/canvas/add-menu.md	Claude	author	addMenuReachesAll: The Add menu reaches every node, in a shape the author designs by hand
+D22	2026-11-12	to-spec	tree/specs/canvas/add-menu.md	Claude	author	oneNamePerCard: A placed node is titled with what you picked in the Add menu
+D82	2026-11-12	to-spec	tree/specs/computation/formula-language.md	Claude	author	sparklineCell: SPARKLINE answers a small picture as text that fits in a cell
+D111	2026-11-12	to-spec	tree/specs/documents/table-popup.md	Claude	author	cardLayouts: Cards and forms can follow a layout the user writes, and suggest one from the data when none is written
+D113	2026-11-12	to-spec	tree/specs/values/socket-lattice.md	Claude	author	inlineCast: A result's type is what it computed; a type pick on it is an InlineCast
+D117	2026-11-12	to-spec	tree/specs/values/socket-lattice.md	Claude	author	emptyKeepsLastType: An empty answer keeps the type it last carried; before any, its source's declared type
+D118	2026-11-12	to-spec	tree/specs/computation/compute-pass.md	Claude	author	delayedPass: A Delayed Pass card hands on what its input held one recalculation earlier, so loops through it step
+D124	2026-11-12	to-spec	tree/specs/computation/formula-language.md	Claude	author	comparisonFunctions: The Comparison card's ops are functions; the card is core, Sets, Between, Is In and Tally the Sets pack
+E9	2026-11-12	to-spec	tree/specs/values/error-values.md	Claude	author	errorsKeepOrigin: An error remembers the node where it started
+C135	2026-11-12	to-spec	tree/specs/canvas/react-flow-surface-contract.md	Claude	author	isolateOff: The Isolate modes are switched off for now: nothing in the app enters them
+D112	2026-11-12	to-spec	tree/specs/computation/chart-figures.md	Claude	author	chartDatesHeld: A Chart refuses dates as values until it can draw a date axis for them
+D106	2026-11-12	to-spec	tree/specs/computation/rust-core.md	Claude	author	publishFormulaLibrary: The formula function library becomes a public Rust package once the app is stable
+C121	2026-11-12	to-spec	tree/specs/motion-graphics.md	Claude	author	motionFromAppGeometry: Motion graphics may rebuild cards in 3D from the app's own geometry, ending exactly as the app draws
+C140	2026-11-12	to-spec	tree/specs/computation/function-records.md	Claude	author	functionRecords: Each function keeps one record of its cases, Excel's computed answers beside Solenoid's
+B14	2026-11-12	to-spec	tree/specs/floors/components.md	Claude	author	oneDesignSystem: One design system governs every look, layout and word in the app

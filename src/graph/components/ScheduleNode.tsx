@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { ScheduleNode as ScheduleNodeType } from "../nodeClasses";
 import { SCHEDULE_DEFAULT_LITERALS, SCHEDULE_MODE_OPTIONS, SCHEDULE_PRECISION_OPTIONS, SCHEDULE_CRITICAL_OPTIONS, SCHEDULE_PROGRESS_OPTIONS } from "../nodes/schedule";
+import { WeekendPick } from "./WeekendPick";
 import { NodeShell, InlineOutputRows, useNodeField, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { SegToggle } from "./SegToggle";
@@ -28,7 +29,9 @@ function diagnosticsSummary(data: ScheduleNodeType): OutputRowValue {
   return n === 0 ? "none" : `${n} finding${n === 1 ? "" : "s"}`;
 }
 
-const CALENDAR_KEYS = ["holidays", "weekend_code", "hours"];
+const CALENDAR_KEYS = ["holidays", "hours"];
+// The section opens while the weekend is set away from Sat and Sun too.
+const CALENDAR_IN_USE = [...CALENDAR_KEYS, "weekend_code"];
 
 export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
@@ -36,7 +39,7 @@ export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
   const [progress, setProgress] = useNodeField(data, "progress");
   const [criticalPaths, setCriticalPaths] = useNodeField(data, "criticalPaths");
   const cubeOut = data.outputs.cube;
-  const calendar = useRowsInUse(data, CALENDAR_KEYS, SCHEDULE_DEFAULT_LITERALS);
+  const calendar = useRowsInUse(data, CALENDAR_IN_USE, SCHEDULE_DEFAULT_LITERALS);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
@@ -49,6 +52,7 @@ export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
       >
         <SegToggle value={mode} options={SCHEDULE_MODE_OPTIONS} onChange={setMode} />
         <InlineInputs node={data} emit={emit} keys={CALENDAR_KEYS} />
+          <WeekendPick node={data} />
         <SegToggle value={precision} options={SCHEDULE_PRECISION_OPTIONS} onChange={setPrecision} />
       </CardSection>}
       <CardSection label="Rules" collapsible defaultOpen={criticalPaths !== "one" || progress !== "split"}>

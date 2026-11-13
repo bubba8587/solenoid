@@ -36,6 +36,8 @@ import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
+import { readAssigned, type Assigned } from "../categorizeConfig";
+import { calcIsOff, readCalcPlaces, readPivotSort, type CalcPlaces, type PivotSort } from "../pivotConfig";
 import { setDescribeTiles, type DescribeTile } from "../describeProfile";
 import { isDateOrder, type DateOrder } from "../dateOrder";
 
@@ -466,17 +468,18 @@ export class PivotNode extends GraphNode {
   funcs: Record<string, AggOp> = {};
   rowTotalDepth = 0;
   colTotalDepth = 0;
-  rowSort = 0;
-  colSort = 0;
+  /** What the rows and the columns sort by, saved as the field it names; null is the default order. */
+  rowSort: PivotSort | null = null;
+  colSort: PivotSort | null = null;
   relativeTo = 0;
-  /** The totals are the Pivot view's, never the Frame's ([[C127]] pivotView); on, they also go out as Row Totals and
+  /** The totals are the Pivot view's, never the Frame's ([[table-popup#The Pivot view]]); on, they also go out as Row Totals and
    *  Column Totals. */
   exportTotals = false;
   // Per field, the value keys to hide; ANDed with the wired `filter` mask.
   filterExclude: Record<string, string[]> = {};
   /** How the popup's Pivot view draws the output; display only. */
   pivotView: PivotViewOptions;
-  /** Columns the Pivot view lists under each row group; display only ([[C127]] pivotView). */
+  /** Columns the Pivot view lists under each row group; display only ([[table-popup#The Pivot view]]). */
   detailFields: string[] = [];
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
@@ -484,6 +487,8 @@ export class PivotNode extends GraphNode {
   sourceColumns: { name: string; type: FrameColType; distinct: string[]; distinctTotal?: number }[] = [];
   /** Calculated value fields: a name and a LAMBDA per row (`calcName{id}`, `calcFn{id}`). */
   nextPairId = 0;
+  /** Each calculated field's place among the values (`CalcPlaces`, `pivotConfig.ts`). */
+  calcPlace: CalcPlaces = [];
   readonly pairLabels: [string, string] = ["Name", "λ"];
   readonly pairPlaceholders = ["MPG", undefined] as const;
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
@@ -491,12 +496,13 @@ export class PivotNode extends GraphNode {
 
   constructor(init?: {
     label?: string; agg?: AggOp; funcs?: Record<string, AggOp>;
-    rowTotalDepth?: number; colTotalDepth?: number; rowSort?: number; colSort?: number; relativeTo?: number;
+    rowTotalDepth?: number; colTotalDepth?: number; rowSort?: PivotSort | null; colSort?: PivotSort | null; relativeTo?: number;
     exportTotals?: boolean;
     filterExclude?: Record<string, string[]>;
     pivotView?: Partial<PivotViewOptions>;
     detailFields?: string[];
     valueKeys?: string[];
+    calcPlace?: CalcPlaces;
   }) {
     super("Pivot");
     this.pivotView = readPivotView(init?.pivotView);
@@ -505,10 +511,11 @@ export class PivotNode extends GraphNode {
     this.agg = init?.agg ?? "sum";
     if (init?.funcs) this.funcs = { ...init.funcs };
     if (init?.filterExclude) this.filterExclude = { ...init.filterExclude };
+    this.calcPlace = readCalcPlaces(init?.calcPlace);
     this.rowTotalDepth = init?.rowTotalDepth ?? 0;
     this.colTotalDepth = init?.colTotalDepth ?? 0;
-    this.rowSort = init?.rowSort ?? 0;
-    this.colSort = init?.colSort ?? 0;
+    this.rowSort = readPivotSort(init?.rowSort);
+    this.colSort = readPivotSort(init?.colSort);
     this.relativeTo = init?.relativeTo ?? 0;
     this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("rowFields", strListIn("Rows"));
@@ -554,6 +561,17 @@ export class PivotNode extends GraphNode {
       this.removeInput(k);
       delete this.stringLiterals[k];
     }
+    this.calcPlace = this.calcPlace.filter(([k]) => k !== id);
+    // A sort by the field goes with it.
+    if (this.rowSort?.by === "calc" && this.rowSort.name === id) this.rowSort = null;
+    if (this.colSort?.by === "calc" && this.colSort.name === id) this.colSort = null;
+  }
+
+  /** A calculated field's λ cable pulled: one dragged out of the pivot comes back into the values when next wired. */
+  inputUnwired(key: string): void {
+    if (!key.startsWith("calcFn")) return;
+    const id = key.slice(6);
+    if (calcIsOff(this.calcPlace, id)) this.calcPlace = this.calcPlace.filter(([k]) => k !== id);
   }
 
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
@@ -1511,6 +1529,47 @@ export class BuildFrameNode extends GraphNode {
   }
 }
 
+// ─── CATEGORIZE ───────────────────────────────────────────────────────────────
+
+/** Sorts a list's distinct items into categories by hand, on its sorter, and answers the lookup table: Item, Category. */
+export class CategorizeNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    items: "Each distinct value is one item to sort; a repeat counts once, and a blank or an error is skipped.",
+    categories: "The names to sort into. Left blank, the card starts with Category 1 to 3, which the sorter renames, adds to and removes.",
+  };
+
+  label: string;
+  cachedResult: FrameValue | SolError | null = null;
+  stringLiterals: Record<string, string> = { categories: "" };
+  /** The sort, by item key and category name (`categorizeConfig.ts`). */
+  assigned: Assigned = [];
+  /** The last pass's distinct items, `[key, text]`, for the sorter. */
+  sortItems: [string, string][] = [];
+  /** The categories the last pass sorted into, in order. */
+  sortCategories: string[] = [];
+  width = 220; height = 260;
+
+  constructor(init?: { label?: string; assigned?: Assigned }) {
+    super("Categorize");
+    this.label = init?.label ?? "Categorize";
+    this.assigned = readAssigned(init?.assigned);
+    this.addInput("items", adoptiveListIn("Items"));
+    this.addInput("categories", strListIn("Categories"));
+    this.addOutput("frame", frameOut("Lookup"));
+  }
+
+  /** Always Item and Category; Item takes the items' kind, known once the card has run, Text until then. */
+  frameShape(): Shape {
+    const r = this.cachedResult;
+    if (r && isFrameValue(r)) return shapeOfFrameValue(r);
+    return { columns: [{ name: "Item", type: "string" }, { name: "Category", type: "string" }] };
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
+  }
+}
+
 // ─── FRAME FROM LISTS ─────────────────────────────────────────────────────────
 
 export class FrameFromListsNode extends GraphNode {
@@ -1992,7 +2051,7 @@ export class DescribeNode extends GraphNode {
     return ctx.wired("frame") ? shapeOnCore("describeFrame", [{ columns: [] }]) : null;
   }
 
-  /** The Dashboard view's tiles, which the body shows beside its summary; they ride beside the frame ([[C127]] pivotView). */
+  /** The Profile view's tiles, which the body shows beside its summary; they ride beside the frame ([[table-popup#The Pivot view]]). */
   describeTiles?: DescribeTile[];
   static coreWatch = "describeTiles";
   coreWatched(): void {

@@ -2,13 +2,14 @@
 aliases: ["Group Expand Push"]
 tags: [spec, canvas]
 ---
-<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[A1]] visualGraphCalculator, [[C52]] visibleSelection, [[C112]] noOverlapsEver -->
+<!-- [[A1]] -->
+<!-- [[A1]] visualGraphCalculator, [[C52]] visibleSelection -->
 
 # Spec: Group Expand Push
 
-Serves [[C85]] groupPushDeterministic (the push and its records), [[A1]] visualGraphCalculator (the RF projection) and [[C86]] membershipByGesture (who joins a group). It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[A1]] visualGraphCalculator. It covers what the system does and blocks, and the decision each behavior serves.
 
-A collapsed group draws as a small card. Expanding it back to full size would cover whatever sits nearby, so the expansion pushes those neighbors just far enough aside, remembers each push, and slides them back when the group collapses again. This spec covers that push, how groups map onto React Flow, and the rules for who is a member of a group.
+A collapsed group draws as a small card. Expanding it back to full size would cover whatever sits nearby, so the expansion pushes those neighbors just far enough aside, remembers each push, and slides them back exactly when the group collapses again. A neighbor the user has moved since the push stays where the user put it. This spec covers that push, how groups map onto React Flow, and the rules for who is a member of a group.
 
 ## The world the push works on
 
@@ -23,7 +24,7 @@ The push runs over plain boxes, with no editor or DOM, so the core (`computeExpa
 - **What moves together.** A group moves with its members and with every FC docked to one of them; a loose node moves with any FC docked to it.
 - **One set of boxes.** All passes read and write the same in-memory boxes, and the totals are applied once at the end, because `view.moveNode` is async and the DOM would show stale positions between passes.
 
-The push runs only while the `groupPush` setting ("Auto-arrange groups on expand") is on. Turning it off also skips the No-Overlap Pass on expand, which [[C112]] noOverlapsEver doesn't allow; the pass should run with the setting off too (`docs/backlog.md` § Canvas chrome).
+The push runs only while the `groupPush` setting ("Auto-arrange groups on expand") is on. Turning it off also skips the No-Overlap Pass on expand, which the no-overlap rule ([[#LayoutFx]]) doesn't allow; the pass should run with the setting off too (`docs/backlog.md` § Canvas chrome).
 
 Tests: `pushWorldDockedFc.test.ts`: a neighbor under a host's docked FC, on either side, is separated from it, and so is a neighbor under a member's FC that hangs past an open group's edge.
 
@@ -85,9 +86,9 @@ Tests:
 
 Three more passes run over the same boxes, after every expanding group has had its push:
 
-1. **Standoff clusters move as one block** ([[C89]] standoffsSolveLast). For each cluster of boxes joined by standoffs, every member except a locked group takes the largest displacement any member received, and the cluster's contributing groups become the union of its members'. A lone push is therefore not pulled partway back.
+1. **Standoff clusters move as one block** ([[standoffs]]). For each cluster of boxes joined by standoffs, every member except a locked group takes the largest displacement any member received, and the cluster's contributing groups become the union of its members'. A lone push is therefore not pulled partway back.
 2. **Standoff Solve.** `solveStandoffs` runs with `forceLock` over the clusters this expansion touched (`standoffsTouching`: those holding an expanding group or a moved box), with the expanding groups and any position-locked group pinned. An unrelated cluster keeps its slant. Its corrections are added to the same totals, credited to every expanding group.
-3. **No-Overlap Pass** ([[C112]] noOverlapsEver). `separateAll` removes every overlap left among the boxes, with no exemptions: an overlap the user made before the expand is separated too.
+3. **No-Overlap Pass** ([[#LayoutFx]]). `separateAll` removes every overlap left among the boxes, with no exemptions: an overlap the user made before the expand is separated too.
    - Each standoff cluster moves as one unit, so it can't tear, but only its members' own boxes collide: a card sitting between a group and its standoff partner, touching neither, stays put.
    - Locked groups are fixed; the expanding groups are preferred, so they hold still while a partner can yield.
    - Its moves are credited to every expanding group.
@@ -108,10 +109,10 @@ Tests:
 
 ## LayoutFx
 
-A **LayoutFx** is a process that moves cards the user didn't move: Tidy, Cleanup, Align, Distribute, the group Expand Push, the Collapse Restore, Autofit and a card opening ("Fx" names a process, keeping it apart from the graph's items). Every LayoutFx ends the same way:
+A **LayoutFx** is a process that moves cards the user didn't move: Tidy, Cleanup, Align, Distribute, the group Expand Push, the Collapse Restore, Autofit and a card opening ("Fx" names a process, keeping it apart from the graph's items). No LayoutFx leaves two nodes or groups overlapping anywhere on the canvas. Every LayoutFx ends the same way:
 
 1. a `forceLock` Standoff Solve of what it moved ([[standoffs]]);
-2. the No-Overlap Pass ([[C112]] noOverlapsEver).
+2. the No-Overlap Pass, which pulls apart anything that overlaps.
 
 None moves a position-locked group ([[auto-arrange-tidy#Position-locked groups]]).
 
@@ -125,8 +126,8 @@ flowchart LR
 
 What is not a LayoutFx, and what is:
 
-- **A drag** is the user's own move: it puts cards where the user put them, and no No-Overlap Pass follows it ([[C112]] noOverlapsEver).
-- **A paste** is an explicit exception under the same leaf: it lands at the pointer plus a small offset and may cover a card.
+- **A drag** is the user's own move: it puts cards where the user put them, and no No-Overlap Pass follows it.
+- **A paste** is an explicit exception: it lands at the pointer plus a small offset and may cover a card, since where the user pastes is where they want it.
 - **Align, Distribute, and a card whose body chevron expands,** are LayoutFx and end with the No-Overlap Pass, the cards just placed or opened holding still where they can (`selectionOps.ts`: `settle`, `cardsExpanded`). Inside an open group that holds one of those cards the same pass runs over its members first (`settleMemberOverlaps`, `groupLogic.ts`), and the group's box grows over a member pushed past an edge, keeping the edges nothing passed; the top-level pass then separates the grown group from its neighbors (`groupMemberOverlaps.test.ts`).
 - **A card that grows with its live content** (a Display showing a longer value, a list that gains rows) pushes nothing, since that can happen on any recalculation. It can cover a neighbor until the next LayoutFx's No-Overlap Pass separates them, which measures the grown card.
 - **Content that overflows a constant-size body** ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box.
@@ -221,7 +222,7 @@ Tests:
 
 ## Who is a member
 
-Membership changes only on an explicit gesture ([[C86]] membershipByGesture):
+Membership changes only on an explicit gesture that puts a node in a group or takes it out:
 
 - **Dragging a node in or out** (`reconcileGroupMembership`, run on RF drag stop for each dragged non-group node).
   - Membership is exclusive and stable: a node belongs to at most one group, and keeps it while its center stays inside that group's rendered box.
@@ -248,3 +249,4 @@ The terms and edges:
 To change membership, expand the group first.
 
 Tests: `groupLogic.test.ts`: a drop onto a collapsed group's card doesn't join it while a drop into an expanded group does, and a new node fully over a collapsed card isn't absorbed while one over an expanded box is.
+

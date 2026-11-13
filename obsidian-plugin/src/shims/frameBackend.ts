@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import type { SolError } from "../../../src/graph/errorValue";
 import type { FrameColType, FrameValue } from "../../../src/graph/frame";
 import type { FrameOp } from "../../../src/graph/frameOps";

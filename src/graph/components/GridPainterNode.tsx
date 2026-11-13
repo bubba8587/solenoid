@@ -82,6 +82,7 @@ export function GridPainterComponent({ data, emit }: NodeProps<GridPainterNodeTy
     <NodeShell node={data} emit={emit}>
       <div
         ref={wellRef}
+        className="nodrag nopan"
         style={wellStyle(rows, cols, cell)}
         onPointerDown={(e) => {
           e.stopPropagation();

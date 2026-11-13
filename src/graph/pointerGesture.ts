@@ -1,4 +1,4 @@
-// [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType
+// [[B20]], [[touch-gestures#Standing rules]]
 
 const down = new Map<number, boolean>();
 

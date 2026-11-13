@@ -1,11 +1,11 @@
-// [[C127]] pivotView, [[table-popup#The Pivot view]]
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]]
 // The Pivot view's right-click menu acts on the card's settings: each item checked against the setting it writes.
 import { describe, it, expect } from "vitest";
 import { pivotFrame } from "./coreVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 import { buildPivotModel, pivotLayoutOf, DEFAULT_PIVOT_VIEW, type PivotViewOptions } from "../../src/graph/pivotLayout";
 import type { PivotConfig } from "../../src/graph/pivotConfig";
-import { calcFieldNames, pivotKey } from "../../src/graph/pivotConfig";
+import { calcIdOf, calcToken, pivotKey, placesFrom, valuesWithCalcs } from "../../src/graph/pivotConfig";
 import { keyLabel, pivotMenuSections, type PivotMenuTarget, type PivotValueFormat } from "../../src/graph/components/PivotViewMenu";
 
 const sales: FrameValue = {
@@ -22,7 +22,7 @@ const layout = pivotLayoutOf(pivotFrame(sales, {
 } as never))!;
 const base = (): PivotConfig => ({
   rows: ["Region", "Rep"], cols: ["Q"], vals: ["Amt"], details: [], funcs: {}, rowTotalDepth: 2, colTotalDepth: 0,
-  rowSort: 0, colSort: 0, relativeTo: 0, exclude: {},
+  rowSort: null, colSort: null, relativeTo: 0, exclude: {},
 });
 
 /** The menu for a target over a fake card; `pick(label)` clicks that line and gives what the card was set to. */
@@ -65,10 +65,11 @@ describe("the Pivot view's menu on an item", () => {
   });
 
   it("sorts by the field both ways, checks the current one, and No Sort clears it", () => {
-    const m = menu(item(1, "Ann"), { ...base(), rowSort: -2 });
+    const byRep = { ...base(), rowSort: { by: "field" as const, name: "Rep", desc: true as const } };
+    const m = menu(item(1, "Ann"), byRep);
     expect(m.find("Sort Z to A").checked).toBe(true);
-    expect(m.pick("Sort A to Z")!.rowSort).toBe(2);
-    expect(menu(item(1, "Ann"), { ...base(), rowSort: -2 }).pick("Default Order")!.rowSort).toBe(0);
+    expect(m.pick("Sort A to Z")!.rowSort).toEqual({ by: "field", name: "Rep" });
+    expect(menu(item(1, "Ann"), byRep).pick("Default Order")!.rowSort).toBeNull();
   });
 
   it("moves, reorders and removes the field", () => {
@@ -125,8 +126,8 @@ describe("the Pivot view's menu on a value", () => {
   });
 
   it("sorts rows by the value and removes the value field", () => {
-    expect(menu(value).pick("Largest to Smallest")!.rowSort).toBe(-3);
-    expect(menu(value).pick("Smallest to Largest")!.rowSort).toBe(3);
+    expect(menu(value).pick("Largest to Smallest")!.rowSort).toEqual({ by: "value", name: "Amt", desc: true });
+    expect(menu(value).pick("Smallest to Largest")!.rowSort).toEqual({ by: "value", name: "Amt" });
     expect(menu(value).pick("Remove Sum of Amt")!.vals).toEqual([]);
   });
 });
@@ -140,10 +141,27 @@ describe("a field header's value list", () => {
   });
 });
 
-describe("Configure Fields lists calculated fields", () => {
-  it("names each calculated value by its caption in the last result, and nothing without one", () => {
-    expect(calcFieldNames({ values: ["Miles", "MPG", "Calculated 2"], funcs: ["sum", "calc", "calc"] })).toEqual(["MPG", "Calculated 2"]);
-    expect(calcFieldNames({ values: ["Miles"], funcs: ["sum"] })).toEqual([]);
-    expect(calcFieldNames(null)).toEqual([]);
+describe("Configure Fields places calculated fields among the values", () => {
+  const ids = ["0", "2"];
+  it("a field with no place trails the values; a place puts it before the value it names; false is off the pivot", () => {
+    expect(valuesWithCalcs(["Miles", "Gallons"], [], ids)).toEqual(["Miles", "Gallons", calcToken("0"), calcToken("2")]);
+    expect(valuesWithCalcs(["Miles", "Gallons"], [["2", "Miles"]], ids)).toEqual([calcToken("2"), "Miles", "Gallons", calcToken("0")]);
+    expect(valuesWithCalcs(["Miles", "Gallons"], [["0", "Gallons"], ["2", false]], ids)).toEqual(["Miles", calcToken("0"), "Gallons"]);
+    expect(valuesWithCalcs([], [], ids)).toEqual([calcToken("0"), calcToken("2")]);
+  });
+
+  it("reads back from the zone's order: each field before the next value, null when trailing, false when dragged out, an unwired field's kept", () => {
+    expect(placesFrom(["Miles", calcToken("0"), "Gallons", calcToken("2")], ids, [["5", "Gallons"]]))
+      .toEqual({ vals: ["Miles", "Gallons"], place: [["0", "Gallons"], ["2", null], ["5", "Gallons"]] });
+    expect(placesFrom([calcToken("2"), "Miles"], ids, [])).toEqual({ vals: ["Miles"], place: [["2", "Miles"], ["0", false]] });
+    // A round trip keeps the order, two fields before one value included.
+    const order = [calcToken("2"), calcToken("0"), "Miles", "Gallons"];
+    const { vals, place } = placesFrom(order, ids, []);
+    expect(valuesWithCalcs(vals, place, ids)).toEqual(order);
+  });
+
+  it("a calculated field's token is never a column name", () => {
+    expect(calcIdOf(calcToken("3"))).toBe("3");
+    expect(calcIdOf("λ3")).toBeNull();
   });
 });

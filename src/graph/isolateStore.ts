@@ -3,7 +3,7 @@
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
-/** [[C135]] isolateOff: the isolate views are switched off; true restores every way into them. */
+/** [[react-flow-surface-contract#Isolate]]: the isolate views are switched off; true restores every way into them. */
 export const ISOLATE_ON = false;
 
 let _focus: Set<string> | null = null;

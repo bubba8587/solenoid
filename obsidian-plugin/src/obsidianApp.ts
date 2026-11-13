@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import type { App } from "obsidian";
 
 let app: App | null = null;

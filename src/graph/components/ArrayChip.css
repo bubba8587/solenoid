@@ -39,7 +39,7 @@
   border-radius: 4px;
 }
 
-/* [[C103]] untrustedContentSeams: a picture held as text, sized to the row. */
+/* [[engineering#Untrusted content]]: a picture held as text, sized to the row. */
 .sol-cell-img {
   display: inline-block;
   height: 1.3em;

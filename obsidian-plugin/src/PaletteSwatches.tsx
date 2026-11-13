@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import { useSyncExternalStore } from "react";
 import { SwatchGrid } from "../../src/graph/components/SwatchGrid";
 import { paletteStore } from "../../src/graph/palette";

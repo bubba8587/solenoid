@@ -1,4 +1,4 @@
-// [[C114]] cardsView, [[D111]] cardLayouts
+// [[C114]] cardsView, [[table-popup#The Cards view]]
 import { useMemo, useState, type ReactNode } from "react";
 import { planCards, cardMatches, PROFILE_ROWS, type CardColType, type CardColumnInput } from "../cardLayout";
 import { type ColumnSort, type SortDir } from "./columnSort";
@@ -17,7 +17,7 @@ const CARD_RULES = helpSection(helpMd, "Cards");
 export function TableCards({
   names, types, computed, chipCols, nestedCols, listCols, rowCount, order, rawAt, shownRow, itemsAt, cellNodeAt, dataKey, sort, onSort, query, onEdit, layout,
 }: {
-  /** An authored card layout ([[D111]] cardLayouts); none keeps the inferred cards. */
+  /** An authored card layout ([[table-popup#The Cards view]]); none keeps the inferred cards. */
   layout?: readonly RecordPlacement[];
   names: readonly string[];
   types: readonly CardColType[];

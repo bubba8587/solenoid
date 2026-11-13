@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[B18]] safeToShare, [[engineering#Untrusted content]]
 // Editable grids never apply this, since their CSV view must round-trip typed text.
 
 /** A number, thousands separators allowed, is never a formula, so a formatted `-1,234.50` stays a number in the spreadsheet. */

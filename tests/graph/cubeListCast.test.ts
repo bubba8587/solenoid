@@ -1,4 +1,4 @@
-// [[D90]] cubeTypesAtDepth
+// [[C10]] socketLattice, [[frame-verbs#The Cube value]]
 import { it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";

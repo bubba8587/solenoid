@@ -214,7 +214,7 @@ pub fn format_scalar(n: f64, d: NumberDisplay) -> String {
         let s = to_exponential(n, 4.0).unwrap_or_default();
         let (m, e) = s.split_once('e').unwrap_or((&s, ""));
         let kept = m.trim_end_matches('0');
-        let kept = if kept.len() < m.len() { kept.strip_suffix('.').unwrap_or(kept) } else { m };
+        let kept = if kept.len() < m.len() { kept.trim_suffix('.') } else { m };
         return format!("{kept}e{e}");
     }
     if n.fract() == 0.0 {
@@ -226,7 +226,7 @@ pub fn format_scalar(n: f64, d: NumberDisplay) -> String {
     }
     // `.replace(/\.?0+$/, "")`.
     let kept = s.trim_end_matches('0');
-    let kept = if kept.len() < s.len() { kept.strip_suffix('.').unwrap_or(kept) } else { &s };
+    let kept = if kept.len() < s.len() { kept.trim_suffix('.') } else { &s };
     if kept == "-0" {
         "0".into()
     } else {
@@ -1457,13 +1457,11 @@ pub fn parse_record_layout(text: &str) -> Vec<Placement> {
                     let name = if title { trim_space(&named[1..]) } else { named };
                     let span =
                         m.map_or(1.0, |(_, d)| crate::value_kinds::decimal_from_text(d).clamp(1.0, 12.0)) as usize;
-                    (0..span)
-                        .map(move |i| Cell {
-                            name: name.to_string(),
-                            hint: if i == 0 { hint.to_string() } else { String::new() },
-                            title,
-                        })
-                        .collect::<Vec<_>>()
+                    Vec::from_fn(span, move |i| Cell {
+                        name: name.to_string(),
+                        hint: if i == 0 { hint.to_string() } else { String::new() },
+                        title,
+                    })
                 })
                 .collect::<Vec<_>>()
         })

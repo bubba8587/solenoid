@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves.
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]].
 
 export { SocketComponent } from "./SocketComponent";
 export { ConduitComponent } from "./ConduitComponent";
@@ -170,6 +170,9 @@ export { DistributionsComponent } from "./DistributionsNode";
 export { BinomDistRangeComponent } from "./BinomDistRangeNode";
 
 export { HypothesisTestComponent } from "./HypothesisTestNode";
+export { ProbabilityBetweenComponent } from "./ProbabilityBetweenNode";
+export { AbTestComponent } from "./AbTestNode";
+export { BootstrapComponent } from "./BootstrapNode";
 
 export { InterpolateComponent } from "./InterpolateNode";
 export { LinestComponent } from "./LinestNode";
@@ -274,6 +277,7 @@ export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
 
 export { ConcatListsComponent } from "./ConcatListsNode";
 export { FrameFromListsComponent } from "./FrameFromListsNode";
+export { CategorizeComponent } from "./CategorizeNode";
 export { QuadraticRootsComponent } from "./QuadraticRootsNode";
 export { PolyRootsComponent } from "./PolyRootsNode";
 

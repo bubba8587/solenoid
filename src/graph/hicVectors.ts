@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer
+// [[A1]] visualGraphCalculator, [[html-in-canvas]]
 // Mechanics: [[html-in-canvas#Cables and overlays on the canvas]]. Every SVG the viewport draws outside the cards (cables,
 // ribbons, standoff bars, drawn cables) is copied onto the canvas as vectors in world coordinates, so nothing stays live DOM.
 

@@ -1,7 +1,9 @@
 // [[C25]] firstClassUnits
 // Open-Meteo forecast (keyless, CORS-open): past and future daily rows plus current conditions in one call.
-import { type FrameValue } from "./frame";
+import { type FrameValue, type FrameCell } from "./frame";
 import { frameFnOnCore } from "./frameBackend";
+import type { ChartValue } from "./chartValue";
+import { wallClockSerial } from "./nodes/dateSerial";
 
 export type TempUnit = "C" | "F";
 
@@ -24,13 +26,47 @@ export interface WeatherResult {
   daily: FrameValue;
   nowTemp: number | null;
   nowCondition: string;
+  /** The seconds the place's clock runs ahead of UTC; null when the reply names none. */
+  utcOffsetSeconds: number | null;
+}
+
+/** The calendar day at the forecast's place, as a serial: the day its Daily rows call today. Without the place's
+ *  offset, the day here. */
+export function placeToday(utcOffsetSeconds: number | null, now: Date = new Date()): number {
+  if (utcOffsetSeconds === null) return wallClockSerial(now, true);
+  return Math.floor((now.getTime() / 1000 + utcOffsetSeconds) / 86400) + 25569;
 }
 
 /** The reply read on the core (`providers.rs`): the daily frame, its temperatures in the chosen °C or °F, and the
  *  conditions now; a malformed body gives an empty frame. */
 export function parseWeather(text: string, unit: TempUnit): WeatherResult {
   const r = frameFnOnCore("weatherFrame", [], [text, unit]);
-  if (!r || !("frame" in r)) return { daily: { __frame: true, columns: [] }, nowTemp: null, nowCondition: "" };
-  const [nowTemp, nowCondition] = r.value as [number | null, string];
-  return { daily: r.frame, nowTemp, nowCondition };
+  if (!r || !("frame" in r)) return { daily: { __frame: true, columns: [] }, nowTemp: null, nowCondition: "", utcOffsetSeconds: null };
+  const [nowTemp, nowCondition, utcOffsetSeconds] = r.value as [number | null, string, number | null];
+  return { daily: r.frame, nowTemp, nowCondition, utcOffsetSeconds: utcOffsetSeconds ?? null };
+}
+
+/** The daily frame as a forecast figure, `today` marked; no days gives null, so the socket stays empty. */
+export function forecastChart(daily: FrameValue, unit: TempUnit, today: number, title: string): ChartValue | null {
+  const col = (name: string) => daily.columns.find((c) => c.name === name)?.values ?? [];
+  const num = (c: FrameCell | undefined) => (typeof c === "number" && Number.isFinite(c) ? c : null);
+  const dates = col("Date");
+  const days: number[] = [];
+  const keep: number[] = [];
+  dates.forEach((d, i) => { const n = num(d); if (n !== null) { days.push(n); keep.push(i); } });
+  if (days.length === 0) return null;
+  const nums = (name: string) => { const v = col(name); return keep.map((i) => num(v[i])); };
+  const cond = col("Condition");
+  const high = nums("High");
+  return {
+    __chart: true,
+    op: "forecast",
+    values: high.filter((v): v is number => v !== null),
+    payload: {
+      kind: "forecast", days, high, low: nums("Low"), rainMm: nums("Rain mm"), rainPct: nums("Rain %"),
+      conditions: keep.map((i) => (typeof cond[i] === "string" ? (cond[i] as string) : "")), unit, today,
+    },
+    options: {},
+    title,
+  };
 }

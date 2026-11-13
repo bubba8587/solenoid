@@ -553,7 +553,7 @@ fn month_word(b: &[u8]) -> Option<(u32, &[u8])> {
     let word = std::str::from_utf8(&b[..n]).ok()?.to_ascii_lowercase();
     let month = MONTHS.iter().find(|(w, _)| *w == word)?.1;
     let rest = &b[n..];
-    Some((month, if n <= 4 { rest.strip_prefix(b".").unwrap_or(rest) } else { rest }))
+    Some((month, if n <= 4 { rest.trim_prefix(b".") } else { rest }))
 }
 
 /// A day's ordinal suffix (`st`, `nd`, `rd`, `th`, any case), skipped.
@@ -617,7 +617,7 @@ fn with_time(days: i64, after: &[u8]) -> Option<DateReading> {
     let z = if named.is_some() { &zoned[3..] } else { zoned };
     if let [sign @ (b'+' | b'-'), h1, h2, more @ ..] = z {
         if h1.is_ascii_digit() && h2.is_ascii_digit() {
-            let more = more.strip_prefix(b":").unwrap_or(more);
+            let more = more.trim_prefix(b":");
             let (mins, more) = match more {
                 [m1, m2, r @ ..] if m1.is_ascii_digit() && m2.is_ascii_digit() => {
                     (f64::from((m1 - b'0') * 10 + (m2 - b'0')), r)
@@ -643,7 +643,7 @@ fn with_time(days: i64, after: &[u8]) -> Option<DateReading> {
 
 /// chrono-node's `ENMonthNameLittleEndianParser`: a day of one or two digits with an optional ordinal and `of`, a
 /// month name, a four-digit year, each pair parted by `-`, `/` or spaces, then [`with_time`]. A day the month lacks is
-/// no date. None for anything else. A year below 1000 reads as a date before then shows (`04-Jul-0426`, [[D119]]
+/// no date. None for anything else. A year below 1000 reads as a date before then shows (`04-Jul-0426`, [[date-values#Days before 1900]]
 /// datesBefore1900), where chrono takes years from 1000.
 fn month_name_little_endian(t: &str) -> Option<DateReading> {
     let b = t.as_bytes();
@@ -691,8 +691,8 @@ fn month_name_middle_endian(t: &str) -> Option<DateReading> {
     let lead = std::str::from_utf8(&b[..n]).ok()?.to_ascii_lowercase();
     if WEEKDAYS.contains(&lead.as_str()) {
         let rest = &b[n..];
-        let rest = rest.strip_prefix(b".").unwrap_or(rest);
-        let rest = rest.strip_prefix(b",").unwrap_or(rest);
+        let rest = rest.trim_prefix(b".");
+        let rest = rest.trim_prefix(b",");
         let spaced = skip_spaces(rest);
         if spaced.len() == rest.len() {
             return None;
@@ -706,7 +706,7 @@ fn month_name_middle_endian(t: &str) -> Option<DateReading> {
     }
     let (day, rest) = split_num(spaced, 1, 2)?;
     let rest = skip_ordinal(rest);
-    let rest = rest.strip_prefix(b",").unwrap_or(rest);
+    let rest = rest.trim_prefix(b",");
     let spaced = skip_spaces(rest);
     if spaced.len() == rest.len() {
         return None;
@@ -1176,7 +1176,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
         return V::Num(n as f64);
     }
     // One comparison on a range of numbers matches a run of its sorted cells: the aggregate is read off the run
-    // ([[C120]] linearWork).
+    // ([[engineering#Performance]] linearWork).
     if let (Some(vals), [(range, _)], [c], [f]) = (values, pairs, &crits[..], &facts[..])
         && vals.len() == range.len()
         && let Some(t) = f.tally.as_ref()
@@ -1210,7 +1210,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
         n = n.min(v.len());
     }
     // Where an `=` criterion's tally names its rows, only those can match; they go in row order, so a sum adds as the
-    // scan would ([[C120]] linearWork).
+    // scan would ([[engineering#Performance]] linearWork).
     let narrowest =
         facts.iter().zip(&crits).filter_map(|(f, c)| f.tally.as_ref()?.rows(c)).min_by_key(|rows| rows.len());
     let candidates: Box<dyn Iterator<Item = usize>> = match narrowest {
@@ -1231,7 +1231,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
             _ => {}
         }
     }
-    // Rounded once, so a sorted run's sum (`Rolled`) answers the same ([[C120]] linearWork).
+    // Rounded once, so a sorted run's sum (`Rolled`) answers the same ([[engineering#Performance]] linearWork).
     let total = || crate::exact_sum::exact_sum(&kept);
     match kind {
         Kind::Count => V::Num(count as f64),
@@ -1245,7 +1245,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&Rc<Vec<V>>>, pairs: &[Pair
 }
 
 /// What every criterion on a range reads of it, kept by the range: a computed column counts each row in the same column
-/// ([[C120]] linearWork). The tally comes on the range's second call, so a single call doesn't sort what it reads once.
+/// ([[engineering#Performance]] linearWork). The tally comes on the range's second call, so a single call doesn't sort what it reads once.
 struct Facts {
     from: Rc<Vec<V>>,
     holds: Holds,
@@ -1303,7 +1303,7 @@ fn rolled_in(kept: &std::cell::RefCell<Vec<Rc<Rolled>>>, sorted: &Sorted, values
     r
 }
 
-/// An `=` criterion's groups, each sorted by `by` ([[C120]] linearWork): a per-group running total reads its group's
+/// An `=` criterion's groups, each sorted by `by` ([[engineering#Performance]] linearWork): a per-group running total reads its group's
 /// run, not every row of the group.
 struct Grouped {
     by: Rc<Vec<V>>,
@@ -1425,7 +1425,7 @@ impl Rolled {
             }
             (e, n, lo, hi)
         };
-        let at: Vec<f64> = (0..len).map(|p| finite(p).unwrap_or(0.0)).collect();
+        let at: Vec<f64> = Vec::from_fn(len, |p| finite(p).unwrap_or(0.0));
         let mut checkpoints = Vec::with_capacity(len / CHECKPOINT + 1);
         let mut whole = crate::exact_sum::ExactSum::default();
         for (p, &x) in at.iter().enumerate() {

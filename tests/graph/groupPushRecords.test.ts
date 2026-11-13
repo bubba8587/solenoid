@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver, [[group-expand-push#Records and restore]], [[group-expand-push#Entry points]]
+// [[group-expand-push]], [[group-expand-push#LayoutFx]], [[group-expand-push#Records and restore]], [[group-expand-push#Entry points]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
@@ -333,7 +333,7 @@ describe("collapse and the selection ([[C52]] visibleSelection)", () => {
   });
 });
 
-// [[C89]] standoffsSolveLast, [[standoffs#The solver runs last]]
+// [[standoffs#The solver runs last]]
 describe("standoffs across a collapse round trip", () => {
   async function setup() {
     const editor = new GraphEditor<Schemes>();

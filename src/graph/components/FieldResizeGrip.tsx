@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType
+// [[touch-gestures#Standing rules]]
 import { type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { getActiveView } from "../activeGraph";
 
@@ -47,7 +47,7 @@ export function FieldResizeGrip({ targetRef, onResize, axes = "y", minHeight = M
   zoomed?: boolean;
 }) {
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    // The grip vetoes the card drag and the pan ([[C93]] gestureByPointerType).
+    // The grip vetoes the card drag and the pan ([[touch-gestures#Standing rules]]).
     e.stopPropagation();
     e.preventDefault();
     const el = targetRef.current;

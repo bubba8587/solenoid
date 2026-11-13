@@ -1,4 +1,4 @@
-// [[C76]], [[C24]]
+// [[composite-nodes#Packs]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { ParallelCombineNode } from "../../../src/graph/nodes/electrical";
 import { coreFunction } from "../coreFunction";

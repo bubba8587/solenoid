@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem, [[palette-and-theme#Palette-derived color for charts and chips]]
+// [[A1]] visualGraphCalculator, [[components#The design system]], [[palette-and-theme#Palette-derived color for charts and chips]]
 import { describe, it, expect } from "vitest";
 import { categoryColorIndex } from "../../src/graph/categoryColor";
 

@@ -1,4 +1,4 @@
-// [[C98]] paletteMirrorsMenubar
+// [[command-palette]]
 import type { ReactNode } from "react";
 import { CableShapeSelector } from "./CableShapeSelector";
 import type { Menu, MenuIcon, MenuItem } from "./menuModel";

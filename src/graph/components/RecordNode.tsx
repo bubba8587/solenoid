@@ -100,7 +100,7 @@ function RecordCardComponent({ data, emit, op, children }: NodeProps<RecordNodeT
     void processGraph(data.id);
   }
 
-  // Suggest reads the frame on the Frame cable ([[D111]] cardLayouts), which arrives as a lazy handle: only the rows the
+  // Suggest reads the frame on the Frame cable ([[table-popup#The Cards view]]), which arrives as a lazy handle: only the rows the
   // suggestion profiles are collected. Detail's single card gets four columns, a tile two.
   async function suggestLayout(): Promise<string> {
     const conn = getOwningEditor(data.id)?.getConnections().find((c) => c.target === data.id && c.targetInput === "frame");

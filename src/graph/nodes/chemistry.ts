@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C25]] firstClassUnits, [[C24]] arraySemantics
+// [[composite-nodes#Packs]], [[C25]] firstClassUnits, [[C24]] arraySemantics
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";

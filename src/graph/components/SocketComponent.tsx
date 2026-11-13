@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[components#The design system]]
 import { useId, type CSSProperties } from "react";
 import type { GraphSocket } from "../graphModel";
 import { SOCKET_COLORS } from "../sockets";

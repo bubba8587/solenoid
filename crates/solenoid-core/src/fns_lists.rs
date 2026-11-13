@@ -257,38 +257,36 @@ fn median_of_sorted(sorted: &[f64]) -> f64 {
 pub fn running_plain(op: RunOp, arr: &[V], window: Option<f64>) -> Vec<V> {
     if let Some(w) = window.map(round_half_up).filter(|&w| w >= 1.0) {
         let w = w.min(usize::MAX as f64) as usize;
-        return (0..arr.len())
-            .map(|i| {
-                let slice = &arr[(i + 1).saturating_sub(w)..=i];
-                if let Some(e) = first_error(slice) {
-                    return e;
-                }
-                let nums = present_numbers(slice);
-                if nums.is_empty() {
-                    return if op == RunOp::Sum { V::Num(0.0) } else { V::Null };
-                }
-                let sum = || crate::exact_sum::exact_sum(&nums);
-                V::Num(match op {
-                    RunOp::Sum => sum(),
-                    RunOp::Avg => sum() / nums.len() as f64,
-                    RunOp::Min => iter_min(&nums),
-                    RunOp::Max => iter_max(&nums),
-                    RunOp::Product => crate::excel_functions::product_of(&nums),
-                    RunOp::Stdev => {
-                        if nums.len() < 2 {
-                            return V::Null;
-                        }
-                        let m = sum() / nums.len() as f64;
-                        (crate::excel_functions::ssd(&nums, m) / (nums.len() - 1) as f64).sqrt()
+        return Vec::from_fn(arr.len(), |i| {
+            let slice = &arr[(i + 1).saturating_sub(w)..=i];
+            if let Some(e) = first_error(slice) {
+                return e;
+            }
+            let nums = present_numbers(slice);
+            if nums.is_empty() {
+                return if op == RunOp::Sum { V::Num(0.0) } else { V::Null };
+            }
+            let sum = || crate::exact_sum::exact_sum(&nums);
+            V::Num(match op {
+                RunOp::Sum => sum(),
+                RunOp::Avg => sum() / nums.len() as f64,
+                RunOp::Min => iter_min(&nums),
+                RunOp::Max => iter_max(&nums),
+                RunOp::Product => crate::excel_functions::product_of(&nums),
+                RunOp::Stdev => {
+                    if nums.len() < 2 {
+                        return V::Null;
                     }
-                    RunOp::Median => {
-                        let mut sorted = nums.clone();
-                        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-                        median_of_sorted(&sorted)
-                    }
-                })
+                    let m = sum() / nums.len() as f64;
+                    (crate::excel_functions::ssd(&nums, m) / (nums.len() - 1) as f64).sqrt()
+                }
+                RunOp::Median => {
+                    let mut sorted = nums.clone();
+                    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                    median_of_sorted(&sorted)
+                }
             })
-            .collect();
+        });
     }
     let mut err: Option<V> = None;
     let (mut count, mut product, mut mn, mut mx) = (0usize, 1.0, f64::INFINITY, f64::NEG_INFINITY);
@@ -434,31 +432,23 @@ fn answer(name: &str, a: &[V]) -> V {
             let nf = n as f64;
             if is_true(arg(a, 2)) {
                 let m = ((s % nf) + nf) % nf;
-                return list(
-                    (0..n)
-                        .map(|i| {
-                            let j = (i as f64 - m + nf) % nf;
-                            if j.is_nan() {
-                                V::Undef
-                            } else {
-                                l.get(j as usize).cloned().unwrap_or(V::Undef)
-                            }
-                        })
-                        .collect(),
-                );
+                return list(Vec::from_fn(n, |i| {
+                    let j = (i as f64 - m + nf) % nf;
+                    if j.is_nan() {
+                        V::Undef
+                    } else {
+                        l.get(j as usize).cloned().unwrap_or(V::Undef)
+                    }
+                }));
             }
-            list(
-                (0..n)
-                    .map(|i| {
-                        let j = i as f64 - s;
-                        if j >= 0.0 && j < nf {
-                            l[j as usize].clone()
-                        } else {
-                            V::Null
-                        }
-                    })
-                    .collect(),
-            )
+            list(Vec::from_fn(n, |i| {
+                let j = i as f64 - s;
+                if j >= 0.0 && j < nf {
+                    l[j as usize].clone()
+                } else {
+                    V::Null
+                }
+            }))
         }
         "COMBINATIONS" | "PERMUTATIONS" => combinations_of(&to_list(a0), number(arg(a, 1)), name == "COMBINATIONS"),
         "EWMA" => {
@@ -644,7 +634,7 @@ fn answer(name: &str, a: &[V]) -> V {
             if n == 1.0 {
                 return nums(vec![start]);
             }
-            nums((0..n as usize).map(|i| start + i as f64 * (end - start) / (n - 1.0)).collect())
+            nums(Vec::from_fn(n as usize, |i| start + i as f64 * (end - start) / (n - 1.0)))
         }
         "RANGE" => {
             let st = if blank(arg(a, 2)) { 1.0 } else { number(arg(a, 2)) };
@@ -1116,53 +1106,43 @@ fn fill_list(op: &str, arr: &[V], a: &[V]) -> V {
                 })
                 .collect();
             let n = fallbacks.iter().fold(arr.len(), |m, f| if let V::List(l) = f { m.max(l.len()) } else { m });
-            list(
-                (0..n)
-                    .map(|i| {
-                        let first = arr.get(i).cloned().unwrap_or(V::Null);
-                        if !miss(&first) {
-                            return first;
-                        }
-                        for f in &fallbacks {
-                            let v = match f {
-                                V::Null => continue,
-                                V::Num(_) => f.clone(),
-                                V::List(l) => l.get(i).cloned().unwrap_or(V::Null),
-                                _ => V::Null,
-                            };
-                            if !miss(&v) {
-                                return v;
-                            }
-                        }
-                        V::Null
-                    })
-                    .collect(),
-            )
+            list(Vec::from_fn(n, |i| {
+                let first = arr.get(i).cloned().unwrap_or(V::Null);
+                if !miss(&first) {
+                    return first;
+                }
+                for f in &fallbacks {
+                    let v = match f {
+                        V::Null => continue,
+                        V::Num(_) => f.clone(),
+                        V::List(l) => l.get(i).cloned().unwrap_or(V::Null),
+                        _ => V::Null,
+                    };
+                    if !miss(&v) {
+                        return v;
+                    }
+                }
+                V::Null
+            }))
         }
     }
 }
 
 fn returns(op: &str, s: &[V]) -> V {
     match op {
-        "LOGRETURNS" | "SIMPLERETURNS" => list(
-            (0..s.len())
-                .map(|i| {
-                    let b = &s[i];
-                    if is_sol(b) {
-                        return b.clone();
-                    }
-                    if i == 0 {
-                        return V::Null;
-                    }
-                    match (finite(&s[i - 1]), finite(b)) {
-                        (Some(a), Some(b)) if a != 0.0 => {
-                            V::Num(if op == "LOGRETURNS" { log(b / a) } else { b / a - 1.0 })
-                        }
-                        _ => V::Null,
-                    }
-                })
-                .collect(),
-        ),
+        "LOGRETURNS" | "SIMPLERETURNS" => list(Vec::from_fn(s.len(), |i| {
+            let b = &s[i];
+            if is_sol(b) {
+                return b.clone();
+            }
+            if i == 0 {
+                return V::Null;
+            }
+            match (finite(&s[i - 1]), finite(b)) {
+                (Some(a), Some(b)) if a != 0.0 => V::Num(if op == "LOGRETURNS" { log(b / a) } else { b / a - 1.0 }),
+                _ => V::Null,
+            }
+        })),
         "CUMRETURNS" => {
             let mut acc = 1.0;
             list(
@@ -1303,7 +1283,7 @@ pub(crate) fn mat_solve(a: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
             }
         }
     }
-    Some((0..n).map(|i| m[i][n] / m[i][i]).collect())
+    Some(Vec::from_fn(n, |i| m[i][n] / m[i][i]))
 }
 
 /// Err where `new Array(p)` throws on a length that isn't one.
@@ -1634,21 +1614,19 @@ fn gradient(l: &[V]) -> Result<Vec<V>, V> {
         return Err(V::err(sol_error(ErrorCode::Value, "GRADIENT reads numbers, not text")));
     }
     let num = |i: usize| finite(&l[i]);
-    Ok((0..n)
-        .map(|i| {
-            let (x, y, h) = if i == 0 {
-                (num(0), num(1), 1.0)
-            } else if i == n - 1 {
-                (num(n - 2), num(n - 1), 1.0)
-            } else {
-                (num(i - 1), num(i + 1), 2.0)
-            };
-            match (x, y) {
-                (Some(x), Some(y)) => V::Num((y - x) / h),
-                _ => V::Null,
-            }
-        })
-        .collect())
+    Ok(Vec::from_fn(n, |i| {
+        let (x, y, h) = if i == 0 {
+            (num(0), num(1), 1.0)
+        } else if i == n - 1 {
+            (num(n - 2), num(n - 1), 1.0)
+        } else {
+            (num(i - 1), num(i + 1), 2.0)
+        };
+        match (x, y) {
+            (Some(x), Some(y)) => V::Num((y - x) / h),
+            _ => V::Null,
+        }
+    }))
 }
 
 /// A signal is numbers by position, so text in one is #VALUE!, never a 0 that shifts what follows ([[C10]]
@@ -1752,16 +1730,14 @@ fn sparkline(range: &V, ty: &V) -> V {
         ns
     } else {
         let n = ns.len();
-        (0..40)
-            .map(|b| {
-                let (lo, hi) = ((b * n) / 40, ((b + 1) * n) / 40);
-                let mut s = 0.0;
-                for x in &ns[lo..hi] {
-                    s += x;
-                }
-                s / (hi - lo) as f64
-            })
-            .collect()
+        Vec::from_fn(40, |b| {
+            let (lo, hi) = ((b * n) / 40, ((b + 1) * n) / 40);
+            let mut s = 0.0;
+            for x in &ns[lo..hi] {
+                s += x;
+            }
+            s / (hi - lo) as f64
+        })
     };
     if ys.is_empty() {
         return V::Null;
@@ -1946,7 +1922,7 @@ pub(crate) fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool)
             }
         })
         .collect();
-    let seasonal: Vec<f64> = (0..n).map(|i| centred[i % m]).collect();
+    let seasonal: Vec<f64> = Vec::from_fn(n, |i| centred[i % m]);
     let residual = det
         .iter()
         .enumerate()
@@ -1992,12 +1968,12 @@ pub(crate) fn stl_decompose(y: &[Option<f64>], period: f64) -> Option<Decomposit
         }
         let mean = pa.iter().fold(0.0, |a, b| a + b) / mf;
         let centred: Vec<f64> = pa.iter().map(|v| v - mean).collect();
-        seasonal = (0..n).map(|i| centred[i % m]).collect();
+        seasonal = Vec::from_fn(n, |i| centred[i % m]);
         let deseason: Vec<f64> = data.iter().zip(&seasonal).map(|(v, s)| v - s).collect();
         let sm = lowess(&deseason.iter().map(|&v| V::Num(v)).collect::<Vec<_>>(), trend_frac, 3);
         trend = sm.iter().enumerate().map(|(i, v)| finite(v).unwrap_or(deseason[i])).collect();
     }
-    let residual = (0..n).map(|i| Some(data[i] - trend[i] - seasonal[i])).collect();
+    let residual = Vec::from_fn(n, |i| Some(data[i] - trend[i] - seasonal[i]));
     Some([trend.into_iter().map(Some).collect(), seasonal.into_iter().map(Some).collect(), residual])
 }
 
@@ -2163,7 +2139,7 @@ fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -
     if !(h >= 1.0) {
         return Ok(None);
     }
-    // FORECAST.ETS steps once per period of the horizon ([[C120]] linearWork).
+    // FORECAST.ETS steps once per period of the horizon ([[engineering#Performance]] linearWork).
     if h > 1_000_000.0 {
         return Err(domain(&format!("{name} takes a target at most 1,000,000 steps past the timeline's end")));
     }
@@ -2526,7 +2502,7 @@ fn grid_mode(z: &[V], xs: &V, ys: &V, forecast: &V) -> V {
     };
     let grid: Vec<Vec<Option<f64>>> = z
         .iter()
-        .map(|r| (0..cols).map(|j| if let V::List(l) = r { l.get(j).and_then(finite) } else { None }).collect())
+        .map(|r| Vec::from_fn(cols, |j| if let V::List(l) = r { l.get(j).and_then(finite) } else { None }))
         .collect();
     let out = fill_grid(&grid, &col_xs, &row_ys, fc);
     list(out.into_iter().map(|r| list(r.into_iter().map(|v| v.map_or(V::Null, V::Num)).collect())).collect())

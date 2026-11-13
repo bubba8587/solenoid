@@ -51,7 +51,7 @@ export class LambdaNode extends GraphNode {
   constructor(init?: { label?: string; expr?: string; params?: string; literals?: Record<string, number>; varDescriptions?: Record<string, string> }) {
     super("Lambda");
     this.label = init?.label ?? "LAMBDA";
-    this.params = init?.params ?? "x";
+    this.params = init?.params ?? "";
     this.expr = init?.expr ?? "";
     if (init?.literals) this.literals = { ...init.literals };
     if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };

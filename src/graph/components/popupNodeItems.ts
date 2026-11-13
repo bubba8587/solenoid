@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#The design system]]
 import { useSyncExternalStore } from "react";
 import { pinStore, pinNodeValue } from "../pinStore";
 import { flyToNodeAndFlash } from "../flyToNode";

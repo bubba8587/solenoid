@@ -20,7 +20,7 @@ export function TextAfterBeforeComponent({ data, emit }: NodeProps<TextAfterBefo
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={handleOp} options={OPS} />
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 4 }}>
+      <div className="solenoid-node__toggle-pair">
         <MatchCaseButton on={matchCase} onToggle={() => setMatchCase(!matchCase)} title="Match case. Off ignores case, Excel's match_mode 1." />
         <MatchCaseButton on={matchEnd} onToggle={() => setMatchEnd(!matchEnd)} label="End" title="The end of the text counts as a delimiter, Excel's match_end." />
       </div>

@@ -8,7 +8,8 @@ import { NODE_OPS } from "../../src/graph/nodeOps";
 import { despace } from "../../src/graph/formulaNodeParity";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
-const ALLCAPS_ALLOW = new Set(["BMI", "TDEE", "SVG", "KPI", "ISNULL"]);
+// "A/B Test": A and B name the two versions, as the test is called everywhere.
+const ALLCAPS_ALLOW = new Set(["BMI", "TDEE", "SVG", "KPI", "ISNULL", "A", "B"]);
 const TITLECASE_EXCEL_ALLOW = new Set(["CONVERT"]);
 
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";

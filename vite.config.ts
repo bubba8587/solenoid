@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C69]]
+// [[save-format#A save loses nothing quietly]], [[C69]]
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";
@@ -179,7 +179,8 @@ function devGraphMirror(): Plugin {
  *  `GET /__demo-vault` lists the vault-relative paths; `?p=<rel>` returns one file. */
 function devDemoVault(): Plugin {
   const ROOT = path.resolve("demo-vault");
-  const EXT = /\.(md|base|yaml|csv)$/;
+  const EXT = /\.(md|base|yaml|csv|xlsx|xlsm)$/;
+  const BINARY = /\.(xlsx|xlsm)$/;
   const SETTINGS = new Set([".obsidian/types.json", ".obsidian/daily-notes.json"]);
   async function list(dir: string, rel: string, out: string[]): Promise<void> {
     let entries: import("node:fs").Dirent[];
@@ -210,6 +211,11 @@ function devDemoVault(): Plugin {
           const abs = path.resolve(ROOT, rel);
           if (!abs.startsWith(ROOT + path.sep) || !(EXT.test(abs) || SETTINGS.has(rel))) { res.statusCode = 404; res.end(); return; }
           try {
+            if (BINARY.test(abs)) {
+              res.setHeader("content-type", "application/octet-stream");
+              res.end(await readFile(abs));
+              return;
+            }
             const text = await readFile(abs, "utf8");
             res.setHeader("content-type", "text/plain; charset=utf-8");
             res.end(text);

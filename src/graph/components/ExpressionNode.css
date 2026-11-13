@@ -142,10 +142,25 @@
   color: var(--text-muted);
 }
 
+/* A variable on one line: its name, then its value in a slimmer box than a card's lone result, so a six-variable
+   relation (TVM) reads as a short table rather than a column of answers. */
 .solenoid-eq__var-row {
-  margin: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .solenoid-eq__var-row > .solenoid-node__io-label {
-  display: block;
-  margin-bottom: 1px;
+  flex: 0 1 auto;
+  /* On the card's label column (NodeCard measures it with the input rows). */
+  min-width: min(var(--io-label-w, 0px), 45%);
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 4px;
+}
+.solenoid-eq__var-row > .solenoid-node__display-value {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-block: 3px;
 }

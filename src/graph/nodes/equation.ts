@@ -1,4 +1,4 @@
-// [[C47]]
+// [[equation-solver]]
 
 import { GraphNode } from "../graphModel";
 import { numListIn, numListOut, logicalComboOut } from "./shared";

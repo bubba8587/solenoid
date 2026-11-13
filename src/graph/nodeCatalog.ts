@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface, [[C53]] pipelineIsCompositePreset
+// [[B16]] oneFormulaSurface, [[composite-nodes#Manual refresh and Pipeline]]
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DelayedPassNode, ValueInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -11,7 +11,7 @@ import {
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GCDNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
+  UniqueNode, ConcatListsNode, FrameFromListsNode, CategorizeNode, QuadraticRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
@@ -205,9 +205,9 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Connections", description: "Data from outside the graph: web and local files, live feeds, keyless lookups, and the sinks that write back. Stores the source, not the data.",
         children: [
-          { type: "web-source", updated: "1.6.1",    label: "Web Source",  description: "A Frame from a CSV or JSON URL, columns auto-typed. Stores the URL, not the data. Desktop fetches any URL; the browser needs CORS.", create: () => new WebSourceNode(), parity: false },
+          { type: "web-source", updated: "1.6.2", label: "Web Source",  description: "A Frame from a CSV, JSON or Excel workbook URL, columns auto-typed; a workbook reads one named Table. Stores the URL, not the data. Desktop fetches any URL; the browser needs CORS.", create: () => new WebSourceNode(), parity: false },
           { type: "data-feed",     label: "Data Feed",   description: "Live economic and market data as a Frame: FRED series with no key, Alpha Vantage stock history with a free key. Stores the id, not the data.", create: () => new DataFeedNode(), parity: false },
-          { type: "local-file", updated: "1.6.1",   label: "Local File",  description: "Loads a Frame from your data folder (Settings ▸ Data). A Parquet file keeps its column types; anything else reads as CSV with columns auto-typed, and Dates says how the file writes dates like 1/2/26. A Project XML, GanttProject or Primavera XER file comes out as a Plan for Schedule instead, and a plan CSV as both. A name with `*`, such as `monthly/*.csv`, loads every matching file as one table with a File column. Stores the file name. Refresh to re-read. Desktop only. Power Query: From Folder.", create: () => new LocalFileNode(), parity: false, keywords: "csv parquet arrow column columnar file load import project xml mspdi plan smartsheet gantt gan primavera xer folder all files combine wildcard glob power query" },
+          { type: "local-file", updated: "1.6.2", label: "Local File",  description: "Loads a Frame from your data folder (Settings ▸ Data). A Parquet file keeps its column types. An Excel workbook (.xlsx, .xlsm) reads one named Table, with the answers Excel saved and each column typed by its cells. Anything else reads as CSV with columns auto-typed, and Dates says how the file writes dates like 1/2/26. A Project XML, GanttProject or Primavera XER file comes out as a Plan for Schedule instead, and a plan CSV as both. A name with `*`, such as `monthly/*.csv`, loads every matching file as one table with a File column. Stores the file name. Refresh to re-read. Desktop only. Power Query: From Folder.", create: () => new LocalFileNode(), parity: false, keywords: "csv parquet excel xlsx xlsm workbook table arrow column columnar file load import project xml mspdi plan smartsheet gantt gan primavera xer folder all files combine wildcard glob power query" },
           { type: "pair", children: [
             { type: "import-html",   label: "Import HTML", description: "Grab the Nth HTML table on a page as a Frame, columns auto-typed. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: `IMPORTHTML`.", create: () => new ImportHtmlNode(), parity: false },
             { type: "import-xml",    label: "Import XML",  description: "A page's XPath matches as a text list. Stores the URL; refresh re-pulls. Desktop any URL, browser CORS-only. Sheets: `IMPORTXML`.", create: () => new ImportXmlNode(), parity: false },
@@ -215,7 +215,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "write-file",    label: "Write File",  description: "Writes a Frame as CSV or JSON rows, or Text as-is. Pick the format, arm it, then press Run. Never writes on its own. Desktop only.", create: () => new WriteFileNode(), parity: false, keywords: "csv json text write export save file sink xml mspdi verbatim string" },
           { type: "pair", children: [
             { type: "geocode",       label: "Geocode",     description: "A place name to latitude, longitude and timezone, with a pick among matches when the name is ambiguous. No key needed.", create: () => new GeocodeNode(), parity: false, keywords: "geocode place location city coordinates latitude longitude timezone lookup open-meteo" },
-            { type: "weather",       label: "Weather",     description: "A daily forecast frame and the current temperature for a latitude and longitude. °C or °F carries as a unit. No key needed.", create: () => new WeatherNode(), parity: false, keywords: "weather forecast rain temperature precipitation climate open-meteo garden watering" },
+            { type: "weather", updated: "1.6.2", label: "Weather",     description: "A daily forecast frame, a forecast chart for a Dashboard, and the current temperature for a latitude and longitude. °C or °F carries as a unit. No key needed.", create: () => new WeatherNode(), parity: false, keywords: "weather forecast rain temperature precipitation climate open-meteo garden watering chart dashboard" },
           ]},
           { type: "pair", children: [
             { type: "holidays",      label: "Holidays",    description: "Public holidays for a country and year as a frame, the dates alone for NETWORKDAYS and WORKDAY, and days until the next one. No key needed.", create: () => new HolidaysNode(), parity: false, keywords: "holiday holidays public bank national country region nager networkdays workday calendar days off" },
@@ -674,6 +674,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Build & Read", description: "Make a Frame from a Matrix and headers or from lists, take one apart, and read or add rows and columns.",
         children: [
           { type: "build-frame", label: "Build Frame", description: "Combines a Matrix and a List of headers into a Frame. Missing headers become `Col1`, `Col2`…, and duplicates are made unique.", create: () => new BuildFrameNode(), parity: false },
+          { type: "categorize", added: "1.6.2", label: "Categorize", description: "Maps a list's distinct items onto categories picked by hand on the card's sorter, as a two-column lookup table of Item and Category to Join back onto the rows. Categories come from a list, or start as Category 1 to 3, renamed on the sorter. A sort is kept by value, so it holds when the list changes.", create: () => new CategorizeNode(), parity: false, keywords: "categorize bucket buckets recode map mapping group classify sort into lookup table tag label assign bin manual drag" },
           { type: "frame-from-lists", label: "Frame from Lists", description: "Builds a Frame straight from lists: each column pairs a typed name with a list of any type. Ragged columns pad with blanks.", create: () => new FrameFromListsNode(), parity: false, keywords: "lists to frame columns table build fast assemble" },
           { type: "split-frame", label: "Split Frame", description: "Takes a Frame apart into its numeric Matrix body and header text-list; the inverse of Build Frame. The type filter (All / Num / Date / Bool / Text) keeps only columns of that type.", create: () => new SplitFrameNode(), parity: false },
           { type: "get-column",  label: "Get Column",  description: "Pulls one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date.", create: () => new GetColumnNode(), parity: false },

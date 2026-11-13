@@ -1,0 +1,111 @@
+/* The Categorize sorter: the Fields list on top, the categories as columns below (PivotEditorPopup.css draws the chips,
+   the Fields list and the footer). A category is drawn as a node card is (DESIGN.md, the Tinted-Box Rule): its palette
+   color (`--cat`) in the header band at --header-tint and the cap on the header's top three sides, the body neutral. */
+.categorize-editor { width: 880px; }
+.categorize-editor__body { display: flex; flex-direction: column; gap: 10px; overflow: auto; flex: 1 1 auto; min-height: 0; }
+.categorize-editor .pivot-fields__list { max-height: 26vh; overflow: auto; }
+.categorize-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--per-row, 3), minmax(130px, 1fr));
+  gap: 8px;
+  align-items: start;
+  overflow-x: auto;
+  flex: none;
+}
+/* A phone sets two categories a row, each the half of the screen, rather than a row it scrolls sideways through. */
+@media (max-width: 640px) {
+  .categorize-grid { grid-template-columns: repeat(min(var(--per-row, 2), 2), minmax(0, 1fr)); }
+}
+
+.categorize-zone { display: flex; flex-direction: column; min-width: 0; }
+.categorize-zone__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 2px;
+  background: color-mix(in srgb, var(--cat) var(--header-tint), var(--surface));
+  border: 1px solid var(--cat);
+  border-bottom-color: var(--border);
+  border-radius: 6px 6px 0 0;
+}
+.categorize-zone__body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 56px;
+  padding: 6px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+}
+.categorize-zone:hover .categorize-zone__body { border-color: var(--border-strong); }
+.categorize-zone--target .categorize-zone__body { cursor: pointer; }
+.categorize-zone--over .categorize-zone__body,
+.categorize-zone--target .categorize-zone__body:hover { border-color: var(--node-accent, var(--accent)); }
+.categorize-zone__body .pivot-chip { justify-content: space-between; }
+
+.categorize-zone__name,
+.categorize-zone__fixed {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--cat) var(--mix-ink), var(--text));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.categorize-zone__fixed { padding: 1px 4px; }
+.categorize-zone__name {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.categorize-zone__name:hover { border-color: color-mix(in srgb, var(--cat) var(--mix-edge), var(--border)); }
+.categorize-zone__name:focus { border-color: var(--node-accent, var(--accent)); background: var(--surface-sunken); color: var(--text); outline: none; }
+.categorize-zone__count {
+  font-size: 11px;
+  min-width: 16px;
+  text-align: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--cat) 18%, transparent);
+}
+
+.categorize-chip--picked {
+  border-color: var(--node-accent, var(--accent));
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 18%, transparent);
+}
+.categorize-add {
+  margin-right: auto;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.categorize-add:hover { background: var(--btn-hover); border-color: var(--border-strong); }
+
+/* Items are often long (a bank memo, a free-text answer), so a chip wraps rather than clipping to a few characters:
+   up to three lines in a column, two in the item list, where a capped width lets long ones pack side by side. */
+.categorize-editor .pivot-chip { align-items: flex-start; }
+.categorize-editor .pivot-chip__name {
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-wrap-style: balance;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+.categorize-editor .pivot-fields .pivot-chip { max-width: 300px; }
+.categorize-editor .pivot-fields .pivot-chip__name { -webkit-line-clamp: 2; line-clamp: 2; }
+.categorize-editor .pivot-chip__x { flex: none; }

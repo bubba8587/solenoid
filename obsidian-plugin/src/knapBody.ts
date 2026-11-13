@@ -1,4 +1,4 @@
-// [[D87]] knapNotes
+// [[obsidian-plugin#Knap notes]]
 import { MarkdownRenderChild, MarkdownRenderer, MarkdownView, getFrontMatterInfo, parseYaml, type MarkdownPostProcessorContext, type Plugin } from "obsidian";
 import { isKnapNote, knapVariables, renderKnapNote, renderKnapUnits, KNAP_PROPERTY, SPAN_RE, type KnapNoteRender, type KnapUnit } from "./knapNote";
 import { knapLivePreview } from "./knapLive";

@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C15]] matricesInFormulas
+// [[composite-nodes#Packs]], [[C17]] shareImpl, [[C15]] matricesInFormulas
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";

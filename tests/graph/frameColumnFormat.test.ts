@@ -70,7 +70,7 @@ describe("a per-column format rides the frame downstream", () => {
     expect(fmtCell(b.values[0], b.type, b.format)).toBe("9.877");
   });
 
-  it("Describe's stamped summary keeps its Dashboard tiles ([[C127]] pivotView)", async () => {
+  it("Describe's stamped summary keeps its Dashboard tiles ([[table-popup#The Pivot view]])", async () => {
     const input = new FrameInputNode({ frameText: source([{ name: "A", type: "number", cells: ["1", "2", "4"] }]) });
     const desc = new DescribeNode();
     frameFormatStore.set(desc.id, "mean", DEC3);
@@ -238,7 +238,7 @@ describe("describeAnnotation — the one shared inherit/column hint wording", ()
   });
 });
 
-// [[B12]] losslessSaves: a column's format follows the column through a rename in the Frame Input popup.
+// [[save-format#A save loses nothing quietly]]: a column's format follows the column through a rename in the Frame Input popup.
 describe("frameFormatStore.rekey", () => {
   it("moves a renamed column's format to its new name", async () => {
     const input = new FrameInputNode({ frameText: source([{ name: "B", type: "number", cells: ["1.23456"] }]) });

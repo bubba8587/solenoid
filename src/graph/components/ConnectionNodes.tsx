@@ -3,7 +3,7 @@ import { CardSection } from "./CardSection";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { collapseStore } from "../collapseStore";
 import type React from "react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type {
   TaskNotesNode as TaskNotesNodeType,
   WebSourceNode as WebSourceNodeType,
@@ -32,12 +32,15 @@ import { CubeChip } from "./CubeChip";
 import { LazySelect } from "./LazySelect";
 import { PickField } from "./PickField";
 import { chooseFile } from "../chooseFile";
-import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
+import { NodeShell, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { RefreshIcon } from "./RefreshIcon";
 import { SkyIcon } from "./CardArt";
+import { ChartFigure } from "./chartView";
+import { forecastWindow } from "./forecastView";
+import type { ChartValue } from "../chartValue";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
 import { isFilePattern } from "../fileGlob";
@@ -62,9 +65,10 @@ function statusText(s: ConnectionState): string {
   switch (s.status) {
     case "loading": return "Loading…";
     case "error":   return s.message || "Failed";
-    case "ok":      return `${s.files ? `${s.files} file${s.files === 1 ? "" : "s"} · ` : ""}${s.rows ?? 0}×${s.cols ?? 0}${s.fetchedAt ? ` · ${new Date(s.fetchedAt).toLocaleTimeString()}` : ""}`;
+    // The size is the output's to show (a frame chip's 11×6), so the status says only when and how many files.
+    case "ok":      return [s.files ? `${s.files} file${s.files === 1 ? "" : "s"}` : "", s.fetchedAt ? new Date(s.fetchedAt).toLocaleTimeString() : "Loaded"].filter(Boolean).join(" · ");
     case "gated":   return "Waiting for permission";
-    default:        return "Not connected";
+    default:        return s.message || "Not connected";
   }
 }
 
@@ -82,7 +86,7 @@ function RefreshIntervalField({ node }: { node: { id: string; refreshMinutes: nu
   }
   return (
     <label className="sol-conn__field" title="Automatically refreshes on this cadence. 0 turns it off.">
-      Auto-refresh (min)
+      <span className="sol-conn__label">Auto-refresh (min)</span>
       <input
         className="sol-conn__num"
         type="number"
@@ -95,6 +99,17 @@ function RefreshIntervalField({ node }: { node: { id: string; refreshMinutes: nu
         onMouseDown={(e) => e.stopPropagation()}
       />
     </label>
+  );
+}
+
+/** A connection card's Options fold: the refinements the read works without, ending on Auto-refresh. It opens when any
+ *  of them is set (`set`) or the card refreshes on a timer (DESIGN.md § Card sections). */
+function ConnOptions({ node, set = false, children }: { node: { id: string; refreshMinutes: number }; set?: boolean; children?: ReactNode }) {
+  return (
+    <CardSection label="Options" collapsible defaultOpen={set || node.refreshMinutes > 0}>
+      {children}
+      <RefreshIntervalField node={node} />
+    </CardSection>
   );
 }
 
@@ -162,6 +177,27 @@ async function retypeAndReopen(data: RetypableSource, c: number, type: FrameColT
   }, { onRetypeColumn: (col, t) => void retypeAndReopen(data, col, t) });
 }
 
+/** An Excel workbook's Table to read, once a read has listed them (`tableName`; blank reads the only one). A saved
+ *  pick the workbook no longer has stays listed, so the card's error can name it. */
+function WorkbookTablePick({ node }: { node: { id: string; tableName: string; xlsxTables: { name: string; sheet: string }[]; edited(): void } }) {
+  useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
+  const [table, setTable] = useNodeField(node, "tableName");
+  const tables = node.xlsxTables;
+  if (tables.length === 0 && !table) return null;
+  // A Table is matched ignoring case, as the read matches it.
+  const known = tables.some((t) => t.name.toLowerCase() === table.trim().toLowerCase());
+  return (
+    <label className="sol-conn__field" title="The Excel Table to read. Only named Tables are read: in Excel, select the data and press Ctrl+T to make one.">
+      <span className="sol-conn__label">Table</span>
+      <LazySelect className="sol-conn__select" value={table || (tables.length === 1 ? tables[0].name : "")} onChange={(e) => setTable(e.target.value)} {...stopDrag}>
+        {tables.length !== 1 && !table && <option value="">Pick a Table…</option>}
+        {table && !known && <option value={table}>{table} (not in the workbook)</option>}
+        {tables.map((t) => <option key={t.name} value={t.name}>{t.name}{t.sheet === t.name ? "" : ` · ${t.sheet}`}</option>)}
+      </LazySelect>
+    </label>
+  );
+}
+
 export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>) {
   const [url, setUrl] = useState(data.url);
   useEffect(() => { setUrl(data.url); }, [data.url]);
@@ -178,7 +214,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           className="sol-conn__url sol-placeholder-example"
           type="text"
           value={url}
-          placeholder="https://…/data.csv"
+          placeholder="https://…/data.csv or .xlsx"
           spellCheck={false}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
@@ -186,12 +222,14 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
-        <div className="sol-conn__field" title="How the source writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
-          Dates
-          <DateOrderToggle node={data} />
-        </div>
+        <WorkbookTablePick node={data} />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField node={data} />
+        <ConnOptions node={data} set={data.dateOrder !== ""}>
+          <div className="sol-conn__field" title="How the source writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
+            <span className="sol-conn__label">Dates</span>
+            <DateOrderToggle node={data} />
+          </div>
+        </ConnOptions>
         <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)}
           popupOverrides={{ onRetypeColumn: (col, t) => void retypeAndReopen(data, col, t) }} />
       </div>
@@ -232,7 +270,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
           onMouseDown={(e) => e.stopPropagation()}
         />
         <label className="sol-conn__field">
-          Table #
+          <span className="sol-conn__label">Table #</span>
           <input
             className="sol-conn__num"
             type="number"
@@ -366,24 +404,27 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
             placeholder="Pick a file…"
             example
             missing={name !== "" && !isFilePattern(name) && !files.includes(name)}
-            title={name ? `${name}: choose another file` : "Choose a CSV or Parquet file in the data folder"}
+            title={name ? `${name}: choose another file` : "Choose a CSV, Parquet or Excel file in the data folder"}
             onPick={(from) => void chooseFile({
                 from,
               title: "Choose a file",
               root: folder,
-              extensions: ["csv", "parquet"],
+              extensions: ["csv", "parquet", "xlsx", "xlsm"],
               current: name || undefined,
               list: () => listLocalFiles(folder),
               readHead: (rel, chars) => readFileHead(folder, rel, chars),
               rootLabel: "Data folder",
               recentKey: "local-file",
-              empty: "No CSV or Parquet files in the data folder",
+              empty: "No CSV, Parquet or Excel files in the data folder",
             }).then((rel) => { if (rel) pick(rel); })}
           />
         )}
+        <WorkbookTablePick node={data} />
+        <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {folder && (desktop || isDemoVaultPath(folder)) && (
+          <CardSection label="Options" collapsible defaultOpen={pattern !== "" || data.dateOrder !== "" || data.refreshMinutes > 0}>
           <label className="sol-conn__field" title="Reads every file whose name matches, stacked as one table with a File column. * stands for anything, **/ for any subfolder.">
-            All matching
+            <span className="sol-conn__label">All matching</span>
             <input
               className="sol-conn__url sol-placeholder-example" style={FIELD_INPUT} type="text" value={pattern}
               placeholder="monthly/*.csv" spellCheck={false}
@@ -393,16 +434,12 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
               onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
             />
           </label>
-        )}
-        {folder && (desktop || isDemoVaultPath(folder)) && (
           <div className="sol-conn__field" title="How the file writes dates in numbers alone, such as 1/2/26. Auto reads only ISO dates as dates; MDY or DMY reads those columns as dates too.">
-            Dates
+            <span className="sol-conn__label">Dates</span>
             <DateOrderToggle node={data} />
           </div>
-        )}
-        <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
-        {desktop && folder && (
-          <RefreshIntervalField node={data} />
+          {desktop && <RefreshIntervalField node={data} />}
+          </CardSection>
         )}
       </div>
       {frameOut && (
@@ -495,18 +532,19 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
             {preset.frequencies.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
           </LazySelect>
         )}
-        {preset.supportsDateRange && (
-          <div className="sol-conn__dates">
-            <input className="sol-conn__date" type="date" value={start} max={end || undefined} onChange={(e) => setParam("start", e.target.value)} title="Start date" {...stopDrag} />
-            <span className="sol-conn__date-sep">→</span>
-            <input className="sol-conn__date" type="date" value={end} min={start || undefined} onChange={(e) => setParam("end", e.target.value)} title="End date" {...stopDrag} />
-          </div>
-        )}
         {data.needsKey() && (
           <div className="sol-conn__note">Add a {preset.label} API key in Settings ▸ Data.</div>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField node={data} />
+        <ConnOptions node={data} set={start !== "" || end !== ""}>
+          {preset.supportsDateRange && (
+            <div className="sol-conn__dates">
+              <input className="sol-conn__date" type="date" value={start} max={end || undefined} onChange={(e) => setParam("start", e.target.value)} title="Start date" {...stopDrag} />
+              <span className="sol-conn__date-sep">→</span>
+              <input className="sol-conn__date" type="date" value={end} min={start || undefined} onChange={(e) => setParam("end", e.target.value)} title="End date" {...stopDrag} />
+            </div>
+          )}
+        </ConnOptions>
         <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
@@ -556,6 +594,17 @@ const WEATHER_UNIT_OPTIONS: { value: "C" | "F"; label: string }[] = [
   { value: "C", label: "°C" },
   { value: "F", label: "°F" },
 ];
+const FORECAST_PREVIEW_W = 216;
+const FORECAST_PREVIEW_H = 128;
+/** The card shows the next few days; the Forecast output carries them all. */
+const FORECAST_PREVIEW_DAYS = 5;
+const previews = new WeakMap<ChartValue, ChartValue>();
+function preview(cv: ChartValue): ChartValue {
+  if (cv.payload?.kind !== "forecast") return cv;
+  let v = previews.get(cv);
+  if (!v) { v = { ...cv, payload: forecastWindow(cv.payload, FORECAST_PREVIEW_DAYS) }; previews.set(cv, v); }
+  return v;
+}
 export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the Now rows when a fetch lands
   const [past, setPast] = useState(String(data.pastDays));
@@ -572,7 +621,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
   }
   const numField = (label: string, val: string, set: (s: string) => void) => (
     <label className="sol-conn__field">
-      {label}
+      <span className="sol-conn__label">{label}</span>
       <input
         className="sol-conn__num" type="number" value={val}
         onChange={(e) => set(e.target.value)} onBlur={commit}
@@ -595,11 +644,12 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
       </div>
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
-        {numField("Past days", past, setPast)}
-        {numField("Forecast days", fwd, setFwd)}
         <div className="sol-conn__note">Open-Meteo forecast.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField node={data} />
+        <ConnOptions node={data} set={data.pastDays !== 0 || data.forecastDays !== 7}>
+          {numField("Past days", past, setPast)}
+          {numField("Forecast days", fwd, setFwd)}
+        </ConnOptions>
       </div>
       {daily && (
         <MeasuredSocketRow side="output" socketKey="daily" nodeId={data.id} emit={emit} payload={daily.socket}>
@@ -607,7 +657,6 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
           <span className="solenoid-node__output-value">{rows > 0 ? `${rows} days` : "—"}</span>
         </MeasuredSocketRow>
       )}
-      <SkyIcon condition={data.cached?.nowCondition || null} />
       <InlineOutputRows
         node={data}
         emit={emit}
@@ -616,6 +665,15 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
           { key: "condition", label: "CONDITION",         value: data.cached?.nowCondition || null },
         ]}
       />
+      {data.outputs.chart && (
+        <MeasuredSocketRow side="output" socketKey="chart" nodeId={data.id} emit={emit} payload={data.outputs.chart.socket}>
+          <div className="sol-conn__figure">
+            {data.cachedChart
+              ? <ChartFigure value={preview(data.cachedChart)} width={FORECAST_PREVIEW_W} height={FORECAST_PREVIEW_H} />
+              : <SkyIcon condition={null} />}
+          </div>
+        </MeasuredSocketRow>
+      )}
     </NodeShell>
   );
 }
@@ -657,7 +715,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
           {NAGER_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
         </LazySelect>
         <label className="sol-conn__field">
-          Year
+          <span className="sol-conn__label">Year</span>
           <input
             className="sol-conn__num" type="number" value={year} placeholder="[this year]"
             onChange={(e) => setYear(e.target.value)} onBlur={commitYear}
@@ -924,23 +982,13 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               }).then((rel) => { if (rel !== null) pickFolder(rel); })}
             />
             <label className="sol-conn__field" title="Only notes whose name matches. * stands for anything.">
-              Filter
+              <span className="sol-conn__label">Filter</span>
               <input
                 className="sol-conn__url sol-placeholder-example" style={FIELD_INPUT} type="text" value={connected.has("glob") ? "" : glob}
                 placeholder={connected.has("glob") ? "Driven by the cable" : "2026-*"}
                 spellCheck={false} disabled={connected.has("glob")}
                 onChange={(e) => setGlob(e.target.value)}
                 onBlur={(e) => commitField(e.target.value, data.glob, setGlob, (v) => { data.glob = v; })}
-                onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
-                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-              />
-            </label>
-            <label className="sol-conn__field" title="Reads a date out of each note's name. Blank detects the format.">
-              Date in name
-              <input
-                className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="[auto]" spellCheck={false}
-                onChange={(e) => setNameFormat(e.target.value)}
-                onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
                 onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               />
@@ -960,7 +1008,18 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               </div>
             </CardSection>
             <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
-            <RefreshIntervalField node={data} />
+            <ConnOptions node={data} set={data.nameFormat !== ""}>
+              <label className="sol-conn__field" title="Reads a date out of each note's name. Blank detects the format.">
+                <span className="sol-conn__label">Date in name</span>
+                <input
+                  className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="[auto]" spellCheck={false}
+                  onChange={(e) => setNameFormat(e.target.value)}
+                  onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
+                  onKeyDown={(e) => { if (isEnter(e)) e.currentTarget.blur(); }}
+                  onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+                />
+              </label>
+            </ConnOptions>
             {cols.length > 0 && (
               <div className="sol-conn__preview" title={`${cols.length} columns`}>
                 {cols.slice(0, 6).map((c, i) => <div key={i} className="sol-conn__preview-row">{c}</div>)}

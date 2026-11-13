@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem, [[palette-and-theme#Each palette, drawn]]
+// [[components#The design system]], [[palette-and-theme#Each palette, drawn]]
 // Draws one SVG per built-in palette into tree/specs/canvas/palettes/, from palette.ts itself: Default's slots and the
 // palette's side by side, with each slot's move drawn in OKLab (hue and chroma, then lightness), its workbench ramp in both modes, and for an accent-adaptive palette the
 // ramp under every accent with its tint band. Rerun after a palette rule changes:

@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem
+// [[B3]] sameNodeEverywhere, [[components#The design system]]
 import { lazy, Suspense, useEffect } from "react";
 import { FlowCanvas } from "./graph/flow/FlowCanvas";
 import { FlowCompositeOverlay } from "./graph/flow/FlowCompositeOverlay";
@@ -23,6 +23,7 @@ import { ChartPopup } from "./graph/components/ChartPopup";
 import { ElementPicker } from "./graph/components/ElementPicker";
 import { FilePicker } from "./graph/components/FilePicker";
 import { PivotEditorPopup } from "./graph/components/PivotEditorPopup";
+import { CategorizePopup } from "./graph/components/CategorizePopup";
 import { ShortcutsOverlay } from "./graph/ShortcutsOverlay";
 import { Settings } from "./graph/Settings";
 import { DocumentProperties } from "./graph/components/DocumentProperties";
@@ -34,7 +35,7 @@ import { WebDemoBanner } from "./graph/WebDemoBanner";
 import { installExternalLinkGuard } from "./graph/externalLinks";
 import { installRecordCardsAction } from "./graph/recordCardsFromPopup";
 import { installPivotHostAction } from "./graph/pivotFromPopup";
-import { installDescribeDashboard } from "./graph/components/DescribeDashboard";
+import { installDescribeProfile } from "./graph/components/DescribeProfile";
 import { armMidnightRollover, armMinuteTick } from "./graph/volatileDates";
 import { getEditor, requestRecalc, processGraph } from "./graph/process";
 import "./App.css";
@@ -114,7 +115,7 @@ function MainApp() {
   useEffect(installExternalLinkGuard, []);
   useEffect(installRecordCardsAction, []);
   useEffect(installPivotHostAction, []);
-  useEffect(installDescribeDashboard, []);
+  useEffect(installDescribeProfile, []);
   // TODAY / NOW / relative Date Inputs recompute once at each local midnight (R5).
   useEffect(() => armMidnightRollover(() => getEditor()?.getNodes() ?? [], () => { void requestRecalc(); }), []);
   useEffect(() => armMinuteTick(() => getEditor()?.getNodes() ?? [], (id) => { void processGraph(id); }), []);
@@ -141,6 +142,7 @@ function MainApp() {
       <ElementPicker />
       <FilePicker />
       <PivotEditorPopup />
+      <CategorizePopup />
       <ShortcutsOverlay />
       <HelpDialogs />
       <Settings />

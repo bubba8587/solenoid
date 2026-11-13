@@ -75,7 +75,7 @@ describe("copy", () => {
 });
 
 describe("paste", () => {
-  it("a pasted group tints its pasted members at once ([[C86]] membershipByGesture)", async () => {
+  it("a pasted group tints its pasted members at once ([[group-expand-push#Who is a member]])", async () => {
     const { groupMembershipStore } = await import("../../src/graph/groupMembership");
     const a = await add(new DisplayNode());
     const group = await add(new GroupNode({ members: [a.id], color: "accent" }));
@@ -142,7 +142,7 @@ describe("paste", () => {
 });
 
 describe("paste carries the card's own look", () => {
-  it("size and frame column formats come with the clone ([[B12]] losslessSaves)", async () => {
+  it("size and frame column formats come with the clone ([[save-format#A save loses nothing quietly]])", async () => {
     const src = await add(new DisplayNode());
     nodeSizeStore.set(src.id, { w: 320, h: 240 });
     frameFormatStore.set(src.id, "price", { format: "currency", unit: "" } as FormatAnnotation);

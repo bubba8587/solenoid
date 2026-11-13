@@ -98,27 +98,29 @@ export function notifyGraphChanged(): void {
   _graphChanged();
 }
 
-let _bulkSettle: (renderOnly?: Set<string>) => Promise<void> = async (r) => { await processGraph(undefined, r); };
+type BulkSettle = (renderOnly?: Set<string>, opts?: { topology?: boolean }) => Promise<void>;
+let _bulkSettle: BulkSettle = async (r, o) => { await processGraph(undefined, r, o); };
 
-export function setBulkSettle(fn: (renderOnly?: Set<string>) => Promise<void>) {
+export function setBulkSettle(fn: BulkSettle) {
   _bulkSettle = fn;
 }
 
-export function bulkSettle(renderOnly?: Set<string>) {
-  return _bulkSettle(renderOnly);
+export function bulkSettle(renderOnly?: Set<string>, opts?: { topology?: boolean }) {
+  return _bulkSettle(renderOnly, opts);
 }
 
 export function markBulkTopoDirty() { markTopoDirty(); }
 
-// Never nest: the topology-dirty flag is a single global.
-export async function withGraphRebuild<T>(fn: () => Promise<T>): Promise<T> {
+// Never nest: the topology-dirty flag is a single global. `settled`: the caller runs its own settle and pass, so a
+// cable change inside asks for no whole one.
+export async function withGraphRebuild<T>(fn: () => Promise<T>, opts?: { settled?: boolean }): Promise<T> {
   openRebuildScope();
   try {
     return await fn();
   } finally {
     const [ended, dirty] = closeRebuildScope();
     if (ended) rebuildEnded();
-    if (dirty) await bulkSettle();
+    if (dirty && !opts?.settled) await bulkSettle();
   }
 }
 
@@ -188,7 +190,7 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   cableValueStore.bump();
   await Promise.all(toRender.map((id) => _view!.rerenderNode(id)));
   // Once the calculation has run nothing is unknown: an output the wiring leaves a wildcard takes the type of the value
-  // it carried, through the Type Settle ([[C136]] typesKnownAfterCalc, [[D117]] emptyKeepsLastType).
+  // it carried, through the Type Settle ([[C136]] typesKnownAfterCalc, [[socket-lattice#Requirements]]).
   const keys = readTypeKeys(toRender.map((id) => _editor!.getNode(id)));
   if (keys.length && _editor.core().readTypes(JSON.stringify(keys))) reconcileTypesAfterEdit(_editor, _view);
   if (perf) {

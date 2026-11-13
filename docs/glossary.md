@@ -321,7 +321,7 @@ Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; thi
   → an `html.hdr-case-*` class → a `text-transform` on the display) can force UPPER or Proper case;
   the stored label stays raw.
 - **Family name**: a node's op-agnostic, class-derived display name (`nodeTypeName` — "Series",
-  "Math FX"). The *string*; distinct from the type-hint that shows it. (`catalogUtils.ts`; [[D22]] oneNamePerCard.)
+  "Math FX"). The *string*; distinct from the type-hint that shows it. (`catalogUtils.ts`; [[add-menu#Naming a placed node]].)
 - **Type-hint**: the hover-revealed chip on the card's right edge that *shows* the family name.
   `.solenoid-node__type-hint` (`typeHint()` in `nodeKit.tsx`).
 - **Op name**: the op-specific display (`nodeName`) used by the header, Inspector, Navigator,

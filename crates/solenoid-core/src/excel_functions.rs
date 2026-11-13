@@ -422,7 +422,7 @@ fn one_upper(c: char) -> char {
 }
 
 /// Each character's uppercase by `one_upper`, the first 2,048 code points (Latin, Greek, Cyrillic, …) from a table of
-/// std's own answers, built once: std's lookup is a search per char, slow in wasm ([[C120]] linearWork).
+/// std's own answers, built once: std's lookup is a search per char, slow in wasm ([[engineering#Performance]] linearWork).
 fn upper_chars(s: &str) -> String {
     const SPAN: usize = 0x800;
     thread_local! {
@@ -1047,7 +1047,7 @@ fn exact_key(v: &V) -> Option<Option<ExactKey>> {
 }
 
 /// `xmatch_index` over one list of keys for many lookups: an exact match builds an index once, where a scan per
-/// lookup made a list of lookups quadratic ([[C120]] linearWork). Anything the index doesn't hold scans as before.
+/// lookup made a list of lookups quadratic ([[engineering#Performance]] linearWork). Anything the index doesn't hold scans as before.
 pub(crate) struct Matcher<K: AsRef<[V]>> {
     keys: K,
     mm: MatchMode,
@@ -1148,7 +1148,7 @@ thread_local! {
 }
 
 /// FORECAST.LINEAR's line through its known lists, `None` when they hold text, kept for the last long pair: a
-/// computed column forecasts each row from the same columns ([[C120]] linearWork).
+/// computed column forecasts each row from the same columns ([[engineering#Performance]] linearWork).
 fn forecast_fit(ys: &V, xs: &V) -> Option<Option<(f64, f64)>> {
     // A scalar's length is `undefined`, so the fit finds no spread.
     let fit = || {
@@ -1226,7 +1226,7 @@ thread_local! {
 }
 
 /// One lookup into a long list, as a computed column makes row after row against the same column: the second call
-/// keeps the list's plan, indexed, so the rows after it don't each copy and scan the column ([[C120]] linearWork). An
+/// keeps the list's plan, indexed, so the rows after it don't each copy and scan the column ([[engineering#Performance]] linearWork). An
 /// entry holds its lists, so their addresses can't name others.
 fn lookup_plan(
     name: &str,
@@ -1471,7 +1471,7 @@ fn as_number_cmp(v: &V) -> f64 {
     }
 }
 
-/// Counted in the sorted list, cached by it: a computed column ranks each row in the same column ([[C120]] linearWork).
+/// Counted in the sorted list, cached by it: a computed column ranks each row in the same column ([[engineering#Performance]] linearWork).
 fn excel_rank(value: f64, refs: &V, avg: bool, ascending: bool) -> V {
     if value.is_nan() {
         return value_err("RANK");
@@ -2063,21 +2063,17 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
                     return V::List(Rc::new(lists.into_iter().map(V::List).collect()));
                 }
                 let first = lists.first().map_or_default(|l| l.len());
-                return V::List(Rc::new(
-                    (0..first)
-                        .map(|i| {
-                            V::List(Rc::new(
-                                lists
-                                    .iter()
-                                    .map(|c| match c.get(i) {
-                                        None | Some(V::Undef) => V::Null,
-                                        Some(x) => x.clone(),
-                                    })
-                                    .collect(),
-                            ))
-                        })
-                        .collect(),
-                ));
+                return V::List(Rc::new(Vec::from_fn(first, |i| {
+                    V::List(Rc::new(
+                        lists
+                            .iter()
+                            .map(|c| match c.get(i) {
+                                None | Some(V::Undef) => V::Null,
+                                Some(x) => x.clone(),
+                            })
+                            .collect(),
+                    ))
+                })));
             }
         }
     }
@@ -2114,27 +2110,23 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
             None => short(),
         }
     };
-    let out: Vec<V> = (0..h)
-        .map(|i| {
-            V::List(Rc::new(
-                (0..w)
-                    .map(|j| {
-                        let (r, c) = (at(&rg, i, j), at(&cg, i, j));
-                        let (r, c) = match (r, c) {
-                            (Err(e), _) | (_, Err(e)) => return e,
-                            (Ok(r), Ok(c)) => (r, c),
-                        };
-                        match index_at(v, r, c) {
-                            V::List(_) => {
-                                V::err(sol_error(ErrorCode::Value, "Each pair of positions must pick one value"))
-                            }
-                            x => x,
-                        }
-                    })
-                    .collect(),
-            ))
-        })
-        .collect();
+    let out: Vec<V> = Vec::from_fn(h, |i| {
+        V::List(Rc::new(
+            (0..w)
+                .map(|j| {
+                    let (r, c) = (at(&rg, i, j), at(&cg, i, j));
+                    let (r, c) = match (r, c) {
+                        (Err(e), _) | (_, Err(e)) => return e,
+                        (Ok(r), Ok(c)) => (r, c),
+                    };
+                    match index_at(v, r, c) {
+                        V::List(_) => V::err(sol_error(ErrorCode::Value, "Each pair of positions must pick one value")),
+                        x => x,
+                    }
+                })
+                .collect(),
+        ))
+    });
     if h == 1 {
         out.into_iter().next().unwrap_or(V::Null)
     } else {
@@ -2147,7 +2139,7 @@ thread_local! {
 }
 
 /// A table's widest row, kept for the last long table: INDEX(column, @i) asks it of the same column row after row
-/// ([[C120]] linearWork). The entry holds its table, so the address can't name another.
+/// ([[engineering#Performance]] linearWork). The entry holds its table, so the address can't name another.
 fn width_of(grid: &Rc<Vec<V>>) -> usize {
     let measure = || grid.iter().map(|row| if let V::List(r) = row { r.len() } else { 1 }).max().unwrap_or(0);
     if grid.len() < 64 {
@@ -2614,7 +2606,7 @@ fn parse_value_text(text: &str) -> f64 {
         neg = true;
         t = trim_space(&t[1..t.len() - 1]);
     }
-    let unsigned = t.strip_prefix(['+', '-']).unwrap_or(t);
+    let unsigned = t.trim_prefix(['+', '-']);
     if let Some(after) = unsigned.strip_prefix('$') {
         owned = format!("{}{}", &t[..t.len() - unsigned.len()], after);
         t = &owned;
@@ -2730,7 +2722,7 @@ thread_local! {
 
 /// A list's numbers sorted, kept for the list they came from (the cache holds the list, so its address can't come
 /// back as another): PERCENTILE(col, @p) and kin, called once per row with a scalar that changes each row, miss the
-/// range memo, and re-sorting the column every row was n² log n ([[C120]] linearWork).
+/// range memo, and re-sorting the column every row was n² log n ([[engineering#Performance]] linearWork).
 fn sorted_of(list: &V, reading: Reading) -> Sorted {
     let read = || -> Result<Vec<f64>, V> {
         Ok(sorted_nums(&match reading {
@@ -2966,7 +2958,7 @@ fn arg(a: &[V], i: usize) -> &V {
 
 /// `dispatch(name, ...args)`'s arms: every name `call_function`'s own match answers, declared once. A variant is its
 /// name with `.` spelled `_`, and a dotted name is written out beside it. A call finds its arm by one hash lookup rather
-/// than a chain of string compares ([[C120]] linearWork).
+/// than a chain of string compares ([[engineering#Performance]] linearWork).
 macro_rules! arms {
     ($($arm:ident $(= $name:literal)?),* $(,)?) => {
         #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
@@ -3579,7 +3571,7 @@ fn text_answer(name: &str, (code, first): (ErrorCode, bool), a: &[V]) -> Option<
             _ => None,
         }
     }
-    // A computed column's rows pass the same column each time: its verdict is kept against it ([[C120]] linearWork).
+    // A computed column's rows pass the same column each time: its verdict is kept against it ([[engineering#Performance]] linearWork).
     type Verdict = Option<(Rc<Vec<V>>, Option<bool>)>;
     thread_local! {
         static LAST: std::cell::RefCell<Verdict> = const { std::cell::RefCell::new(None) };
@@ -3643,7 +3635,7 @@ pub fn route(name: &str) -> Route {
 
 /// The body `name` answers over `a`, or the exception its JavaScript throws, which each caller answers its own way.
 /// What `call_function` looks up by a name, looked up once: a caller making many calls to one function (a card over
-/// a list's items) keeps it ([[C120]] linearWork).
+/// a list's items) keeps it ([[engineering#Performance]] linearWork).
 #[derive(Clone)]
 pub struct Resolved {
     refused: Option<&'static Refused>,
@@ -4695,7 +4687,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         | F::GAMMA_INV => {
             use crate::dists::{bisection_inv, chi_sq_cdf, f_cdf, gamma_cdf, t_cdf, t_pdf};
             let want = if matches!(arm, F::F_INV_RT | F::GAMMA_INV) { 3 } else { 2 };
-            let ns: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
+            let ns: Vec<f64> = Vec::from_fn(want, |i| to_num(arg(a, i)));
             if ns.iter().any(|x| x.is_nan()) {
                 return V::Null;
             }
@@ -5238,7 +5230,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             combinatoric(name, &v)
         }
         F::BINOM_DIST_RANGE => {
-            let v: Vec<f64> = (0..3).map(|i| to_num(arg(a, i))).collect();
+            let v: Vec<f64> = Vec::from_fn(3, |i| to_num(arg(a, i)));
             let hi = if matches!(arg(a, 3), V::Null | V::Undef) { None } else { Some(to_num(arg(a, 3))) };
             if v.iter().any(|x| x.is_nan()) || hi.is_some_and(f64::is_nan) {
                 return value_err("BINOM.DIST.RANGE");
@@ -5248,7 +5240,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         F::CLEAN => V::str(&to_str(arg(a, 0)).chars().filter(|&c| c > '\u{1F}').collect::<String>()),
         F::FISHEREXACT | F::PROPTEST | F::BINOMTEST => {
             let want = if arm == F::BINOMTEST { 3 } else { 4 };
-            let v: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
+            let v: Vec<f64> = Vec::from_fn(want, |i| to_num(arg(a, i)));
             if v.iter().any(|x| x.is_nan()) {
                 return value_err(name);
             }
@@ -5744,7 +5736,7 @@ fn t_test_p(kind: TTestKind, a: &[f64], b: &[f64]) -> Option<f64> {
     let (t, df) = match kind {
         TTestKind::Paired => {
             let n = a.len().min(b.len());
-            let diffs: Vec<f64> = (0..n).map(|i| a[i] - b[i]).collect();
+            let diffs: Vec<f64> = Vec::from_fn(n, |i| a[i] - b[i]);
             let d_var = arr_sample_var(&diffs);
             if d_var <= 0.0 {
                 return None;
@@ -6007,7 +5999,7 @@ pub(crate) fn usd_text(x: f64, fd: usize) -> String {
         vec![u8::from(keep == 0 && digits.first().is_some_and(|&d| d >= 5))]
     } else {
         let k = keep as usize;
-        let mut v: Vec<u8> = (0..k).map(|i| digits.get(i).copied().unwrap_or(0)).collect();
+        let mut v: Vec<u8> = Vec::from_fn(k, |i| digits.get(i).copied().unwrap_or(0));
         if digits.get(k).is_some_and(|&d| d >= 5) {
             let mut i = k;
             loop {
@@ -6168,6 +6160,8 @@ fn error_type_num(code: ErrorCode) -> f64 {
         ErrorCode::Ref => 4.0,
         ErrorCode::Name => 5.0,
         ErrorCode::NotAvailable => 7.0,
+        // Excel's #GETTING_DATA, a value not calculated yet.
+        ErrorCode::Uncalc => 8.0,
         ErrorCode::Domain | ErrorCode::Overflow | ErrorCode::Conv => 6.0,
         ErrorCode::Value
         | ErrorCode::Syntax
@@ -6392,7 +6386,7 @@ fn finance_function(name: &str, a: &[V]) -> Result<V, Thrown> {
             if nums.len() <= 1 {
                 return Ok(V::Null);
             }
-            let exps: Vec<f64> = (0..nums.len()).map(|t| t as f64).collect();
+            let exps: Vec<f64> = Vec::from_fn(nums.len(), |t| t as f64);
             match f::solve_discount_rate(&nums, &exps) {
                 Some(r) => V::Num(r),
                 None => V::err(sol_error(
@@ -6540,7 +6534,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             V::Num(rate)
         }
         "DB" => {
-            // [[C120]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
+            // [[engineering#Performance]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
             if to_num(arg(a, 3)) > 1e6 && to_num(arg(a, 3)) <= to_num(arg(a, 2)) {
                 return V::err(sol_error(ErrorCode::Domain, "DB needs a period of at most 1,000,000"));
             }
@@ -6578,7 +6572,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             V::Num(dep)
         }
         "DDB" => {
-            // [[C120]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
+            // [[engineering#Performance]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
             if to_num(arg(a, 3)) > 1e6 && to_num(arg(a, 3)) <= to_num(arg(a, 2)) {
                 return V::err(sol_error(ErrorCode::Domain, "DDB needs a period of at most 1,000,000"));
             }

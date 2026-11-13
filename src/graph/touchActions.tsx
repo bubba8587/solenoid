@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType
+// [[touch-gestures#Standing rules]]
 
 import { useEffect, useState } from "react";
 

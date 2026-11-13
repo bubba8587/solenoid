@@ -151,14 +151,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   border: none;
   background: none;
   color: var(--text-dim);
-  font-size: 14px;
-  line-height: 1;
   cursor: pointer;
   border-radius: 3px;
 }

@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md § Buttons, the input card's edit button)
+// [[components#The design system]] (DESIGN.md § Buttons, the input card's edit button)
 import type { MouseEvent } from "react";
 import { stopDragStart } from "../coarse";
 import "./nodeCard.css";

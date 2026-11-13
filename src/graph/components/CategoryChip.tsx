@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md § Quiet Accent)
+// [[components#The design system]] (DESIGN.md § Quiet Accent)
 import { useSeriesColors } from "./chartCore";
 import "./CategoryChip.css";
 

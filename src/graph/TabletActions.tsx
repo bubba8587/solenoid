@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType
+// [[touch-gestures#Standing rules]]
 import { useSyncExternalStore } from "react";
 import { deleteSelected } from "./canvasCommands";
 import { touchSelectStore } from "./touchSelectStore";

@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[C42]] htmlInCanvasRenderer
+// [[B3]] sameNodeEverywhere, [[html-in-canvas]]
 import { getView, getEditor } from "./process";
 
 function inlineStylesheetText(): string {

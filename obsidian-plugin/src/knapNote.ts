@@ -1,4 +1,4 @@
-// [[D87]] knapNotes
+// [[obsidian-plugin#Knap notes]]
 import { embedBareVariables, hasKnapSyntax, renderKnap } from "../../src/graph/knapTemplate";
 import { guessScalarText } from "../../src/graph/scalarText";
 

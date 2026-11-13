@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#The design system]]
 import { useLayoutEffect, type RefObject } from "react";
 import { measureThenWrite, observeResize } from "./layoutBatch";
 

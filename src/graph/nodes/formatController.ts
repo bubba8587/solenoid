@@ -124,7 +124,7 @@ export class FormatControllerNode extends GraphNode {
 
   /** Call once after editor.addNode (registration needs the node in the editor), then `reconcileFcs`. */
   dockSelf(editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>): void {
-    // [[B12]] losslessSaves: a saved host that no longer exists leaves a free FC, not a dock onto nothing.
+    // [[save-format#A save loses nothing quietly]]: a saved host that no longer exists leaves a free FC, not a dock onto nothing.
     if (this.hostNodeId && !editor.getNode(this.hostNodeId)) this.releaseDock();
     if (!this.hostNodeId) return;
     dockedNodeStore.dock(this.id, {

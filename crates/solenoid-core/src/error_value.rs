@@ -25,6 +25,8 @@ spelled! {
         Ambiguous = "#AMBIGUOUS!",
         /// A position (a date, a temperature reading) used as an amount ([[E20]] pointError).
         Point = "#POINT!",
+        /// A workbook formula with no saved answer: Excel never calculated it (live-connections § Excel workbooks).
+        Uncalc = "#UNCALC!",
         Error = "#ERROR!",
     }
 }
@@ -56,7 +58,7 @@ pub struct SolError {
     pub message: String,
     /// The JS side's reference to the uploaded original, handed back so it downloads as itself.
     pub reference: Option<u32>,
-    /// The node the error started at ([[E9]] errorsKeepOrigin), which the graph's boundary sets and nothing overwrites.
+    /// The node the error started at ([[error-values#Producers and provenance]]), which the graph's boundary sets and nothing overwrites.
     pub origin: Option<Rc<Origin>>,
 }
 

@@ -144,7 +144,7 @@ export class NoteNode extends GraphNode {
   collapsed: boolean;
   fieldTypes: Record<string, FrontmatterFieldType>;
   columnPicks: PluginColumnTypes = {};
-  /** This note's nested-table picks, per property ([[D90]] cubeTypesAtDepth). */
+  /** This note's nested-table picks, per property ([[frame-verbs#The Cube value]]). */
   nestedPicks: Readonly<Record<string, NestedTables>> = {};
 
   private _renderBody = "";
@@ -382,7 +382,7 @@ export class SvgPickerNode extends GraphNode {
   static coreFields = ["chartHeight"];
   get chartHeight(): number { return this.height; }
 
-  /** Every path in (typed, fetched, loaded, pasted) is scrubbed here, before the markup leaves on a cable ([[C103]] untrustedContentSeams). */
+  /** Every path in (typed, fetched, loaded, pasted) is scrubbed here, before the markup leaves on a cable ([[engineering#Untrusted content]]). */
   get source(): string {
     const raw = this.stringLiterals.source ?? "";
     if (raw !== this.cleanSource) {

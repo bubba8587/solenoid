@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#Packs]], [[C51]] formulaNaming, [[C17]] shareImpl
 // SI units; angles in radians. A physical constant is a variable the card's Physics Constant feeds.
 
 import { EmSpectrumNode } from "../nodeClasses";

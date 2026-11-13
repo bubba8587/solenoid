@@ -547,7 +547,7 @@ pub fn sample_frame(f: &FrameValue, n: usize) -> Option<FrameValue> {
         return None;
     }
     let stride = total as f64 / n as f64;
-    let idx: Vec<usize> = (0..n).map(|i| ((i as f64 * stride).floor() as usize).min(total - 1)).collect();
+    let idx: Vec<usize> = Vec::from_fn(n, |i| ((i as f64 * stride).floor() as usize).min(total - 1));
     Some(reorder_rows(f, &idx))
 }
 
@@ -790,7 +790,7 @@ pub fn filter_rows_multi(
         let mut kept = combine == FilterCombine::And;
         for (j, pred) in preds.iter_mut().enumerate() {
             if pred(cols[j].cell_at(i))? != kept {
-                kept = !kept;
+                kept.toggle();
                 break;
             }
         }
@@ -1299,12 +1299,10 @@ fn asof_pairs(
         a.key.partial_cmp(&b.key).unwrap_or(Ordering::Equal).then(a.idx.cmp(&b.idx))
     });
     let direction = opts.asof_direction.unwrap_or(AsofDirection::Backward);
-    Ok((0..frame_row_count(left))
-        .map(|i| match asof_key(lk.cell_at(i)) {
-            None => (Some(i), None),
-            Some(key) => (Some(i), asof_nearest(&sorted_right, key, direction, opts.asof_tolerance)),
-        })
-        .collect())
+    Ok(Vec::from_fn(frame_row_count(left), |i| match asof_key(lk.cell_at(i)) {
+        None => (Some(i), None),
+        Some(key) => (Some(i), asof_nearest(&sorted_right, key, direction, opts.asof_tolerance)),
+    }))
 }
 
 pub fn cross_join_frames(left: &FrameValue, right: &FrameValue) -> FrameValue {
@@ -1508,7 +1506,7 @@ pub struct PivotSpec {
     pub relative_to: Option<f64>,
     #[serde(default)]
     pub filter: Option<Vec<Option<bool>>>,
-    /// The columns the Pivot view lists under each row group ([[C127]] pivotView): the layout's leaf rows carry
+    /// The columns the Pivot view lists under each row group ([[table-popup#The Pivot view]] pivotView): the layout's leaf rows carry
     /// their source rows; the output never changes with them.
     #[serde(default)]
     pub details: Option<Vec<String>>,
@@ -1554,23 +1552,21 @@ fn order_leaves(rows: &[usize], cols: &[&FrameColumn], sort_field: isize, desc: 
     // Every level's items sort ascending by their own type (text by character code, numbers and dates by value, a
     // blank or an error last), as Excel's PIVOTBY lists them; the sort field's level runs descending when asked
     // (author 2026-11-11: the order the data first shows them in was no order a reader could follow).
-    let sorted_rank: Vec<FxHashMap<CellKey, usize>> = (0..cols.len())
-        .map(|lvl| {
-            let cmp = comparator_for(cols[lvl].ty);
-            let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
-            let mut ordered = cell_by_enc[lvl].clone();
-            stable_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
-                (true, true) => Ordering::Equal,
-                (true, false) => Ordering::Greater,
-                (false, true) => Ordering::Less,
-                _ => cmp(a, b),
-            });
-            if desc && lvl as isize == sort_field {
-                ordered.reverse();
-            }
-            ordered.iter().enumerate().map(|(idx, (vk, _))| (*vk, idx)).collect()
-        })
-        .collect();
+    let sorted_rank: Vec<FxHashMap<CellKey, usize>> = Vec::from_fn(cols.len(), |lvl| {
+        let cmp = comparator_for(cols[lvl].ty);
+        let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
+        let mut ordered = cell_by_enc[lvl].clone();
+        stable_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Greater,
+            (false, true) => Ordering::Less,
+            _ => cmp(a, b),
+        });
+        if desc && lvl as isize == sort_field {
+            ordered.reverse();
+        }
+        ordered.iter().enumerate().map(|(idx, (vk, _))| (*vk, idx)).collect()
+    });
     let rank_at = |lvl: usize, vk: &CellKey| -> usize { sorted_rank[lvl][vk] };
     let ranks: Vec<Vec<usize>> =
         first_seen.iter().map(|t| t.iter().enumerate().map(|(lvl, c)| rank_at(lvl, &cell_key(c))).collect()).collect();
@@ -1715,6 +1711,8 @@ pub type PivotLayoutJson = Json;
 pub struct PivotCalc<'a> {
     pub name: String,
     pub eval: CalcEval<'a>,
+    /// Where its column sits among the values: before the spec's value at this index; none, or past them, after.
+    pub at: Option<usize>,
 }
 /// A calculated field's answer over a cell's source rows, and whether it is a date.
 pub type CalcEval<'a> = Box<dyn Fn(&[usize]) -> (FrameCell, bool) + 'a>;
@@ -1819,10 +1817,28 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         });
         perm
     };
+    // A calculated field sorts by its answer over the row's (or column's) rows: the sort's values are the spec's
+    // values, then the calculated fields in their order.
+    let calc_score = |k: usize, mut at: Vec<usize>| -> Score {
+        if at.is_empty() {
+            return Score::Null;
+        }
+        at.sort_unstable();
+        match (calcs[k].eval)(&at).0 {
+            FrameCell::Num(n) if !n.is_nan() => Score::N(n),
+            FrameCell::Str(s) => Score::S(s.to_string()),
+            _ => Score::Null,
+        }
+    };
+    let sortable = (v_n + calcs.len()) as f64;
     let row_val_sort = rs.abs() - 1.0 - row_cols.len() as f64;
-    if row_val_sort >= 0.0 && row_val_sort < v_n as f64 && row_val_sort.fract() == 0.0 && r_n > 1 {
+    if row_val_sort >= 0.0 && row_val_sort < sortable && row_val_sort.fract() == 0.0 && r_n > 1 {
         let vs = row_val_sort as usize;
-        let scores: Vec<Score> = (0..r_n).map(|r| sort_key(&cells[vs][r].concat(), vs)).collect();
+        let scores: Vec<Score> = if vs < v_n {
+            Vec::from_fn(r_n, |r| sort_key(&cells[vs][r].concat(), vs))
+        } else {
+            Vec::from_fn(r_n, |r| calc_score(vs - v_n, srcs[r].concat()))
+        };
         let perm = order(&scores, rs < 0.0);
         row_leaves = perm.iter().map(|&r| row_leaves[r].clone()).collect();
         for plane in cells.iter_mut() {
@@ -1833,11 +1849,15 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         }
     }
     let col_val_sort = cs.abs() - 1.0 - col_cols.len() as f64;
-    if col_val_sort >= 0.0 && col_val_sort < v_n as f64 && col_val_sort.fract() == 0.0 && c_n > 1 {
+    if col_val_sort >= 0.0 && col_val_sort < sortable && col_val_sort.fract() == 0.0 && c_n > 1 {
         let vs = col_val_sort as usize;
-        let scores: Vec<Score> = (0..c_n)
-            .map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs))
-            .collect();
+        let scores: Vec<Score> = if vs < v_n {
+            Vec::from_fn(c_n, |c| {
+                sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs)
+            })
+        } else {
+            Vec::from_fn(c_n, |c| calc_score(vs - v_n, (0..r_n).flat_map(|r| srcs[r][c].iter().copied()).collect()))
+        };
         let perm = order(&scores, cs < 0.0);
         col_leaves = perm.iter().map(|&c| col_leaves[c].clone()).collect();
         for plane in cells.iter_mut() {
@@ -1974,8 +1994,16 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         }
     }
 
-    // The calculated fields follow the spec's values: their names head their columns as a value's does.
-    let all_values: Vec<String> = value_names.iter().cloned().chain(calcs.iter().map(|k| k.name.clone())).collect();
+    // Each calculated field sits where its `at` puts it among the spec's values (index `v_n + k` for the k-th), the
+    // rest after them; its name heads its columns as a value's does.
+    let slots: Vec<usize> = {
+        let before = |i: usize| (0..calcs.len()).filter(move |&k| calcs[k].at == Some(i)).map(|k| v_n + k);
+        let mut s: Vec<usize> = (0..v_n).flat_map(|i| before(i).chain(std::iter::once(i))).collect();
+        s.extend((0..calcs.len()).filter(|&k| calcs[k].at.is_none_or(|a| a >= v_n)).map(|k| v_n + k));
+        s
+    };
+    let named = |v: usize| if v < v_n { value_names[v].clone() } else { calcs[v - v_n].name.clone() };
+    let all_values: Vec<String> = Vec::from_fn(v_n + calcs.len(), named);
     let value_names = &all_values;
     let multi_val = all_values.len() > 1;
     let col_header = |co: &AxisOut, v: usize| -> String {
@@ -2010,14 +2038,14 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     let mut raw_headers = Vec::new();
     let mut body_specs: Vec<(&AxisOut, usize)> = Vec::new();
     for co in &col_out {
-        for v in 0..all_values.len() {
+        for &v in &slots {
             raw_headers.push(col_header(co, v));
             body_specs.push((co, v));
         }
     }
     let body_names = make_headers(&raw_headers, raw_headers.len());
     let plans: Vec<ReadingPlan> =
-        (0..v_n).map(|v| agg_unit_plan(funcs[v], val_cols[v].unit.as_deref(), Some(val_cols[v].ty))).collect();
+        Vec::from_fn(v_n, |v| agg_unit_plan(funcs[v], val_cols[v].unit.as_deref(), Some(val_cols[v].ty)));
     for (bi, (co, v)) in body_specs.iter().enumerate() {
         if *v >= v_n {
             let calc = &calcs[*v - v_n];
@@ -2091,8 +2119,8 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
         "colFields": col_fields,
         "colTypes": col_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
         "colFormats": col_cols.iter().map(|c| c.format.as_deref().cloned().unwrap_or(Json::Null)).collect::<Vec<_>>(),
-        "values": value_names,
-        "funcs": funcs.iter().map(|f| serde_json::to_value(f).unwrap_or(Json::Null)).chain(calcs.iter().map(|_| json!("calc"))).collect::<Vec<_>>(),
+        "values": slots.iter().map(|&v| value_names[v].clone()).collect::<Vec<_>>(),
+        "funcs": slots.iter().map(|&v| if v < v_n { serde_json::to_value(funcs[v]).unwrap_or(Json::Null) } else { json!("calc") }).collect::<Vec<_>>(),
         "rows": row_out
             .iter()
             .map(|ro| {
@@ -2103,7 +2131,8 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
                 r
             })
             .collect::<Vec<_>>(),
-        "cols": body_specs.iter().map(|(co, v)| json!({ "kind": co.kind.tag(), "tuple": tuple_json(&co.tuple), "fill": co.fill, "value": v })).collect::<Vec<_>>(),
+        // A column's value is its place in `values` above, which a calculated field placed among them reorders.
+        "cols": body_specs.iter().map(|(co, v)| json!({ "kind": co.kind.tag(), "tuple": tuple_json(&co.tuple), "fill": co.fill, "value": slots.iter().position(|s| s == v).unwrap_or(*v) })).collect::<Vec<_>>(),
     });
     if !detail_json.is_empty() {
         layout["details"] = Json::Array(detail_json);
@@ -2111,7 +2140,7 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     Ok((frame(out_cols), layout))
 }
 
-/// A PIVOTBY card's pivot split by what reads it ([[C127]] pivotView): the totals belong to the Pivot view, never to the
+/// A PIVOTBY card's pivot split by what reads it ([[table-popup#The Pivot view]] pivotView): the totals belong to the Pivot view, never to the
 /// Frame every other card reads.
 pub struct PivotSplit {
     /// The leaf rows by the leaf value columns, after the row keys.
@@ -2147,21 +2176,19 @@ pub fn split_pivot_totals(src: &FrameValue, full: &FrameValue, layout: &Json) ->
     // column, which turns a date or number field to text in the full pivot, and the leaves have no total among them.
     let row_fields_src: Vec<&str> =
         layout["rowFields"].as_array().map_or(Vec::new(), |a| a.iter().filter_map(Json::as_str).collect());
-    let key_columns: Vec<FrameColumn> = (0..keys)
-        .map(|k| {
-            let source = src.columns.iter().find(|c| Some(c.name.as_str()) == row_fields_src.get(k).copied());
-            let cells = leaf_rows
-                .iter()
-                .map(|&i| {
-                    rows[i]["tuple"].as_array().and_then(|t| t.get(k)).map_or(FrameCell::Null, crate::wire::decode_cell)
-                })
-                .collect();
-            let mut col =
-                FrameColumn::new(full.columns[k].name.clone(), source.map_or(full.columns[k].ty, |c| c.ty), cells);
-            col.format = source.and_then(|c| c.format.clone());
-            col
-        })
-        .collect();
+    let key_columns: Vec<FrameColumn> = Vec::from_fn(keys, |k| {
+        let source = src.columns.iter().find(|c| Some(c.name.as_str()) == row_fields_src.get(k).copied());
+        let cells = leaf_rows
+            .iter()
+            .map(|&i| {
+                rows[i]["tuple"].as_array().and_then(|t| t.get(k)).map_or(FrameCell::Null, crate::wire::decode_cell)
+            })
+            .collect();
+        let mut col =
+            FrameColumn::new(full.columns[k].name.clone(), source.map_or(full.columns[k].ty, |c| c.ty), cells);
+        col.format = source.and_then(|c| c.format.clone());
+        col
+    });
     let key_cols = || key_columns.iter().cloned();
 
     let plain = FrameValue {
@@ -2315,7 +2342,7 @@ pub fn bind_columns(frames: &[&FrameValue]) -> FrameValue {
     frame(
         all.iter()
             .zip(names)
-            .map(|(c, name)| FrameColumn { name, ..c.with_values((0..rows).map(|r| c.cell_at(r).clone()).collect()) })
+            .map(|(c, name)| FrameColumn { name, ..c.with_values(Vec::from_fn(rows, |r| c.cell_at(r).clone())) })
             .collect(),
     )
 }
@@ -2612,7 +2639,7 @@ pub fn add_index_column(f: &FrameValue, name: &str, start: f64) -> FrameValue {
     let index = FrameColumn::new(
         nm,
         FrameColType::Number,
-        (0..frame_row_count(f)).map(|i| FrameCell::Num(start + i as f64)).collect(),
+        Vec::from_fn(frame_row_count(f), |i| FrameCell::Num(start + i as f64)),
     );
     with_unique_names(std::iter::once(index).chain(f.columns.iter().cloned()).collect())
 }
@@ -2655,18 +2682,16 @@ pub fn merge_columns(f: &FrameValue, columns: &[String], separator: &str, name: 
     if sources.len() < 2 {
         return Err(sol_error(ErrorCode::Value, "Merge needs at least two columns"));
     }
-    let values = (0..frame_row_count(f))
-        .map(|i| {
-            let texts: Vec<Cow<str>> = sources
-                .iter()
-                .map(|c| match c.cell_at(i) {
-                    FrameCell::Null => Cow::Borrowed(""),
-                    v => Cow::Owned(format_frame_cell(c.ty, v)),
-                })
-                .collect();
-            FrameCell::Str(Rc::from(texts.join(separator)))
-        })
-        .collect();
+    let values = Vec::from_fn(frame_row_count(f), |i| {
+        let texts: Vec<Cow<str>> = sources
+            .iter()
+            .map(|c| match c.cell_at(i) {
+                FrameCell::Null => Cow::Borrowed(""),
+                v => Cow::Owned(format_frame_cell(c.ty, v)),
+            })
+            .collect();
+        FrameCell::Str(Rc::from(texts.join(separator)))
+    });
     let drop: HashSet<&str> = sources.iter().map(|c| c.name.as_str()).collect();
     let at = f.columns.iter().position(|c| c.name == sources[0].name).unwrap_or(0);
     let kept: Vec<&FrameColumn> = f.columns.iter().filter(|c| !drop.contains(c.name.as_str())).collect();
@@ -2840,7 +2865,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
         let (mut cum_sum, mut cum_count, mut cum_min, mut cum_max) =
             (crate::exact_sum::ExactSum::default(), 0usize, f64::INFINITY, f64::NEG_INFINITY);
         // The window a rolling function reads: its exact sum and count, slid a row at a time, and the rows that can
-        // still be its least or greatest, so each row costs the same however wide the window ([[C120]] linearWork).
+        // still be its least or greatest, so each row costs the same however wide the window ([[engineering#Performance]] linearWork).
         let width = if big_n.is_nan() || big_n < 1.0 { 0 } else { big_n as usize };
         let mut roll_sum = crate::exact_sum::ExactSum::default();
         let mut roll_count = 0usize;

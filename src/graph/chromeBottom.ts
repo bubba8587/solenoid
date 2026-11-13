@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (publishes --chrome-bottom)
+// [[A1]] visualGraphCalculator, [[components#The design system]] (publishes --chrome-bottom)
 import { useEffect, useRef, type RefObject } from "react";
 import { chromeZoomStore } from "./chromeZoom";
 

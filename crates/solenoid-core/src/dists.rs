@@ -39,7 +39,7 @@ pub fn ln_gamma(x: f64) -> f64 {
 }
 
 /// Steps the series and continued fractions below may take: about the cube root of the shape, so a fixed 300 stopped
-/// short past a million; one still unconverged answers NaN rather than its partial sum ([[C120]] linearWork).
+/// short past a million; one still unconverged answers NaN rather than its partial sum ([[engineering#Performance]] linearWork).
 const SPECIAL_FN_STEPS: u32 = 100_000;
 
 pub fn regularized_gamma(a: f64, x: f64) -> f64 {
@@ -467,7 +467,7 @@ pub enum Form {
     InvRt,
 }
 
-/// Loops a distribution runs one step per value: past this many, it is refused ([[C120]] linearWork).
+/// Loops a distribution runs one step per value: past this many, it is refused ([[engineering#Performance]] linearWork).
 const LOOP_CAP: f64 = 1e6;
 
 /// A loop longer than `LOOP_CAP`.
@@ -553,9 +553,10 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
             } else if (v == 0.0 && av < 1.0) || (v == 1.0 && bv < 1.0) {
                 None
             } else if v == 0.0 {
-                Some(if av == 1.0 { 1.0 } else { 0.0 })
+                // The density's limit at the end: β(1 − x)^(β−1) is β at 0 when α is 1.
+                Some(if av == 1.0 { bv } else { 0.0 })
             } else if v == 1.0 {
-                Some(if bv == 1.0 { 1.0 } else { 0.0 })
+                Some(if bv == 1.0 { av } else { 0.0 })
             } else {
                 Some(exp(
                     (av - 1.0) * log(v) + (bv - 1.0) * log(1.0 - v) - ln_gamma(av) - ln_gamma(bv) + ln_gamma(av + bv)
@@ -684,7 +685,7 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
                     Some(0.0)
                 } else {
                     // Hoeffding bounds each pmf by exp(-2(j - mean)^2 / n): past sqrt(400n) from the mean it is below
-                    // e^-800, so exp gives exactly 0 and skipping those terms leaves the sum unchanged ([[C120]] linearWork).
+                    // e^-800, so exp gives exactly 0 and skipping those terms leaves the sum unchanged ([[engineering#Performance]] linearWork).
                     let (mut from, mut top) = (lo, nan_min(ki, hi));
                     if top - from > 10_000.0 {
                         let (mean, reach) = (ni * mi / big, (400.0 * ni).sqrt().ceil() + 1.0);

@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast.
+// [[A1]] visualGraphCalculator, [[group-expand-push#LayoutFx]], [[standoffs#The solver runs last]].
 import type { View } from "./view";
 import { zoomAt } from "./zoomAt";
 import type { GraphEditor } from "./graphEditor";

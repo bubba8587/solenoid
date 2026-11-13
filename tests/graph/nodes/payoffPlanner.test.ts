@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[C17]] shareImpl, [[frame-verbs#Payoff Planner]]
+// [[group-expand-push#Who is a member]], [[C17]] shareImpl, [[frame-verbs#Payoff Planner]]
 import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
 import { PayoffPlannerNode, type PayoffOrder, type PayoffView } from "../../../src/graph/nodeClasses";

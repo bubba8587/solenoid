@@ -2,13 +2,13 @@
 aliases: ["HTML-in-Canvas gesture layer"]
 tags: [spec, canvas]
 ---
-<!-- [[C42]] htmlInCanvasRenderer, [[A1]] visualGraphCalculator -->
+<!-- [[A1]] visualGraphCalculator -->
 
 # Spec: HTML-in-Canvas gesture layer
 
-Serves [[C42]] htmlInCanvasRenderer; its GPU limits are [[#The GPU texture budget]]. It covers what the layer does, when it runs, and the number behind each knob. The knobs are tuning, not decisions: change one freely, and record the measurement that justified the change here.
+Serves [[A1]] visualGraphCalculator; its GPU limits are [[#The GPU texture budget]]. It covers what the layer does, when it runs, and the number behind each knob. The knobs are tuning, not decisions: change one freely, and record the measurement that justified the change here.
 
-The layer makes pan and zoom cheap on a big graph. During a gesture it hides React Flow's viewport and draws the whole graph on a canvas instead: captured bitmaps of the cards, and every cable and overlay copied as vectors. At rest it holds that drawing over the real DOM, which stays underneath for input ([[#The lifecycle]]). It is never a DOM replacement: every click, edit and hover lands on the real cards. The live DOM and this layer are the canvas's only two ways of being drawn; a third would be another renderer to keep in step with every card. The layer rests on the WICG HTML-in-Canvas API, on by default in Chrome 157 and absent from Firefox and Safari, so it stays an opt-in: if the API changes again, the DOM default is untouched and nothing breaks. **Reopen if:** the DOM path becomes the one that costs more to keep.
+The layer is an optional setting that makes pan and zoom cheap on a big graph; live nodes are the default. During a gesture it hides React Flow's viewport and draws the whole graph on a canvas instead: captured bitmaps of the cards, and every cable and overlay copied as vectors. At rest it holds that drawing over the real DOM, which stays underneath for input ([[#The lifecycle]]). It is never a DOM replacement: every click, edit and hover lands on the real cards. The live DOM and this layer are the canvas's only two ways of being drawn; a third would be another renderer to keep in step with every card. The layer rests on the WICG HTML-in-Canvas API, on by default in Chrome 157 and absent from Firefox and Safari, so it stays an opt-in: if the API changes again, the DOM default is untouched and nothing breaks. **Reopen if:** the DOM path becomes the one that costs more to keep.
 
 The engine is `HtmlCanvasRenderer`, an imperative class rather than a React component; `HtmlCanvasLayer` mounts it and feeds it.
 
@@ -130,3 +130,4 @@ Every change to how a card looks must reach a re-capture, by one of four channel
 - `window.__hcStats()` returns the renderer's stats plus `vectorLayers`: `slow` is the visible cards re-rasterized per frame, `failed` the permanently unbuildable pyramids, `vectorLayers` the layers the vector snapshot read at the last build.
 - `window.__hcQuality` sets the level-of-detail bias, in texture pixels per on-screen pixel.
 - Because the engine is imperative, HMR invalidates the module rather than keep a stale instance alive.
+

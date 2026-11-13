@@ -90,6 +90,7 @@ export function PointPlotterComponent({ data, emit }: NodeProps<PointPlotterNode
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div
         ref={padRef}
+        className="nodrag nopan"
         style={padStyle}
         onPointerDown={(e) => {
           e.stopPropagation();

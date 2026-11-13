@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType (IS_MOBILE is the one mobile gate), [[B14]] oneDesignSystem
+// [[touch-gestures#Standing rules]] (IS_MOBILE is the one mobile gate), [[components#The design system]]
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { initAppTheme } from "./graph/appTheme";
@@ -17,6 +17,7 @@ import { initFullscreenHotkey } from "./graph/fullscreen";
 import { initAndroidBack } from "./graph/androidBack";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop, isAndroidApp } from "./graph/fileBridge";
+import { loadDeploymentConfig } from "./graph/deploymentConfig";
 import { OWN_WINDOW_CONTROLS } from "./graph/WindowControls";
 import { IS_PHONE, deviceModeStore, isMobile, isTablet } from "./graph/coarse";
 import { installChromeZoom, landscapeFit } from "./graph/chromeZoom";
@@ -30,11 +31,13 @@ import "@fontsource-variable/atkinson-hyperlegible-mono/wght-italic.css";
 import "./desktopFrame.css";
 
 if (isDesktop()) document.documentElement.dataset.shell = isAndroidApp() ? "android" : "desktop";
+// A company hosting the web build vouches for its own data hosts here (docs/self-hosting.md).
+else void loadDeploymentConfig();
 // linux shim for crisp canvas zoom (tree/specs/canvas/layout-chrome.md)
 if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 
 // Mobile styling keys off these flags, never `pointer: coarse`, so a phone's "Request desktop site" gets the desktop layout.
-// A phone turned sideways swaps to the tablet layout and scales the page to fit it, as browser zoom would ([[C119]] landscapePhoneIsTablet).
+// A phone turned sideways swaps to the tablet layout and scales the page to fit it, as browser zoom would ([[layout-chrome#Phones in landscape]]).
 {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
   const portraitViewport = meta?.content ?? "";

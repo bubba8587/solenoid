@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere, [[standoffs#The solver runs last]], [[group-expand-push#LayoutFx]]
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { GraphEditor } from "../graphEditor";
@@ -159,9 +159,9 @@ function FlowCanvasInner() {
     setAutoArrange(arrangeFn);
     setCleanup(makeCleanupFn(s.editor, s.view, arrangeFn));
 
-    setBulkSettle(async (renderOnly?: Set<string>) => {
+    setBulkSettle(async (renderOnly, opts) => {
       settleCableChange(s.editor, s.view);
-      await processGraph(undefined, renderOnly);
+      await processGraph(undefined, renderOnly, opts);
     });
 
     let standoffSolving = false;

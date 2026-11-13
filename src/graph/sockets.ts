@@ -205,7 +205,7 @@ export class AdoptiveSocket extends MutableSocket {
 }
 
 /** An output typed by the value it carries: after each pass the Type Settle reads its family off the value, kept through
- *  an answer with nothing to read; before any, its declared rung ([[D117]] emptyKeepsLastType). */
+ *  an answer with nothing to read; before any, its declared rung ([[socket-lattice#Requirements]]). */
 export class ValueTypedSocket extends AdoptiveSocket {}
 
 /** The rung a port was DECLARED at: an adoptive port's base, never the type it adopted

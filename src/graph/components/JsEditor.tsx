@@ -1,4 +1,4 @@
-// [[C66]] scriptNode
+// [[script-sandbox]]
 import { useMemo, useRef, type KeyboardEvent, type RefObject } from "react";
 import { highlightJs } from "../jsSyntax";
 import "./FormulaEditor.css";

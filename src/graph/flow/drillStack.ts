@@ -1,4 +1,4 @@
-// [[C77]] compositeIsSubgraph, [[B12]] losslessSaves
+// [[C77]] compositeIsSubgraph, [[save-format#A save loses nothing quietly]]
 import type { View } from "../view";
 import { makeFlowView, type FlowView } from "./flowView";
 import { idleHandlers, type SurfaceHandlers } from "./FlowSurface";

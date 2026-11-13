@@ -157,10 +157,11 @@ smallest set of live calls:
 Then one Type Settle and FC reconcile, then one pass over the union of targets. The applier
 runs inside a "remote" scope so its own changes don't echo back out.
 
-**The proof, before any network.** Property test: for pairs of graphs drawn from the seeds and
-random edits, `apply(delta(a, b))` on a live `a` serializes byte-identical to `loadGraph(b)`.
-Then switch `flowHistory.restore` to the delta: undo stops rebuilding the canvas (no flash, the
-camera and selection survive), which is a shipped win on its own.
+**Shipped for undo (2026-11-12): `graphDelta.ts`.** `diffGraphs` (pure) and `applyGraphDelta` now carry undo and
+redo ([[react-flow-surface-contract#Undo history]]), keyed by card name, with a read-back that falls back to a whole
+load on any miss. `graphDelta.test.ts` is the property test above over every shipped example and two kinds of step,
+answers included. The hot-field row shipped too (`IN_PLACE`: the inline fields, titles, input values, table text, group
+members, set on the live card). What the room still needs from it: keying by `sid` instead of name.
 
 **The table popup in a room.** Today it edits a local grid and Save writes the whole string back.
 In a room: each cell commits on blur straight into the table container (the popup already
@@ -182,7 +183,7 @@ so a card glides on everyone's screen before it lands), and the open popup and f
 (`node, rowId, colId`), drawn as a colored cell outline and a "being edited by" badge on the card.
 A top-bar avatar row shows who is here. Follow-a-person and cursors on every surface are later.
 
-**Trust.** Joining a room is opening a document someone else wrote ([[C103]]
+**Trust.** Joining a room is opening a document someone else wrote ([[engineering#Untrusted content]]
 untrustedContentSeams, [[B18]] safeToShare): it opens as foreign, scripts and fetches held
 until allowed. The live case adds one rule: **a card a peer adds arrives foreign**
 (`foreignCardStore`), so a Script or Web Source pushed into a session mid-edit waits for each

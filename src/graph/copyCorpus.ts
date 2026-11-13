@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md § Voice is the rule the corpus is linted against)
+// [[A1]] visualGraphCalculator, [[components#The design system]] (DESIGN.md § Voice is the rule the corpus is linted against)
 // Collects every shipped UI string for `uiCopy.test.ts` and `scripts/copy-inventory.ts`.
 // Node-only (reads the filesystem): never import it from app code.
 import { readFileSync, readdirSync } from "node:fs";

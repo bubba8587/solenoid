@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams, [[C130]] rustCore
+// [[engineering#Untrusted content]], [[C130]] rustCore
 //! CSV text on the `csv` crate with Solenoid's layers on top (`tree/specs/computation/frame-verbs.md` § Reading CSV
 //! text), held to the frozen `fixtures/core/csv-*.json.gz` by `tests/csv.rs`.
 
@@ -65,7 +65,7 @@ impl Rows {
     }
 
     pub fn to_vecs(&self) -> Vec<Vec<String>> {
-        (0..self.len()).map(|i| self.row(i).map(String::from).collect()).collect()
+        Vec::from_fn(self.len(), |i| self.row(i).map(String::from).collect())
     }
 
     /// Drops every row of blank fields (`skipEmptyLines: "greedy"`).
@@ -111,7 +111,7 @@ fn read(input: &str, delim: u8, keep_blank: bool, limit: Option<usize>) -> Rows 
         if keep_blank {
             let from = rec.position().map_or_default(|p| p.byte() as usize);
             let lead = &b[from.min(b.len())..];
-            let lead = if from == 0 { lead.strip_prefix("\u{feff}".as_bytes()).unwrap_or(lead) } else { lead };
+            let lead = if from == 0 { lead.trim_prefix("\u{feff}".as_bytes()) } else { lead };
             for _ in lead.iter().take_while(|&&c| c == b'\n') {
                 out.ends.push(text.len() as u32);
                 out.rows.push(out.ends.len());

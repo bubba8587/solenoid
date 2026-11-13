@@ -1,4 +1,4 @@
-// [[D79]] effectsEdgeTriggered. Layout: tree/specs/computation/alert-node-alerts-hud.md.
+// [[alert-node-alerts-hud#When it fires]]. Layout: tree/specs/computation/alert-node-alerts-hud.md.
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
 import { isMobile } from "../coarse";
 import { alertStore, type AlertKind } from "../alertStore";

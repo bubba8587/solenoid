@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[components#The design system]]
 import { useLayoutEffect, useRef, useState } from "react";
 import { IS_COARSE } from "../coarse";
 

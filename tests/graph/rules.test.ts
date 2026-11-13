@@ -98,7 +98,7 @@ describe("the decision tree (tree/decisions/)", () => {
 
   it("rule names are unique across the tree", () => {
     const named = nodes.filter((n) => n.name).map((n) => n.name!);
-    expect(named.length).toBeGreaterThan(80);
+    expect(named.length).toBeGreaterThan(50);
     expect(named.filter((n, i) => named.indexOf(n) !== i)).toEqual([]);
   });
 

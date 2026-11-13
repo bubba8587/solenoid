@@ -1,4 +1,4 @@
-// [[C120]] linearWork. The selection mirror (react-flow-surface-contract § Selection).
+// [[B19]] spreadsheetHabits, [[engineering#Performance]]. The selection mirror (react-flow-surface-contract § Selection).
 
 type Selectable = { selected?: boolean };
 export type SelectionState = {

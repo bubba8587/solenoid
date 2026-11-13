@@ -1,2 +1,2 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 export function scheduleAutosave(): void {}

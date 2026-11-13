@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 const cells = new Map<string, string>();
 
 export const memoryStorage: Storage = {

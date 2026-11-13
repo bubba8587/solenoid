@@ -238,7 +238,7 @@ describe("unpackComposite", () => {
   });
 });
 
-describe("a group keeps its cards through a wrap and an unpack ([[C86]] membershipByGesture)", async () => {
+describe("a group keeps its cards through a wrap and an unpack ([[group-expand-push#Who is a member]])", async () => {
   const { GroupNode } = await import("../../src/graph/nodes/group");
   const { groupMembershipStore } = await import("../../src/graph/groupMembership");
   it("a wrapped member's group holds the composite in its place; unpacking hands the group its cards back", async () => {

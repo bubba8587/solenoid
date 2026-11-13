@@ -194,7 +194,7 @@ export function readBinary(kind: string, schema: string | undefined, tags: Uint8
   return withSidecars(f, s);
 }
 
-type LambdaWire = { params: string[]; expr: string; captured: string[]; capturedValues: unknown[]; readValues: unknown[]; descriptions?: Record<string, string> };
+type LambdaWire = { params: string[]; expr: string; captured: string[]; capturedValues: unknown[]; readValues: unknown[]; descriptions?: Record<string, string>; empty?: string[] };
 type Wire = { frame?: { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown; frameRef?: number; layout?: unknown }; cube?: { columns: Record<string, unknown>[] }; json?: unknown; list?: unknown[];
   lambda?: true | LambdaWire; frameRef?: number };
 
@@ -209,7 +209,7 @@ function wiredLambda(w: LambdaWire, capturedValues: readonly unknown[], readValu
       if (!compiled) return solError("#SYNTAX!", "The lambda body has a syntax error");
       return compiled(...args.slice(0, params.length), ...vals);
     };
-    const lam = { __lambda: true, params, expr, captured, ...(w.descriptions ? { descriptions: w.descriptions } : {}), capturedValues, readValues: vals };
+    const lam = { __lambda: true, params, expr, captured, ...(w.descriptions ? { descriptions: w.descriptions } : {}), ...(w.empty?.length ? { empty: w.empty } : {}), capturedValues, readValues: vals };
     return Object.defineProperties(lam, { fn: { value: fn }, withCaptures: { value: build } }) as LambdaValue;
   };
   return build(readValues);

@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem, [[B1]] obsidianBet
+// [[components#The design system]], [[B1]] obsidianBet
 //! What a schedule reports: the DCMA-style checks, a Mermaid `gantt` block, the MSPDI file and the predecessors' link text.
 
 use super::{Dependency, Diagnostic, LinkType, ScheduleLink, ScheduleOutput, ScheduledTask};

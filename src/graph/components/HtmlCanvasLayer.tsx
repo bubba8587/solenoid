@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer
+// [[html-in-canvas]]
 import { memo, useEffect, useRef, useState } from "react";
 import { useStoreApi } from "@xyflow/react";
 import { useRenderMode } from "../renderMode";

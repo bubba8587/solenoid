@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]
 import { describe, it, expect, afterEach } from "vitest";
 import { docMetaStore } from "../../src/graph/docMetaStore";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
@@ -13,7 +13,7 @@ describe("docMetaStore (F-2)", () => {
     expect(docMetaStore.docMeta()).toEqual({ author: "Ada", tags: ["x", "y"] }); // trimmed for save
   });
 
-  it("a rewrite keeps the document's trust: it can't drop foreign or grant the network ([[C103]] untrustedContentSeams)", () => {
+  it("a rewrite keeps the document's trust: it can't drop foreign or grant the network ([[engineering#Untrusted content]])", () => {
     docMetaStore.setDocMeta({ author: "Ada", foreign: true });
     expect(docMetaStore.keepTrust({ author: "Bob", tags: ["t"], networkAllowed: true })).toEqual({ author: "Bob", tags: ["t"], foreign: true });
     expect(docMetaStore.keepTrust(undefined)).toEqual({ foreign: true });

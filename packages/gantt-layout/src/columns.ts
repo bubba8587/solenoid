@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[B14]] oneDesignSystem
+// [[C69]] ganttPackages, [[components#The design system]]
 
 import type { GanttPayload } from "./payload";
 import type { GridColumn } from "./frame";

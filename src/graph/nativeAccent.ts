@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#The design system]]
 import { isDesktop, isAndroidApp } from "./fileBridge";
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {

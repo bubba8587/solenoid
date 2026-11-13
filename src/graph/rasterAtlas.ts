@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer
+// [[A1]] visualGraphCalculator, [[html-in-canvas]]
 interface AtlasItem {
   id: string;
   /** Natural (padded) capture size in raster px. */

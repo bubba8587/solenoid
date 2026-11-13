@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[save-format#The text form]], [[save-format#The sidecar]]
+// [[save-format#A save loses nothing quietly]], [[save-format#The text form]], [[save-format#The sidecar]]
 import { describe, it, expect } from "vitest";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
@@ -139,7 +139,7 @@ describe("text form: unit cases", () => {
     expect(readTextForm(text).drawnCables).toBeUndefined();
   });
 
-  it("positions keep a node named like an Object.prototype member ([[B12]] losslessSaves)", () => {
+  it("positions keep a node named like an Object.prototype member ([[save-format#A save loses nothing quietly]])", () => {
     const g: SavedGraph = {
       v: 2,
       nodes: [

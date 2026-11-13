@@ -1,4 +1,4 @@
-// [[D90]] cubeTypesAtDepth
+// [[C10]] socketLattice, [[frame-verbs#The Cube value]]
 import { describe, it, expect } from "vitest";
 import { readNestedTables, typesAt, isFrameAt, withFrame, withNestedType, renameNestedColumn, dropNestedColumn, dropNestedUnder, tableKey } from "../../src/graph/cubeTypes";
 

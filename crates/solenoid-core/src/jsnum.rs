@@ -14,7 +14,7 @@ pub fn number_to_string(x: f64) -> String {
     }
     // Below 2^53 every whole number is its own double, so its shortest digits (ECMAScript Number::toString) are its
     // exact ones, which an integer's printing gives without the float search; a column of counts or ids is mostly
-    // these ([[C120]] linearWork). Above it the shortest digits are padded with zeros, so the search stays.
+    // these ([[engineering#Performance]] linearWork). Above it the shortest digits are padded with zeros, so the search stays.
     if x.abs() < 9_007_199_254_740_992.0 && x.trunc() == x {
         return (x as i64).to_string();
     }

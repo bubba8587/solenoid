@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[A1]] visualGraphCalculator
+// [[group-expand-push#Who is a member]], [[A1]] visualGraphCalculator
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { GroupNode } from "./nodeClasses";
@@ -17,6 +17,15 @@ export const groupMembershipStore = {
   version,
   subscribe,
 };
+
+/** Takes deleted cards out of every group that held them, so no group (nor the save written from it) names a card that
+ *  is gone. A relocation (Wrap as Composite) moves members itself, so only a real delete calls this. */
+export function dropFromGroups(editor: GraphEditor<Schemes>, gone: ReadonlySet<string>): void {
+  if (gone.size === 0) return;
+  for (const g of editor.getNodes()) {
+    if (g instanceof GroupNode && g.members.some((m) => gone.has(m))) g.members = g.members.filter((m) => !gone.has(m));
+  }
+}
 
 export function rebuildGroupMembership(editor: GraphEditor<Schemes>): void {
   for (const id of _byEditor.get(editor) ?? []) _byNode.delete(id);

@@ -4,6 +4,7 @@ import { ConcatListsNode } from "../../../src/graph/nodes/list";
 import { FrameFromListsNode, AppendNode, FilterFrameNode } from "../../../src/graph/nodes/frame";
 import { frameFromCells, type FrameValue } from "../../../src/graph/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
+import { isSolError, solError } from "../../../src/graph/errorValue";
 import { throughBoundary } from "../boundaryKit";
 import { GraphEditor } from "../../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../../src/graph/graphModel";
@@ -54,6 +55,29 @@ describe("Frame from Lists — the fast lists→Frame path", () => {
     });
     return n.data(inputs).frame as FrameValue | null;
   };
+
+  it("a table where a list goes is #TYPE! naming the input, not a failed card", () => {
+    // TAKE's output is untyped until it has run, so a table's last row (a 1 × 3 table) can be wired in.
+    const f = build([["a", [[1, 2, 3]]]]) as unknown as { code: string; message: string };
+    expect(isSolError(f) && f.code).toBe("#TYPE!");
+    expect(f.message).toMatch(/takes a list, and this is a table\. TOROW or TOCOL makes a table a list$/);
+  });
+
+  it("a list of errors alone is a Text column, whatever type its socket last settled to", () => {
+    // The socket keeps the type its source last carried, which no save holds: the column must not follow it.
+    const typed = (cells: unknown[]) => {
+      const n = new FrameFromListsNode();
+      n.stringLiterals.name0 = "a";
+      (n.inputs.vals0!.socket as unknown as { dataType: string }).dataType = "numlist";
+      return (n.data({ vals0: [cells] }).frame as FrameValue).columns[0].type;
+    };
+    const bad = solError("#DOMAIN!", "out of range");
+    expect(typed([bad, bad])).toBe("string");
+    expect(typed([bad, null])).toBe("string");
+    // With a value to read, or nothing but blanks, the socket's type stands.
+    expect(typed([bad, 2])).toBe("number");
+    expect(typed([null, null])).toBe("number");
+  });
 
   it("named typed columns come out type-preserved", () => {
     const f = build([["City", ["Oslo", "Rome"]], ["Pop", [0.7, 2.8]], ["EU", [false, true]]])!;

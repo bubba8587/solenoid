@@ -1,4 +1,4 @@
-// [[C98]] paletteMirrorsMenubar
+// [[command-palette]]
 import { ISOLATE_ON } from "./isolateStore";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";

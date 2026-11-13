@@ -4,6 +4,7 @@
 
 use crate::excel_formula::cell_to_v;
 use std::cell::{Cell, RefCell};
+use std::mem::DropGuard;
 use std::rc::Rc;
 
 use crate::frame::FrameColumn;
@@ -33,6 +34,9 @@ pub struct LambdaV {
     pub units: Vec<V>,
     /// The LAMBDA card's notes on its variables (`descriptions`).
     pub descriptions: Option<Rc<serde_json::Value>>,
+    /// The captures its card left empty, neither wired nor typed (`empty`): each reads 0, and a reader that binds a
+    /// capture by name (a calculated field's column) can tell a name that found nothing from a value of its own.
+    pub empty: Vec<String>,
 }
 
 use crate::value_kinds::MAX_GENERATED;
@@ -63,7 +67,7 @@ pub struct Traits {
     roles: Vec<Option<Role>>,
     blanks: Vec<serde_json::Value>,
     scalar: Vec<bool>,
-    /// The name's facts the call path reads on every row, resolved once as the table loads ([[C120]] linearWork).
+    /// The name's facts the call path reads on every row, resolved once as the table loads ([[engineering#Performance]] linearWork).
     #[serde(skip)]
     pub fast: Fast,
 }
@@ -331,7 +335,7 @@ pub(crate) fn format_cx(re: f64, im: f64) -> String {
             // `.replace(/\.?0+$/, "")`
             let t = s.trim_end_matches('0');
             if t.len() < s.len() {
-                t.strip_suffix('.').unwrap_or(t).to_string()
+                t.trim_suffix('.').to_string()
             } else {
                 s
             }
@@ -509,7 +513,7 @@ impl<'a> RowCtx<'a> {
             .borrow_mut()
             .entry(c.name().to_string())
             .or_insert_with(|| match c {
-                Col::Frame(c) => list((0..c.values.len()).map(|i| list(vec![frame_cell_v(c, i)])).collect()),
+                Col::Frame(c) => list(Vec::from_fn(c.values.len(), |i| list(vec![frame_cell_v(c, i)]))),
                 Col::Row(RowColumn { whole: Some(w), .. }) => w.clone(),
                 Col::Row(c) => list(c.values.iter().map(|v| list(vec![v.clone()])).collect()),
             })
@@ -597,7 +601,7 @@ fn same(a: &V, b: &V) -> bool {
 }
 
 /// These answer a list built fresh from a whole column, so the memo keeps it, and the range function reading it hits
-/// its own memo too ([[C120]] linearWork).
+/// its own memo too ([[engineering#Performance]] linearWork).
 const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "DROP"];
 
 /// `BRANCH_SELECTORS`: the arguments that pick a branch. Only an error there is the call's answer; an error in a branch
@@ -624,8 +628,11 @@ thread_local! {
 }
 
 impl CallDepth {
-    fn enter() -> Option<CallDepth> {
-        CALL_DEPTH.with(|d| (d.get() < MAX_CALL_DEPTH).then(|| d.set(d.get() + 1)).map(|()| CallDepth))
+    fn enter() -> Option<impl Sized> {
+        (CALL_DEPTH.get() < MAX_CALL_DEPTH).then(|| {
+            CALL_DEPTH.update(|d| d + 1);
+            DropGuard::new((), |()| CALL_DEPTH.update(|d| d - 1))
+        })
     }
 
     fn too_deep() -> V {
@@ -633,12 +640,6 @@ impl CallDepth {
             ErrorCode::Overflow,
             "This formula nests calls more than 500 deep, for example a LAMBDA that keeps calling itself",
         ))
-    }
-}
-
-impl Drop for CallDepth {
-    fn drop(&mut self) {
-        CALL_DEPTH.update(|d| d - 1);
     }
 }
 
@@ -658,10 +659,10 @@ pub struct Eval<'a> {
     /// per call and dropped, so its address can come back holding another body: an entry answers only an equal one.
     bodies: RefCell<FxHashMap<*const Ast, Rc<Ast>>>,
     /// A whole column readied for a range call, kept by the list it came as: the column reaches the call row after row,
-    /// and readying it there would copy and scan the whole column per row ([[C120]] linearWork).
+    /// and readying it there would copy and scan the whole column per row ([[engineering#Performance]] linearWork).
     readied: RefCell<Vec<Rc<Readied>>>,
     /// MIN or MAX of a whole column, kept by the column: `MAX(col, @x)` reads it beside a row's value every row
-    /// ([[C120]] linearWork).
+    /// ([[engineering#Performance]] linearWork).
     partials: RefCell<Vec<Partial>>,
     /// A computed column's row-free subtrees (`row_free`), each with its value once a row has computed it.
     hoisted: RefCell<FxHashMap<*const Ast, Option<V>>>,
@@ -827,7 +828,14 @@ impl Eval<'_> {
                     "[column] reads a whole table column, so it only works inside a computed column",
                 )),
             },
-            Ast::Name(name) => constant_value(name).map_or_else(|| env.get(name).cloned().unwrap_or(V::Undef), V::Num),
+            // A name nothing binds reads its column where there are columns: a calculated field's `Gallons` is
+            // `[Gallons]`, and a name no column has is #NAME?, not a blank that sums to 0.
+            Ast::Name(name) => match (constant_value(name), env.get(name), self.slices) {
+                (Some(c), ..) => V::Num(c),
+                (None, Some(v), _) => v.clone(),
+                (None, None, Some(slice)) => slice(name),
+                (None, None, None) => V::Undef,
+            },
             Ast::Unary { op, arg } => {
                 let a = self.eval(arg, env);
                 let neg = *op == UnaryOp::Neg;
@@ -926,20 +934,25 @@ impl Eval<'_> {
         // A LAMBDA's body is a formula of its own: its last `+` or `-` snaps as a formula's does
         // (`LAMBDA(x, x-0.3)(0.1+0.2)` is 0).
         let outer = self.root.replace(&**body as *const Ast as usize);
-        let out = self.lambda_body(lam, body, args);
-        self.root.set(outer);
-        out
+        let _root = DropGuard::new(outer, |outer| self.root.set(outer));
+        self.lambda_body(lam, body, args)
     }
 
     fn lambda_body(&self, lam: &LambdaV, body: &Ast, args: &[V]) -> V {
         if let Some(captured) = &lam.captured {
-            // `compilePositional` over the parameters, then the captures; a column outranks a capture ([[C22]] rowFormulaRefs).
+            // `compilePositional` over the parameters, then the captures; a column outranks a capture ([[C22]] rowFormulaRefs),
+            // in a computed column and in a calculated field's slice alike.
             let mut inner: Env = FxHashMap::default();
             for (i, p) in lam.params.iter().enumerate() {
                 inner.insert(p.clone(), args.get(i).cloned().unwrap_or(V::Undef));
             }
             for c in captured {
-                let v = match self.row.and_then(|r| r.column(c).map(|col| r.whole_of(col))) {
+                let column = match (self.row, self.slices) {
+                    (Some(r), _) => r.column(c).map(|col| r.whole_of(col)),
+                    (None, Some(slice)) => Some(slice(c)).filter(|v| !matches!(v, V::Err(_))),
+                    (None, None) => None,
+                };
+                let v = match column {
                     Some(whole) => whole,
                     None => lam.env.get(c).cloned().unwrap_or(V::Undef),
                 };
@@ -1036,9 +1049,8 @@ impl Eval<'_> {
                 }
             }
         }
-        let Ok(v) = crate::date_values::call(name, argv, |argv| {
-            Ok::<_, std::convert::Infallible>(self.call_with(name, t, args, argv, settled))
-        });
+        let Ok(v) =
+            crate::date_values::call(name, argv, |argv| Ok::<_, !>(self.call_with(name, t, args, argv, settled)));
         v
     }
 
@@ -1439,27 +1451,25 @@ impl Eval<'_> {
                 let cell_at = |k: usize, i: usize, j: usize| {
                     shaped.get(k).and_then(|m| m.get(i)).and_then(|r| r.get(j)).cloned().unwrap_or(V::Null)
                 };
-                let out: Vec<Vec<V>> = (0..rows)
-                    .map(|i| {
-                        (0..cols)
-                            .map(|j| {
-                                one(
-                                    "cell",
-                                    call(
-                                        &[
-                                            cell_at(0, i, j),
-                                            cell_at(1, i, j),
-                                            cell_at(2, i, j),
-                                            V::Num((i + 1) as f64),
-                                            V::Num((j + 1) as f64),
-                                        ],
-                                        arrays.len(),
-                                    ),
-                                )
-                            })
-                            .collect()
-                    })
-                    .collect();
+                let out: Vec<Vec<V>> = Vec::from_fn(rows, |i| {
+                    (0..cols)
+                        .map(|j| {
+                            one(
+                                "cell",
+                                call(
+                                    &[
+                                        cell_at(0, i, j),
+                                        cell_at(1, i, j),
+                                        cell_at(2, i, j),
+                                        V::Num((i + 1) as f64),
+                                        V::Num((j + 1) as f64),
+                                    ],
+                                    arrays.len(),
+                                ),
+                            )
+                        })
+                        .collect()
+                });
                 like_input(&arrays[0], out)
             }
             "BYROW" => match as_rows(&arg(0)) {
@@ -1470,16 +1480,12 @@ impl Eval<'_> {
                 None => V::Null,
                 Some(m) => {
                     let cols = m.iter().map(Vec::len).max().unwrap_or(0);
-                    list(
-                        (0..cols)
-                            .map(|j| {
-                                one(
-                                    "column",
-                                    call(&[list(m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Null)).collect())], 1),
-                                )
-                            })
-                            .collect(),
-                    )
+                    list(Vec::from_fn(cols, |j| {
+                        one(
+                            "column",
+                            call(&[list(m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Null)).collect())], 1),
+                        )
+                    }))
                 }
             },
             "REDUCE" => {
@@ -1552,22 +1558,15 @@ impl Eval<'_> {
                     ));
                 }
                 let (r, c) = (if r.is_nan() { 0.0 } else { r }, if c.is_nan() { 0.0 } else { c });
-                list(
-                    (0..r as usize)
-                        .map(|i| {
-                            list(
-                                (0..c as usize)
-                                    .map(|j| {
-                                        one(
-                                            "cell",
-                                            self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]),
-                                        )
-                                    })
-                                    .collect(),
-                            )
-                        })
-                        .collect(),
-                )
+                list(Vec::from_fn(r as usize, |i| {
+                    list(
+                        (0..c as usize)
+                            .map(|j| {
+                                one("cell", self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]))
+                            })
+                            .collect(),
+                    )
+                }))
             }
             "GROUPBY" => {
                 if absent(&arg(0)) || absent(&arg(1)) {
@@ -1948,7 +1947,7 @@ pub fn row_refs(ast: &Ast) -> Vec<String> {
 
 thread_local! {
     /// Lists the TS sent once under an id (`{"__def": id, "v": …}`) and names again by it (`{"__ref": id}`), so a
-    /// formula called once per item doesn't re-send its captures each time ([[C120]] linearWork). The TS forgets an
+    /// formula called once per item doesn't re-send its captures each time ([[engineering#Performance]] linearWork). The TS forgets an
     /// id when its list is collected (`engine_forget`).
     static HELD: RefCell<FxHashMap<u64, V>> = RefCell::new(FxHashMap::default());
     static MISSING: Cell<bool> = const { Cell::new(false) };
@@ -1956,7 +1955,7 @@ thread_local! {
 
 thread_local! {
     /// The formulas `engine_eval` ran last, parsed once, each with an evaluator whose range memo outlives the call:
-    /// `x - AVERAGE(vals)` over each item of a held list reads `vals` once ([[C120]] linearWork).
+    /// `x - AVERAGE(vals)` over each item of a held list reads `vals` once ([[engineering#Performance]] linearWork).
     static FORMULAS: RefCell<Vec<(String, Rc<Compiled>)>> = const { RefCell::new(Vec::new()) };
 }
 
@@ -2114,6 +2113,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
                 src: Some(src.to_string()),
                 units,
                 descriptions,
+                empty: strs("empty"),
             }))
         }
         _ => cell_to_v(&crate::wire::decode_cell(j)),
@@ -2154,7 +2154,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
 /// As `column`, each row's answer tagged by `tag`: a frame's one value per row, or a Cube's row that may hold a list.
 /// Whether `n` reads no row: no `@` cell, no ROW(), no random draw, no parameter of a LAMBDA around it (`bound`,
 /// lowered) and no LAMBDA it can't see into. Such a subtree answers the same on every row, so a computed column
-/// computes it once ([[C120]] linearWork). The largest such subtrees under a row-reading one go in `free`.
+/// computes it once ([[engineering#Performance]] linearWork). The largest such subtrees under a row-reading one go in `free`.
 fn row_free<'a>(n: &'a Ast, bound: &[String], env: &Env, free: &mut Vec<&'a Ast>) -> bool {
     let unseen = |name: &str| bound.contains(&name.to_lowercase()) || matches!(env.get(name), Some(V::Lambda(_)));
     let varies = |name: &str| {
@@ -2332,19 +2332,9 @@ fn column_hoisting<C>(
         binds.push(Bind::Side(ctx.aligned(side(p))));
     }
     let mut cells = Vec::with_capacity(inp.rows);
-    /// ROW()'s row while the column runs; dropping it clears the row.
-    struct Rows;
-    impl Rows {
-        fn at(&self, i: usize) {
-            crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
-        }
-    }
-    impl Drop for Rows {
-        fn drop(&mut self) {
-            crate::excel_functions::set_row_number(None);
-        }
-    }
-    let rows = Rows;
+    // ROW()'s row while the column runs, cleared on every way out.
+    let row_at = |i: usize| crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+    let _rows = DropGuard::new((), |()| crate::excel_functions::set_row_number(None));
     match spec {
         ColumnSpec::Expr { ast, .. } => {
             // Each cell is a formula whose last `+` or `-` snaps; the column holds the tree, not the text, so a formula
@@ -2389,7 +2379,7 @@ fn column_hoisting<C>(
             }
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
-                rows.at(i);
+                row_at(i);
                 let v = ev.run(ast, &env);
                 kinds.note(&v, cells.len());
                 cells.push(tag(v));
@@ -2398,7 +2388,7 @@ fn column_hoisting<C>(
         ColumnSpec::Lambda(lam) => {
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
-                rows.at(i);
+                row_at(i);
                 let argv: Vec<V> = binds
                     .iter()
                     .map(|b| match b {
@@ -2491,12 +2481,12 @@ mod hoist_tests {
             |i: usize, m: usize| if i % 4 == 3 { FrameCell::Null } else { FrameCell::Num((i * m % 7) as f64 - 2.0) };
         let f = FrameValue {
             columns: vec![
-                FrameColumn::new("a", FrameColType::Number, (0..n).map(|i| num(i, 3)).collect()),
-                FrameColumn::new("b", FrameColType::Number, (0..n).map(|i| num(i, 5)).collect()),
+                FrameColumn::new("a", FrameColType::Number, Vec::from_fn(n, |i| num(i, 3))),
+                FrameColumn::new("b", FrameColType::Number, Vec::from_fn(n, |i| num(i, 5))),
                 FrameColumn::new(
                     "t",
                     FrameColType::String,
-                    (0..n).map(|i| FrameCell::Str(Rc::from(["x", "y", ""][i % 3]))).collect(),
+                    Vec::from_fn(n, |i| FrameCell::Str(Rc::from(["x", "y", ""][i % 3]))),
                 ),
             ],
         };

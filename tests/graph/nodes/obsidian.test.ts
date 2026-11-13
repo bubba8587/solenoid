@@ -65,7 +65,7 @@ describe("WriteObsidianNode.run() guards", () => {
   });
 });
 
-describe("the type a new property registers in types.json ([[D116]] writeSolenoidTypes)", () => {
+describe("the type a new property registers in types.json ([[vault-bridge#VaultBridgeFx]])", () => {
   const frame = { __frame: true as const, columns: [{ name: "x", type: "number" as const, values: [1] }] };
   const inner = { __cube: true as const, depth: 1, columns: [{ name: "x", cells: [[1, 2]], type: "number" as const }] };
   const cube = { __cube: true as const, columns: [

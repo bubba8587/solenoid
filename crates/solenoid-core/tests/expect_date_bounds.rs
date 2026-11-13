@@ -1,4 +1,4 @@
-// [[D120]] rangeBoundsTakeTheValuesKind, [[C137]] datesNeverSerials, [[date-values#Cards]]
+// [[date-values#Cards]] rangeBoundsTakeTheValuesKind, [[C137]] datesNeverSerials, [[date-values#Cards]]
 //! Expect's range check over date and number bounds; the call's socket types are the ones the settle gives Min and Max.
 
 use serde_json::{json, Value as Json};

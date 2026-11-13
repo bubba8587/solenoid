@@ -1,4 +1,4 @@
-// [[C42]], [[B14]] oneDesignSystem
+// [[html-in-canvas]], [[components#The design system]]
 import { GraphNode, GraphSocket } from "../graphModel";
 import { type NodeKind, NODE_KIND_ACCENTS, NODE_KIND_SLOTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
@@ -40,7 +40,7 @@ import { BitwiseNode, DepreciationNode, TvmNode, PaymentBreakdownNode, NPVNode, 
 import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
 import { DistributionsNode } from "./distribution";
 import { ConduitNode } from "./conduit";
-import { FrameFromListsNode } from "./frame";
+import { FrameFromListsNode, CategorizeNode } from "./frame";
 import { ScheduleNode } from "./schedule";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
 import { CubeInputNode, BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
@@ -53,6 +53,7 @@ import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DelayedPassNode, ValueInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
+import { ProbabilityBetweenNode, AbTestNode, BootstrapNode } from "./probability";
 import { SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, KpiNode } from "./visual";
 import { GanttNode } from "./gantt";
 import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
@@ -191,7 +192,7 @@ export function explicitKindOf(node: GraphNode): NodeKind | null {
   ) return "table";
   if (
     node instanceof FrameInputNode || node instanceof CubeInputNode ||
-    node instanceof BuildFrameNode || node instanceof FrameFromListsNode || node instanceof SplitFrameNode ||
+    node instanceof BuildFrameNode || node instanceof FrameFromListsNode || node instanceof CategorizeNode || node instanceof SplitFrameNode ||
     node instanceof GetColumnNode || node instanceof AddColumnNode ||
     node instanceof ComputedColumnNode ||
     node instanceof GetRowNode ||
@@ -323,6 +324,7 @@ export function nodeXWide(node: GraphNode): boolean {
 
 export function nodeWide(node: GraphNode): boolean {
   if (node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof PhysicsConstantNode) return true;
+  if (node instanceof ProbabilityBetweenNode || node instanceof AbTestNode || node instanceof BootstrapNode) return true;
   if (node instanceof ExpressionNode || node instanceof ScriptNode || node instanceof EquationNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode || node instanceof ChartBuilderNode) return true;

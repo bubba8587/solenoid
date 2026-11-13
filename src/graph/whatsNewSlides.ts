@@ -10,6 +10,23 @@ export type ReleaseSlides = { version: Release; slides: Slide[] };
  *  with its patches combined (`deckReleases`), so 1.6.1 opens "What's new in 1.6 and 1.6.1" and 1.7 starts a fresh deck. */
 export const RELEASES: ReleaseSlides[] = [
   {
+    version: "1.6.2",
+    slides: [
+      {
+        title: "Excel workbooks",
+        body: "The Local File and Web Source nodes can now read tables from Excel files.",
+      },
+      {
+        title: "Categorize",
+        body: "The Categorize node makes it easy to assign one list to another.",
+      },
+      {
+        title: "Undo improvements",
+        body: "\"Undo\" now recalculates much less of your document.",
+      },
+    ],
+  },
+  {
     version: "1.6.1",
     slides: [
       {

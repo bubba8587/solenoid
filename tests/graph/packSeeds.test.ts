@@ -1,4 +1,4 @@
-// [[C79]] packActivationIsPresentation, [[C1]] demoVault
+// [[C79]] packActivationIsPresentation, [[vault-read#Which notes are read]]
 // Every pack ships an example seed, offered in the seed menus while the pack is on. A pack's seed shows that pack, and
 // nothing from another pack, which may be off.
 import { describe, it, expect, afterEach } from "vitest";

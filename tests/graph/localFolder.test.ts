@@ -152,6 +152,6 @@ describe("Local File over a pattern", () => {
   it("says when nothing matches", async () => {
     const { node, out } = await read("monthly/*.parquetx");
     expect(out.frame).toBeNull();
-    expect(connectionStore.getState(node.id)).toMatchObject({ status: "error", message: "No CSV or Parquet file matches monthly/*.parquetx" });
+    expect(connectionStore.getState(node.id)).toMatchObject({ status: "error", message: "No CSV, Parquet or Excel file matches monthly/*.parquetx" });
   });
 });

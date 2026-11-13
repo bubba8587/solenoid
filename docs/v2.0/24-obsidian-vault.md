@@ -63,7 +63,7 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
 The vault is the author's database and TaskNotes is its tracker. Solenoid **computes over**
 the vault and writes results back as properties or blocks; it never stores, tracks, or renders
 a kanban (`../out-of-scope.md` §5, §8). Every computing touchpoint is a file, a local HTTP port,
-or a URI; the one Obsidian plugin (author 2026-09-20, [[C107]] obsidianPlugin) only shows and edits
+or a URI; the one Obsidian plugin (author 2026-09-20, [[obsidian-plugin]]) only shows and edits
 Solenoid's container values as properties, and computes nothing. A reader emits **one `cube`** (a folder of notes IS records whose fields
 can be lists or sub-tables); the row verbs take cubes (A′), so filtering and sorting notes
 never needs a flattening step; writers take a cube; a sink's preview is a `plan` frame.
@@ -190,7 +190,7 @@ name>.base` beside the notes — `filters: file.inFolder("<folder>")`, one table
 `file.name` + the written keys — so a managed block (C) can embed `![[<node name>.base#View]]`
 and the note shows a **live** table over what B wrote. Pure core `frontmatterPatch.ts`
 (`patchFrontmatter(text, patch): {text, refused[]}`), the ONE writer of a note's YAML
-([[C101]] onePatchPath); tests prove untouched bytes identical and cube → vault → cube equal.
+([[vault-bridge#What every VaultBridgeFx holds to]]); tests prove untouched bytes identical and cube → vault → cube equal.
 
 **C. Write to Obsidian: modes + templates.** `mode: overwrite | append | block`. `block`
 splices the assembled markdown between `%% solenoid:begin <node name> %%` and `%%
@@ -362,7 +362,7 @@ step.
 B18 safeToShare's Run button (every writer; J adds "or the CLI's explicit `--run <name>`"),
 components compute nothing (`../../tree/specs/floors/components.md` § The rules; Preview is a pure plan over the cached cube + reads), `retypeReconciles`
 avoided (one `cube` output; A′'s adoption is derived state, never persisted), input-cable pruning
-untouched, the relative-date opt-in untouched (R), a new **[[C101]] onePatchPath**
+untouched, the relative-date opt-in untouched (R), a new **[[vault-bridge#What every VaultBridgeFx holds to]]**
 (`frontmatterPatch.ts` is the only writer of a note's YAML; `obsidianWrite.ts` writes whole
 documents). The fs allowlist gains `.yaml`/`.yml` read (one capability line, noted in
 `../architecture.md`'s desktop section).

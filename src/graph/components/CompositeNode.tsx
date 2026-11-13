@@ -565,7 +565,7 @@ function faultText(f: PipelineFault): string {
   }
 }
 
-/** A Pipeline's steps read off its one chain ([[C53]] pipelineIsCompositePreset), numbered.
+/** A Pipeline's steps read off its one chain ([[composite-nodes#Manual refresh and Pipeline]]), numbered.
  *  A step's row selects it (the first, until another is picked); the folded Preview shows the selected step's table.
  *  It only reads the graph. */
 function PipelineSteps({ node }: { node: CompositeNodeType }) {

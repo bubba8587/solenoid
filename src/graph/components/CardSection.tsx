@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md § Card sections)
+// [[components#The design system]] (DESIGN.md § Card sections)
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { bumpConnectionVersion } from "../graphSignals";
 import { sectionFoldStore } from "../sectionFoldStore";

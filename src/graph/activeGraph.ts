@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[save-format#A save loses nothing quietly]]
 import type { View } from "./view";
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
@@ -10,14 +10,15 @@ export interface EditScope {
   /** Raise the surface's rebuild gate, which holds its per-event settles. */
   begin: () => void;
   end: () => void;
-  /** The one settle after the gate; `renderOnly` names the only cards that need a re-render. */
-  settle: (renderOnly?: Set<string>) => Promise<void>;
+  /** The one settle after the gate; `renderOnly` names the only cards that need a re-render (the caller cleared what
+   *  they reach), and `topology` says the cables changed, so the loops are found again. */
+  settle: (renderOnly?: Set<string>, opts?: { topology?: boolean }) => Promise<void>;
 }
 
 export const MAIN_EDIT_SCOPE: EditScope = {
   begin: beginGraphRebuild,
   end: endGraphRebuild,
-  settle: (renderOnly) => bulkSettle(renderOnly),
+  settle: (renderOnly, opts) => bulkSettle(renderOnly, opts),
 };
 
 interface ActiveGraph {

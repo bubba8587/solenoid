@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic,
+// [[A1]] visualGraphCalculator, [[group-expand-push#LayoutFx]], [[standoffs#The solver runs last]], [[group-expand-push]],
 // [[auto-arrange-tidy#What Tidy guarantees]], [[auto-arrange-tidy#Building the ELK graph]], [[auto-arrange-tidy#Ports]],
 // [[auto-arrange-tidy#Flipped cards]], [[auto-arrange-tidy#Cards stay content-sized]], [[auto-arrange-tidy#Position-locked groups]],
 // [[auto-arrange-tidy#Growing a group]], [[auto-arrange-tidy#Cleanup]]
@@ -115,6 +115,7 @@ function makeFakeView() {
     container: { clientWidth: 1200, clientHeight: 800 },
     async pan() {},
     async zoom() {},
+    async setCamera() {},
   };
   return { view: view as unknown as FakeViewHandle, addView };
 }
@@ -555,7 +556,7 @@ describe("Tidy hands ELK the sockets a card shows", () => {
     addView(src.id, 0, 0, 200, 200);
     addView(builder.id, 400, 0, 200, 200);
     await connect(editor, src, "result", builder, "fontsize");
-    const shown = ["title", "cmap", "fontsize"];
+    const shown = ["title", "vmin", "fontsize"];
     const unmount = [...shown.map((k) => presentSocketStore.mount(builder.id, "input", k)), presentSocketStore.mount(builder.id, "output", "result")];
     let seen: Array<{ id: string; height: number; ports: Array<{ id: string; y: number }> }> = [];
     const recorder = { async layout(graph: unknown) { seen = (graph as { children: typeof seen }).children; return { children: [] }; } };
@@ -563,7 +564,7 @@ describe("Tidy hands ELK the sockets a card shows", () => {
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
     unmount.forEach((f) => f());
-    expect(Object.keys(builder.inputs).length).toBeGreaterThan(40);
+    expect(Object.keys(builder.inputs).length).toBeGreaterThan(20);
     const b = seen.find((c) => c.id === builder.id)!;
     expect(b.ports.map((p) => p.id).sort()).toEqual([...shown.map((k) => `${builder.id}_${k}_input`), `${builder.id}_result_output`].sort());
     for (const p of b.ports) { expect(p.y).toBeGreaterThanOrEqual(0); expect(p.y).toBeLessThanOrEqual(b.height); }

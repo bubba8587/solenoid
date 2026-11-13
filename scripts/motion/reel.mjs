@@ -1,4 +1,4 @@
-// [[C121]]
+// [[motion-graphics]]
 // Cuts rendered motion clips into one reel: each clip crossfades into the next, and the reel closes on the
 // Solenoid wordmark (the demo video's own card, cards.mjs) fading in over the canvas color.
 //   node scripts/motion/reel.mjs <out.mp4> <clip.mp4>… [--fade 0.5] [--end 2.6]

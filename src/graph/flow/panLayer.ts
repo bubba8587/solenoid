@@ -1,4 +1,4 @@
-// [[C120]] linearWork. The pan layer (react-flow-surface-contract § Drag performance).
+// [[B19]] spreadsheetHabits, [[engineering#Performance]]. The pan layer (react-flow-surface-contract § Drag performance).
 import { IS_COARSE } from "../coarse";
 import { renderModeStore } from "../renderMode";
 

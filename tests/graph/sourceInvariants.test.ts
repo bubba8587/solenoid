@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[B18]] safeToShare, [[D79]], [[B11]], [[D22]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull, [[components#The rules]]
+// [[A1]] visualGraphCalculator, [[components#The design system]], [[C26]], [[save-format#A save loses nothing quietly]], [[B18]] safeToShare, [[alert-node-alerts-hud#When it fires]], [[B11]], [[add-menu#Naming a placed node]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull, [[components#The rules]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -299,7 +299,7 @@ describe("[[C26]] opArgDistinct — OP pickers bind `op`, ARG pickers never do",
   });
 });
 
-describe("[[B12]] losslessSaves — the text form carries every SavedGraph field, both directions", () => {
+describe("[[save-format#A save loses nothing quietly]] — the text form carries every SavedGraph field, both directions", () => {
   // serializeGraph() returns readTextForm(writeTextForm(raw)) — the text form is
   // the NARROW WAIST of the save path, so a SavedGraph field that either
   // direction omits is deleted from EVERY save, and autosave then writes the
@@ -342,14 +342,14 @@ describe("[[B12]] losslessSaves — the text form carries every SavedGraph field
     }
     expect(
       missing,
-      `SavedGraph fields the text-form narrow waist drops ([[B12]] losslessSaves) — the field ` +
+      `SavedGraph fields the text-form narrow waist drops ([[save-format#A save loses nothing quietly]]) — the field ` +
       `will silently vanish from every save until both directions carry it:\n  ` +
       missing.join("\n  "),
     ).toEqual([]);
   });
 });
 
-describe("[[B12]] losslessSaves — class names are load-bearing: keepNames stays in both bundler configs", () => {
+describe("[[save-format#A save loses nothing quietly]] — class names are load-bearing: keepNames stays in both bundler configs", () => {
   // `constructor.name` is not a label here — it is the TYPE written into every
   // save (persistence.ts), the ctor-registry key that loads resolve through, and
   // a dispatch key (the graph core's SEES_ERRORS and LAZY_FRAME_NODES, groupCollapse, pinStore…). A build without
@@ -574,7 +574,7 @@ describe("[[B18]] safeToShare — data() never touches disk", () => {
 });
 
 // [[node-classes#Reading inputs]]
-describe("[[D79]] effectsEdgeTriggered — an outward effect from data() gates on isGraphRebuilding()", () => {
+describe("[[alert-node-alerts-hud#When it fires]] — an outward effect from data() gates on isGraphRebuilding()", () => {
   // The post-load recompute runs INSIDE the rebuild scope, so an alert/notice
   // fired from data() without the gate replays its whole backlog on every
   // document open, doc switch and rollback (the audit-2026-07-05 class: a
@@ -591,13 +591,13 @@ describe("[[D79]] effectsEdgeTriggered — an outward effect from data() gates o
     expect(
       offenders,
       `These node files fire alerts without the isGraphRebuilding() gate ` +
-      `([[D79]] effectsEdgeTriggered): every document load will replay the alert backlog:\n  ` +
+      `([[alert-node-alerts-hud#When it fires]]): every document load will replay the alert backlog:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });
 });
 
-describe("[[B12]] losslessSaves — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
+describe("[[save-format#A save loses nothing quietly]] — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
   // [[per-doc-autosave-persistence#Swapping documents]]
   const SANCTIONED: Record<string, string> = {
     restore: "startup — no live graph exists to capture yet; the refused-doc fallback (audit 20p) is its own guard",
@@ -631,7 +631,7 @@ describe("[[B12]] losslessSaves — every documentStore verb that swaps the canv
     }
     expect(
       offenders,
-      `documentStore verbs that swap the canvas without the discipline ([[B12]] losslessSaves):\n  ` +
+      `documentStore verbs that swap the canvas without the discipline ([[save-format#A save loses nothing quietly]]):\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -748,6 +748,7 @@ describe("[[A1]] visualGraphCalculator — every node-keyed store registers with
     "formulaPopupStore.ts": "ONE transient open-popup id, not a per-node map",
     "scriptPopupStore.ts": "ONE transient open-popup id, not a per-node map",
     "pivotEditorStore.ts": "ONE transient open-editor id, not a per-node map",
+    "categorizeEditorStore.ts": "ONE transient open sorter, not a per-node map",
     "elementPickerStore.ts": "ONE transient open-picker id, not a per-node map",
     "filePickerStore.ts": "ONE transient open file picker, not a per-node map",
     "compositeEditorStore.ts": "ONE transient open-drill-in id, not a per-node map",
@@ -828,7 +829,7 @@ describe("[[A1]] visualGraphCalculator — the socket box's greppable half", () 
 });
 
 // [[node-classes#Frame input labels]]
-describe("[[B14]] oneDesignSystem — frame-input labels follow the column-role grammar", () => {
+describe("[[components#The design system]] — frame-input labels follow the column-role grammar", () => {
   // A frame input's label is the ONE place the expected columns can be read
   // before wiring (aligned columns arrive as one frame input by design). Roles
   // join with " + " in Title case; a no-expectation input is a plain noun; shape
@@ -865,7 +866,7 @@ describe("[[B14]] oneDesignSystem — frame-input labels follow the column-role 
         }
       }
     }
-    expect(offenders, "labels violating the frameLabelGrammar grammar ([[B14]] oneDesignSystem)").toEqual([]);
+    expect(offenders, "labels violating the frameLabelGrammar grammar ([[components#The design system]])").toEqual([]);
   });
 });
 
@@ -1012,7 +1013,7 @@ describe("[[B2]] webTryDesktopFull — recharts is imported statically by exactl
   });
 });
 
-describe("[[D22]] oneNamePerCard — no component syncs a label on an op change", () => {
+describe("[[add-menu#Naming a placed node]] — no component syncs a label on an op change", () => {
   it("no component writes an op's catalog label into node.label", () => {
     const offenders: string[] = [];
     for (const file of walk(path.join(SRC, "components"))) {
@@ -1078,5 +1079,35 @@ describe("[[B19]] spreadsheetHabits — Enter is read through isEnter, so an inp
       });
     }
     expect(offenders, "use isEnter(e) from src/graph/enterKey.ts").toEqual([]);
+  });
+});
+
+describe("[[pointer-gestures#Opt-out classes]] — a pad dragged inside a card carries .nodrag", () => {
+  // React Flow's drag listens natively on the card's wrapper, below React's root listener, so a React
+  // stopPropagation() runs too late and the press drags the card too. `.nodrag` is the one opt-out it reads.
+  const SANCTIONED: Record<string, string> = {
+    "components/DrawnCableCapture.tsx": "the canvas's own drawing layer, not inside a card",
+    "components/DrawnCableLayer.tsx": "the canvas's own drawing layer, not inside a card",
+    "components/IsolateEndpoints.tsx": "canvas chrome around an isolated card, not inside one",
+    "components/PopupResizeGrip.tsx": "a popup outside the canvas",
+  };
+
+  it("every component that captures the pointer marks its surface .nodrag (or is sanctioned, with a reason)", () => {
+    const offenders = walk(path.join(SRC, "components"))
+      .filter((f) => !SANCTIONED[rel(f)])
+      .filter((f) => {
+        const src = codeLines(f).join("\n");
+        return src.includes("setPointerCapture") && !/\bnodrag\b/.test(src);
+      })
+      .map(rel);
+    expect(offenders, "add className=\"nodrag nopan\" to the element that takes the drag").toEqual([]);
+  });
+
+  it("the sanctioned list stays honest", () => {
+    for (const f of Object.keys(SANCTIONED)) {
+      const p = path.join(SRC, f);
+      expect(fs.existsSync(p), f).toBe(true);
+      expect(fs.readFileSync(p, "utf8").includes("setPointerCapture"), f).toBe(true);
+    }
   });
 });

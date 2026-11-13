@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[B18]] safeToShare, [[engineering#Untrusted content]]
 import { describe, it, expect } from "vitest";
 import { externalLinkTarget } from "../../src/graph/externalLinks";
 

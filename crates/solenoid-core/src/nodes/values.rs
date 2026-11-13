@@ -428,7 +428,8 @@ pub fn serialize_cube<S: serde::Serializer>(c: &Cube, s: S) -> Result<S::Ok, S::
     m.end()
 }
 
-/// A LAMBDA's reply: one with its body's text as `{"lambda": {params, expr, captured, capturedValues, readValues}}`,
+/// A LAMBDA's reply: one with its body's text as `{"lambda": {params, expr, captured, capturedValues, readValues}}`
+/// (and `empty`, the captures its card left empty, where there are any),
 /// which `nodeWire.ts` compiles back into a callable LAMBDA, its captures with their units beside the values its body
 /// reads; one without (a formula's own LAMBDA, a bare function name) as `{"lambda": true}`, which JS can't take.
 pub fn serialize_lambda<S: serde::Serializer>(l: &crate::eval::LambdaV, s: S) -> Result<S::Ok, S::Error> {
@@ -449,7 +450,7 @@ pub fn serialize_lambda<S: serde::Serializer>(l: &crate::eval::LambdaV, s: S) ->
         fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             let Body(l, src, captured) = *self;
             let read: Vec<&V> = captured.iter().map(|n| l.env.get(n).unwrap_or(&V::Undef)).collect();
-            let units: Vec<&V> = (0..captured.len()).map(|i| l.units.get(i).unwrap_or(read[i])).collect();
+            let units: Vec<&V> = Vec::from_fn(captured.len(), |i| l.units.get(i).unwrap_or(read[i]));
             let mut m = s.serialize_map(None)?;
             m.serialize_entry("params", &l.params)?;
             m.serialize_entry("expr", src)?;
@@ -458,6 +459,9 @@ pub fn serialize_lambda<S: serde::Serializer>(l: &crate::eval::LambdaV, s: S) ->
             m.serialize_entry("readValues", &Cells(read))?;
             if let Some(d) = &l.descriptions {
                 m.serialize_entry("descriptions", d.as_ref())?;
+            }
+            if !l.empty.is_empty() {
+                m.serialize_entry("empty", &l.empty)?;
             }
             m.end()
         }

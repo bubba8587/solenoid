@@ -58,7 +58,7 @@ export type NodeCatalogEntry = {
   fx?: string[];
   /** A generated row that places what another row places (the host, or `host__op-op`); search shows one of them. */
   places?: string;
-  /** Cards placed with this one and cabled into it, such as a preset's physical constants ([[C76]] formulaPackDefault). */
+  /** Cards placed with this one and cabled into it, such as a preset's physical constants ([[composite-nodes#Packs]]). */
   companions?: () => Companion[];
   /** The release that brought the card; none is 1.5 or earlier (`addedIn`). A card new on `develop` says `NEXT_RELEASE` (release.ts). */
   added?: Release;

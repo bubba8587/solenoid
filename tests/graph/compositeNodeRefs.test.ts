@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C35]] unknownViaPlaceholder, [[composite-nodes#Save and load]]
+// [[save-format#A save loses nothing quietly]], [[C35]] unknownViaPlaceholder, [[composite-nodes#Save and load]]
 import { describe, it, expect } from "vitest";
 import { CompositeNode } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";

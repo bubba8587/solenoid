@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]
 export * from "./nodes/shared";
 export * from "./nodes/input";
 export * from "./nodes/control";
@@ -56,3 +56,4 @@ export * from "./nodes/unitCircle";
 export * from "./nodes/geometryFigures";
 export * from "./nodes/tornado";
 export * from "./nodes/composite";
+export * from "./nodes/probability";

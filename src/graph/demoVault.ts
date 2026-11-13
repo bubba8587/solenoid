@@ -1,4 +1,4 @@
-// [[C1]], [[D62]]
+// [[vault-read#Which notes are read]], [[D62]]
 import type { FsProvider } from "./fileBridge";
 import { settingsStore } from "./settingsStore";
 
@@ -34,15 +34,17 @@ function relOf(path: string): string {
 }
 
 let _files: Map<string, string> | null = null;
+/** A binary file's address in the build, by its vault path. */
+let _binary: Map<string, string> = new Map();
 let _loading: Promise<Map<string, string>> | null = null;
 function ensureLoaded(): Promise<Map<string, string>> {
   if (_files) return Promise.resolve(_files);
   if (!_loading) {
     _loading = import("./demoVaultData").then((m) => {
+      const rel = (abs: string) => abs.replace(/^.*\/demo-vault\//, "");
       const map = new Map<string, string>();
-      for (const [abs, content] of Object.entries(m.DEMO_VAULT_FILES)) {
-        map.set(abs.replace(/^.*\/demo-vault\//, ""), content);
-      }
+      for (const [abs, content] of Object.entries(m.DEMO_VAULT_FILES)) map.set(rel(abs), content);
+      _binary = new Map(Object.entries(m.DEMO_VAULT_BINARY).map(([abs, url]) => [rel(abs), url]));
       _files = map;
       return map;
     }, (e: unknown) => {
@@ -55,11 +57,18 @@ function ensureLoaded(): Promise<Map<string, string>> {
 
 const LIVE = import.meta.env.MODE === "development";
 async function listKeys(): Promise<Iterable<string>> {
-  if (!LIVE) return (await ensureLoaded()).keys();
+  if (!LIVE) { const files = await ensureLoaded(); return [...files.keys(), ..._binary.keys()]; }
   const r = await fetch("/__demo-vault");
   if (!r.ok) throw new Error("The demo vault listing failed.");
   return (await r.json()) as string[];
 }
+async function readBytes(rel: string): Promise<Uint8Array | undefined> {
+  const url = LIVE ? `/__demo-vault?p=${encodeURIComponent(rel)}` : (await ensureLoaded(), _binary.get(rel));
+  if (!url) return undefined;
+  const r = await fetch(url);
+  return r.ok ? new Uint8Array(await r.arrayBuffer()) : undefined;
+}
+
 async function readText(rel: string): Promise<string | undefined> {
   if (!LIVE) return (await ensureLoaded()).get(rel);
   const r = await fetch(`/__demo-vault?p=${encodeURIComponent(rel)}`);
@@ -116,8 +125,10 @@ export const demoVaultFs: FsProvider = {
     const i = path.lastIndexOf("/");
     return i === -1 ? path : path.slice(0, i);
   },
-  async readBinary() {
-    throw new Error("The demo vault has no binary files.");
+  async readBinary(path) {
+    const bytes = await readBytes(relOf(path));
+    if (bytes === undefined) throw new Error(`Not in the demo vault: ${relOf(path)}`);
+    return bytes;
   },
   writeTextFile: readOnly,
   writeBinary: readOnly,

@@ -84,7 +84,7 @@ export function ColumnListField({ nodeId, frameInput, value, onChange, placehold
     <>
       <input
         type="text"
-        className="solenoid-node__inline-input"
+        className="solenoid-node__inline-input solenoid-node__inline-input--list"
         value={field.draft}
         placeholder={placeholder}
         list={offers.length ? listId : undefined}

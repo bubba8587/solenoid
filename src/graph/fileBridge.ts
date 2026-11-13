@@ -1,4 +1,4 @@
-// [[C1]] demoVault, [[C103]] untrustedContentSeams
+// [[B1]] obsidianBet, [[vault-read#Which notes are read]], [[engineering#Untrusted content]]
 import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdir, exists, stat } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { join, dirname, documentDir, homeDir } from "@tauri-apps/api/path";
@@ -192,11 +192,16 @@ export function listLocalFiles(folder: string): Promise<string[]> {
   return listLocalFilesMatching(folder, "**/*");
 }
 
-/** The CSV and Parquet files under the data folder a pattern names (`fileGlob.ts`), relative to it. */
+/** The CSV, Parquet and Excel files under the data folder a pattern names (`fileGlob.ts`), relative to it. */
 export async function listLocalFilesMatching(folder: string, pattern: string): Promise<string[]> {
   if (!folder || !canReadRoot(folder)) return [];
   const readDir = async (rel: string) => fs().readDir(rel === "" ? folder : await fs().join(folder, ...rel.split("/")));
-  return (await matchFiles(pattern, readDir)).filter((p) => /\.(csv|parquet)$/i.test(p));
+  return (await matchFiles(pattern, readDir)).filter((p) => /\.(csv|parquet|xlsx|xlsm)$/i.test(p));
+}
+
+export async function readFileBytes(folder: string, name: string): Promise<Uint8Array> {
+  const path = await fs().join(folder, name);
+  return fs().readBinary(path);
 }
 
 export async function readFileText(folder: string, name: string): Promise<string> {

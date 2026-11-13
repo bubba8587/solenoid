@@ -16,7 +16,7 @@ import { settingsPanel } from "./settingsStore";
 import { keyUnderModal } from "./modalGuard";
 import { cableSelectionStore } from "./cableState";
 import { ConduitNode, AngleDialNode, GroupNode } from "./nodeClasses";
-import { toggleAllChrome, toggleChrome } from "./chromeToggle";
+import { tabTogglesChrome, toggleAllChrome, toggleChrome } from "./chromeToggle";
 import { createGroupFromSelection, autofitGroupWithHistory } from "./groupLogic";
 import { setGroupsCollapsed } from "./groupPush";
 import { groupCollapseStore } from "./groupCollapse";
@@ -173,15 +173,13 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         }
         return;
       }
+      if (e.key === "Tab") {
+        if (tabTogglesChrome(target) && toggleAllChrome() > 0) e.preventDefault();
+        return;
+      }
       if (!e.shiftKey) {
         const editor = editorRef.current;
         const view = viewRef.current;
-        if (e.key === "Tab") {
-          const onBackground =
-            target == null || target === document.body || target === document.documentElement;
-          if (onBackground && toggleAllChrome() > 0) { e.preventDefault(); return; }
-          return;
-        }
         // Match the produced character: `[` and `]` sit on different physical keys across layouts.
         if ((e.key === "[" || e.key === "]") && !locked) {
           if (rotateSelection(e.key === "]" ? 1 : -1) > 0) { e.preventDefault(); return; }

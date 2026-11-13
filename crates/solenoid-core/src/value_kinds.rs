@@ -6,7 +6,7 @@ use crate::frame::FrameCell;
 use crate::jsnum::{js_string, trim_space};
 
 /// The most elements a generated list or grid may hold: a count past it is an error naming the limit, never a
-/// hang ([[C120]] linearWork).
+/// hang ([[engineering#Performance]] linearWork).
 pub const MAX_GENERATED: f64 = 1_000_000.0;
 
 pub const DOMAIN_MESSAGE: &str = "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.";
@@ -26,7 +26,7 @@ pub fn is_decimal_text(b: &str) -> bool {
         None => all_digits(mant),
         Some((a, f)) => (all_digits(a) && (f.is_empty() || all_digits(f))) || (a.is_empty() && all_digits(f)),
     };
-    mant_ok && exp.is_none_or(|e| all_digits(e.strip_prefix(['+', '-']).unwrap_or(e)))
+    mant_ok && exp.is_none_or(|e| all_digits(e.trim_prefix(['+', '-'])))
 }
 
 /// `GROUPED_TEXT` without its sign: `\d{1,3}(,\d{3})+(\.\d*)?`.
@@ -55,7 +55,7 @@ fn is_grouped_text(b: &str) -> bool {
 
 pub fn decimal_from_text(text: &str) -> f64 {
     let t = trim_space(text);
-    let body = t.strip_prefix(['+', '-']).unwrap_or(t);
+    let body = t.trim_prefix(['+', '-']);
     if is_decimal_text(body) {
         return t.parse::<f64>().unwrap_or(f64::NAN);
     }

@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
+// [[group-expand-push]], [[standoffs#The solver runs last]], [[group-expand-push#LayoutFx]]
 import { measuredSize } from "./nodeSize";
 import type { View } from "./view";
 import type { GraphEditor } from "./graphEditor";
@@ -90,7 +90,7 @@ interface World {
   overhang: Map<string, { left: number; top: number }>;
 }
 
-/** An open group's box reaches over any FC docked to a member that hangs past its edge, since the FC rides that member ([[C112]] noOverlapsEver). */
+/** An open group's box reaches over any FC docked to a member that hangs past its edge, since the FC rides that member ([[group-expand-push#LayoutFx]]). */
 function withDockedOverhang(editor: Editor, view: View, g: GroupNode, box: PushBox): PushBox {
   let x0 = box.x, y0 = box.y, x1 = box.x + box.w, y1 = box.y + box.h;
   for (const m of g.members) {

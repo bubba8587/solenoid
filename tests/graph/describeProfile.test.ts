@@ -1,4 +1,4 @@
-// [[C127]] pivotView, [[table-popup#The Dashboard view]], [[frame-verbs#Describe and Correlation Matrix]]
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]], [[table-popup#The Profile view]], [[frame-verbs#Describe and Correlation Matrix]]
 import { describe, it, expect } from "vitest";
 import { describeTilesOf } from "../../src/graph/describeProfile";
 import { carryFrameSidecars } from "../../src/graph/frameSidecar";

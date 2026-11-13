@@ -133,7 +133,7 @@ fn payoff_plan(debts: &[Debt], extra: f64, order: &str) -> Result<Plan, String> 
         schedule.push(balances.iter().map(|&b| round2(b)).collect());
     }
     let per_debt =
-        (0..n).map(|i| (if cleared[i] < 0 { month as f64 } else { cleared[i] as f64 }, round2(interest[i]))).collect();
+        Vec::from_fn(n, |i| (if cleared[i] < 0 { month as f64 } else { cleared[i] as f64 }, round2(interest[i])));
     Ok(Plan { schedule, per_debt })
 }
 
@@ -703,19 +703,19 @@ pub fn kmeans_frame(f: &FrameValue, k: f64) -> Result<Option<FrameValue>, String
     let k = r.centers.len();
     let mut out = vec![
         FrameColumn::new("Labels", FrameColType::Number, labels),
-        FrameColumn::new("Cluster", FrameColType::Number, (0..k).map(|c| cell(c, (c + 1) as f64)).collect()),
+        FrameColumn::new("Cluster", FrameColType::Number, Vec::from_fn(k, |c| cell(c, (c + 1) as f64))),
     ];
     for (j, &col) in cols.iter().enumerate() {
         out.push(FrameColumn::new(
             f.columns[col].name.clone(),
             FrameColType::Number,
-            (0..k).map(|c| r.centers[c].as_ref().map_or(FrameCell::Null, |v| FrameCell::Num(v[j]))).collect(),
+            Vec::from_fn(k, |c| r.centers[c].as_ref().map_or(FrameCell::Null, |v| FrameCell::Num(v[j]))),
         ));
     }
     out.push(FrameColumn::new(
         "Count",
         FrameColType::Number,
-        (0..k).map(|c| cell(c, r.labels.iter().filter(|&&l| l == c + 1).count() as f64)).collect(),
+        Vec::from_fn(k, |c| cell(c, r.labels.iter().filter(|&&l| l == c + 1).count() as f64)),
     ));
     Ok(Some(FrameValue { columns: out }))
 }
@@ -730,43 +730,37 @@ pub fn pca_frame(f: &FrameValue, standardize: bool) -> Option<FrameValue> {
     }
     let d = points[0].len();
     let nf = n as f64;
-    let means: Vec<f64> = (0..d).map(|j| points.iter().fold(0.0, |s, p| s + p[j]) / nf).collect();
-    let scales: Vec<f64> = (0..d)
-        .map(|j| {
-            if !standardize {
-                return 1.0;
-            }
-            let v = points.iter().fold(0.0, |s, p| s + libm::pow(p[j] - means[j], 2.0)) / (nf - 1.0);
-            if v > 0.0 {
-                v.sqrt()
-            } else {
-                1.0
-            }
-        })
-        .collect();
+    let means: Vec<f64> = Vec::from_fn(d, |j| points.iter().fold(0.0, |s, p| s + p[j]) / nf);
+    let scales: Vec<f64> = Vec::from_fn(d, |j| {
+        if !standardize {
+            return 1.0;
+        }
+        let v = points.iter().fold(0.0, |s, p| s + libm::pow(p[j] - means[j], 2.0)) / (nf - 1.0);
+        if v > 0.0 {
+            v.sqrt()
+        } else {
+            1.0
+        }
+    });
     let z: Vec<Vec<f64>> =
         points.iter().map(|p| p.iter().enumerate().map(|(j, v)| (v - means[j]) / scales[j]).collect()).collect();
     let cov: Vec<Vec<f64>> =
-        (0..d).map(|i| (0..d).map(|j| z.iter().fold(0.0, |s, r| s + r[i] * r[j]) / (nf - 1.0)).collect()).collect();
+        Vec::from_fn(d, |i| (0..d).map(|j| z.iter().fold(0.0, |s, r| s + r[i] * r[j]) / (nf - 1.0)).collect());
     let (values, vectors) = crate::fns_matrix::mat_eigh(&cov, 1e-12)?;
     let variance: Vec<f64> = values.iter().map(|&v| nan_max(0.0, v)).collect();
     let total_var = variance.iter().fold(0.0, |a, b| a + b);
     let scores: Vec<Vec<f64>> = z
         .iter()
-        .map(|r| {
-            (0..vectors[0].len()).map(|c| r.iter().enumerate().fold(0.0, |s, (j, v)| s + v * vectors[j][c])).collect()
-        })
+        .map(|r| Vec::from_fn(vectors[0].len(), |c| r.iter().enumerate().fold(0.0, |s, (j, v)| s + v * vectors[j][c])))
         .collect();
     let pc = |c: usize| format!("PC{}", c + 1);
-    let mut out: Vec<FrameColumn> = (0..d)
-        .map(|c| {
-            let mut values = vec![FrameCell::Null; total];
-            for (i, &row) in kept.iter().enumerate() {
-                values[row] = FrameCell::Num(scores[i][c]);
-            }
-            FrameColumn::new(pc(c), FrameColType::Number, values)
-        })
-        .collect();
+    let mut out: Vec<FrameColumn> = Vec::from_fn(d, |c| {
+        let mut values = vec![FrameCell::Null; total];
+        for (i, &row) in kept.iter().enumerate() {
+            values[row] = FrameCell::Num(scores[i][c]);
+        }
+        FrameColumn::new(pc(c), FrameColType::Number, values)
+    });
     out.push(text_col("Feature", cols.iter().map(|&c| f.columns[c].name.clone())));
     out.extend((0..d).map(|c| num_col(pc(c), (0..d).map(|j| vectors[j][c]))));
     out.push(num_col("Explained", variance.iter().map(|&v| if total_var > 0.0 { v / total_var } else { 0.0 })));
@@ -778,9 +772,9 @@ fn sigmoid(t: f64) -> f64 {
 }
 
 fn weighted_cross(d: &[Vec<f64>], w: &[f64], p: usize) -> Vec<Vec<f64>> {
-    (0..p)
-        .map(|a| (0..p).map(|b| d.iter().enumerate().fold(0.0, |s, (i, row)| s + w[i] * row[a] * row[b])).collect())
-        .collect()
+    Vec::from_fn(p, |a| {
+        (0..p).map(|b| d.iter().enumerate().fold(0.0, |s, (i, row)| s + w[i] * row[a] * row[b])).collect()
+    })
 }
 
 /// The Logistic card's outputs side by side: Coefficients (Term, Coefficient, Std Error, z, p), then each row's fitted
@@ -850,8 +844,7 @@ fn logistic_fit(x: &[Vec<f64>], y: &[f64]) -> Option<(Vec<f64>, Vec<f64>, Vec<f6
         let w = weights(&mu);
         let z: Vec<f64> = eta.iter().enumerate().map(|(i, e)| e + (y[i] - mu[i]) / w[i]).collect();
         let h = weighted_cross(&d, &w, p);
-        let g: Vec<f64> =
-            (0..p).map(|a| d.iter().enumerate().fold(0.0, |s, (i, row)| s + w[i] * row[a] * z[i])).collect();
+        let g: Vec<f64> = Vec::from_fn(p, |a| d.iter().enumerate().fold(0.0, |s, (i, row)| s + w[i] * row[a] * z[i]));
         let next = crate::fns_lists::mat_solve(&h, &g)?;
         let delta = next.iter().zip(&beta).fold(f64::NEG_INFINITY, |m, (v, b)| nan_max(m, (v - b).abs()));
         beta = next;
@@ -861,12 +854,10 @@ fn logistic_fit(x: &[Vec<f64>], y: &[f64]) -> Option<(Vec<f64>, Vec<f64>, Vec<f6
     }
     let mu: Vec<f64> = eta_of(&beta).iter().map(|&e| sigmoid(e)).collect();
     let h = weighted_cross(&d, &weights(&mu), p);
-    let se = (0..p)
-        .map(|j| {
-            let mut e = vec![0.0; p];
-            e[j] = 1.0;
-            crate::fns_lists::mat_solve(&h, &e).map_or(f64::NAN, |col| nan_max(0.0, col[j]).sqrt())
-        })
-        .collect();
+    let se = Vec::from_fn(p, |j| {
+        let mut e = vec![0.0; p];
+        e[j] = 1.0;
+        crate::fns_lists::mat_solve(&h, &e).map_or(f64::NAN, |col| nan_max(0.0, col[j]).sqrt())
+    });
     Some((beta, mu, se))
 }

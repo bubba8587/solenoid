@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[C10]] socketLattice, [[C24]] arraySemantics, [[E9]] errorsKeepOrigin
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C10]] socketLattice, [[C24]] arraySemantics, [[error-values#Producers and provenance]]
 // [[graph-core#The input boundary]]: freezes fixtures/core/boundary-*.json.gz.
 import { describe, expect, it } from "vitest";
 import { frozen, replay, sampled } from "./coreFixtures";

@@ -86,7 +86,7 @@ npm run tauri build  # production build → src-tauri/target/release/
 ```
 
 On Windows `tauri build` emits the portable `solenoid.exe` plus an installer under
-`target/release/`; on Linux, the `solenoid` binary plus an AppImage, a `.deb` and an `.rpm`.
+`target/release/`; on Linux, the `solenoid` binary plus an AppImage, a `.deb` and an `.rpm` (releases ship only the `.deb`).
 Add `-- --no-bundle` to build just the binary.
 
 ## License

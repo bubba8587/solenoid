@@ -1,6 +1,6 @@
 // [[C69]], [[C70]], [[C71]]
 import { GraphNode } from "../graphModel";
-import { cubeIn, strIn, numIn, dateIn, dateListIn, chartOut } from "./shared";
+import { cubeIn, strIn, dateIn, dateListIn, chartOut } from "./shared";
 import { type ChartOptions } from "./chartOptions";
 import { type SolError } from "../errorValue";
 import type { ChartValue } from "../chartValue";
@@ -10,11 +10,12 @@ import { nodeOnCore } from "../nodeOnCore";
 export const GANTT_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1 };
 
 export class GanttNode extends GraphNode {
+  /** The weekend, a WORKDAY.INTL code kept in `literals` with no socket (`WeekendPick`). */
+  static savedFields: ReadonlySet<string> = new Set(["weekend_code"]);
   static socketDocs: Record<string, string> = {
     schedule: "A scheduled project, the rows a Schedule node worked out. A Project column becomes the section bands.",
     baseline: "A second scheduled project, drawn as ghost bars behind the bars. Rows match by task name.",
     holidays: "Dates to shade as non-working, alongside the weekend.",
-    weekend_code: "Which days shade as the weekend. Excel: WORKDAY.INTL codes, 1 = Sat+Sun, 2 = Sun+Mon, 11 to 17 = a single day off.",
     status: "The status line. Unwired, no line.",
     options: "View options as key=value pairs, semicolon separated: zoom=week;critical=on;window=1-Jun,31-Aug. Help lists every key under Plans.",
     chart: "The Gantt figure: bars, milestones, dependency arrows and the critical path.",
@@ -34,7 +35,6 @@ export class GanttNode extends GraphNode {
     this.addInput("schedule", cubeIn("Schedule"));
     this.addInput("baseline", cubeIn("Baseline"));
     this.addInput("holidays", dateListIn("Holidays"));
-    this.addInput("weekend_code", numIn("Weekend"));
     this.addInput("status", dateIn("Status date"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));

@@ -1,5 +1,5 @@
 //! Sums rounded once, at the end (Shewchuk's partials, as Python's `math.fsum`), then snapped to 0 where the numbers
-//! as written cancel (`snap`): order-free ([[C120]] linearWork, `tree/specs/computation/formula-language.md` § Sums).
+//! as written cancel (`snap`): order-free ([[B19]] spreadsheetHabits, [[engineering#Performance]], `tree/specs/computation/formula-language.md` § Sums).
 
 /// A running exact sum, held as non-overlapping partials, its infinities and NaNs counted beside them.
 #[derive(Clone, Debug, Default)]
@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn any_order_and_any_split_agree() {
-        let xs: Vec<f64> = (0..500).map(|i| ((i * 7919) % 1000) as f64 * 0.013 - 6.1).collect();
+        let xs: Vec<f64> = Vec::from_fn(500, |i| ((i * 7919) % 1000) as f64 * 0.013 - 6.1);
         let want = exact_sum(&xs);
         let mut rev = xs.clone();
         rev.reverse();

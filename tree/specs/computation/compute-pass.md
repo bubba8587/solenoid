@@ -2,11 +2,11 @@
 aliases: ["Compute pass and the input boundary"]
 tags: [spec, computation]
 ---
-<!-- [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
+<!-- [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
 
 # Spec: Compute pass and the input boundary
 
-Serves [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas and [[C17]] shareImpl. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[C23]] calcModes, [[C24]] arraySemantics, [[D86]] blankRoles, [[C25]] firstClassUnits, [[C10]] socketLattice, [[C15]] matricesInFormulas and [[C17]] shareImpl. It covers what the system does and blocks, and the decision each behavior serves.
 
 This file owns what happens from "something changed" to "every card shows its new value": how the engine is driven, which nodes a pass recomputes, the calc mode, volatile nodes, rebuild scopes, and what a value goes through between leaving one node's output and reaching the next node's `data()`. Which cables may connect at all is [[socket-lattice]] ([[C10]] socketLattice); this file starts once a cable exists. The error codes and their meaning are [[error-values]]; units on the value are [[unit-flow]]; the null and blank semantics a `data()` applies are [[value-semantics]].
 
@@ -51,6 +51,8 @@ Seeding must happen after invalidation and before any fetch: the engine resolves
 The headless runner (`scripts/run-graph.ts`) calls `computeAll`. The app's pass (`processGraph`) runs the engine's `pass`, the same pieces with its own bookkeeping, described below. A composite's private engine resets fully and fetches only its output markers, with the same `seedLoops`.
 
 ### The targeted pass equals the full pass
+
+However much a pass recalculates, its answers match a full, clean recalculation of the whole graph. Touching only what an edit affects is a speedup, never a different answer.
 
 **MUST:** `downstreamClosure(editor, startId)` is exactly the set of nodes a full pass would recompute differently: the start node and everything that depends on it, through branches and joins, stopping at cycles, no more and no less. Cycles are handled the same way too: the targeted pass seeds `#CIRC!` on exactly the members of each loop, as the full pass does, instead of recursing until the stack overflows.
 
@@ -149,12 +151,13 @@ flowchart TD
 | A node added live | `processGraph(id, undefined, { topology: true })` |
 | Load or document switch | `processGraph()` at the end of the rebuild, still inside the rebuild scope |
 | Paste | `bulkSettle(pastedIds)`: an additive pass rendering only the pasted nodes |
-| Delete, composite create or unpack, undo, redo | a rebuild scope, then one `bulkSettle()` (a full pass) |
+| Delete, Wrap as Composite, Unpack (main canvas) | a rebuild scope, then `bulkSettle(reach, { topology: true })`: each surviving card whose inputs lost or gained a cable, and each card new to the canvas (the composite, the unpacked cards), has its reach reset, and an additive pass renders that reach (`changedReach`, `editReach.ts`); removing cables from the cable menu does the same. In a drill-in, the drill-in's own settle |
+| Undo, redo | the delta's own pass, inside its rebuild scope so Manual computes it as a load's: an additive pass over what the changed cards reach ([[react-flow-surface-contract#Undo history]]); a whole load where the delta falls back |
 | F9, Calculate now, the status bar's Calculate, switching to Automatic or Sketch, local midnight when the document holds a volatile date | `requestRecalc()` |
 | A sink's Run (Write File, Write Obsidian, Write Tasks) while Sketch is selected | `withExactPass(write)`: waits out a pass in flight, then `processGraph()` with `{ force: true }` inside a `beginForceExact` bracket held through the write; no new generation |
 | A live-data connection refresh or a background load landing | `processGraph()` outside any rebuild scope ([[#A refresh never runs inside a rebuild scope]]) |
 
-`bulkSettle(renderOnly?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly)`.
+`bulkSettle(renderOnly?, opts?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly, opts)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly, opts)`. An additive pass clears nothing itself, so a caller that changed values first resets each changed card's reach (`engine.reset(id)`) and names that reach.
 
 ### The perf probe
 
@@ -237,7 +240,7 @@ A rebuild scope marks the graph as being built or rewritten in bulk, as opposed 
 
 - `beginGraphRebuild()` increments the session's depth counter; `endGraphRebuild()` decrements it, never below zero; `isGraphRebuilding()` is true while the counter is above zero. Every opener pairs its `end` in a `finally`.
 - Openers: document load and its rollback (`persistence.ts`), paste, bulk delete, composite create and unpack, the Tornado sweep, the model fuzzer, and undo and redo (through `withGraphRebuild`).
-- `withGraphRebuild(fn)` clears the session's "topology dirty" flag, opens a scope, runs `fn`, closes the scope, and if a cable changed while the scope was open (the canvas pipe calls `markBulkTopoDirty()` instead of settling) runs one `bulkSettle()`. So an undo that only moved a node computes nothing. The flag is a single global, so `withGraphRebuild` does not nest.
+- `withGraphRebuild(fn)` clears the session's "topology dirty" flag, opens a scope, runs `fn`, closes the scope, and if a cable changed while the scope was open (the canvas pipe calls `markBulkTopoDirty()` instead of settling) runs one `bulkSettle()`, unless the caller passes `{ settled: true }` because it runs its own settle and pass (the undo delta). So a step that only moved a node computes nothing. The flag is a single global, so `withGraphRebuild` does not nest.
 
 What an open scope suppresses:
 
@@ -251,12 +254,12 @@ What an open scope suppresses:
 | The React Flow topology sync (retried each task until the scope closes) | `FlowCanvas.tsx` | the rebuild commits once |
 | Undo-history recording | `flowHistory.ts` | a load is not an undoable step |
 | Document operations (switch, create, fork and the rest) | `documentStore.ts` | they would race a half-built canvas |
-| Outward effects: Alert firing, Expect violations, a relative date Value Input's day change, a composite's By-Row cap warning, Problems panel logging | nodes and `problemsStore.ts` | [[D79]] effectsEdgeTriggered: a load must not replay old alerts |
+| Outward effects: Alert firing, Expect violations, a relative date Value Input's day change, a composite's By-Row cap warning, Problems panel logging | nodes and `problemsStore.ts` | [[alert-node-alerts-hud#When it fires]]: a load must not replay old alerts |
 | The Conduit's lane-change recompute | `ConduitComponent.tsx` | the rebuild's own settle covers it |
 
 ### A refresh never runs inside a rebuild scope
 
-**MUST:** a live-data refresh (`refreshConnection` from the manual button or the interval timer, `refreshAllConnections`, a background load landing) runs its pass outside `beginGraphRebuild` / `endGraphRebuild`. Bulk topology operations wrap themselves in scopes on purpose; a refresh must never be one of them. A scope suppresses outward effects so a load doesn't replay old alerts ([[D79]] effectsEdgeTriggered), and a refresh inside one would swallow a real alert on fresh data: an Alert watching a live feed would simply stop firing.
+**MUST:** a live-data refresh (`refreshConnection` from the manual button or the interval timer, `refreshAllConnections`, a background load landing) runs its pass outside `beginGraphRebuild` / `endGraphRebuild`. Bulk topology operations wrap themselves in scopes on purpose; a refresh must never be one of them. A scope suppresses outward effects so a load doesn't replay old alerts ([[alert-node-alerts-hud#When it fires]]), and a refresh inside one would swallow a real alert on fresh data: an Alert watching a live feed would simply stop firing.
 
 The Tornado sweep opens a scope and `beginForceExact()` on purpose: its perturbation passes must run in manual mode, on full data, without raising real alerts.
 
@@ -290,7 +293,7 @@ On each call with `inputs`:
 
 1. **Short-circuit.** Unless the node's constructor name is in `SEES_ERRORS` (`boundary.rs`; `IFErrorNode`, `IsTestNode`, the branch cards `IfNode`, `IfsNode`, `SwitchNode` and `ChooseNode`, `ConduitNode`, `CableSwitchNode`, `DisplayNode`, `NoteNode`, `ReportNode`, `DashboardNode`, `ChartNode`, `CompositeNode`, `CompositeOutputNode`; why each is listed is [[error-values#Nodes that see raw errors]]), the guard scans each input array's top-level values for a `SolError`. On the first one found it returns error-out without calling `data()`. Errors inside a list, matrix or Frame cell do not short-circuit; the node handles those per cell.
 2. **Run.** Coerces the inputs and calls `data()`. A synchronous throw, or a rejected promise, becomes error-out of the converted error: a thrown `SolError` is itself, an error whose `name` is `"ShapeError"` becomes `#SHAPE!` with its message, anything else becomes `#ERROR!` with the message "This node failed to compute: …". An answer of nothing (`undefined` or `null`, returned or resolved) is the same `#ERROR!`, "This node failed to compute: it returned no answer", at once or async alike.
-3. **Tag the result.** On success, every output value is passed through origin tagging: an untagged top-level `SolError` gets `origin: { nodeId, nodeName }`; untagged errors in a one-dimensional array's cells and in a Frame's column cells get the same, in a copy, one tagged error per distinct untagged error. An origin already present is never overwritten ([[E9]] errorsKeepOrigin). When nothing needed tagging the original object is returned. Then the result is reported to the error sinks.
+3. **Tag the result.** On success, every output value is passed through origin tagging: an untagged top-level `SolError` gets `origin: { nodeId, nodeName }`; untagged errors in a one-dimensional array's cells and in a Frame's column cells get the same, in a copy, one tagged error per distinct untagged error. An origin already present is never overwritten ([[error-values#Producers and provenance]]). When nothing needed tagging the original object is returned. Then the result is reported to the error sinks.
 4. **Error-out.** Tags the error with this node as origin if it has none (with `inputSlot` set to the input key that carried it when it came from an input, and no `inputSlot` key otherwise), sets every current output key to the tagged error, sets `cachedResult` (and a figure card's `cachedChart`) to it and `cachedPayload` to `null` where the node has those properties, reports it to the sinks, and returns the outputs.
 
 Error sinks (`registerErrorSink` in `errorValue.ts`; the Problems store registers one) receive at most one report per node per call: the first error found on the node's own outputs by `findCellError`, a bounded scan of the head and a stride sample of each container ([[error-values]], "Per-cell errors surface through a bounded scan"), or `null` when the outputs are clean, which re-arms the sink's edge detection. The Problems store (`problemsStore.ts`) is one such sink:
@@ -421,13 +424,15 @@ A composite card owns a private `GraphEditor` and `DataflowEngine`, wrapped in t
 
 ## Delayed Pass
 
-A Delayed Pass card (`DelayedPassNode`, [[D118]] delayedPass) breaks a cable cycle by answering one recalculation late.
+A Delayed Pass card (`DelayedPassNode`) breaks a cable cycle by answering one recalculation late: it answers with the value its input had at the end of the previous recalculation, so a cable cycle through it is legal, never `#CIRC!`, and the loop moves one step each time the sheet recalculates. Every recalculation steps the loop, an edit elsewhere and F9 alike.
+
+It is the one exception to a partial recalculation matching a full one ([[#The targeted pass equals the full pass]], [[C23]] calcModes): a document with a Delayed Pass card answers by how many recalculations ran, so a partial recalculation can differ from a fresh one. The exception ends once the held values count as part of the document, so that a recalculation from the same held values always gives the same answers.
 
 - **The engine never fetches its `In`.** The graph core builds its engine with a per-node port selection (`model.rs`, `Host::delayed`): for a Delayed Pass card every input but `in` takes part, so a fetch never follows `In` and a cycle through it can't recurse. `Start` is an ordinary input.
 - **A cable into `In` is no edge to the loop finder** (`pass::loop_members`'s `delayed`, and `graphValidate.ts`'s `findCycle` for the text form), so the cycle's members are never seeded `#CIRC!`. A cable into `Start` that closes a cycle is still a loop.
 - **The card answers `held`**, or `Start` while `held` is `undefined` (before the first step and after Reset).
 - **After every app pass** (`runGraphPass`, after `engine.pass`), `advanceDelayedPasses` reads each card's `In` source through the engine (cached, so nothing recomputes), every source before any card moves, then sets each card's `held` and bumps its `stepCount`. A card whose `held` changed (`Object.is`) has its reach invalidated, so the next pass, targeted or full, computes from the new value. The canvas shows the step's answers until the next recalculation.
-- `held` and `stepCount` are run-time only; a reopened document starts from `Start`.
+- `held` and `stepCount` are run-time only, never saved: a reopened document starts from `Start`, and Reset returns a card to it.
 - **Inside a composite** the card breaks the cycle the same way, but no composite run mode advances it yet, so it answers `Start`.
 
 Tests:

@@ -1,4 +1,4 @@
-// [[C24]], [[E9]] errorsKeepOrigin, [[C24]] arraySemantics, [[E20]] pointError
+// [[C24]], [[error-values#Producers and provenance]], [[C24]] arraySemantics, [[E20]] pointError
 
 export type SolErrorCode =
   | "#DIV/0!" | "#N/A"
@@ -8,6 +8,7 @@ export type SolErrorCode =
   | "#SOLVE!"
   | "#AMBIGUOUS!"
   | "#POINT!"
+  | "#UNCALC!"
   | "#ERROR!";
 
 const TAG = "__solError";
@@ -42,6 +43,7 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#SOLVE!": "The Equation node found no value that satisfies the equation. Check the known values, or rearrange the equation.",
   "#AMBIGUOUS!": "A date like 3/4/2026 could mean April 3 or March 4. Write the month as a name (3-Apr-2026) or use the ISO form (2026-04-03).",
   "#POINT!": "A position, like a date or a °C reading, was used as an amount: added to another, scaled, or summed. Shift it by an amount, subtract two for the gap between them, or average them.",
+  "#UNCALC!": "A formula in an Excel workbook has no saved answer: Excel never calculated it, usually because a script wrote the file. Open the workbook in Excel and save it, then refresh.",
   "#ERROR!": "The node failed unexpectedly. If it persists, it's likely a Solenoid bug worth reporting.",
 };
 

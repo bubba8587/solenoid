@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[B14]] oneDesignSystem
+// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[components#The design system]]
 
 import type { GanttPayload } from "./payload";
 import type { GanttColors, GridColumn } from "./frame";

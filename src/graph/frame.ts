@@ -194,8 +194,11 @@ export function retypeColumns(frame: FrameValue, types: Record<string, FrameColT
     columns: frame.columns.map((c) => {
       const type = types[c.name];
       if (!type || type === c.type) return c;
-      const raw = c.raw ?? c.values.map((v) => (v == null ? "" : textOf(v)));
-      return { ...c, type, values: raw.map((t) => coerceFrameCell(type, t, order)), raw, unit: type === "number" ? c.unit : undefined };
+      const raw = c.raw ?? c.values.map((v) => (v == null || isSolError(v) ? "" : textOf(v)));
+      // An error with no text behind it (a workbook's #DIV/0!, a formula it never calculated) stays the error under
+      // any type; one the type made (text in a Number column) reads again from its text.
+      const values = raw.map((t, i) => (!t && isSolError(c.values[i]) ? c.values[i] : coerceFrameCell(type, t, order)));
+      return { ...c, type, values, raw, unit: type === "number" ? c.unit : undefined };
     }),
   };
 }
@@ -374,7 +377,7 @@ export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>
 const flatCell = (v: unknown): string | number | boolean | null =>
   typeof v === "string" || typeof v === "number" || typeof v === "boolean" ? v : null;
 
-/** A Cube cell's records as a flat Frame: a picked column crosses `coerceFrameCell` with its text kept as `raw`, the rest take `inferColumn`'s reading, and a nested value is blank, since a Frame cell is flat ([[D90]] cubeTypesAtDepth). */
+/** A Cube cell's records as a flat Frame: a picked column crosses `coerceFrameCell` with its text kept as `raw`, the rest take `inferColumn`'s reading, and a nested value is blank, since a Frame cell is flat ([[frame-verbs#The Cube value]]). */
 export function frameCellFromRecords(records: ReadonlyArray<Record<string, unknown>>, picks: ColumnTypes = {}): FrameValue {
   const keys = recordKeys(records);
   const names = makeHeaders(keys, keys.length);
@@ -399,14 +402,14 @@ function pickedCell(type: FrameColType, v: unknown): CubeCell {
 const listItemAs = (type: FrameColType, x: unknown): CubeCell =>
   Array.isArray(x) ? x.map((y) => listItemAs(type, y)) : x == null || isSolError(x) || isCubeValue(x) || isFrameValue(x) ? (x as CubeCell) : coerceListItem(type, x);
 
-/** A cell read as its column's declared type ([[D90]] cubeTypesAtDepth): a value as a Frame cell is (unreadable is NaN), a list's items as List Input's are (unreadable is blank). A nested table keeps its own columns' types. The cells as typed are never changed. */
+/** A cell read as its column's declared type ([[frame-verbs#The Cube value]]): a value as a Frame cell is (unreadable is NaN), a list's items as List Input's are (unreadable is blank). A nested table keeps its own columns' types. The cells as typed are never changed. */
 export function typedCubeCell(type: FrameColType, c: CubeCell): CubeCell {
   if (c == null || isSolError(c) || isCubeValue(c) || isFrameValue(c)) return c;
   if (Array.isArray(c)) return c.map((x) => listItemAs(type, x));
   return isUnitCell(c) ? c : pickedCell(type, c);
 }
 
-/** Records to a Cube: `picks` types the top level's columns, and each table nested in a cell takes what `nested` declares for its own records path, under `base`: a Frame or a Cube, and its columns' types ([[D90]] cubeTypesAtDepth). */
+/** Records to a Cube: `picks` types the top level's columns, and each table nested in a cell takes what `nested` declares for its own records path, under `base`: a Frame or a Cube, and its columns' types ([[frame-verbs#The Cube value]]). */
 export function recordsToCube(
   records: ReadonlyArray<Record<string, unknown>>,
   picks: ColumnTypes = {},

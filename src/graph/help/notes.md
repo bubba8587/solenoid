@@ -1,4 +1,4 @@
-<!-- [[B14]] oneDesignSystem (DESIGN.md § Voice) -->
+<!-- [[A1]] visualGraphCalculator, [[components#The design system]] (DESIGN.md § Voice) -->
 # Notes
 
 What doesn't fit in a tooltip: design choices, current limits, and how it works underneath.

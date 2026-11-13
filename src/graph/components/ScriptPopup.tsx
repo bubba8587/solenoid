@@ -1,4 +1,4 @@
-// [[C66]] scriptNode, [[B19]] spreadsheetHabits
+// [[script-sandbox]], [[B19]] spreadsheetHabits
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { scriptPopup } from "../scriptPopupStore";
 import { getOwningEditor } from "../activeGraph";

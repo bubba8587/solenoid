@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[components#The design system]]
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CardFrame } from "./NodeCard";
 import { useHeaderHeightVar } from "./useHeaderHeightVar";

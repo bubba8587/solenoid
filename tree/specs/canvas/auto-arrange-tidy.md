@@ -2,11 +2,11 @@
 aliases: ["Auto-arrange / Tidy"]
 tags: [spec, canvas]
 ---
-<!-- [[A1]] visualGraphCalculator, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver -->
+<!-- [[A1]] visualGraphCalculator -->
 
 # Spec: Auto-arrange / Tidy
 
-Serves [[A1]] visualGraphCalculator; the position lock is [[#Position-locked groups]] ([[C112]] noOverlapsEver), the size read is [[#Size reads]], standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[A1]] visualGraphCalculator; the position lock is [[#Position-locked groups]], the size read is [[#Size reads]], standoff clusters are [[standoffs]]. It covers what the system does and blocks, and the decision each behavior serves.
 
 Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK layered layout engine. It only moves cards; it never resizes them. Cleanup is a bigger pass built on Tidy: it tidies inside every group, fits and collapses the groups, then tidies the top level.
 
@@ -81,7 +81,7 @@ Code: `elkTidyLayout`, `makeEnsureElk` in `tidyArrange.ts`.
 - A group lays out as one portless rectangle at its measured size. Its members are held out and carried rigidly by the group's net move afterwards.
 - A Conduit exposes only its wired lanes as ports, whatever it shows, (one in and one out when nothing is wired), so ELK does not treat it as a tall multi-port card.
 - Cards are handed to ELK as Proxies. A Proxy keeps the card's `id`, so the applier still translates the real card, and any reserved size lives only on the proxy.
-- A plain card reserves its measured box. A cluster leader (a standoff cluster, see [[C89]] standoffsSolveLast) reserves the whole cluster's bounding box, and its followers are placed back at their offsets from the leader before the anchor step.
+- A plain card reserves its measured box. A cluster leader (a standoff cluster, see [[standoffs]]) reserves the whole cluster's bounding box, and its followers are placed back at their offsets from the leader before the anchor step.
 - A card with a docked output Format Controller reserves the host plus FC as one inflated box, its socket's height read from the card's layout offsets (`socketLocalCenter`), never a screen rect divided by the zoom (the zoom quantizes that read, and the fraction of a pixel changed the layout from run to run), so ELK does not pack a neighbor into the FC's area. The width grows by the FC width plus 8 per docked FC; the height covers the FC centered on its socket. This reservation is made only for hosts that are themselves layout targets, and it lives only in the proxy handed to ELK. Nothing is written to the card.
 
 ```mermaid
@@ -172,7 +172,7 @@ The selection is cleared for the layout and restored afterwards, because transla
 2. The pin-drop loop clears inline sizes (see Cards stay content-sized).
 3. Within a group: the box grows to wrap its members, and may push its neighbors (see Growing a group).
 4. Autosave is scheduled, the selection is restored, and a Tidy of a selection zooms to it. Scheduling here is enough: `view.moveNode` schedules nothing, and the autosave debounce reads positions when it flushes, so the deferred settle below is still captured.
-5. One frame later, so the sockets have rendered at the new host positions before they are measured, docked FCs snap back onto their hosts; standoffs settle with `forceLock`, so a cluster is pulled back into a rigid block rather than merely band-satisfied; the No-Overlap Pass runs ([[C112]] noOverlapsEver, skipped under Cleanup's `skipPush`, whose own top-level Tidy runs it), preferring the layout targets (or the group, within a group), so a selection Tidy that lands on an unselected card pushes that card aside and a tidied card on a locked group moves off it; and a whole-canvas Tidy waits one more frame and then fits the view with `fitAll`. Never a raw `zoomAt`, which centers in the full container and lands content under the docked panels.
+5. One frame later, so the sockets have rendered at the new host positions before they are measured, docked FCs snap back onto their hosts; standoffs settle with `forceLock`, so a cluster is pulled back into a rigid block rather than merely band-satisfied; the No-Overlap Pass runs ([[group-expand-push#LayoutFx]], skipped under Cleanup's `skipPush`, whose own top-level Tidy runs it), preferring the layout targets (or the group, within a group), so a selection Tidy that lands on an unselected card pushes that card aside and a tidied card on a locked group moves off it; and a whole-canvas Tidy waits one more frame and then fits the view with `fitAll`. Never a raw `zoomAt`, which centers in the full container and lands content under the docked panels.
 
 Tests: `tidyArrangeGroups.test.ts`: a selection Tidy never leaves its cards on an unselected neighbor (a pair straddling a group, stacked around its old center, would land on it).
 
@@ -191,7 +191,7 @@ Tests:
 
 ## Position-locked groups
 
-A group locked in place never moves in any LayoutFx: Tidy, Cleanup, the Expand Push, the Collapse Restore and Autofit, and the Standoff Solve and No-Overlap Pass that end each one, all treat it as a fixed obstacle and move everything else around it ([[C112]] noOverlapsEver). A lock that a LayoutFx could move isn't a lock, and since every LayoutFx ends with nothing overlapping, the locked group can't just sit the action out: everything else has to move around it. The lock holds the box, not its contents. **Reopen if:** the lock should also freeze the group's contents, or people expect a locked group to still move in a Tidy.
+A group locked in place never moves in any LayoutFx: Tidy, Cleanup, the Expand Push, the Collapse Restore and Autofit, and the Standoff Solve and No-Overlap Pass that end each one, all treat it as a fixed obstacle and move everything else around it ([[group-expand-push#LayoutFx]]). A lock that a LayoutFx could move isn't a lock, and since every LayoutFx ends with nothing overlapping, the locked group can't just sit the action out: everything else has to move around it. The lock holds the box, not its contents. **Reopen if:** the lock should also freeze the group's contents, or people expect a locked group to still move in a Tidy.
 
 A group with `GroupNode.lockedPosition` set (persisted through `INIT_FIELD_ORDER`) sits out global Tidy and Cleanup as a fixed obstacle.
 
@@ -254,3 +254,4 @@ Tests:
 
 - `selectionOps.test.ts`: each align edge and center, distribute's even gaps (nothing for fewer than three cards, gaps not centers, either axis, a stacked run expanded to `DISTRIBUTE_GAP`), the move set (a locked group never in it, a standoff partner hidden in a collapsed group left behind), and a collapse toggle reporting a graph change.
 - `layoutInvariants.test.ts`: over random boxes, distribute leaves at least `DISTRIBUTE_GAP` between neighbors along its axis. Align is not overlap-free, so nothing asserts that of it.
+

@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[B16]] oneFormulaSurface, [[C130]] rustCore
+// [[save-format#A save loses nothing quietly]], [[B16]] oneFormulaSurface, [[C130]] rustCore
 //! The text form a save passes through (`tree/specs/documents/save-format.md` § The text form); the app names the nodes
 //! and owns the init field order (`textForm.ts`), everything else is here.
 
@@ -407,7 +407,7 @@ fn tokens(s: &str) -> Vec<&str> {
             match (in_str, b[i]) {
                 (true, b'\\') => i += 2,
                 (true, b'"') | (false, b'"') => {
-                    in_str = !in_str;
+                    in_str.toggle();
                     i += 1;
                 }
                 (false, b' ') => break,

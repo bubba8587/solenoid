@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams, [[B18]] safeToShare
+// [[engineering#Untrusted content]], [[B18]] safeToShare
 // An image that may come from the web: in a foreign document with no network grant it waits, since loading it is a
 // fetch (`live-connections.md` § The network gate). A data: or blob: picture shows at once.
 import { useEffect, type CSSProperties } from "react";

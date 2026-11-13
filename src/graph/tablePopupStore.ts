@@ -1,4 +1,4 @@
-// [[C58]] tableInputRawText, [[C107]] obsidianPlugin
+// [[C58]] tableInputRawText, [[obsidian-plugin]]
 import type { PivotConfig } from "./pivotConfig";
 import type { AggOp } from "./frameOps";
 import type { ComponentType } from "react";
@@ -59,7 +59,7 @@ export interface TablePopupState {
   /** Opened before its data arrived: the popup shows its loading skeleton until `open` is called again with the data. */
   loading?: boolean;
   formLayout?: string;
-  /** The Cards view's authored layout ([[D111]] cardLayouts), in the Form layout's grammar. */
+  /** The Cards view's authored layout ([[table-popup#The Cards view]]), in the Form layout's grammar. */
   cardLayout?: string;
   lambdaOptions?: string[];
   noFormulaColumns?: boolean;
@@ -70,7 +70,7 @@ export interface TablePopupState {
   computedCells?: Cell[][];
   /** How PIVOTBY laid the frame out; present only on a pivot's own output, and it opens the Pivot view. */
   pivot?: PivotLayout;
-  /** Describe's per-column tiles; present only on a Describe's own output, and it opens the Dashboard view. */
+  /** Describe's per-column tiles; present only on a Describe's own output, and it opens the Profile view. */
   describe?: DescribeTile[];
 }
 
@@ -111,8 +111,8 @@ let pivotHostAction: PivotHostAction | null = null;
 export function setPivotHostAction(action: PivotHostAction | null): void { pivotHostAction = action; }
 export function getPivotHostAction(): PivotHostAction | null { return pivotHostAction; }
 
-/** Draws the Dashboard view. Installed by the app; the Obsidian plugin installs none, since a note's frame never carries Describe's tiles, and so never bundles the chart renderers ([[C127]] pivotView). */
-type DashboardView = ComponentType<{ tiles: readonly DescribeTile[]; query: string }>;
-let dashboardView: DashboardView | null = null;
-export function setDashboardView(view: DashboardView | null): void { dashboardView = view; }
-export function getDashboardView(): DashboardView | null { return dashboardView; }
+/** Draws the Profile view. Installed by the app; the Obsidian plugin installs none, since a note's frame never carries Describe's tiles, and so never bundles the chart renderers ([[table-popup#The Pivot view]]). */
+type ProfileView = ComponentType<{ tiles: readonly DescribeTile[]; query: string }>;
+let profileView: ProfileView | null = null;
+export function setProfileView(view: ProfileView | null): void { profileView = view; }
+export function getProfileView(): ProfileView | null { return profileView; }

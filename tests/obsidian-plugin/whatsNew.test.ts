@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[obsidian-plugin#What's new]]
+// [[B1]] obsidianBet, [[obsidian-plugin]], [[obsidian-plugin#What's new]]
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { whatsNewDue, readSeenWhatsNew, compareVersions } from "../../obsidian-plugin/src/whatsNew";

@@ -1,4 +1,4 @@
-// [[C66]] scriptNode, [[B19]] spreadsheetHabits
+// [[script-sandbox]], [[B19]] spreadsheetHabits
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ScriptNode as ScriptNodeType } from "../nodeClasses";
 import type { SolError } from "../errorValue";
@@ -97,7 +97,7 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
         <div className="solenoid-expr__error">{node.cachedError}</div>
       )}
       <InlineInputs node={node} emit={emit} />
-      {/* No result-type toggle: the value types itself ([[C66]] scriptNode). */}
+      {/* No result-type toggle: the value types itself ([[script-sandbox]]). */}
       {scriptIsVolatile(node.expr) && <RecalcButton title="Run the script again" />}
       <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
     </NodeShell>

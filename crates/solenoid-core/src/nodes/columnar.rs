@@ -1,4 +1,4 @@
-//! [[C130]] rustCore, [[C120]] linearWork.
+//! [[C130]] rustCore, [[engineering#Performance]] linearWork.
 //! A frame's or a list's cells on the card wire in the columnar hand-off (`binary.rs`) when every cell is flat, a copy
 //! in place of JSON text (`tree/specs/computation/node-bodies.md` § The call).
 
@@ -51,7 +51,7 @@ thread_local! {
 }
 
 // A big value that crossed to JavaScript or from it is kept here under an id for as long as its JavaScript object
-// lives, so the same object crossing again sends the id alone, `{"__held": id}` on the card wire ([[C120]]
+// lives, so the same object crossing again sends the id alone, `{"__held": id}` on the card wire ([[engineering#Performance]]
 // linearWork; a value is never changed in place, so an object's identity is its content). JavaScript forgets an id
 // when the object is collected (`forget`). Ids only grow, so a forgotten one never names another value.
 
@@ -231,17 +231,15 @@ mod tests {
 
     #[test]
     fn frame_and_list_round_trip() {
-        let cells: Vec<V> = (0..80)
-            .map(|i| match i % 7 {
-                0 => V::Num(-0.0),
-                1 => V::Num(f64::NAN),
-                2 => V::str("é😀"),
-                3 => V::Bool(true),
-                4 => V::Null,
-                5 => V::err(sol_error(ErrorCode::NotAvailable, "m")),
-                _ => V::Num(i as f64),
-            })
-            .collect();
+        let cells: Vec<V> = Vec::from_fn(80, |i| match i % 7 {
+            0 => V::Num(-0.0),
+            1 => V::Num(f64::NAN),
+            2 => V::str("é😀"),
+            3 => V::Bool(true),
+            4 => V::Null,
+            5 => V::err(sol_error(ErrorCode::NotAvailable, "m")),
+            _ => V::Num(i as f64),
+        });
         let f = Frame {
             columns: vec![Column {
                 name: "a".into(),
@@ -249,7 +247,7 @@ mod tests {
                 values: cells.clone(),
                 unit: Some(json!({ "dim": { "length": 1 } })),
                 format: Some(Json::Null),
-                raw: Some(Json::Array((0..80).map(|i| Json::String(format!("r{i}"))).collect())),
+                raw: Some(Json::Array(Vec::from_fn(80, |i| Json::String(format!("r{i}"))))),
             }],
             total_rows: Some(240.0),
             approx: Some(json!({ "factor": 3 })),

@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[engineering#Untrusted content]]
 import { useLayoutEffect, useRef } from "react";
 import type { SvgValue } from "../svgValue";
 import { elementName } from "../svgLayer";

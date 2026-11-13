@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType, [[C92]] pinchUnvetoable
+// [[B20]], [[touch-gestures#Standing rules]]
 import { touchCount } from "../pointerGesture";
 import { touchSelectStore } from "../touchSelectStore";
 

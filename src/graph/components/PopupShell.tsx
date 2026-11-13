@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[components#The design system]]
 import { SearchField } from "./SearchField";
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import "./popupChrome.css";

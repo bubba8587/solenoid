@@ -411,7 +411,7 @@ struct Shared {
     /// Each node's outputs as the last pass landed them: the change test's and the cable readouts' values.
     landed: RefCell<FxHashMap<String, Vec<(String, Val)>>>,
     /// Each wildcard output's type as the last value it carried with something to read made it (`Val::socket_type`):
-    /// the Type Settle's reading, kept through an empty answer ([[D117]] emptyKeepsLastType).
+    /// the Type Settle's reading, kept through an empty answer ([[socket-lattice#Requirements]] emptyKeepsLastType).
     read: RefCell<FxHashMap<String, FxHashMap<String, &'static str>>>,
 }
 
@@ -922,7 +922,7 @@ impl GraphCore {
     }
 
     /// Reads the type of each `[id, output, type now]` in `keys` off the value the last pass landed there, keeping the
-    /// last reading where the value has nothing to read ([[D117]] emptyKeepsLastType). Whether the Type Settle should
+    /// last reading where the value has nothing to read ([[socket-lattice#Requirements]] emptyKeepsLastType). Whether the Type Settle should
     /// run again: a reading moved, or an output still shows a wildcard its reading would type.
     #[wasm_bindgen(js_name = readTypes)]
     pub fn read_types(&self, keys: &str) -> bool {

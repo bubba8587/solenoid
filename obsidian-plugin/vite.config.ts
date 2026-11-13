@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";
@@ -20,7 +20,7 @@ const OUT = process.env.PLUGIN_OUT ? path.resolve(process.env.PLUGIN_OUT) : path
 const LOOK = path.join(import.meta.dirname, "src/look.css");
 const SNIPPET = path.join(REPO, "demo-vault/.obsidian/snippets/solenoid.css");
 
-/** App modules that reach the graph, and what stands in for each ([[C107]]: the whole seam). */
+/** App modules that reach the graph, and what stands in for each ([[obsidian-plugin]]: the whole seam). */
 const SHIMMED: Record<string, string> = {
   [path.join(REPO, "src/graph/persistence.ts")]: path.join(SHIMS, "persistence.ts"),
   [path.join(REPO, "src/graph/process.ts")]: path.join(SHIMS, "process.ts"),

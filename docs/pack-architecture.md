@@ -3,8 +3,8 @@
 > **Status: the framework is BUILT** — `packsStore` + pack registration, FC unit/format
 > extensions (`fcExtensions.ts`), dormant-pack persistence, the **Geometry** pack as the worked
 > example, and the **Composite** subgraph container (`nodes/composite.ts`). The settled calls
-> live in the decision tree: [[B15]] leanCore and its children [[C76]] formulaPackDefault, [[C77]] compositeIsSubgraph,
-> [[C78]] packLegibility and [[C79]] packActivationIsPresentation
+> live in the decision tree: [[B15]] leanCore and its children [[composite-nodes#Packs]], [[C77]] compositeIsSubgraph,
+> [[composite-nodes#Packs]] and [[C79]] packActivationIsPresentation
 > (`python3 tools/dte.py tree --under B15`). This doc is the guide for authoring packs; the open
 > pack work (more packs, distribution/deps, variant-switch reconcile, port aliasing) lives in
 > `backlog.md`.
@@ -19,7 +19,7 @@ that can be switched on or off.
 
 ## Building a pack node
 
-Default to a pre-set formula ([[C76]] formulaPackDefault): author the formula text and its
+Default to a pre-set formula ([[composite-nodes#Packs]]): author the formula text and its
 metadata (name, description, socket names and units, Excel mapping if any) as pack data, and
 reach for real node code only when the node needs a native library, root-finding or
 iteration, an embedded dataset to interpolate, or a custom widget. State, per node, which of
@@ -29,7 +29,7 @@ cases). A simple node that grows into several internal nodes becomes a composite
 ([[C77]] compositeIsSubgraph), never a Group.
 
 A formula pack node saves as a plain locked Expression (or Equation), so a document that uses
-one still opens and computes with its pack switched off ([[C76]] formulaPackDefault). A
+one still opens and computes with its pack switched off ([[composite-nodes#Packs]]). A
 custom-logic node is a node class whose body runs on the core
 (`crates/solenoid-core/src/nodes/packs.rs`, `../tree/specs/computation/node-bodies.md`); a pack's
 formula functions run there too (`fns_packs.rs`), and its `packs/<id>Formulas.ts` declares only
@@ -40,7 +40,7 @@ trust from a third party and often runs only on desktop, which is why it is the 
 A pack can also own a family of ordinary cards and their formulas. The Sets pack
 (`packs/sets.ts`, on by default) holds Between, Sets, Is In and Tally with IS,
 ISNOT, ABOVE, BELOW, ATLEAST, ATMOST, BETWEEN, the SET functions, ISIN and TALLY
-([[D124]] comparisonFunctions; the Comparison card itself is core): the cards keep their own node classes, the functions run in
+([[formula-language#Scalar operators]]; the Comparison card itself is core): the cards keep their own node classes, the functions run in
 `fns_packs.rs`, and `setsFormulas.ts` declares them. A pack entry's NODE_EXCEL rows are merged
 as a core leaf's are (`buildCatalog`).
 
@@ -99,7 +99,7 @@ already satisfied by an internal wire, the author sets:
   fallback for an unwired `exposed` port. It lives next to that variable's restriction
   metadata, so restriction and promotion share one per-variable spec.
 
-How promoted ports and locked internals read on screen follows [[C78]] packLegibility: as
+How promoted ports and locked internals read on screen follows [[composite-nodes#Packs]]: as
 packs add power, keeping the UI obvious comes first (a powerful node editor easily becomes
 unreadable; Blender's is the cautionary tale), so the feature bends to the UI.
 

@@ -46,6 +46,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "ReconcileNode" => reconcile(c),
         "BuildFrameNode" => build_frame(c),
         "FrameFromListsNode" => frame_from_lists(c),
+        "CategorizeNode" => categorize(c),
         _ => return None,
     })
 }
@@ -844,22 +845,18 @@ fn split_frame(c: &mut Call) -> Answer {
         let matrix = if cols.is_empty() {
             V::Null
         } else {
-            list(
-                (0..rows)
-                    .map(|i| {
-                        list(
-                            cols.iter()
-                                .map(|col| match col.values.get(i) {
-                                    Some(V::Str(s)) => V::Str(s.clone()),
-                                    Some(V::Err(e)) => V::str(e.code.as_str()),
-                                    None | Some(V::Null | V::Undef) => V::str(""),
-                                    Some(v) => V::str(&crate::excel_functions::value_text(v)),
-                                })
-                                .collect(),
-                        )
-                    })
-                    .collect(),
-            )
+            list(Vec::from_fn(rows, |i| {
+                list(
+                    cols.iter()
+                        .map(|col| match col.values.get(i) {
+                            Some(V::Str(s)) => V::Str(s.clone()),
+                            Some(V::Err(e)) => V::str(e.code.as_str()),
+                            None | Some(V::Null | V::Undef) => V::str(""),
+                            Some(v) => V::str(&crate::excel_functions::value_text(v)),
+                        })
+                        .collect(),
+                )
+            }))
         };
         return out(c, Cv::V(matrix), Cv::V(headers), false);
     }
@@ -903,7 +900,7 @@ fn describe(c: &mut Call) -> Answer {
     shown_frame(c, "frame", out)
 }
 
-/// How many most common values a tile lists ([[C127]] pivotView).
+/// How many most common values a tile lists ([[table-popup#The Pivot view]] pivotView).
 const TOP_VALUES: usize = 5;
 /// A number column with this few distinct values lists them, as a text column does: a histogram of two years is two
 /// bars and a gap.
@@ -994,12 +991,10 @@ fn trend_series(nums: &[f64]) -> Vec<f64> {
     if n <= TREND_POINTS {
         return nums.to_vec();
     }
-    (0..TREND_POINTS)
-        .map(|b| {
-            let (lo, hi) = (b * n / TREND_POINTS, (b + 1) * n / TREND_POINTS);
-            nums[lo..hi].iter().sum::<f64>() / (hi - lo) as f64
-        })
-        .collect()
+    Vec::from_fn(TREND_POINTS, |b| {
+        let (lo, hi) = (b * n / TREND_POINTS, (b + 1) * n / TREND_POINTS);
+        nums[lo..hi].iter().sum::<f64>() / (hi - lo) as f64
+    })
 }
 
 /// A column's most common values, most first and ties in text order, and how many filled rows hold any other.
@@ -1538,7 +1533,7 @@ fn add_column(c: &mut Call) -> Answer {
     let values = super::stats::items(&values).to_vec();
     if let Cv::Cube(cube) = &raw {
         let rows = cube_row_count(cube).max(values.len());
-        let padded: Vec<V> = (0..rows).map(|i| values.get(i).cloned().unwrap_or(V::Null)).collect();
+        let padded: Vec<V> = Vec::from_fn(rows, |i| values.get(i).cloned().unwrap_or(V::Null));
         let unit = parse_column_unit_from_header(&name).1;
         let out = cube_with_column(cube, &name, padded, ty, unit.as_ref());
         return shown_frame(c, "frame", out);
@@ -1549,7 +1544,7 @@ fn add_column(c: &mut Call) -> Answer {
         _ => widen_to_frame(&V::Null),
     };
     let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0).max(values.len());
-    let padded: Vec<V> = (0..rows).map(|i| values.get(i).cloned().unwrap_or(V::Null)).collect();
+    let padded: Vec<V> = Vec::from_fn(rows, |i| values.get(i).cloned().unwrap_or(V::Null));
     let (clean, unit) = parse_column_unit_from_header(&name);
     let names_only = FrameValue {
         columns: f.columns.iter().map(|col| FrameColumn::new(col.name.clone(), col.ty, Vec::new())).collect(),
@@ -1687,7 +1682,7 @@ fn cube_lookup_indices(cube: &Cube, in_col: &str, lookups: &[String], mm: &str, 
     let rows = cube_row_count(cube);
     let key_cells = cube_values(&key.cells);
     let ty = key.ty.unwrap_or_else(|| infer_cube_key_type(&key_cells));
-    let cells: Vec<V> = (0..rows).map(|i| key_cells.get(i).cloned().unwrap_or(V::Undef)).collect();
+    let cells: Vec<V> = Vec::from_fn(rows, |i| key_cells.get(i).cloned().unwrap_or(V::Undef));
     let keys: Vec<FrameCell> = keys_in_display_unit(&cells).iter().map(core_cell).collect();
     let f = FrameValue { columns: vec![FrameColumn::new(in_col, ty, keys)] };
     let wanted = list(lookups.iter().map(|l| V::str(l)).collect());
@@ -2434,9 +2429,9 @@ fn cube_columns(c: &mut Call) -> Answer {
         .enumerate()
         .map(|(i, (name, cells))| CubeColumn {
             name,
-            cells: (0..max)
-                .map(|r| cells.get(r).filter(|v| !matches!(v, Cv::V(V::Undef))).cloned().unwrap_or(Cv::NULL))
-                .collect(),
+            cells: Vec::from_fn(max, |r| {
+                cells.get(r).filter(|v| !matches!(v, Cv::V(V::Undef))).cloned().unwrap_or(Cv::NULL)
+            }),
             ty: dates.get(i).copied().unwrap_or(false).then_some(FrameColType::Date),
             format: None,
         })
@@ -2552,29 +2547,25 @@ fn relate_frames(parent: &Frame, child: &Cv, key: &str, nested_name: &str) -> Op
         .iter()
         .enumerate()
         .map(|(j, c)| {
-            let cells = (0..p_rows)
-                .map(|i| {
-                    let v = c.values.get(i).cloned().unwrap_or(V::Null);
-                    Cv::V(match &c.unit {
-                        Some(u) => tag_cell_unit(&v, u),
-                        None => v,
-                    })
+            let cells = Vec::from_fn(p_rows, |i| {
+                let v = c.values.get(i).cloned().unwrap_or(V::Null);
+                Cv::V(match &c.unit {
+                    Some(u) => tag_cell_unit(&v, u),
+                    None => v,
                 })
-                .collect();
+            });
             CubeColumn { name: names[j].clone(), cells, ty: Some(c.ty), format: None }
         })
         .collect();
-    let nested_cells = (0..p_rows)
-        .map(|i| {
-            let id = key_id_in_column(p_key.values.get(i).unwrap_or(&V::Null), p_key.unit.as_ref());
-            let rows = by_key.get(&id).cloned().unwrap_or_default();
-            match child {
-                Cv::Cube(k) => select_cube_rows(k, &rows),
-                Cv::Frame(f) => sub_frame(f, &rows),
-                _ => Cv::NULL,
-            }
-        })
-        .collect();
+    let nested_cells = Vec::from_fn(p_rows, |i| {
+        let id = key_id_in_column(p_key.values.get(i).unwrap_or(&V::Null), p_key.unit.as_ref());
+        let rows = by_key.get(&id).cloned().unwrap_or_default();
+        match child {
+            Cv::Cube(k) => select_cube_rows(k, &rows),
+            Cv::Frame(f) => sub_frame(f, &rows),
+            _ => Cv::NULL,
+        }
+    });
     columns.push(CubeColumn { name: names[parent.columns.len()].clone(), cells: nested_cells, ty: None, format: None });
     Some(cube_v(columns))
 }
@@ -3174,7 +3165,7 @@ fn rank_nested(
         }
     };
     let mut out: Vec<(Cv, Best)> =
-        (0..rows).map(|i| (cells.get(i).filter(|v| is_table(v)).map_or(Cv::NULL, tidy), None)).collect();
+        Vec::from_fn(rows, |i| (cells.get(i).filter(|v| is_table(v)).map_or(Cv::NULL, tidy), None));
     let tables: Vec<(Cv, usize)> =
         out.iter().enumerate().filter(|(_, o)| table_rows(&o.0) > 0).map(|(i, o)| (o.0.clone(), i)).collect();
     if tables.is_empty() {
@@ -3387,13 +3378,11 @@ fn build_frame(c: &mut Call) -> Answer {
     let Some(m) = to_any_matrix(&raw).filter(|m| !m.is_empty()) else { return shown_frame(c, "frame", V::Null) };
     // A column of dates is a Date column, its days packed as numbers ([[D114]] dateIsAKind).
     let width = m.iter().map(Vec::len).max().unwrap_or(0);
-    let date_cols: Vec<crate::value_kinds::Census> = (0..width)
-        .map(|j| {
-            m.iter()
-                .filter_map(|r| r.get(j))
-                .fold(crate::value_kinds::Census::default(), |c, v| c.join(crate::date_values::census(v)))
-        })
-        .collect();
+    let date_cols: Vec<crate::value_kinds::Census> = Vec::from_fn(width, |j| {
+        m.iter()
+            .filter_map(|r| r.get(j))
+            .fold(crate::value_kinds::Census::default(), |c, v| c.join(crate::date_values::census(v)))
+    });
     if date_cols.iter().any(|c| c.beside_dates().is_some()) {
         return shown_frame(c, "frame", crate::date_values::mixed("other kinds"));
     }
@@ -3446,6 +3435,12 @@ fn frame_from_lists(c: &mut Call) -> Answer {
         };
         names.push(V::str(&name));
         let wired = if matches!(wired, V::List(_)) { wired } else { list(vec![wired]) };
+        // A column is a list. A table can reach this input through an output that is untyped until it has run.
+        if matches!(&wired, V::List(items) if items.iter().any(|x| matches!(x, V::List(_)))) {
+            let msg =
+                format!("{} takes a list, and this is a table. TOROW or TOCOL makes a table a list", c.label(vals_k));
+            return shown_frame(c, "frame", err(ErrorCode::Type, msg));
+        }
         // A list of dates is a Date column ([[D114]] dateIsAKind).
         let census = crate::date_values::census(&wired);
         if census.beside_dates().is_some() {
@@ -3456,8 +3451,13 @@ fn frame_from_lists(c: &mut Call) -> Answer {
             known.push(V::str("date"));
             continue;
         }
+        // A list of errors and nothing else to read is a Text column. Its socket's type there is only what its source
+        // last carried, which no save holds, so the column would be one type live and another after a reload.
+        let only_errors = matches!(&wired, V::List(items) if items.iter().any(|x| matches!(x, V::Err(_)))
+            && items.iter().all(|x| matches!(x, V::Null | V::Undef | V::Err(_))));
+        let ty = if only_errors { Some("string") } else { col_type_for_socket(c.input_type(vals_k)) };
         lists.push(wired);
-        known.push(col_type_for_socket(c.input_type(vals_k)).map_or(V::Null, V::str));
+        known.push(ty.map_or(V::Null, V::str));
     }
     if names.is_empty() {
         return shown_frame(c, "frame", V::Null);
@@ -3466,6 +3466,145 @@ fn frame_from_lists(c: &mut Call) -> Answer {
         crate::frame_fns::FrameOut::Frame(f) => shown_frame(c, "frame", Cv::Frame(Rc::new(from_core(&f)))),
         _ => Err(thrown("Frame from Lists got an answer it doesn't read")),
     }
+}
+
+// ─── Categorize ──────────────────────────────────────────────────────────────────
+
+/// The categories a blank Categories field gives, each renamable on the card's sorter.
+pub(crate) const DEFAULT_CATEGORIES: usize = 3;
+
+/// An item as the card saves it in `assigned`: its text, a number by its digits and a date by its serial, so a sort holds
+/// however the item is formatted.
+fn item_key(v: &V) -> String {
+    match v {
+        V::Num(n) | V::Date(n) => crate::jsnum::number_to_string(*n),
+        V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
+        v => crate::excel_functions::value_text(v),
+    }
+}
+
+fn item_label(v: &V) -> String {
+    match v {
+        V::Date(n) => crate::date_serial::format_date_serial(*n, "DD-MMM-YYYY"),
+        v => crate::excel_functions::value_text(v),
+    }
+}
+
+/// The categories in their order: the wired list's texts, else the field's, else `Category 1` to `Category 3`; a repeat
+/// and a blank are left out.
+fn category_names(c: &Call) -> Vec<String> {
+    let v = match c.wired("categories") {
+        Some(_) => super::list::slot(c, "categories"),
+        None => c.csv_text("categories").map_or(V::Undef, V::str),
+    };
+    let mut names: Vec<String> = match v {
+        V::Str(s) => super::list::literal_items(&s),
+        V::List(xs) => xs
+            .iter()
+            .flat_map(|x| if let V::List(r) = x { r.to_vec() } else { vec![x.clone()] })
+            .filter(|x| !matches!(x, V::Err(_)))
+            .map(|x| trim_space(&item_label(&x)).to_string())
+            .collect(),
+        V::Null | V::Undef | V::Err(_) => Vec::new(),
+        x => vec![trim_space(&item_label(&x)).to_string()],
+    };
+    let mut seen = std::collections::HashSet::new();
+    names.retain(|n| !n.is_empty() && seen.insert(n.clone()));
+    if names.is_empty() && c.wired("categories").is_none() {
+        names = (1..=DEFAULT_CATEGORIES).map(|i| format!("Category {i}")).collect();
+    }
+    names
+}
+
+/// Each distinct item with the category it was sorted into: a two-column table to join back onto the rows the items
+/// came from. Items no category holds come last with a blank Category. The sort is saved by item and category name
+/// (`assigned`), never by position, so it holds whatever the lists around it do.
+fn categorize(c: &mut Call) -> Answer {
+    let raw = super::list::slot(c, "items");
+    let cells: Vec<V> = match raw {
+        V::Null | V::Undef => Vec::new(),
+        V::List(xs) => xs.iter().flat_map(|x| if let V::List(r) = x { r.to_vec() } else { vec![x.clone()] }).collect(),
+        x => vec![x],
+    };
+    let census = crate::date_values::census(&list(cells.clone()));
+    if census.beside_dates().is_some() {
+        return shown_frame(c, "frame", crate::date_values::mixed("other kinds"));
+    }
+    // Distinct items, first seen first; a blank or an error is nothing to sort.
+    let mut seen = std::collections::HashSet::new();
+    let mut items: Vec<(String, V)> = Vec::new();
+    for v in cells {
+        if matches!(v, V::Null | V::Undef | V::Err(_)) || matches!(&v, V::Str(s) if trim_space(s).is_empty()) {
+            continue;
+        }
+        let k = item_key(&v);
+        if seen.insert(k.clone()) {
+            items.push((k, v));
+        }
+    }
+    let names = category_names(c);
+    // The saved sort: `[category, [item key, …]]`, an item claimed once, by the first category that names it.
+    let mut placed: Vec<(String, Vec<String>)> = Vec::new();
+    let mut claimed = std::collections::HashSet::new();
+    if let Some(Json::Array(groups)) = c.field("assigned") {
+        for g in groups {
+            let (Some(name), Some(Json::Array(keys))) = (g.get(0).and_then(Json::as_str), g.get(1)) else { continue };
+            let keys: Vec<String> = keys
+                .iter()
+                .filter_map(Json::as_str)
+                .filter(|k| claimed.insert(k.to_string()))
+                .map(str::to_string)
+                .collect();
+            placed.push((name.to_string(), keys));
+        }
+    }
+    let by_key: std::collections::HashMap<&str, &V> = items.iter().map(|(k, v)| (k.as_str(), v)).collect();
+    let mut item_col: Vec<V> = Vec::new();
+    let mut cat_col: Vec<V> = Vec::new();
+    let mut sorted = std::collections::HashSet::new();
+    for name in &names {
+        for (_, keys) in placed.iter().filter(|(n, _)| n == name) {
+            for k in keys {
+                if let Some(v) = by_key.get(k.as_str()) {
+                    sorted.insert(k.as_str());
+                    item_col.push((*v).clone());
+                    cat_col.push(V::str(name));
+                }
+            }
+        }
+    }
+    for (k, v) in &items {
+        if !sorted.contains(k.as_str()) {
+            item_col.push(v.clone());
+            cat_col.push(V::str(""));
+        }
+    }
+    // The sorter's chips: each item's key and how it reads.
+    let shown_items: Vec<Json> = items.iter().map(|(k, v)| json!([k, item_label(v)])).collect();
+    c.show("sortItems", Cv::Json(Rc::new(Json::Array(shown_items))));
+    c.show("sortCategories", Cv::Json(Rc::new(json!(names))));
+    if items.is_empty() {
+        return shown_frame(c, "frame", V::Null);
+    }
+    let (ty, item_col) = if census.only_dates() {
+        (FrameColType::Date, item_col.iter().map(crate::date_values::unwrap).collect())
+    } else if item_col.iter().all(|v| matches!(v, V::Num(_))) {
+        (FrameColType::Number, item_col)
+    } else if item_col.iter().all(|v| matches!(v, V::Bool(_))) {
+        (FrameColType::Logical, item_col)
+    } else {
+        (FrameColType::String, item_col.iter().map(|v| V::str(&crate::excel_functions::value_text(v))).collect())
+    };
+    let col = |name: &str, ty: FrameColType, values: Vec<V>| Column {
+        name: name.to_string(),
+        ty,
+        values,
+        unit: None,
+        format: None,
+        raw: None,
+    };
+    let frame = frame_v(vec![col("Item", ty, item_col), col("Category", FrameColType::String, cat_col)]);
+    shown_frame(c, "frame", frame)
 }
 
 fn reconcile(c: &mut Call) -> Answer {

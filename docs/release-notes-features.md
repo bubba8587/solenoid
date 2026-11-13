@@ -12,6 +12,14 @@ headlined. Every sentence has to pass "would anyone care?", so internals, fixes 
 Left out on purpose: the Choice Ladder, Gantt, Schedule and Earned Value (hidden for 1.6), Isolate (switched
 off), the Android build (not in 1.6) and the headless CLI (unpublished).
 
+## 1.6.2
+
+The deck shows 1.6.2's slides first, titled "What's new in 1.6, 1.6.1 and 1.6.2". The changelog is `release-notes-1.6.2.md`.
+
+- **[slide] Excel workbooks.** The Local File and Web Source nodes can now read tables from Excel files.
+- **[slide] Categorize.** The Categorize node makes it easy to assign one list to another.
+- **[slide] Undo improvements.** "Undo" now recalculates much less of your document.
+
 ## 1.6.1
 
 The deck shows 1.6.1's slides ahead of 1.6's, titled "What's new in 1.6 and 1.6.1" (`deckReleases`): a patch release

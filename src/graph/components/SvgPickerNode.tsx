@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[C100]] chartIsAValue
+// [[B19]] spreadsheetHabits, [[C28]] literalsIffEditable, [[engineering#Untrusted content]], [[C100]] chartIsAValue
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SvgPickerNode as SvgPickerNodeType } from "../nodeClasses";
 import { scheduleAutosave } from "../persistence";

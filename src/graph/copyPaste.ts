@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C86]] membershipByGesture, [[B18]] safeToShare
+// [[save-format#A save loses nothing quietly]], [[group-expand-push#Who is a member]], [[B18]] safeToShare
 import type { GraphEditor } from "./graphEditor";
 import { rebuildGroupMembership } from "./groupMembership";
 import { GraphConnection, GraphNode } from "./graphModel";

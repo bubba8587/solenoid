@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault (`locked`)
+// [[composite-nodes#Packs]] (`locked`)
 import { flattenFormula } from "../formulaLayout";
 import { useMemo } from "react";
 import { highlightFormula } from "../formulaSyntax";

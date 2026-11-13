@@ -1,5 +1,5 @@
 //! [[C28]] literalsIffEditable, [[C44]] dateSerials, [[C118]] formatTravelsWithValue, [[C23]] calcModes,
-//! [[C103]] untrustedContentSeams.
+//! [[engineering#Untrusted content]].
 //! The input widgets' bodies (Value Input, Slider, Color Picker and Blend, Angle Dial, XY Pad, Curve, Grid Painter,
 //! Point Plotter, Date Range, Constant, Input Switch), RAND over its shell's roll, SVG Picker over its scrubbed markup.
 
@@ -635,7 +635,7 @@ fn xy_pad(c: &mut Call) -> Answer {
 }
 
 fn date_range(c: &mut Call) -> Answer {
-    // A blank field is no date; any day is one, before 1900 too ([[D119]] datesBefore1900).
+    // A blank field is no date; any day is one, before 1900 too ([[date-values#Days before 1900]] datesBefore1900).
     let day = |key: &str| match literal_or(c, key, V::Null) {
         V::Null => None,
         V::Date(n) => Some(n).filter(|n| n.is_finite()),

@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[components#The design system]]
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { frameHintStore, type FrameHint } from "../frameHint";
 import { formatFrameCell } from "../frame";

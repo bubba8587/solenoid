@@ -165,7 +165,7 @@ fn is_number_literal(v: &str) -> bool {
         None => all(mant),
         Some((a, f)) => (all(a) && (f.is_empty() || all(f))) || (a.is_empty() && all(f)),
     };
-    mant_ok && exp.is_none_or(|e| all(e.strip_prefix(['+', '-']).unwrap_or(e)))
+    mant_ok && exp.is_none_or(|e| all(e.trim_prefix(['+', '-'])))
 }
 
 fn tokenize(src: &str) -> Option<Vec<Tok>> {
@@ -529,11 +529,11 @@ pub fn bind_bracket_params(n: Ast, names: &[String]) -> Ast {
         Ast::WholeCol(c) if names.contains(&c) => Ast::Name(c),
         Ast::Call { name, args } => Ast::Call { name, args: args.into_iter().map(to_name).collect() },
         Ast::Apply { func, args } => {
-            Ast::Apply { func: Box::new(to_name(*func)), args: args.into_iter().map(to_name).collect() }
+            Ast::Apply { func: Box::map(func, to_name), args: args.into_iter().map(to_name).collect() }
         }
-        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::new(to_name(*arg)) },
-        Ast::Percent(arg) => Ast::Percent(Box::new(to_name(*arg))),
-        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::new(to_name(*l)), r: Box::new(to_name(*r)) },
+        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::map(arg, to_name) },
+        Ast::Percent(arg) => Ast::Percent(Box::map(arg, to_name)),
+        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::map(l, to_name), r: Box::map(r, to_name) },
         other => other,
     }
 }
@@ -559,11 +559,11 @@ fn bracket_params(n: Ast) -> Ast {
             Ast::Call { name, args }
         }
         Ast::Apply { func, args } => {
-            Ast::Apply { func: Box::new(bracket_params(*func)), args: args.into_iter().map(bracket_params).collect() }
+            Ast::Apply { func: Box::map(func, bracket_params), args: args.into_iter().map(bracket_params).collect() }
         }
-        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::new(bracket_params(*arg)) },
-        Ast::Percent(arg) => Ast::Percent(Box::new(bracket_params(*arg))),
-        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::new(bracket_params(*l)), r: Box::new(bracket_params(*r)) },
+        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::map(arg, bracket_params) },
+        Ast::Percent(arg) => Ast::Percent(Box::map(arg, bracket_params)),
+        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::map(l, bracket_params), r: Box::map(r, bracket_params) },
         other => other,
     }
 }
@@ -658,7 +658,7 @@ fn num_of(v: &V) -> V {
 
 /// Two numbers Excel's comparisons read as one: equal to 15 significant digits
 /// (`0.1+0.2=0.3` and `1E+15+0.4=1E+15` are TRUE, `0.1+0.2>0.3` FALSE). Exact equality answers first, and only a pair
-/// already within 1e-14 of each other is rounded, so a comparison over a column stays cheap ([[C120]] linearWork).
+/// already within 1e-14 of each other is rounded, so a comparison over a column stays cheap ([[engineering#Performance]] linearWork).
 pub fn same_to_15(x: f64, y: f64) -> bool {
     if x == y {
         return true;
@@ -689,7 +689,7 @@ pub fn wholly_parenthesized(src: &str) -> bool {
     let (mut depth, mut quoted) = (0i32, false);
     for (i, c) in t.char_indices() {
         match c {
-            '"' => quoted = !quoted,
+            '"' => quoted.toggle(),
             '(' if !quoted => depth += 1,
             ')' if !quoted => {
                 depth -= 1;

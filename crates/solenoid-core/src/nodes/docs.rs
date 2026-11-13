@@ -1,4 +1,4 @@
-//! [[D79]] effectsEdgeTriggered, [[C25]] firstClassUnits, [[C45]] excelComparisons, [[C118]] formatTravelsWithValue,
+//! [[alert-node-alerts-hud#When it fires]], [[C25]] firstClassUnits, [[C45]] excelComparisons, [[C118]] formatTravelsWithValue,
 //! [[B17]] typedValueModel, [[B11]] maximalMerge, [[C114]] cardsView.
 //! The cards that watch, format and write up values: Display, Alert, Expect, the Format Controller, Template, Frame
 //! Input and Record (`tree/specs/computation/node-bodies.md` § What has moved, Documents).
@@ -230,7 +230,7 @@ fn alert_message(c: &Call, condition: &str, result: &V) -> String {
     }
 }
 
-/// The status, with what it fires ([[D79]] effectsEdgeTriggered): `alertKey` names the condition and the status, so
+/// The status, with what it fires ([[alert-node-alerts-hud#When it fires]]): `alertKey` names the condition and the status, so
 /// the TS raises `alertMessage` only when that changes; a blank status changes neither.
 fn alert(c: &mut Call) -> Answer {
     let result = alert_status(c)?;
@@ -501,7 +501,7 @@ fn expect(c: &mut Call) -> Answer {
     }
     let (has_min, has_max) = (!matches!(min, V::Null), !matches!(max, V::Null));
     if on("checkRange") && (has_min || has_max) {
-        // The bounds take the kind of the value checked ([[D120]] rangeBoundsTakeTheValuesKind).
+        // The bounds take the kind of the value checked ([[date-values#Cards]] rangeBoundsTakeTheValuesKind).
         let kind = |v: &V| match v {
             V::Num(n) if n.is_finite() => Some(false),
             V::Date(n) if n.is_finite() => Some(true),
@@ -850,7 +850,7 @@ fn template(c: &mut Call) -> Answer {
     };
     let result = match len {
         None => render(None),
-        Some(n) => list((0..n).map(|i| render(Some(i))).collect()),
+        Some(n) => list(Vec::from_fn(n, |i| render(Some(i)))),
     };
     c.show("cachedText", result.clone());
     Ok(vec![("result".into(), Cv::from(result))])
@@ -1119,8 +1119,8 @@ fn record_deck(cols: &[Column], drawn: &[usize], d: crate::card_helpers::NumberD
         .map(|(i, c)| CardColumn {
             name: names[i].clone(),
             ty: c.ty.as_str().to_string(),
-            cells: (0..profiled).map(|r| raw_text(c, r)).collect(),
-            shown: Some((0..profiled).map(|r| shown_text(c, r)).collect()),
+            cells: Vec::from_fn(profiled, |r| raw_text(c, r)),
+            shown: Some(Vec::from_fn(profiled, |r| shown_text(c, r))),
             chip: chip_cols.contains(&i),
             nested: false,
             lists: false,
@@ -1400,7 +1400,7 @@ fn record(c: &mut Call, op: &str) -> Answer {
 
 /// A wired λ's name in the formulas, `fn1` as `λ1`.
 fn lambda_socket_name(key: &str) -> String {
-    format!("λ{}", key.strip_prefix("fn").unwrap_or(key))
+    format!("λ{}", key.trim_prefix("fn"))
 }
 
 /// A computed column over the table on the core's evaluator: its cells, or the error that

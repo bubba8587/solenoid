@@ -1,4 +1,4 @@
-// [[D68]] importUnsupportedIsNamed
+// [[C70]] oneScheduleRule, [[schedule-and-gantt#Import at the border]]
 //! Primavera XER read: tab-separated `%T` tables, `%F` fields and `%R` rows.
 
 use crate::calendar::{CalendarSpec, Interval};
@@ -14,7 +14,7 @@ fn tables(text: &str) -> HashMap<Option<String>, Vec<Row>> {
     let mut table: Option<Option<String>> = None;
     let mut fields: Vec<&str> = Vec::new();
     for line in text.split('\n') {
-        let line = line.strip_suffix('\r').unwrap_or(line);
+        let line = line.trim_suffix('\r');
         let cells: Vec<&str> = line.split('\t').collect();
         match cells[0] {
             "%T" => {

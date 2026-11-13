@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C24]] arraySemantics, [[C10]] socketLattice, [[B17]] typedValueModel, [[C25]] firstClassUnits, [[E9]] errorsKeepOrigin, [[D86]] blankRoles
+// [[C130]] rustCore, [[C24]] arraySemantics, [[C10]] socketLattice, [[B17]] typedValueModel, [[C25]] firstClassUnits, [[error-values#Producers and provenance]], [[D86]] blankRoles
 //! The input boundary on core values, for a card the engine calls in Rust (`tree/specs/computation/graph-core.md` §
 //! Direct calls), held to the same frozen answers as `boundary.rs` (`tests/boundary_core.rs`).
 

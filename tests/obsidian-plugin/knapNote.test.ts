@@ -1,4 +1,4 @@
-// [[D87]] knapNotes, [[obsidian-plugin#Knap notes]]
+// [[B1]] obsidianBet, [[obsidian-plugin#Knap notes]]
 import { describe, it, expect } from "vitest";
 import { renderKnapNote, renderKnapUnits, knapUnits, knapVariables, isKnapNote, bodyStartLine } from "../../obsidian-plugin/src/knapNote";
 import { bareTags } from "../../src/graph/knapTemplate";

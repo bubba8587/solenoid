@@ -48,7 +48,7 @@ fn is_decimal_text(b: &str) -> bool {
         None => all_digits(mant),
         Some((a, f)) => (all_digits(a) && (f.is_empty() || all_digits(f))) || (a.is_empty() && all_digits(f)),
     };
-    mant_ok && exp.is_none_or(|e| all_digits(e.strip_prefix(['+', '-']).unwrap_or(e)))
+    mant_ok && exp.is_none_or(|e| all_digits(e.trim_prefix(['+', '-'])))
 }
 
 /// `Number(s)`: ECMAScript StringToNumber.
@@ -70,7 +70,7 @@ pub fn string_to_number(s: &str) -> f64 {
             return digits.chars().fold(0.0, |acc, c| acc * radix as f64 + c.to_digit(radix).unwrap() as f64);
         }
     }
-    let body = t.strip_prefix(['+', '-']).unwrap_or(t);
+    let body = t.trim_prefix(['+', '-']);
     if is_decimal_text(body) {
         t.parse::<f64>().unwrap_or(f64::NAN)
     } else {

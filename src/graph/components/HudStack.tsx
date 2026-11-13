@@ -1,4 +1,4 @@
-// [[D79]] effectsEdgeTriggered. Mechanics: tree/specs/computation/alert-node-alerts-hud.md.
+// [[alert-node-alerts-hud#When it fires]]. Mechanics: tree/specs/computation/alert-node-alerts-hud.md.
 import { createPortal } from "react-dom";
 import { PinLayer } from "./PinLayer";
 import { AlertLayer } from "./AlertLayer";

@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[A1]] visualGraphCalculator
+// [[html-in-canvas]], [[A1]] visualGraphCalculator
 
 import { Camera } from "./hicCamera";
 import { styleKey, type VShape } from "./hicVectors";

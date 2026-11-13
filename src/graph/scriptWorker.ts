@@ -1,4 +1,4 @@
-// [[C66]] scriptNode
+// [[B17]] typedValueModel, [[script-sandbox]]
 // The Script sandbox: the worker drops every I/O door (network, storage, spawning) before the first call; its own CSP
 // stops `import()` ([[script-sandbox#The worker]]).
 import { invokeScript } from "./nodes/scriptRun";

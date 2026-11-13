@@ -28,6 +28,7 @@ mod list;
 mod logic;
 mod matrix;
 pub(crate) mod packs;
+mod probability;
 pub mod qr;
 pub mod refs;
 mod scalar;
@@ -207,7 +208,7 @@ impl Call {
     /// with `redraw` all of them anew where it holds a different count. The roll a call's `init` carries under `given`
     /// (a frozen call: a number, or a list of them) comes first, padded with fresh rolls to `n`.
     pub fn rolls(&mut self, given: &str, n: usize, redraw: bool) -> Vec<f64> {
-        let fresh = |k: usize| (0..k).map(|_| crate::fns_random::random()).collect::<Vec<f64>>();
+        let fresh = |k: usize| Vec::<f64>::from_fn(k, |_| crate::fns_random::random());
         if let Some(g) = self.init.get(given) {
             let mut held: Vec<f64> = match g {
                 Json::Array(a) => a.iter().map(|x| x.as_f64().unwrap_or(f64::NAN)).collect(),
@@ -395,6 +396,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| list::run(kind, c))
         .or_else(|| matrix::run(kind, c))
         .or_else(|| packs::run(kind, c))
+        .or_else(|| probability::run(kind, c))
         .or_else(|| geometry::run(kind, c))
         .or_else(|| visual::run(kind, c))
         .or_else(|| widgets::run(kind, c))
@@ -413,6 +415,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 /// The classes whose `data()` is their body here and nothing else (for `OFF_CORE`, that and handing on what the core
 /// can't hold), which the graph calls in Rust with no JavaScript in between (graph-core.md § Direct calls); `directBodies.test.ts` holds the list to the classes' source.
 pub const DIRECT: &[&str] = &[
+    "AbTestNode",
     "AccruedInterestNode",
     "AddColumnNode",
     "AddIndexNode",
@@ -435,6 +438,7 @@ pub const DIRECT: &[&str] = &[
     "BitwiseNode",
     "BondPricingNode",
     "BooleanOpNode",
+    "BootstrapNode",
     "BoxplotNode",
     "BuildCubeNode",
     "BuildFrameNode",
@@ -444,6 +448,7 @@ pub const DIRECT: &[&str] = &[
     "CandlestickNode",
     "CardsNode",
     "CastNode",
+    "CategorizeNode",
     "CharCodeNode",
     "ChartBuilderNode",
     "ChartNode",
@@ -604,6 +609,7 @@ pub const DIRECT: &[&str] = &[
     "PolyfitNode",
     "PolygonPointsNode",
     "ProbNode",
+    "ProbabilityBetweenNode",
     "PromoNode",
     "ProportionNode",
     "QrCodeNode",
@@ -725,6 +731,7 @@ pub const KEEPS_ANSWER: &[&str] = &[
     "AppendNode",
     "BindColumnsNode",
     "BuildFrameNode",
+    "CategorizeNode",
     "ColumnsNode",
     "ComputedColumnNode",
     "CubeInputNode",

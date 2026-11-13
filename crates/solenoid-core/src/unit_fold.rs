@@ -228,7 +228,7 @@ pub fn fold_units_over(
         mm
     } else {
         let cols = mm.first().map_or_default(Vec::len);
-        (0..cols).map(|j| mm.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect()).collect()
+        Vec::from_fn(cols, |j| mm.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect())
     };
     let mut out: Vec<V> = vectors.into_iter().map(|vec| cell(&run(vec![("values", V::List(Rc::new(vec)))]))).collect();
     if let Some((elem, _)) = &elem {

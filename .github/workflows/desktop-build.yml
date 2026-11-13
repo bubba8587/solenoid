@@ -78,8 +78,7 @@ jobs:
   linux:
     needs: find-build
     if: ${{ !cancelled() && needs.find-build.outputs.run_id == '' }}
-    # The oldest supported runner: an AppImage built against a newer glibc will
-    # not start on an older distro.
+    # The oldest supported runner: a .deb built against a newer glibc will not start on an older distro.
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
@@ -96,11 +95,17 @@ jobs:
         with:
           workspaces: "src-tauri -> target"
 
-      # From GitHub's cache once a run has fetched them: the runner's Ubuntu mirror can time out every package for
-      # 20 s each (2026-11-11, a 16-minute step). The compiler, curl, wget and file come with the runner image. On a
-      # cache miss, apt gives up on a slow mirror sooner and retries.
-      - name: Set apt timeouts
-        run: printf 'Acquire::Retries "3";\nAcquire::http::Timeout "10";\nAcquire::https::Timeout "10";\n' | sudo tee /etc/apt/apt.conf.d/99ci-timeouts
+      # From GitHub's cache once a main run has fetched them. The compiler, curl, wget and file come with the runner
+      # image. On 2026-11-11 the runner's own DNS took 20 s to fail on every Ubuntu host (azure.archive, archive,
+      # security) while packages.microsoft.com resolved, making a 16-minute step twice: public resolvers answer beside
+      # it (systemd-resolved takes the first reply), and apt gives up on a slow mirror sooner and retries.
+      - name: Make apt resilient
+        run: |
+          sudo mkdir -p /etc/systemd/resolved.conf.d
+          printf '[Resolve]\nDNS=1.1.1.1 8.8.8.8\n' | sudo tee /etc/systemd/resolved.conf.d/99ci-dns.conf
+          sudo systemctl restart systemd-resolved
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "10";\nAcquire::https::Timeout "10";\n' | sudo tee /etc/apt/apt.conf.d/99ci-timeouts
+          time getent hosts azure.archive.ubuntu.com || echo "azure.archive.ubuntu.com still does not resolve"
 
       - name: Install Tauri's Linux prerequisites
         uses: awalsh128/cache-apt-pkgs-action@v1.6.3
@@ -108,21 +113,31 @@ jobs:
           packages: libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
           version: "1"
 
+      # The cache action reports a failed install as success (2026-11-12: a mirror's index named GStreamer packages it
+      # 404'd, nothing installed, and the build died four minutes later at the linker). Check, and install directly once.
+      - name: Check the prerequisites installed
+        run: |
+          check() { pkg-config --exists webkit2gtk-4.1 gtk+-3.0 ayatana-appindicator3-0.1 librsvg-2.0 openssl; }
+          if ! check; then
+            echo "::warning::The apt cache step left Tauri's prerequisites missing; installing them directly"
+            sudo apt-get update
+            sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          fi
+          check || { echo "::error::Tauri's Linux prerequisites are still missing"; exit 1; }
+
       - name: Install JS dependencies
         run: npm ci
 
-      # The AppImage is the portable file (download, mark executable, run);
-      # the .deb installs it with a launcher on Debian and Ubuntu.
-      - name: Build the AppImage and the .deb
-        run: npm run tauri build -- --bundles appimage,deb
+      # The .deb installs it with a launcher on Debian, Ubuntu and Mint. No AppImage until someone asks (author
+      # 2026-11-11): it carries its own WebKitGTK, 92 MB to the .deb's 18, and the longest bundling step.
+      - name: Build the .deb
+        run: npm run tauri build -- --bundles deb
 
-      - name: Upload the Linux bundles
+      - name: Upload the .deb
         uses: actions/upload-artifact@v4
         with:
           name: solenoid-linux-${{ github.sha }}
-          path: |
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/deb/*.deb
+          path: src-tauri/target/release/bundle/deb/*.deb
           if-no-files-found: error
           retention-days: 30
 
@@ -155,7 +170,6 @@ jobs:
         run: |
           v="${GITHUB_REF_NAME#v}"
           cp "$(find built -name 'solenoid.exe' | head -1)" "solenoid-$v-windows-x64.exe"
-          cp "$(find built -name '*.AppImage' | head -1)" "solenoid-$v-linux-x64.AppImage"
           cp "$(find built -name '*.deb' | head -1)" "solenoid-$v-linux-amd64.deb"
           ls -l solenoid-*
 
@@ -164,7 +178,6 @@ jobs:
         with:
           files: |
             solenoid-*-windows-x64.exe
-            solenoid-*-linux-x64.AppImage
             solenoid-*-linux-amd64.deb
           fail_on_unmatched_files: true
           # Tags containing a hyphen (v0.1.1-alpha, v0.2.0-beta.1) are marked

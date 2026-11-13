@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[save-format#The capture is a fixed point, and plain JSON]], [[save-format#Every field is persisted or deliberately transient]]
+// [[save-format#A save loses nothing quietly]], [[save-format#The capture is a fixed point, and plain JSON]], [[save-format#Every field is persisted or deliberately transient]]
 import { describe, it, expect } from "vitest";
 import type { GraphNode } from "../../src/graph/graphModel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -107,7 +107,7 @@ describe("everything extractInit captures survives a JSON round trip", () => {
   });
 });
 
-describe("[[B12]] losslessSaves: a grown row keeps the socket order a reload rebuilds", () => {
+describe("[[save-format#A save loses nothing quietly]]: a grown row keeps the socket order a reload rebuilds", () => {
   it("every row-growing catalog node reloads with its live input order", () => {
     const moved: string[] = [];
     for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
@@ -148,7 +148,7 @@ describe("literal values never enter init", () => {
 
 
 
-describe("[[B12]] losslessSaves — every own field is persisted or deliberately transient", () => {
+describe("[[save-format#A save loses nothing quietly]] — every own field is persisted or deliberately transient", () => {
   // extractInit's BESPOKE extras: object-valued fields captured by dedicated
   // blocks inside extractInit rather than the flat whitelist (deep-copy /
   // filtering semantics). Kept in sync by the honesty check below.
@@ -160,13 +160,23 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    sortItems: "Categorize's distinct items as its body last listed them for the sorter; the body lists them again each run",
+    sortCategories: "Categorize's categories in effect as its body last read them; stringLiterals.categories holds the typed ones",
+    xlsxTables: "Local File's and Web Source's list of a workbook's Tables, for the picker; every read lists them again (tableName holds the pick)",
+    plotX: "The Probability pack's picture points as its body last showed them; the body draws them again each run",
+    plotY: "The Probability pack's picture points as its body last showed them; the body draws them again each run",
+    plotA: "A/B Test's A curve as its body last showed it; the body draws it again each run",
+    plotB: "A/B Test's B curve as its body last showed it; the body draws it again each run",
+    plotBars: "Probability Between's columns-or-curve choice for its picture, worked out again each run",
+    shadeLo: "Probability Between's shaded range as its body last read it; literals.lo holds the persisted end",
+    shadeHi: "Probability Between's shaded range as its body last read it; literals.hi holds the persisted end",
     rowKeys: "Edit Frame's row keys as its body last read them, for its popup; the body reads them again from the table each run",
     editStatus: "Edit Frame's status of each edit on the last run, for its list; the body works it out again each run",
     settled: "Edit Frame's edits its body found the table now gives, which its coreWatched drops from cellEdits",
     pairPlaceholders: "class-constant muted text for an empty pair field; never a value",
-    cleanSource: "The SVG Picker's memo of the last scrubbed markup; stringLiterals.source holds the persisted text ([[C103]])",
-    columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[C107]])",
-    nestedPicks: "A Note's nested cube-table picks from the Solenoid Properties plugin's data, this note's own; the vault is the source, Import Obsidian Note re-reads them with the note ([[D90]])",
+    cleanSource: "The SVG Picker's memo of the last scrubbed markup; stringLiterals.source holds the persisted text ([[engineering#Untrusted content]])",
+    columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[obsidian-plugin]])",
+    nestedPicks: "A Note's nested cube-table picks from the Solenoid Properties plugin's data, this note's own; the vault is the source, Import Obsidian Note re-reads them with the note ([[frame-verbs#The Cube value]])",
     resolved: "Write Tasks' Preview resolutions; re-derived by the next Preview, meaningless across loads",
     resolvedPath: "Write to Obsidian's last-resolved target path; re-read from the `path` input/literal on every compute",
     templateVars: "Report's last Knap render variables, for the overlay's live preview; rebuilt from the cables on every compute",
@@ -177,7 +187,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     taskRows: "Write to Obsidian's Tasks rows as last planned from the wired rows; rebuilt on every compute",
     readTypes: "Local File's column types as the file read them, so picking one again drops the pick; re-read with the file",
     planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
-    held: "Delayed Pass's value from the last recalculation; a reopened document starts from Start ([[D118]])",
+    held: "Delayed Pass's value from the last recalculation; a reopened document starts from Start ([[compute-pass#Delayed Pass]])",
     stepCount: "Delayed Pass's count of recalculations since it was added, opened or reset, for the card",
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
@@ -242,7 +252,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[C58]] tableInputRawText)",
     entryByOp: "Value Input's typed text per op this session, restored on switching back; only the shown op's text is saved ([[C28]] literalsIffEditable)",
     cachedSource: "List Input's typed text per item, for the popup's Source view; re-split from stringLiterals on every compute",
-    // ── runtime edge-detection ([[D79]] effectsEdgeTriggered) ──
+    // ── runtime edge-detection ([[alert-node-alerts-hud#When it fires]]) ──
     alertKey: "effectsEdgeTriggered: the status the body last read, which raises an alert on a change",
     alertMessage: "effectsEdgeTriggered: what that status fires, shown by the body",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──
@@ -269,7 +279,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     }
     expect(
       [...offenders.entries()].map(([k, o]) => `${k} (${o.join(", ")})`),
-      `Unclassified node fields ([[B12]] losslessSaves): each must either persist (whitelist / ` +
+      `Unclassified node fields ([[save-format#A save loses nothing quietly]]): each must either persist (whitelist / ` +
       `bespoke extras) or join DELIBERATELY_TRANSIENT with the reason — the ` +
       `asofDirection bug is what an unclassified field looks like.`,
     ).toEqual([]);
@@ -298,7 +308,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 
 // ─── [[save-format#What a save deliberately omits]]: the size-owner set ──────────────────
 
-describe("[[B12]] losslessSaves — the size-owner set is exactly the declared list", () => {
+describe("[[save-format#A save loses nothing quietly]] — the size-owner set is exactly the declared list", () => {
   const SIZE_OWNERS = new Set([
     "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
     "composite", "pipeline",                     // the composite card (pipeline = its preset)
@@ -322,7 +332,7 @@ describe("[[B12]] losslessSaves — the size-owner set is exactly the declared l
     expect(
       adopts,
       `These classes now adopt persisted width/height but are not declared ` +
-      `SIZE_OWNERS ([[B12]] losslessSaves) — declare them (is the size a user gesture?), ` +
+      `SIZE_OWNERS ([[save-format#A save loses nothing quietly]]) — declare them (is the size a user gesture?), ` +
       `or stop consuming the init`,
     ).toEqual([]);
     expect(

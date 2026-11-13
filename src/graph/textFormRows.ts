@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]
 // A card with addable rows (List Input's `v0`, `v1`; a filter's `column0`/`value0` pairs) rebuilds exactly the rows its
 // saved `valueKeys` name, and a save always carries them. A line written by hand or by a model rarely does: it names
 // `value1<-Other.out` or `condConfig={"1": …}` and expects the row to be there. So a text-form line without

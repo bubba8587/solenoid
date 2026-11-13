@@ -1,4 +1,4 @@
-// [[B18]] safeToShare, [[C103]] untrustedContentSeams
+// [[B18]] safeToShare, [[engineering#Untrusted content]]
 //! The desktop's network fetch. A document someone else wrote never reaches this computer or the local network: the
 //! host is checked on the request and on every redirect, and a name is checked by the address it resolves to, at the
 //! moment the connection is made, so no spelling of a private address and no name pointing inward gets through.
@@ -7,6 +7,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
+use base64::Engine;
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use reqwest::redirect::Policy;
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,9 @@ pub struct NetRequest {
     /// The user's own document may reach this computer and the local network (TaskNotes on localhost).
     #[serde(default)]
     pub local: bool,
+    /// Answer the body as base64 (`body_base64`) rather than text, for a file that isn't text (a workbook).
+    #[serde(default)]
+    pub binary: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -37,6 +41,8 @@ pub struct NetReply {
     pub status_text: String,
     pub headers: Vec<(String, String)>,
     pub body: String,
+    /// The body's bytes as base64, when the request asked for `binary`; `body` is empty then.
+    pub body_base64: Option<String>,
 }
 
 #[derive(Debug)]
@@ -217,7 +223,14 @@ pub async fn fetch(req: NetRequest) -> Result<NetReply, String> {
         status: status.as_u16(),
         status_text: status.canonical_reason().unwrap_or("").to_string(),
         headers,
-        body: String::from_utf8_lossy(&bytes).into_owned(),
+        body: if req.binary {
+            String::new()
+        } else {
+            String::from_utf8_lossy(&bytes).into_owned()
+        },
+        body_base64: req
+            .binary
+            .then(|| base64::engine::general_purpose::STANDARD.encode(&bytes)),
     })
 }
 
@@ -327,6 +340,7 @@ mod tests {
                 headers: vec![],
                 body: None,
                 local,
+                binary: false,
             })
         };
         let own = get(format!("http://127.0.0.1:{port}/"), true)

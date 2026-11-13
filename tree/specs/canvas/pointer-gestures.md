@@ -2,17 +2,17 @@
 aliases: ["Pointer gestures"]
 tags: [spec, canvas]
 ---
-<!-- [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType, [[B3]] sameNodeEverywhere, [[C52]] visibleSelection -->
+<!-- [[B20]] mobileFriendly, [[B3]] sameNodeEverywhere, [[C52]] visibleSelection -->
 
 # Spec: Pointer gestures
 
-Serves [[C92]] pinchUnvetoable (where each gesture listens and what counts as a finger), [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[B3]] sameNodeEverywhere (both canvases wire the gestures once). It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[B20]] mobileFriendly (where each gesture listens and what counts as a finger) (what a finger, a mouse and a pen each do) and [[B3]] sameNodeEverywhere (both canvases wire the gestures once). It covers what the system does and blocks, and the decision each behavior serves.
 
 This spec is the mechanics of canvas pointer input: which listener handles each gesture, in which event phase, and how a finger is told apart from a mouse or pen. [[touch-gestures]] is its companion: the inventory of what every gesture does on each device.
 
 ## The ordering rule
 
-Pinch listens in the capture phase and cannot be vetoed. Pan and node drag listen in the bubble phase and can be ([[C92]] pinchUnvetoable). Both halves matter; don't move either. The guarantee leans on React Flow binding its handlers in bubble: if React Flow ever moves them to capture, the ordering breaks and this section must be redone.
+Pinch listens in the capture phase and cannot be vetoed. Pan and node drag listen in the bubble phase and can be ([[touch-gestures#Standing rules]]). Both halves matter; don't move either. The guarantee leans on React Flow binding its handlers in bubble: if React Flow ever moves them to capture, the ordering breaks and this section must be redone.
 
 ```mermaid
 flowchart TD
@@ -42,9 +42,9 @@ The pinch is installed on the canvas wrapper in capture, listening to touch even
 
 ## Zoom steps
 
-Zooming in steps (a wheel notch, the zoom pill, a key, a fit) lands on a 10% step. A pinch zooms smoothly and never snaps while the fingers move, and the next stepped zoom rounds back onto a step ([[C92]] pinchUnvetoable). Snapping mid-pinch would jump the canvas under the fingers, so the pinch follows them. Fixed steps everywhere else keep the zoom readout tidy and the steps repeatable. `MIN_ZOOM` and `MAX_ZOOM` are themselves on the step grid. **Reopen if:** the step size should change with the zoom level.
+Zooming in steps (a wheel notch, the zoom pill, a key) lands on a 10% step. A fit (Fit all, the load fit, framing a card) frames at the exact zoom that fits, off the grid: a fit snapped down to a step lost up to a third of the screen at 30% and half at 20%. A pinch zooms smoothly and never snaps while the fingers move, and the next stepped zoom after a pinch or a fit rounds back onto a step ([[touch-gestures#Standing rules]]). Snapping mid-pinch would jump the canvas under the fingers, so the pinch follows them. Fixed steps everywhere else keep the zoom readout tidy and the steps repeatable. `MIN_ZOOM` and `MAX_ZOOM` are themselves on the step grid. **Reopen if:** the step size should change with the zoom level.
 
-Tests: `viewPresets.test.ts`: `clampZoom` snaps to the nearest step within range, `boundZoom` bounds without snapping (and a non-finite input never gives NaN), `floorZoom` snaps down, and both bounds sit on the grid.
+Tests: `viewPresets.test.ts`: `clampZoom` snaps to the nearest step within range, `boundZoom` bounds without snapping (and a non-finite input never gives NaN), and both bounds sit on the grid.
 
 ## Wheel zoom
 
@@ -60,15 +60,15 @@ Wheel zoom listens on the canvas wrapper in capture, like the pinch. It is the o
 
 - `wheelZoomDelta` normalizes the wheel to pixels (a line is 16 px, a page 400 px), multiplies by `−ZOOM_SCALE` (0.0028), and caps the result at ±`ZOOM_STEP_CAP` (0.24); the new scale is `k × (1 + delta)`. The slope is much gentler per pixel than d3's default, so a trackpad scroll glides instead of lurching, and the cap is higher, so a mouse notch still moves.
 - The scale stays between `MIN_ZOOM` (0.1), past which the dot grid is long gone and cards are specks, and `MAX_ZOOM`, where a card fills the viewport.
-- `boundZoom` clamps without snapping (for the pinch).
-- `clampZoom` clamps and snaps to the nearest `ZOOM_SNAP` step (0.1), so every discrete zoom, whether a wheel notch, the zoom pill, a key or a fit, lands on a 10% step, and the first discrete step after a pinch rounds back onto one.
-- Fits snap down (`floorZoom`), so the framed content still fits after snapping.
+- `boundZoom` clamps without snapping (for the pinch and the fits).
+- `clampZoom` clamps and snaps to the nearest `ZOOM_SNAP` step (0.1), so every discrete zoom, whether a wheel notch, the zoom pill or a key, lands on a 10% step, and the first discrete step after a pinch or a fit rounds back onto one.
+- Fits bound without snapping and set the whole camera at once (`View.setCamera`), since `View.zoom` snaps.
 
 ## One finger on a card
 
 Code: `installTouchCardPan` in `flow/flowTouchPan.ts`.
 
-The card pan listens on the canvas wrapper in capture ([[C93]] gestureByPointerType). On touch, a one-finger drag that starts on an unselected card or group pans the canvas; a busy graph otherwise leaves no blank space to pan from. A selected node drags, so on touch you tap to select and then drag. Mouse and pen keep select-and-drag in one motion. The rule keys on the event's pointer type, not on the device class.
+The card pan listens on the canvas wrapper in capture ([[touch-gestures#Standing rules]]). On touch, a one-finger drag that starts on an unselected card or group pans the canvas; a busy graph otherwise leaves no blank space to pan from. A selected node drags, so on touch you tap to select and then drag. Mouse and pen keep select-and-drag in one motion. The rule keys on the event's pointer type, not on the device class.
 
 ```mermaid
 flowchart TD
@@ -129,7 +129,7 @@ Code: `installLassoSelection` in `canvasLasso.ts`.
 
 The lasso is a `pointerdown` listener in capture on the canvas wrapper, so RF's pane never sees a lasso press.
 
-**Starting.** A primary-button press starts a lasso with Shift held, or without Shift while touch-select mode is on. Anything else falls through to the pane's pan. A press inside any card starts no lasso, so a socket's cable drag survives; the test is live containment in each card's element (`view.nodeElement(id).contains`), because a CSS class list silently misses some roots. A second contact, or a press while a lasso is already active, cancels the lasso without applying it and lets the pointer through unstopped, so the pinch takes over ([[C92]] pinchUnvetoable). That check comes before the card test, so a second finger landing on a card still releases the lasso. On desktop the press is stopped, or the pane would pan under the lasso; in touch-select mode it is not, because the pinch must see the first finger.
+**Starting.** A primary-button press starts a lasso with Shift held, or without Shift while touch-select mode is on. Anything else falls through to the pane's pan. A press inside any card starts no lasso, so a socket's cable drag survives; the test is live containment in each card's element (`view.nodeElement(id).contains`), because a CSS class list silently misses some roots. A second contact, or a press while a lasso is already active, cancels the lasso without applying it and lets the pointer through unstopped, so the pinch takes over ([[touch-gestures#Standing rules]]). That check comes before the card test, so a second finger landing on a card still releases the lasso. On desktop the press is stopped, or the pane would pan under the lasso; in touch-select mode it is not, because the pinch must see the first finger.
 
 **Drawing.** The card rectangles are read once at the start: the lasso owns the pointer, so they are stable, and reading them per frame would force an O(N) reflow. Cards hidden in a collapsed group or receded by isolate are left out, since the lasso reaches only what you can see ([[C52]] visibleSelection). A point is added on each `pointermove` at least 3 px from the last. The winding picks the mode, AutoCAD style: clockwise (a positive signed area in screen coordinates) is a crossing lasso, and counterclockwise is a window lasso.
 
@@ -150,7 +150,7 @@ Tests: `canvasLasso.test.ts`: a cancelled pointer, a lost window, Escape and an 
 
 ## Pens and palms
 
-There is no palm rejection ([[C93]]). A pen is handled only as what it is, a precise pointer: it never counts toward a pinch, and it keeps select-and-drag in one motion like a mouse.
+There is no palm rejection ([[touch-gestures#Standing rules]]). A pen is handled only as what it is, a precise pointer: it never counts toward a pinch, and it keeps select-and-drag in one motion like a mouse.
 
 ## Tablets
 
@@ -179,7 +179,7 @@ Code: `.nowheel` in `flow/flowWheel.ts` (`scrollsInDirection`), `.nokeys` in `ca
 A figure that owns its own scrolling or keyboard puts these classes on its root, so the canvas gestures stand down for a press or focus inside it.
 
 - **`.nowheel`.** `installWheelZoom` lets the wheel scroll the element instead of zooming, but only if some element between the target and the `.nowheel` root can actually scroll in the wheel's direction (`scrollsInDirection`). A `.nowheel` body with nothing to scroll still zooms.
-- **`.nodrag`.** React Flow's own class: a press there doesn't drag the node.
+- **`.nodrag`.** React Flow's own class: a press there doesn't drag the node. A control dragged inside a card (a pad, a handle, a painted grid) carries it on the element that takes the drag. React Flow's drag listens natively on the card's wrapper, which a press reaches before React's root listener, so a React `stopPropagation()` runs too late and the press would drag the card along with the control. `sourceInvariants.test.ts` fails a component that captures the pointer without `.nodrag`, apart from a named list of surfaces outside cards.
 - **`.nokeys`.** The keyboard version of `.nowheel` (`canvasKeyboard.ts`). The canvas key handler returns early for any key whose target has a `.nokeys` ancestor, so a focused grid cell's arrow keys don't nudge nodes and its letters don't open the Add menu or run Tidy. F9 still recomputes; it is the one key that stays live here, as it does under a modal, while presenting and while drilled in.
 
 The Gantt figure's tree grid (`role=treegrid`) carries all three. A chart drawn as a single `<svg>` needs none.

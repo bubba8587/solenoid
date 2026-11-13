@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[D79]] effectsEdgeTriggered
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[alert-node-alerts-hud#When it fires]]
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

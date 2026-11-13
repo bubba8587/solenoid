@@ -1,4 +1,4 @@
-// [[C127]] pivotView
+// [[table-popup#The Pivot view]]
 import { useState, useSyncExternalStore } from "react";
 import { PivotTableView } from "./PivotTableView";
 import { fmtCell } from "./FrameDisplay";
@@ -18,7 +18,7 @@ export function PivotFigure({ frame, layout, sourceId }: { frame: FrameValue; la
     return { ...seeded, collapsed: livePivotFolds(layout, seeded.collapsed) };
   });
   const onOptions = (next: PivotViewOptions) => { setOptions(next); host?.setView(next); };
-  // The totals ride on the layout, the rest is the Frame's ([[C127]] pivotView).
+  // The totals ride on the layout, the rest is the Frame's ([[table-popup#The Pivot view]]).
   const addr = pivotAddress(layout);
   const at = (r: number, c: number) => addr.cell(r, c, (or, oc) => frame.columns[oc]?.values[or] ?? null);
   const cellText = (r: number, c: number): string => {

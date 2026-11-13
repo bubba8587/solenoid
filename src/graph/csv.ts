@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams
+// [[B18]] safeToShare, [[engineering#Untrusted content]]
 
 import { wasmCsvRows, wasmInvokeSync } from "./engineWasm";
 

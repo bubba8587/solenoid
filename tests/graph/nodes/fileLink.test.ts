@@ -1,4 +1,4 @@
-// [[C68]], [[C86]] membershipByGesture
+// [[C68]], [[group-expand-push#Who is a member]]
 import { describe, it, expect } from "vitest";
 import { FileLinkNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/nodeInit";

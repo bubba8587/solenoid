@@ -18,7 +18,7 @@ const FORMAT_MONTHS: [&str; 12] = [
 const FORMAT_DAYS: [&str; 7] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 pub const DEFAULT_DATE_FORMAT: &str = "DD-MMM-YYYY";
 
-/// The serial of 01-Jan-0001: the calendar's first day. Days before 1900 are dates as days after it are ([[D119]]
+/// The serial of 01-Jan-0001: the calendar's first day. Days before 1900 are dates as days after it are ([[date-values#Days before 1900]]
 /// datesBefore1900), so a date function's range is the calendar's.
 pub const FIRST_SERIAL: f64 = -693_593.0;
 /// The serial of 01-Jan-10000, the first day past the calendar.
@@ -56,7 +56,7 @@ pub fn time_clip(ms: f64) -> Option<f64> {
 }
 
 /// `Date.UTC(y, m, d)` with the year as given (`Date.UTC` reads 0 to 99 as 1900 to 1999; a year read off a date in
-/// the first century is that year, [[D119]] datesBefore1900), month and day carrying as MakeDay has it.
+/// the first century is that year, [[date-values#Days before 1900]] datesBefore1900), month and day carrying as MakeDay has it.
 pub fn date_utc(y: f64, m: f64, d: f64) -> Option<f64> {
     if !(y.is_finite() && m.is_finite() && d.is_finite()) {
         return None;

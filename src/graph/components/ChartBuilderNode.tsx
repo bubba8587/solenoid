@@ -4,87 +4,64 @@ import { collapseStore } from "../collapseStore";
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../nodeClasses";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey, type ChartTargetId } from "../nodes/chartOptions";
 import { COLORMAP_LIST } from "../colormaps";
-import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
-import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
+import { NodeShell, ArgSelect, useNodeField, type NodeProps, type Emit } from "./nodeKit";
+import { InlineInputs, useConnectedInputs } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
 import { dropInputCables } from "./cablePrune";
 import { stopDragStart } from "../coarse";
 import { CardSection, useRowsInUse } from "./CardSection";
+import { CB_PICK_FIELDS } from "../nodes/visual";
+import "./ChartBuilderNode.css";
 
 const isOnValue = (s: string | undefined) => {
   const v = (s ?? "").trim().toLowerCase();
   return v === "on" || v === "true" || v === "1" || v === "yes";
 };
 
-function ToggleInputRow({ node, emit, socketKey, label }: {
-  node: ShellNode & { stringLiterals: Record<string, string> };
-  emit: Emit;
-  socketKey: string;
-  label: string;
+/** The checkboxes in a run of rows, on a two-column grid: a pick, so no socket ([[C26]] opArgDistinct). */
+function TogglePicks({ node, toggles }: {
+  node: ChartBuilderNodeType;
+  toggles: readonly { key: string; label: string; on: boolean }[];
 }) {
-  const connected = useConnectedInputs(node.id);
-  const incoming = useIncomingSources(node.id);
-  const port = node.inputs[socketKey];
-  if (!port) return null;
-  const wired = connected.has(socketKey);
-  const on = isOnValue(node.stringLiterals[socketKey]);
-  const set = (checked: boolean) => {
-    node.stringLiterals[socketKey] = checked ? "on" : "off";
+  // Left at the figure's own default, the field stays empty, so the options string names only what was changed.
+  const isOn = (key: string, dflt: boolean) => { const v = node.stringLiterals[key] ?? ""; return v.trim() === "" ? dflt : isOnValue(v); };
+  const set = (key: string, checked: boolean, dflt: boolean) => {
+    node.stringLiterals[key] = checked === dflt ? "" : checked ? "on" : "off";
     node.edited(); void processGraph();
   };
   return (
-    <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket}>
-      <span className="solenoid-node__io-label">{label}</span>
-      {wired ? (
-        <span className="solenoid-node__io-wired" title="Driven by the incoming cable named here">
-          ↩ {incoming.get(socketKey)?.label || "wired"}
-        </span>
-      ) : (
-        <input
-          type="checkbox"
-          checked={on}
-          onChange={(e) => set(e.target.checked)}
-          onPointerDown={stopDragStart}
-          onMouseDown={(e) => e.stopPropagation()}
-          style={{ width: 14, height: 14, cursor: "pointer", flex: "0 0 auto" }}
-        />
-      )}
-    </MeasuredSocketRow>
+    <div className="chart-builder__toggles">
+      {toggles.map(({ key, label, on }) => (
+        <label key={key} className="chart-builder__toggle" onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}>
+          <input type="checkbox" checked={isOn(key, on)} onChange={(e) => set(key, e.target.checked, on)} />
+          {label}
+        </label>
+      ))}
+    </div>
   );
 }
 
 type SelectOption = { value: string; label: string; group?: string };
 
-function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
-  node: ShellNode & { stringLiterals: Record<string, string> };
-  emit: Emit;
+/** A dropdown pick in its own row, with no socket; its value saves on the card. */
+function SelectPickRow({ node, socketKey, label, options, clearValue }: {
+  node: ChartBuilderNodeType;
   socketKey: string;
   label: string;
   options: readonly SelectOption[];
   clearValue?: string;
 }) {
-  const connected = useConnectedInputs(node.id);
-  const incoming = useIncomingSources(node.id);
-  const port = node.inputs[socketKey];
-  if (!port) return null;
-  const wired = connected.has(socketKey);
   const value = node.stringLiterals[socketKey] || clearValue || options[0].value;
   const set = (v: string) => {
     node.stringLiterals[socketKey] = v === clearValue ? "" : v;
     node.edited(); void processGraph();
   };
   return (
-    <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket}>
+    <div className="solenoid-node__io-row chart-builder__pick">
       <span className="solenoid-node__io-label">{label}</span>
-      {wired ? (
-        <span className="solenoid-node__io-wired" title="Driven by the incoming cable named here">
-          ↩ {incoming.get(socketKey)?.label || "wired"}
-        </span>
-      ) : (
-        <ArgSelect value={value} onChange={set} options={options} />
-      )}
-    </MeasuredSocketRow>
+      <ArgSelect value={value} onChange={set} options={options} />
+    </div>
   );
 }
 
@@ -99,8 +76,16 @@ const CMAP_OPTS: readonly SelectOption[] = [
   ...COLORMAP_LIST.map((m) => ({ value: m.name, label: m.name, group: m.family })),
   ...COLORMAP_LIST.map((m) => ({ value: `${m.name}_r`, label: `${m.name}_r`, group: "Reversed" })),
 ];
-const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
-  [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }, { key: "clamp", label: "Clamp tiles" }];
+// Every on/off setting is a checkbox; `on` is what the figure does with the setting left out, so a fresh card shows it.
+const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string; on: boolean }[] = [
+  { key: "grid", label: "Grid", on: true }, { key: "marker", label: "Markers", on: false }, { key: "clamp", label: "Clamp tiles", on: false },
+  { key: "cbar", label: "Colorbar", on: true },
+  { key: "critical", label: "Critical path", on: true }, { key: "baseline", label: "Baseline", on: true },
+  { key: "arrows", label: "Arrows", on: true }, { key: "today", label: "Today line", on: true },
+  { key: "status", label: "Status line", on: true }, { key: "weekends", label: "Weekend shading", on: true },
+  { key: "labels", label: "Bar labels", on: true }, { key: "histogram", label: "Resource band", on: false },
+  { key: "minutes", label: "Exact times", on: false }, { key: "group_by", label: "Project groups", on: true },
+];
 const SELECT_KEYS: readonly {
   key: ChartBuilderKey;
   label: string;
@@ -112,7 +97,6 @@ const SELECT_KEYS: readonly {
     key: "annot", label: "Cell values", clearValue: "",
     options: [{ value: "", label: "When they fit" }, { value: "on", label: "Always" }, { value: "off", label: "Hidden" }],
   },
-  { key: "cbar", label: "Colorbar", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
   { key: "origin", label: "First row", clearValue: "upper", options: [{ value: "upper", label: "Top" }, { value: "lower", label: "Bottom" }] },
   {
     key: "pielabels", label: "Pie labels", clearValue: "outside",
@@ -155,6 +139,14 @@ const SELECT_KEYS: readonly {
     ],
   },
   {
+    key: "stacked", label: "Stacking", clearValue: "off",
+    options: [
+      { value: "off", label: "Side by side" },
+      { value: "stacked", label: "Stacked" },
+      { value: "percent", label: "100% stacked" },
+    ],
+  },
+  {
     key: "zoom", label: "Zoom", clearValue: "fit",
     options: [
       { value: "fit", label: "Fit the width" },
@@ -177,16 +169,6 @@ const SELECT_KEYS: readonly {
     key: "fit", label: "Fit", clearValue: "off",
     options: [{ value: "off", label: "Zoom preset" }, { value: "page", label: "Whole plan" }],
   },
-  { key: "critical", label: "Critical path", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
-  { key: "baseline", label: "Baseline", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
-  { key: "arrows", label: "Arrows", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
-  { key: "today", label: "Today line", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
-  { key: "weekends", label: "Weekend shading", clearValue: "on", options: [{ value: "on", label: "Shaded" }, { value: "off", label: "Plain" }] },
-  { key: "labels", label: "Bar labels", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
-  { key: "histogram", label: "Resource band", clearValue: "off", options: [{ value: "off", label: "Hidden" }, { value: "on", label: "Shown" }] },
-  { key: "minutes", label: "Times", clearValue: "off", options: [{ value: "off", label: "Whole days" }, { value: "on", label: "To the minute" }] },
-  { key: "status", label: "Status line", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
-  { key: "group_by", label: "Project groups", clearValue: "on", options: [{ value: "on", label: "Grouped" }, { value: "off", label: "One list" }] },
   {
     key: "collapse", label: "Outline", clearValue: "open",
     options: [
@@ -222,7 +204,7 @@ const SECTIONED_ABOVE = 10;
 // Keys in no section (the title, axis labels, font size, a few one-figure settings) stay at the top.
 const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] = [
   { label: "Columns", keys: ["x", "y", "s", "c", "annotate", "by"] },
-  { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha", "maxgap"] },
+  { label: "Style", keys: ["stacked", "color", "linestyle", "linewidth", "marker", "markersize", "alpha", "maxgap"] },
   { label: "Axes", keys: ["grid", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
   { label: "Color scale", keys: ["cmap", "center", "vmin", "vmax", "cbar", "annot", "fmt"] },
   { label: "Timeline", keys: ["zoom", "tiers", "fit", "window", "columns", "collapse", "group_by"] },
@@ -256,16 +238,23 @@ function BuilderRows({ node, emit, keys, clearFor, short }: {
       labelFor={short ? (k) => labelOf(k, node.inputs[k]?.label ?? k) : undefined} />);
     run = [];
   };
+  let toggles: { key: string; label: string; on: boolean }[] = [];
+  const flushToggles = () => {
+    if (toggles.length) out.push(<TogglePicks key={`tg-${toggles[0].key}`} node={node} toggles={toggles} />);
+    toggles = [];
+  };
   for (const key of keys) {
     const toggle = TOGGLE_BY_KEY.get(key);
     const select = SELECT_BY_KEY.get(key);
-    if (toggle) { flush(); out.push(<ToggleInputRow key={key} node={node} emit={emit} socketKey={key} label={labelOf(key, toggle.label)} />); }
-    else if (select) {
+    if (toggle) { flush(); toggles.push({ key, label: labelOf(key, toggle.label), on: toggle.on }); continue; }
+    flushToggles();
+    if (select) {
       flush();
-      out.push(<SelectInputRow key={key} node={node} emit={emit} socketKey={key} label={labelOf(key, select.label)} options={select.options} clearValue={clearFor(key, select.clearValue)} />);
+      out.push(<SelectPickRow key={key} node={node} socketKey={key} label={labelOf(key, select.label)} options={select.options} clearValue={clearFor(key, select.clearValue)} />);
     } else run.push(key);
   }
   flush();
+  flushToggles();
   return <>{out}</>;
 }
 
@@ -275,7 +264,7 @@ function BuilderSection({ node, emit, label, keys, clearFor }: {
 }) {
   const inUse = useRowsInUse(node, keys);
   return (
-    <CardSection label={label} collapsible defaultOpen={inUse} sockets={{ node, emit, keys }}>
+    <CardSection label={label} collapsible defaultOpen={inUse} sockets={{ node, emit, keys: keys.filter((k) => !CB_PICK_FIELDS.has(k)) }}>
       <BuilderRows node={node} emit={emit} keys={keys} clearFor={clearFor} short />
     </CardSection>
   );
@@ -314,12 +303,8 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
         <ArgSelect value={target} onChange={(t) => void pickTarget(t)} options={targetOpts(target)} />
       </div>
       {collapsed ? (
-        // Collapsed, one InlineInputs carries every shown input: the toggle and select rows would hide their sockets, and two groups would draw two pills.
-        <InlineInputs node={data} emit={emit} keys={[
-          ...acc(STR_KEYS), ...TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key }) => key),
-          ...SELECT_KEYS.filter(({ key }) => accepted.has(key)).map(({ key }) => key), ...acc(NUM_KEYS),
-          ...inertStr, ...inertToggles.map(({ key }) => key), ...inertSelects.map(({ key }) => key), ...inertNum,
-        ] as string[]} />
+        // Collapsed, one InlineInputs carries every socket the card shows; the picks have none.
+        <InlineInputs node={data} emit={emit} keys={[...acc(STR_KEYS), ...acc(NUM_KEYS), ...inertStr, ...inertNum] as string[]} />
       ) : <>
       <BuilderRows node={data} emit={emit} keys={sectioned ? KIND_ORDER.filter((k) => accepted.has(k) && !SECTIONED.has(k)) : acc(KIND_ORDER)} clearFor={clearFor} />
       {sectioned && SECTIONS.map(({ label, keys }) => {
@@ -330,11 +315,9 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
         <CardSection label={`Not used by ${inertLabel}`}>
           <div style={{ opacity: 0.45 }}>
             <InlineInputs node={data} emit={emit} keys={inertStr as string[]} />
-            {inertToggles.map(({ key, label }) => (
-              <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
-            ))}
+            {inertToggles.length > 0 && <TogglePicks node={data} toggles={inertToggles} />}
             {inertSelects.map(({ key, label, options, clearValue }) => (
-              <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearFor(key, clearValue)} />
+              <SelectPickRow key={key} node={data} socketKey={key} label={label} options={options} clearValue={clearFor(key, clearValue)} />
             ))}
             <InlineInputs node={data} emit={emit} keys={inertNum as string[]} />
           </div>

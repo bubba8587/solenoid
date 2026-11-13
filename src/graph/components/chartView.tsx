@@ -12,6 +12,7 @@ import { useSeriesColors, useChartColors } from "./chartCore";
 // `ganttSvg` is imported eagerly: the export provider must return a string synchronously.
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 import { LadderView } from "./ladderView";
+import { ForecastView } from "./forecastView";
 import type { LadderAction } from "../nodes/ladderOps";
 import { registerChartSvgProvider } from "../canvasCapture";
 import { useHostNodeId } from "./nodeContext";
@@ -160,7 +161,7 @@ function useSettledSize(width: number, height: number, heavy: boolean): { w: num
   return heavy ? settled : { w: width, h: height };
 }
 
-// [[C120]] linearWork: a resize of a heavy figure costs a transform per frame, and one redraw when it stops.
+// [[engineering#Performance]]: a resize of a heavy figure costs a transform per frame, and one redraw when it stops.
 export const ChartFigure = memo(function ChartFigure(props: FigureProps) {
   const { value, width, height } = props;
   const drawMs = useRef(0);
@@ -232,6 +233,8 @@ const FigureBody = memo(function FigureBody({ value, width, height, axes = true,
     return <GanttView payload={value.payload} width={width} height={height} virtualize={virtualize} fontScale={fscale} />;
   if (value.op === "ladder" && value.payload?.kind === "ladder")
     return <LadderView payload={value.payload} width={width} height={height} fscale={fscale} onAction={ladderAction} />;
+  if (value.op === "forecast" && value.payload?.kind === "forecast")
+    return <ForecastView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "scatter" || value.op === "xyline" || value.op === "bubble") return EMPTY_FIGURE;
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
 });

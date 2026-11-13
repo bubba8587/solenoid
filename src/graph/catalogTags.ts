@@ -164,6 +164,9 @@ export const CARD_TAGS: Record<string, readonly string[]> = {
   "list-peaks": ["peaks", "local maximum"],
   kmeans: ["clustering", "cluster"],
   pca: ["principal components"],
+  "prob-between": ["area under the curve", "chance of"],
+  "ab-test": ["split test", "experiment", "conversion rate"],
+  bootstrap: ["confidence interval", "margin of error"],
 };
 
 /** A card's tags, lowercased. */

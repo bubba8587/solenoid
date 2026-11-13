@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer
+// [[A1]] visualGraphCalculator, [[html-in-canvas]]
 /** The shipped API: the canvas's `content` attribute (155 renamed `layoutsubtree`) and the 2D context's `drawElementImage`. */
 export function supportsHtmlInCanvas(): boolean {
   try {

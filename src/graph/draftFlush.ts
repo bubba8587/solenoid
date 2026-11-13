@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits, [[B12]] losslessSaves
+// [[B19]] spreadsheetHabits, [[save-format#A save loses nothing quietly]]
 import { useEffect, useRef } from "react";
 
 const pending = new Map<object, () => void>();

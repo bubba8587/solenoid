@@ -1,4 +1,4 @@
-// [[C119]] landscapePhoneIsTablet
+// [[B20]], [[layout-chrome#Phones in landscape]]
 import { useSyncExternalStore } from "react";
 import { IS_COARSE, IS_PHONE, deviceModeStore, isMobile, landscapePhoneScale } from "./coarse";
 import "./chromeZoom.css";

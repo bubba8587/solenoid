@@ -39,11 +39,10 @@ fn table(r: &mut fastrand::Rng) -> FrameValue {
     };
     let mut cols: Vec<FrameColumn> = ["K1", "K2", "K3", "K4"]
         .iter()
-        .map(|name| FrameColumn::new(*name, FrameColType::String, (0..n).map(|_| key(r)).collect()))
+        .map(|name| FrameColumn::new(*name, FrameColType::String, Vec::from_fn(n, |_| key(r))))
         .collect();
-    let x = (0..n)
-        .map(|_| if r.u8(0..8) == 0 { FrameCell::Null } else { FrameCell::Num(f64::from(r.i8(-9..=9))) })
-        .collect();
+    let x =
+        Vec::from_fn(n, |_| if r.u8(0..8) == 0 { FrameCell::Null } else { FrameCell::Num(f64::from(r.i8(-9..=9))) });
     cols.push(FrameColumn::new("X", FrameColType::Number, x));
     FrameValue { columns: cols }
 }
@@ -85,7 +84,7 @@ fn a_calculated_field_reads_the_same_rows_as_a_value_field() {
         };
         let rows = f.columns[0].values.len();
         let filter: Option<Vec<Option<bool>>> =
-            if r.u8(0..3) == 0 { Some((0..rows).map(|_| Some(r.u8(0..4) != 0)).collect()) } else { None };
+            if r.u8(0..3) == 0 { Some(Vec::from_fn(rows, |_| Some(r.u8(0..4) != 0))) } else { None };
         let spec_json = serde_json::json!({
             "rowFields": row_fields, "colFields": col_fields, "values": ["X"], "funcs": [op_name],
             "rowTotalDepth": f64::from(r.i8(-3..=3)), "colTotalDepth": f64::from(r.i8(-3..=3)),
@@ -100,6 +99,7 @@ fn a_calculated_field_reads_the_same_rows_as_a_value_field() {
                 let cells: Vec<FrameCell> = at.iter().map(|&i| x.values[i].clone()).collect();
                 (aggregate_group(&cells, op, Some(FrameColType::Number)), false)
             }),
+            at: None,
         };
         let (out, _) = match pivot_frame_calc(&f, &spec, &[calc]) {
             Ok(o) => o,

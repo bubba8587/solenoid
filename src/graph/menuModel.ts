@@ -1,4 +1,4 @@
-// [[C98]] paletteMirrorsMenubar (the one menu model)
+// [[A1]] visualGraphCalculator, [[command-palette]] (the one menu model)
 // One source for the MenuBar and the Command Palette, so every menubar action is a palette command by construction.
 import { appThemeStore } from "./appTheme";
 import { canvasLockStore } from "./canvasLock";

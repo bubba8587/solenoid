@@ -1,4 +1,4 @@
-// [[C52]], [[C112]] noOverlapsEver, [[auto-arrange-tidy#Align and distribute]], [[auto-arrange-tidy#Position-locked groups]],
+// [[C52]], [[group-expand-push#LayoutFx]], [[auto-arrange-tidy#Align and distribute]], [[auto-arrange-tidy#Position-locked groups]],
 // [[standoffs#Known gaps]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

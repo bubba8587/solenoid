@@ -1,4 +1,4 @@
-// [[C73]] inspectorIsStatic
+// [[layout-chrome#Push or overlay: how the pieces interact]]
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { GraphNode, GraphSocket } from "../graphModel";
 import { inspectorStore } from "../inspectorStore";

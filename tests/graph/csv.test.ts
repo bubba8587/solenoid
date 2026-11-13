@@ -1,4 +1,4 @@
-// [[C103]] untrustedContentSeams, [[frame-verbs#Reading CSV text]]
+// [[B18]] safeToShare, [[engineering#Untrusted content]], [[frame-verbs#Reading CSV text]]
 import { describe, it, expect } from "vitest";
 import { parseCsvRows, csvFieldSpans, joinCsvRows } from "../../src/graph/csv";
 

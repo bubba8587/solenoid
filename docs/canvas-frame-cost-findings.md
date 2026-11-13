@@ -2,7 +2,7 @@
 
 What a pan or zoom frame on the canvas costs, why, and what changes would cut it. This is a report, so read it whole before
 acting on any one finding: several plausible results that held on one kind of test failed on another, and those reversals
-are part of the record. It is written so it can be read without the session that produced it. It serves [[C120]] linearWork (per-frame
+are part of the record. It is written so it can be read without the session that produced it. It serves [[B19]] spreadsheetHabits, [[engineering#Performance]] (per-frame
 work stays proportional to what changed) and the canvas rules in `tree/specs/canvas/react-flow-surface-contract.md`.
 
 Status of each finding at a glance:

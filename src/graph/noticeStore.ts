@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[C106]] noNativeDialogs
+// [[A1]] visualGraphCalculator, [[components#The rules]]
 
 import { createNotifier } from "./storeKit";
 

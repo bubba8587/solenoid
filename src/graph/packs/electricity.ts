@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#Packs]], [[C51]] formulaNaming, [[C17]] shareImpl
 // SI units throughout: volts, amps, ohms, farads, henries, hertz, seconds.
 
 import { ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode } from "../nodeClasses";

@@ -1,4 +1,4 @@
-// [[C98]] paletteMirrorsMenubar
+// [[command-palette]]
 import { SearchField } from "./components/SearchField";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";

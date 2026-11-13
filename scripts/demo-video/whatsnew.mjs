@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[C107]] obsidianPlugin, [[D87]] knapNotes, [[C114]] cardsView
+// [[B3]] sameNodeEverywhere, [[obsidian-plugin]], [[obsidian-plugin#Knap notes]], [[C114]] cardsView
 // The What's New cut for Solenoid Properties 0.1.5: one note, filmed in Obsidian. The two new features are typed into
 // it as a list; a Frame property is edited in its popup; the same Frame is referenced in the body with Knap and edited
 // from there; more Knap renders in Live Preview, its totals held against the Frame's; the `knap` switch turns it off

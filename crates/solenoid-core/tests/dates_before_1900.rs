@@ -1,4 +1,4 @@
-// [[D119]] datesBefore1900, [[C44]] dateSerials, [[date-values#Days before 1900]]
+// [[date-values#Days before 1900]] datesBefore1900, [[C44]] dateSerials, [[date-values#Days before 1900]]
 //! Days before 1900: anchors around serial 0 and far back, and sweeps of the functions and cards 400-year cycles back.
 
 use serde_json::Value as Json;

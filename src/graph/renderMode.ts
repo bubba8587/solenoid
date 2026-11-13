@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer
+// [[A1]] visualGraphCalculator, [[html-in-canvas]]
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";

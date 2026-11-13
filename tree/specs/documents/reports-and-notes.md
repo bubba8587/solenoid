@@ -2,11 +2,11 @@
 aliases: ["Reports and Notes", "Dashboards"]
 tags: [spec, documents]
 ---
-<!-- [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath, [[C103]] untrustedContentSeams -->
+<!-- [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[B18]] safeToShare -->
 
 # Spec: Reports, Notes, Dashboards and the Knap template layer
 
-Serves [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath and [[C103]] untrustedContentSeams. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet and [[B18]] safeToShare. It covers what the system does and blocks, and the decision each behavior serves.
 
 Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotation.ts`) is a pure source: its frontmatter keys become typed output sockets and it mints no inputs. A **Report** (`ReportNode`, `nodes/report.ts`) is a pure sink for values: its template variables mint inputs, and it emits one rendered document. Both bodies are **Knap** templates. Knap is Obsidian's template language (the `knap` npm package, version 0.6.0), and `knapTemplate.ts` is the only module that renders with it (the overlay's Filters list reads the package's `standardFilterMetadata`). Both nodes emit a **DocumentValue** on a `document` output, which Write to Obsidian, the Document chip and a Report's own inputs consume. A **Dashboard** is the Report's sibling without the text: the same bones (inputs minted from what the author writes, values drawn by one shared renderer, a full-size window) laid out as a grid of boxes ([[#Dashboards]]).
 
@@ -376,7 +376,7 @@ Assets are named `<note name>-<ref name>.<ext>` with `#`, `^`, `[`, `]` and `|` 
 
 A note that does not exist yet is written as the markdown (wrapped in markers for `block`). In `block` mode the writer's addressable name keys the pair, so two writers own two blocks; the markers are Obsidian comments, hidden in reading view. An unclosed code fence runs to the end of the note.
 
-**Patching an existing note's frontmatter** ([[C101]] onePatchPath). `frontmatterPatch.ts` is the one writer of a note's YAML: it patches the raw text line by line and never parses and reserializes, so every byte the write did not target stays identical, and what it writes uses Obsidian's block style. Write Properties, the stamp and every other note write go through it. `frontmatterPatch.test.ts` proves untouched bytes identical and a cube round-trip unchanged. A key whose note text already reads back as the value (`url: https://x`, which the writer would quote) is unchanged and is not rewritten (`readsAs`). A cell holding an error is refused at planning (`cellError`, the row's `held` reason) and never written; a number with a unit writes as it shows, in its own unit, and a date anywhere in a cell as its day. Reading stays permissive: any spelling Obsidian or a person writes still parses (`noteFrontmatter.ts`).
+**Patching an existing note's frontmatter** ([[vault-bridge#What every VaultBridgeFx holds to]]). `frontmatterPatch.ts` is the one writer of a note's YAML: it patches the raw text line by line and never parses and reserializes, so every byte the write did not target stays identical, and what it writes uses Obsidian's block style. Write Properties, the stamp and every other note write go through it. `frontmatterPatch.test.ts` proves untouched bytes identical and a cube round-trip unchanged. A key whose note text already reads back as the value (`url: https://x`, which the writer would quote) is unchanged and is not rewritten (`readsAs`). A cell holding an error is refused at planning (`cellError`, the row's `held` reason) and never written; a number with a unit writes as it shows, in its own unit, and a date anywhere in a cell as its day. Reading stays permissive: any spelling Obsidian or a person writes still parses (`noteFrontmatter.ts`).
 
 **Frontmatter YAML** (`frontmatterToYaml` in `obsidianMarkdown.ts`; `yamlScalar` is shared with `frontmatterPatch.ts`). The block is `---`-fenced with a trailing newline, keys in insertion order, and empty when there are no keys. A list is a block sequence (`key: []` when empty). A scalar is written bare unless YAML would misread it:
 
@@ -390,12 +390,12 @@ A key is quoted by the same rules as text, so a key YAML would read as anything 
 
 **The Tasks target ticks checklist items.** Set to Tasks, the Write to Obsidian node reads only its `rows`, and each row sets one checklist item's mark in one note. A row needs three columns: `path` (the note), `line` (the item's line in the note's file, a whole number from 1) and `done` (TRUE or FALSE). These are the columns an Unnest node gives from the Vault Folder node's `note-tasks`, so the usual chain is Vault Folder with Tasks ticked, Unnest, whatever decides `done`, then the write. A row missing any of the three is left out of the plan. Auto never picks this target: it is chosen by name.
 
-- **Only the character between the brackets changes** ([[C101]] onePatchPath; `planTaskMark` and `setTaskMarks`, `noteBody.ts`). `done` TRUE makes the mark `x`, leaving an `x` or `X` already there as it is. `done` FALSE clears an `x` or `X` to a space, and leaves any other mark (`/` in progress, `-` cancelled) alone, so a custom status is never wiped. Every other character of the note, its line endings included, is written back as it was.
+- **Only the character between the brackets changes** ([[vault-bridge#What every VaultBridgeFx holds to]]; `planTaskMark` and `setTaskMarks`, `noteBody.ts`). `done` TRUE makes the mark `x`, leaving an `x` or `X` already there as it is. `done` FALSE clears an `x` or `X` to a space, and leaves any other mark (`/` in progress, `-` cancelled) alone, so a custom status is never wiped. Every other character of the note, its line endings included, is written back as it was.
 - **A row is refused when its line is not the item it named.** A line that is no checklist item, is inside a code fence or is past the end of the note is refused with "line N is not a checklist item". When the rows carry a `task` column, the item's text on that line must still read as that text, or the row is refused with "the item at line N has changed": a note edited since it was read is never ticked on the wrong line.
 - **The plan** has a row per task row: `path`, `key` (`line N`), `before` and `after` (the mark with its brackets, filled by Preview) and `action` (`update`, `unchanged`, `refused` with its reason, or `unreadable` for a note that cannot be read).
 - **Run** writes each note once, with every mark its rows update, and reports the items changed, the notes written, and the rows refused or failed. It stamps nothing and adds no completion date. The guards are the Note target's: only Run writes, the node loads disarmed, and the demo vault refuses.
 
-**Stamp.** When `stamp` is on and exactly one note was written, the note's frontmatter gains a `solenoid:` link to a `Solenoid/<doc>` stub note through `patchFrontmatter` ([[C101]] onePatchPath), and the stub note is merged. Stamping never fails the write. This is the only frontmatter write on the document path; a Note's own frontmatter reaches the vault as the text of its body.
+**Stamp.** When `stamp` is on and exactly one note was written, the note's frontmatter gains a `solenoid:` link to a `Solenoid/<doc>` stub note through `patchFrontmatter` ([[vault-bridge#What every VaultBridgeFx holds to]]), and the stub note is merged. Stamping never fails the write. This is the only frontmatter write on the document path; a Note's own frontmatter reaches the vault as the text of its body.
 
 Tests: `noteBody.test.ts`: a mark set, cleared and left alone by what it holds; a line refused for being no checklist item, in a fence, past the end or no longer the item read; the note written back with only the marks changed; the body-derived columns left out of a property write, and an inline field unchanged when equal and refused when not. `run-graph-vault.test.ts`: the Tasks target over a copy of the sample vault refuses while disarmed, previews, changes one character of the note per item ticked, and finds nothing to change on a second Run. `frontmatterPatch.test.ts`: untouched bytes stay identical, and a cube round-trips through a note unchanged; `managedBlock.test.ts`: a block between markers is appended once and replaced in place after, each name owning its own; `obsidianMarkdown.test.ts`: values written as YAML, quoted where a plain scalar would misread and never splitting a line.
 
@@ -454,7 +454,7 @@ Rows share the board's height with a 160 px floor, and the grid scrolls past tha
 A box is a grid placement, its name as the label, its value drawn by the shared renderer (`InlineRefValue`) with `rich` (a Frame's 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). The label is the figure's title, so the figure's own caption is hidden.
 
 - **A lone value** is the box's figure, centered and scaled to the box (container query units): a number, a KPI card's number, an error code or a date in the UI face at weight 750, 28 to 84 px; text, a list and a hint smaller, 18 to 40 px. Numbers take their format from a Format Controller, as everywhere; the box adds none.
-- **A PIVOTBY output** draws as the popup's Pivot view (`PivotFigure`, [[table-popup#The Pivot view]]) in the Pivot node's saved options, without the ribbon; a fold made here is the node's, as in the popup. A Report's expanded embed draws it the same way; a card's three-row preview stays a table.
+- **A frame whose popup opens on a view of its own** draws in that view (`specialFrameView`, `SpecialFrameView.tsx`), so a surface shows the frame the way its popup does: a PIVOTBY output as the Pivot view (`PivotFigure`, [[table-popup#The Pivot view]]) in the Pivot node's saved options, without the ribbon, a fold made here being the node's, as in the popup; Describe's profile as its Profile tiles (the popup's Profile view). A Report's expanded embed and an open Display card on the canvas draw it the same way; a card's three-row preview and a collapsed Display stay a table. A view a popup newly opens on joins `specialFrameView`, so every surface follows.
 - **A chart, diagram or picture** fits the box, a diagram scaled keeping its shape. **A document, a table, a cube or a Frame's cards** keep their own height and the box scrolls them; a table or cube drops the sunken well it wears on a card, since the box is its frame.
 - **An error** shows its code, its message (else its explanation) and, when it knows its origin, a Caused by button that closes the board and flies to that node.
 - **Nothing wired** shows a muted dash, or the box's hint.
@@ -494,7 +494,7 @@ A ⋯ menu on each label, shown on hover (always on a touch screen), rendered ou
 
 ### Edit mode
 
-Edit Layout swaps the grid for `react-grid-layout`. Each box shows a snapshot of its rendered contents (`snapshotOf`: the box's markup cloned, canvases as pictures, scaled to the box), so nothing re-renders or re-measures under a drag. Boxes drag anywhere and resize from the right, bottom or corner over dashed empty cells; Columns sets the grid's width (1 to 12). Each label carries a grip mark. On a touch screen ([[C93]] gestureByPointerType) a box moves only by its label bar, taller for a finger, so a swipe across its body still scrolls the grid, and it resizes by one 44 px corner handle; the browser's own gestures are off where a drag starts, so it never takes the touch mid-drag. Done writes the grid back as layout text; Cancel or Esc discards it.
+Edit Layout swaps the grid for `react-grid-layout`. Each box shows a snapshot of its rendered contents (`snapshotOf`: the box's markup cloned, canvases as pictures, scaled to the box), so nothing re-renders or re-measures under a drag. Boxes drag anywhere and resize from the right, bottom or corner over dashed empty cells; Columns sets the grid's width (1 to 12). Each label carries a grip mark. On a touch screen ([[touch-gestures#Standing rules]]) a box moves only by its label bar, taller for a finger, so a swipe across its body still scrolls the grid, and it resizes by one 44 px corner handle; the browser's own gestures are off where a drag starts, so it never takes the touch mid-drag. Done writes the grid back as layout text; Cancel or Esc discards it.
 
 ### Undo
 
@@ -506,7 +506,7 @@ Each change on the board is one undo step. Layout changes are recorded when the 
 
 ## What is sanitized, and where
 
-A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each guard sits at one seam ([[C103]] untrustedContentSeams).
+A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each guard sits at one seam ([[engineering#Untrusted content]]).
 
 | Surface | Guard |
 |---|---|
@@ -522,4 +522,4 @@ A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each
 
 Tests: `svgSanitize.test.ts`: the SVG Picker's intake strips scripts, handlers, `foreignObject`, external image and `use` references and `javascript:` URLs, keeps what the picker needs (ids, names, classes, paths, fills, a local `use`), and runs headless.
 
-The other two seams under [[C103]] live elsewhere: CSV formula-injection escaping on every export (`csvSafety.ts`, the popup's Copy and Export and the Write File sink; [[table-popup]]), and the per-document network gate (`docMetaStore.networkAllowed`, asked once per foreign document, which every fetch path asks; [[live-connections]]).
+The other two seams under [[engineering#Untrusted content]] live elsewhere: CSV formula-injection escaping on every export (`csvSafety.ts`, the popup's Copy and Export and the Write File sink; [[table-popup]]), and the per-document network gate (`docMetaStore.networkAllowed`, asked once per foreign document, which every fetch path asks; [[live-connections]]).

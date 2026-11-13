@@ -51,7 +51,11 @@ export function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): numbe
       prev,
       () => {
         const el = ref.current;
-        return el ? el.offsetTop + el.offsetHeight / 2 - 6 : undefined;
+        if (!el) return undefined;
+        // A row whose field sits below its label keeps its socket on the label's line.
+        const label = el.getAttribute("data-io-fit") === "below" ? el.querySelector<HTMLElement>(":scope > .solenoid-node__io-label") : null;
+        if (label && label.offsetParent === el.offsetParent) return label.offsetTop + label.offsetHeight / 2 - 6;
+        return el.offsetTop + el.offsetHeight / 2 - 6;
       },
       (t) => {
         if (t !== undefined && prev.current !== t) { prev.current = t; setTop(t); }

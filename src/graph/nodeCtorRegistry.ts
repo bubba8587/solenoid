@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]
 import { GraphNode } from "./graphModel";
 import { FLAT_CATALOG } from "./catalogUtils";
 

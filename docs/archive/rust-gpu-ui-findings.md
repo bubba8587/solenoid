@@ -46,7 +46,7 @@ first.
   (`../../tree/specs/canvas/layout-chrome.md` § The desktop window frame). A screen-space canvas outside the
   transformed viewport draws at device resolution itself and does not hit this. Confirm with
   `WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS=1` in the spike.
-- **The HTML-in-Canvas layer (about 1,800 lines, [[C42]] htmlInCanvasRenderer) exists to fake this:**
+- **The HTML-in-Canvas layer (about 1,800 lines, [[html-in-canvas]]) exists to fake this:**
   it captures pictures of cards into an atlas so a gesture can pan pictures instead of DOM. A real
   far-zoom card view replaces it.
 - **React Flow's per-frame subscriptions:** every cable subscribes three times and recomputes its ends
@@ -97,7 +97,7 @@ app already (`@fontsource-variable`), so loading them into the wasm side is a co
 
 ## What a complete GPU port collides with in the decision tree
 
-- **[[B1]] obsidianBet / [[C107]] obsidianPlugin.** The plugin reuses the app's chips and popup editors
+- **[[B1]] obsidianBet / [[obsidian-plugin]].** The plugin reuses the app's chips and popup editors
   inside Obsidian's DOM (`../../tree/specs/integrations/obsidian-plugin.md`). A canvas UI leaves two
   choices: keep a React copy for the plugin (a second implementation, which [[D99]] rustIsSpec's own
   logic rejects) or mount small wasm canvases into Obsidian's property rows, themed from Obsidian's CSS

@@ -75,7 +75,8 @@ export function coreValue(v: unknown, units = false): unknown {
     if (values.includes(undefined) || read.includes(undefined)) return undefined;
     const d = v.descriptions;
     const descriptions = d ? { descriptions: Object.fromEntries(Object.entries(d).map(([k, x]) => [toWellFormed(k), toWellFormed(x)])) } : {};
-    return { __lambda: { params: v.params.map(toWellFormed), expr: toWellFormed(v.expr), captured: captured.map(toWellFormed), capturedValues: values, readValues: read, ...descriptions } };
+    const empty = v.empty?.length ? { empty: v.empty.map(toWellFormed) } : {};
+    return { __lambda: { params: v.params.map(toWellFormed), expr: toWellFormed(v.expr), captured: captured.map(toWellFormed), capturedValues: values, readValues: read, ...descriptions, ...empty } };
   }
   if (v === null || typeof v === "number" || typeof v === "boolean" || isSolError(v)) return wireCell(v);
   return undefined;
@@ -151,7 +152,7 @@ function fxErrorToSol(e: Error): SolError {
 
 // A long list crossing again and again (a wired LAMBDA's capture, its body called once per item) is sent once: the
 // core holds it under an id for as long as the JS list lives, which is what makes a list's identity its content
-// ([[C120]] linearWork). Ids only grow, so one a dead instance held never names another list.
+// ([[engineering#Performance]]). Ids only grow, so one a dead instance held never names another list.
 const HELD_FROM = 64;
 let heldIds = new WeakMap<object, number>();
 let heldSeq = 0;

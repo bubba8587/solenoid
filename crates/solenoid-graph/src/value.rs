@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C120]] linearWork
+// [[C130]] rustCore, [[engineering#Performance]] linearWork
 //! A value on a cable (`tree/specs/computation/graph-core.md` § Direct calls): one shared cell holding its producer's
 //! form and, once asked, the other; converting is the card wire (`nodeWire.ts`), once per value, never per cell.
 
@@ -62,7 +62,7 @@ impl Val {
             .clone()
     }
 
-    /// What a card's box shows ([[C120]] linearWork, drawing stops at the screen): a big list the core made and
+    /// What a card's box shows ([[engineering#Performance]] linearWork, drawing stops at the screen): a big list the core made and
     /// JavaScript hasn't taken whole as `[first rows, length, table width]`, made once, so the box never takes the whole of it;
     /// anything else as `[value]`, its JavaScript form.
     pub(crate) fn preview_js(&self) -> JsValue {
@@ -152,7 +152,7 @@ impl Val {
             .as_ref()
     }
 
-    /// The socket type this value reads as ([[D117]] emptyKeepsLastType, [[C136]] typesKnownAfterCalc): a frame or cube
+    /// The socket type this value reads as ([[socket-lattice#Requirements]] emptyKeepsLastType, [[C136]] typesKnownAfterCalc): a frame or cube
     /// as itself, a table at its family's matrix, anything else at its family's combo; `""` for a mix of families;
     /// none for a value with nothing to read (empty, blank, errors only, or no kind the lattice has).
     pub(crate) fn socket_type(&self) -> Option<&'static str> {

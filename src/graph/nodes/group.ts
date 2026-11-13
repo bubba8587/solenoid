@@ -1,14 +1,14 @@
-// [[C86]] membershipByGesture, [[C88]] collapsedGroupCard, [[C112]] noOverlapsEver
+// [[group-expand-push#Who is a member]], [[C88]] collapsedGroupCard, [[group-expand-push#LayoutFx]]
 import { GraphNode } from "../graphModel";
 
 export class GroupNode extends GraphNode {
   label: string;
-  members: string[];      // the authoritative set ([[C86]] membershipByGesture)
+  members: string[];      // the authoritative set ([[group-expand-push#Who is a member]])
   color: string;
   collapsed: boolean;
   width: number;
   height: number;
-  lockedPosition: boolean; // [[C112]] noOverlapsEver
+  lockedPosition: boolean; // [[group-expand-push#LayoutFx]]
 
   constructor(init?: {
     label?: string;

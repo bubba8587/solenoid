@@ -1,9 +1,9 @@
-// [[C127]] pivotView
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]]
 import { frameRowCount, type FrameColType } from "./frame";
 import { frameSidecar } from "./frameSidecar";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 
-/** One column's tile on the Dashboard view: what the summary row says, plus what its charts draw. Describe's body
+/** One column's tile on the Profile view: what the summary row says, plus what its charts draw. Describe's body
  *  on the core makes them (`describe_tiles`, `nodes/frames.rs`). */
 export interface DescribeTile {
   name: string;

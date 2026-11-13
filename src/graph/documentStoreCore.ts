@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves. Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
+// [[save-format#A save loses nothing quietly]]. Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
 
 import type { SavedGraph } from "./persistence";
 import { validateSavedGraph } from "./persistenceCore";

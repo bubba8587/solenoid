@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[C51]] formulaNaming, [[D124]] comparisonFunctions
+// [[C17]] shareImpl, [[C51]] formulaNaming, [[formula-language#Scalar operators]]
 
 import type { PackFormula } from "./packShared";
 

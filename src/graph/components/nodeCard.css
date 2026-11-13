@@ -514,6 +514,13 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   box-sizing: border-box;
 }
 
+/* A date picker on a 22px row (Date Range) takes the inline field's size, so a full date fits a default-width card. */
+.solenoid-node__io-row:not(.solenoid-node__io-row--hero) > input.solenoid-node__value-input[type="date"] {
+  flex: 1 1 auto;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
 .solenoid-node__value-input:focus {
   border-color: var(--node-accent, var(--accent));
 }
@@ -712,8 +719,9 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 }
 
 .solenoid-node__io-row {
-  /* Not a positioning context: sockets anchor to .solenoid-node__content, so every row shares one x and a header-independent top. */
-  height: 22px;
+  /* Not a positioning context: sockets anchor to .solenoid-node__content, so every row shares one x and a header-independent top.
+     A 22px line; a label too long for the label column wraps and the row grows, its socket re-centering on it. */
+  min-height: 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -727,9 +735,73 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 .solenoid-node__io-label {
   flex: 0 0 auto;
 }
+/* The label column: every labeled input row's field starts at one x, the card's widest label (`--io-label-w`,
+   NodeCard measures it), capped so the field keeps 60px, room for six digits or a short word. A label past the cap
+   wraps onto a second, balanced line rather than squeezing its field. Same selector as NodeCard's IO_LABEL_COLUMN. */
+.solenoid-node__io-row:not(.solenoid-node__io-row--output):not(.solenoid-node__io-row--hero):not([data-io-fit]) > .solenoid-node__io-label:not(.solenoid-node__io-label ~ .solenoid-node__io-label):not(:last-child) {
+  flex: 0 0 auto;
+  min-width: min(var(--io-label-w, 0px), 100% - 72px);
+  max-width: calc(100% - 72px);
+  line-height: 1.2;
+  overflow-wrap: break-word;
+  text-wrap-style: balance;
+}
 /* A field that fills the rest of the row sits a little further off its label than the row's gap. */
-.solenoid-node__io-label + :is(.solenoid-node__quoted--inline, .solenoid-node__inline-input, .solenoid-node__select, .solenoid-node__value-input) {
+.solenoid-node__io-label + :is(.solenoid-node__quoted--inline, .solenoid-node__inline-input, .solenoid-node__select, .solenoid-node__value-input, .solenoid-node__keyed, .sol-conn__select) {
   margin-left: 4px;
+  min-width: 60px;
+}
+/* Rows that leave the label column (NodeCard's `planLabelColumn` sets data-io-fit). A word or date field whose own label
+   would leave it too narrow goes below the label at the body's full width; the socket stays on the label's line.
+   A number row whose label is past the cap keeps one line, its field narrower. Scoped by :has, so a row the plan
+   hasn't revisited since its field went (a wired input) falls back to an ordinary row. */
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="below"]:has(> :is(.solenoid-node__quoted--inline, .solenoid-node__keyed, .solenoid-node__inline-input, .solenoid-node__value-input, .sol-conn__url)) {
+  flex-wrap: wrap;
+  row-gap: 3px;
+  padding-block: 2px;
+}
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="below"] > :is(.solenoid-node__io-label, .sol-conn__label) {
+  flex: 0 0 100%;
+  min-width: 0;
+  max-width: none;
+}
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="below"] > :is(.solenoid-node__io-label, .sol-conn__label) + * {
+  /* A basis past what's left beside the full-width label forces the break; it grows to the line below, from the
+     label's left edge to the right edge every other field ends on. */
+  flex: 1 1 50%;
+  min-width: 0;
+  margin-left: 0;
+}
+.solenoid-node__io-row[data-io-fit="below"] > .solenoid-node__io-label + .solenoid-node__quoted--inline {
+  max-width: none;
+  margin-left: calc(0px - var(--quote-hang));
+}
+.solenoid-node__io-row[data-io-fit="below"] > .solenoid-node__io-label + .solenoid-node__quoted--inline:last-child {
+  margin-right: calc(0px - var(--quote-hang));
+}
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="solo"] > :is(.solenoid-node__io-label, .sol-conn__label) {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+  white-space: nowrap;
+}
+:is(.solenoid-node__io-row, .sol-conn__field)[data-io-fit="solo"] > :is(.solenoid-node__io-label, .sol-conn__label) + * {
+  min-width: 40px;
+}
+/* A dropdown on a 22px row is as tall as the fields around it. */
+.solenoid-node__io-row > :is(.solenoid-node__select, .sol-conn__select),
+.sol-conn__field > .sol-conn__select {
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+/* The quote marks hang outside the field, so a text field's box lines up with the number fields above and below. */
+.solenoid-node__io-label + .solenoid-node__quoted--inline {
+  margin-left: calc(4px - var(--quote-hang));
+  min-width: calc(60px + 2 * var(--quote-hang));
+}
+.solenoid-node__io-label + .solenoid-node__quoted--inline:last-child {
+  margin-right: calc(0px - var(--quote-hang));
 }
 
 .solenoid-node__io-row--hero {
@@ -799,7 +871,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   font-family: inherit;
   text-align: left;
 }
-/* A Pipeline's steps ([[C53]] pipelineIsCompositePreset). */
+/* A Pipeline's steps ([[composite-nodes#Manual refresh and Pipeline]]). */
 .solenoid-pipeline {
   display: flex;
   flex-direction: column;
@@ -949,10 +1021,9 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   border-color: var(--node-accent, var(--accent));
 }
 
-/* !important is a drag-lock: under pointer capture the cursor would otherwise flicker to whatever is beneath. */
-body.solenoid-scrubbing,
-body.solenoid-scrubbing * {
-  cursor: ns-resize !important;
+/* A list reads left to right, as text does, whatever its items are. */
+.solenoid-node__inline-input--list {
+  text-align: left;
 }
 
 .solenoid-node__inline-input--text,
@@ -962,6 +1033,7 @@ body.solenoid-scrubbing * {
 }
 
 .solenoid-node__quoted {
+  --quote-hang: 7px; /* a quote mark and the gap after it */
   position: relative;
   display: inline-flex;
   align-items: baseline;
@@ -980,7 +1052,8 @@ body.solenoid-scrubbing * {
   max-width: 100%;
 }
 .solenoid-node__quote {
-  flex: 0 0 auto;
+  flex: 0 0 5px;
+  text-align: center;
   color: var(--text-dim);
   font-family: var(--font-sans);
 }
@@ -1286,8 +1359,8 @@ body.solenoid-scrubbing * {
   border: 1px solid var(--border);
   color: var(--text-bright);
   font-family: inherit;
-  font-size: 13px;
-  padding: 4px 24px 4px 8px;
+  font-size: 12px;
+  padding: 3px 24px 3px 8px;
   border-radius: 4px;
   outline: none;
   cursor: pointer;
@@ -1421,6 +1494,11 @@ body.solenoid-scrubbing * {
 }
 
 /* Chromium and WebView2 paint the OS option popup from these backgrounds; its outer frame is not styleable. */
+/* LazySelect's floor: its widest option, measured once, so a max-content card isn't held wide by a hovered list. */
+.sol-lazy-select {
+  min-width: var(--lazy-min, auto);
+}
+
 .solenoid-node__select option {
   background-color: var(--surface);
   color: var(--text-bright);
@@ -1633,7 +1711,7 @@ body.solenoid-scrubbing * {
   border-width: 2px;
   border-color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-emphasis), var(--border));
   /* 1px off each side, so the outer box matches the 1px/4px/8px neutral field. */
-  padding: 3px 23px 3px 7px;
+  padding: 2px 23px 2px 7px;
 }
 .solenoid-node__select--op:focus {
   border-color: var(--node-accent, var(--accent));
@@ -1660,3 +1738,11 @@ body.solenoid-scrubbing * {
 }
 .solenoid-const__symbol { margin-right: 6px; }
 .solenoid-const__unit { margin-left: 6px; font-size: 0.85em; }
+
+/* A pair of small toggles under a card's fields (TEXTAFTER's Aa and End), on the fields' right edge. */
+.solenoid-node__toggle-pair {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 4px;
+}

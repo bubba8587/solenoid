@@ -42,15 +42,11 @@ fn broadcast_el(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
         return cell(&ops);
     };
     let null = V::Null;
-    list(
-        (0..len)
-            .map(|i| {
-                let ops: Vec<&V> =
-                    args.iter().map(|a| if let V::List(l) = a { l.get(i).unwrap_or(&null) } else { a }).collect();
-                cell(&ops)
-            })
-            .collect(),
-    )
+    list(Vec::from_fn(len, |i| {
+        let ops: Vec<&V> =
+            args.iter().map(|a| if let V::List(l) = a { l.get(i).unwrap_or(&null) } else { a }).collect();
+        cell(&ops)
+    }))
 }
 
 /// A wired logical or a typed 0/1, blank unknown.
@@ -133,7 +129,7 @@ fn comparison(c: &mut Call) -> Answer {
     let result = if matches!(a, V::Null) && matches!(b, V::Null) {
         V::Null
     } else {
-        // The card is its function ([[D124]] comparisonFunctions), item by item.
+        // The card is its function ([[formula-language#Scalar operators]] comparisonFunctions), item by item.
         let name = crate::compare::card_function(&op);
         broadcast_el(&[a, b], |o| core_call(name, &[o[0].clone(), o[1].clone()]))
     };
@@ -200,7 +196,7 @@ fn if_cells(cond: &V, then: &V, els: &V) -> V {
     let len = [cond, then, els].iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).max();
     match len {
         None => pick(cond, then, els),
-        Some(len) => list((0..len).map(|i| pick(&at(cond, i), &at(then, i), &at(els, i))).collect()),
+        Some(len) => list(Vec::from_fn(len, |i| pick(&at(cond, i), &at(then, i), &at(els, i)))),
     }
 }
 
@@ -516,18 +512,9 @@ fn is_test(c: &mut Call) -> Answer {
         Cv::Frame(f) => {
             // A Frame is read row by row, each row its cells across the columns.
             let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0);
-            list(
-                (0..rows)
-                    .map(|i| {
-                        list(
-                            f.columns
-                                .iter()
-                                .map(|col| or_null(col.values.get(i).cloned().unwrap_or(V::Undef)))
-                                .collect(),
-                        )
-                    })
-                    .collect(),
-            )
+            list(Vec::from_fn(rows, |i| {
+                list(f.columns.iter().map(|col| or_null(col.values.get(i).cloned().unwrap_or(V::Undef))).collect())
+            }))
         }
         Cv::V(v) => v,
         // A Cube or plain data is one value no test but non-text holds for.

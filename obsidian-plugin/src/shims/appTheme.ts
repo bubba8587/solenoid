@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import { themeVersion } from "../shadow";
 
 export const appThemeStore = {

@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[schedule-and-gantt#The Schedule node]], [[schedule-and-gantt#Dates and precision]]
+// [[A1]] visualGraphCalculator, [[group-expand-push#Who is a member]], [[schedule-and-gantt#The Schedule node]], [[schedule-and-gantt#Dates and precision]]
 import { describe, it, expect } from "vitest";
 import { ScheduleNode } from "../../../src/graph/nodeClasses";
 import { extractInit } from "../../../src/graph/nodeInit";

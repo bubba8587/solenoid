@@ -80,7 +80,7 @@ export type ShapeMode = "list" | "grid";
 export type ResultType = "number" | "text" | "date" | "logical" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 
-/** An InlineCast's pick on a card's result ([[D113]] inlineCast): ∅ keeps the computed type; the rest run Cast. */
+/** An InlineCast's pick on a card's result ([[socket-lattice#The InlineCast]]): ∅ keeps the computed type; the rest run Cast. */
 export type CastTo = "none" | "number" | "text" | "date" | "logical";
 
 export const CAST_TO_META: Record<CastTo, { label: string; title: string }> = {
@@ -100,7 +100,7 @@ const RESULT_SOCKETS: Record<ResultDim, Record<Exclude<ResultType, "auto">, Grap
 /** The wildcard rung an Auto result declares at each dim, which the value it carries then types. */
 const AUTO_RUNG: Record<ResultDim, SocketDataType> = { scalar: "any", combo: "anycombo", matrix: "anytable" };
 
-/** The socket a result takes at `dim`: the InlineCast's pick, else one the value it carries types ([[D117]]). */
+/** The socket a result takes at `dim`: the InlineCast's pick, else one the value it carries types ([[socket-lattice#Requirements]]). */
 export function castResultSocket(dim: ResultDim, castTo: CastTo): GraphSocket {
   return resultSocket(dim, castTo === "none" ? "auto" : castTo);
 }

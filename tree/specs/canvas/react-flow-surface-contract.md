@@ -2,6 +2,7 @@
 aliases: ["React Flow surface contract"]
 tags: [spec, canvas]
 ---
+<!-- [[A1]] -->
 <!-- [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator, [[C52]] visibleSelection, [[C118]] formatTravelsWithValue -->
 
 # Spec: React Flow surface contract
@@ -177,7 +178,7 @@ Tests: `selectionOps.test.ts`: `restackOrder` takes the selection to the front o
 - A class with a resize gesture either reads the init back or routes its size through `nodeSizeStore`, as Display's grip does (its own persisted channel, `sn.size`).
 - No other class may start reading the init.
 
-Why: a field with two jobs drifts silently, and this one can drift either way. A new resizable class that forgets to read the init back loses the user's drag on reload ([[B12]] losslessSaves); a compute class that starts reading it freezes an old measured size into its layout. Layout math reads sizes through `measuredBox()` ([[auto-arrange-tidy#Size reads]]).
+Why: a field with two jobs drifts silently, and this one can drift either way. A new resizable class that forgets to read the init back loses the user's drag on reload ([[save-format#A save loses nothing quietly]]); a compute class that starts reading it freezes an old measured size into its layout. Layout math reads sizes through `measuredBox()` ([[auto-arrange-tidy#Size reads]]).
 
 ## The dot grid
 
@@ -320,7 +321,7 @@ Bare keys, outside a field and without a modifier:
 - **Enter** opens the command palette, unless the Add menu is open. The field gate means committing a field never opens it.
 - **Escape** while isolating exits isolate.
 - **Arrows** nudge the selection by `DOT_SPACING`, four times that with Shift (handled before the Shift split). Each affected node moves exactly once. The move set is expanded so a standoff cluster moves whole, because nudging one end and then re-settling would pull it halfway back. A docked FC rides with its host, standoffs settle, and an autosave is scheduled. With nothing selected an arrow does nothing at all. The nudge is async, so the key handler decides `preventDefault` from a synchronous selection check.
-- **Tab** toggles all chrome, but only when focus is on the canvas background (no target, `body` or the document element). On a control, native focus traversal wins.
+- **Tab** (and Shift+Tab) toggles all chrome anywhere on the main screen, a focused toolbar button or card included, so it never walks the canvas's controls (`tabTogglesChrome`, `chromeToggle.ts`). A text field keeps Tab (it commits and moves on), and so do a popup, menu or dialog (their roles, `sol-popup`, `sol-mpanel`, an open menubar menu, the Add menu) and anything outside `.solenoid-app`.
 - **`[` and `]`**, matched by the produced character (they sit on different physical keys across layouts, and the reference shows the character), rotate the selection one step. A selected standoff rotates its axis by 45° and goes first, on its own, since it is exclusive with node selection; otherwise every selected Conduit and Angle Dial turns. The key is swallowed only when something rotated.
 - **Letters**, matched by physical key (`e.code`): I toggles isolate on the selection, A opens the Add menu at the mouse, G groups the selection, T runs Tidy, C runs Cleanup, E expands or collapses groups, F autofits groups, N toggles the navigator. E and F act on the selected groups plus the group of any selected member, or every group when nothing is selected.
 
@@ -401,7 +402,7 @@ Tests:
 
 Isolate is a view-only focus: the focus set shows and every other card recedes. Nothing is removed, and nothing is saved or recorded in undo.
 
-**Switched off** ([[C135]] isolateOff): `ISOLATE_ON` (`isolateStore.ts`) is false, so `isolate.ts`'s entry points enter nothing and return false, the I key passes through, and the node menu, the command palette and the shortcuts list carry no isolate items. Everything below is the mechanism the switch restores; its tests run only while it is on.
+**Switched off for now.** Isolate, Isolate chain and Where used are switched off: no menu item, command, shortcut or gesture enters an isolate view. `ISOLATE_ON` (`isolateStore.ts`) is false, so `isolate.ts`'s entry points enter nothing and return false, the I key passes through, and the node menu, the command palette and the shortcuts list carry no isolate items. The code that draws an isolate view stays in place behind that one switch, and turning it on restores every entry point. Everything below is the mechanism the switch restores; its tests run only while it is on.
 
 - `isolateStore` holds the focus set (null when not isolating), a mode label for the Isolate pill ("Where used"), and `isVisible(id)`, true when not isolating or when the node is in the set. The endpoint selection on the isolate overlay is exclusive with node, cable and standoff selection.
 - `isolate.ts` resolves through the active editor, so isolate works in a drill-in. It always expands to whole entities: a group brings its members and a node brings its docked FCs. Isolate chain (`isolateChainOf`) takes the connected chain both up- and downstream, seeded with group members so a group's own cables are walked, then re-expanded for anything reached. Where-used (`isolateWhereUsed`) takes only the downstream stream from one node; it dims the same way, so the pill's label is what tells the two apart.
@@ -418,14 +419,28 @@ Tests:
 
 ## Undo history
 
-Code: `flow/flowHistory.ts`, `flow/flowHistoryDigest.ts`.
+Code: `flow/flowHistory.ts`, `flow/flowHistoryDigest.ts`, `graphDelta.ts`.
 
-Undo is a snapshot history ([[A1]] visualGraphCalculator). Every settled mutation records the canonical document (`serializeGraph`), so no action needs its own inverse: an undo is a `loadGraph` of the earlier snapshot. A snapshot is stored as the document's top-level fields plus one JSON string per node, and a node unchanged since the step before reuses that step's string, so history costs one document plus what each step changed rather than one document per step. The parsed document of the current entry is kept for the next record's label.
+Undo is a snapshot history ([[A1]] visualGraphCalculator). Every settled mutation records the canonical document (`serializeGraph`), so no action needs its own inverse: an undo moves the canvas to the earlier snapshot by its delta (below), and a whole `loadGraph` of it only where the delta can't. A snapshot is stored as the document's top-level fields plus one JSON string per node, and a node unchanged since the step before reuses that step's string, so history costs one document plus what each step changed rather than one document per step. The parsed document of the current entry is kept for the next record's label.
 
 - **Recording.** `schedule()` debounces by `COALESCE_MS` (400 ms); `recordNow()` records at once. Neither records while a restore or a rebuild is running. A snapshot identical to the current one is skipped, and so is one that differs only by the cards' measured `init.width` and `init.height`, which re-stamp after a restore mounts the cards; recording that drift would cut off the redo tail for nothing. A new record truncates the redo tail.
 - **Who records.** `processGraph`'s graph-changed hook records component edits and autosaves; position-only changes (a nudge, a group push, standoffs), which never run `processGraph`, record through `afterProgrammaticMove`; drawn-cable edits record through `commitDrawn()`.
 - **Limits.** At most `MAX_DEPTH` (80) entries and `MAX_BYTES` (16 MiB, counted as two bytes per JSON character), where each entry counts only the strings it doesn't share with the entry before it and the oldest surviving entry counts in full. The oldest entries go first, but the current entry and the one before it always stay, so the last edit on a document whose two snapshots exceed the budget can still be undone.
-- **Restoring.** A restore runs without the load curtain and puts the camera back exactly where it was (`setCamera`, so a zoom a pinch left between steps is not snapped), so an undo feels like an edit, and then schedules an autosave, since the restored state is now the document. One restore runs at a time, inside `withGraphRebuild`, so it settles once instead of once per restored cable. Undo first flushes a pending debounced record, before that scope opens, since nothing records inside it.
+- **Restoring by delta.** `applyGraphDelta(step)` serializes the live canvas, diffs it against the step by card name (`diffGraphs`, pure) and changes only what differs, so the canvas, the camera, the selection and every untouched card's node and caches stay as they are:
+
+  | What differs | Applied as |
+  |---|---|
+  | a card gone or new | deleted with its cables (its stores forgotten) / built from the step as a load builds it |
+  | a typed value alone: a card's inline fields (`literals`, `stringLiterals`, `literalKinds`), its title, and per type the field its edit sets by plain assignment (Value Input, Slider and Angle Dial's `value`, Frame Input's `frameText`, Table Input and Grid Painter's `tableText`, a group's `members`; `IN_PLACE` in `graphDelta.ts`) | set on the live card as its edit set it, the core told its call changed (`named`), the types settled as the edit settles them (`reconcileTypesAfterEdit`): the card keeps its node, its view, its focus and its drafts, which follow the committed value |
+  | anything else in a card's type, `init`, name or trust mark, or a field the step's save leaves out | rebuilt from the step under a fresh live id, so its view mounts afresh rather than keeping the old card's drafts; what referred to the old id (a dock, a group's members, a presentation's steps) is pointed at the new one, and its cables come back from the step |
+  | a cable | removed or added |
+  | size, fold, flip, sections | the stores, no pass |
+  | position | `moveNode`, no pass |
+  | side tables, drawn cables, palettes, document meta | replaced whole from the step when they differ or a card came or went |
+  | stacking order | `reorderNodes` to the step's, since a rebuilt card was added on top |
+
+  A measured `init.width` or `init.height` alone is no edit, and nor is a type the settle works out again (`SETTLED_INIT` in `flowHistoryDigest.ts`: a Format Controller's `socketDataType`, which follows its socket's with the memory an emptied socket keeps, [[socket-lattice#Requirements]], so it depends on the path to a canvas and not only on the canvas). A selected card stays selected through its rebuild, and a removed card leaves every group's members. Then the cable settle, group membership and collapse run once, each card whose inputs changed (a new or rebuilt card, a cable's target) has its reach reset, and one additive pass renders that reach (`processGraph(undefined, reach, { topology })`), inside the rebuild scope, so Manual computes an undo as it computed the whole load. The scope is `withGraphRebuild(fn, { settled: true })`, so the cables it moved ask for no whole `bulkSettle`. Finally the canvas is serialized again and compared with the step (`sameLanding`: top-level key order, the order of cables feeding different inputs, measures, settled types and empty literal maps aside); that read-back is what `applyGraphDelta` answers, and the history keeps it as the entry without serializing again. A miss, an unknown card type, another pack set or save version, or a throw falls back to the whole load, so undo never lands anywhere a load wouldn't.
+- **Restoring whole.** The fallback runs without the load curtain and puts the camera back exactly where it was (`setCamera`, so a zoom a pinch left between steps is not snapped), so an undo feels like an edit. Either way the restore then schedules an autosave, since the restored state is now the document, and the entry's snapshot becomes the canvas as it landed (by either path), so the next record compares with what is there and an untouched canvas records nothing (which would cut off the redo tail). One restore runs at a time, inside a rebuild scope. Undo first flushes a pending debounced record, before that scope opens, since nothing records inside it.
 - **The baseline.** `reset()` is the `setClearHistory` slot: `loadGraph`'s own end-of-load clear seeds the new document's baseline, labeled "Opened". Restores skip it, so an undo never wipes the stack.
 - **Labels.** `describeGraphDelta` (`flowHistoryDigest.ts`) derives each entry's label by diffing it against the one before. The parts join with "; ", most significant first: Added, Removed, Connected and Disconnected (a single cable reads "A → B"), Renamed, then Edited, each naming a single node or counting several. A card's `init.width` and `init.height` are measures re-stamped after every restore, so a change to them alone records nothing (`sameIgnoringDims`). A group's are the user's, so a grip resize or Autofit records an entry, labeled with the "Edited document" fallback. A redo first flushes a pending edit, as undo does, so the edit is kept. Moves are reported only when nothing else changed, since they ride along with group tows and Expand Pushes. Failing all of those, the label is "Changed standoffs", "Drew a cable", "Removed a drawn cable", "Edited a drawn cable" or "Edited document". `records()` lists the applied transitions still on the stack, oldest first and without the "Opened" baseline (once the limits trim the baseline, the oldest surviving entry is listed too), for Session History.
 
@@ -435,6 +450,9 @@ Tests:
 
 - `flow/flowHistory.test.ts`: an undo within the coalesce window keeps the pending edit and steps back one entry, a redo within it records the edit and drops the redo tail, the byte budget keeps the entry before the current one and lists every surviving action once the baseline is trimmed, the camera comes back exactly between zoom steps, and an unchanged node is shared between steps so a 4 MB table doesn't crowd out history.
 - `flow/flowHistoryDigest.test.ts`: the labels each change gets.
+- `graphDeltaChain.test.ts`: on every shipped example, six edits drawn from a fixed seed (a card deleted as Delete deletes it, moved, relabeled, folded, renamed, pinned and commented, typed into or copied, a cable cut or wired back), each made live and captured, then undone one by one and redone, each landing the captured save and answers by delta (`STEPS=25 SALT=n` stresses it).
+- `groupMembersDelete.test.ts`: a deleted member leaves its group and the save.
+- `graphDelta.test.ts`: the diff's sorting; over every shipped example and two kinds of step (a card deleted, one moved, a cable cut; a card renamed, one folded, a value typed, a pin and a comment), undo and redo by delta land the save and the answers a whole load of the step lands; a typed value is patched and an operator or a dropped field rebuilds; an undo of one input's edit sets it on the live card, resets only that card and renders only its chain; a delete renders only what lost a cable and lands what a fresh load of the rest gives; Wrap as Composite and Unpack each render only what they reach; in Manual an undo still computes.
 
 ## The main canvas
 
@@ -521,10 +539,11 @@ A figure on a `chart` socket carries data, not geometry, and lays itself out at 
 - The same figure draws at four sizes: the card's [Chart] chip, the resizable Display (with a size cap), the popup, and a Report embed. None of them uses a pre-rendered pixel frame.
 - `ChartFigure` (`chartView.tsx`) is the one dispatcher. The popup passes `virtualize`, which renders only the visible rows.
 
-**Static export** (`canvasCapture.ts`) never uses the HTML-in-Canvas API ([[C42]] htmlInCanvasRenderer): `drawElementImage` exists only in Chromium (on by default from Chrome 157), and the recipient of an exported file may open it anywhere.
+**Static export** (`canvasCapture.ts`) never uses the HTML-in-Canvas API ([[html-in-canvas]]): `drawElementImage` exists only in Chromium (on by default from Chrome 157), and the recipient of an exported file may open it anywhere.
 
 - `captureCanvasImage` rasterizes the current viewport (not the whole world) through a `foreignObject`, and returns null when unmounted or when the browser refuses it, so an export fails soft. A rasterized `foreignObject` inherits no live stylesheets, so every same-origin stylesheet rule is inlined; an unreadable cross-origin sheet is skipped.
 - A chart's SVG is serialized with its rendered styles inlined, since the exported document ships no app stylesheet and anything a chart takes from class rules or `var(--…)` must be baked in. The original and the clone are walked in lockstep, because `getComputedStyle` is blank on a detached node.
 - A node's chart is its largest SVG that isn't card chrome (the frame overlays, which are the biggest SVGs on every card and paint nothing off-canvas) or glyph-sized furniture. `captureChartSvgs` returns every rendered chart node's SVG with the node's display name, narrowed to the report-referenced set when given.
 
 **The export SVG seam.** A figure whose drawing is not one `<svg>` (the Gantt draws an HTML tree grid beside one banded SVG per row) registers its own serializer with `registerChartSvgProvider`, keyed by the host node it draws in. The disposer it returns removes only that provider, so a later mount that replaced it wins and an unmount can't delete the winner. The on-canvas Display registers one; the short-lived popup does not. The webpage export and the Write-to-Obsidian image both ask the provider first (`nodeChartSvgProvided`, null when none is registered or it declined) for a whole-chart SVG string (`ganttSvg`), and fall back to the largest `<svg>` only when there is none.
+

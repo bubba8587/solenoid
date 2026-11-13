@@ -1,4 +1,4 @@
-// Renders the home-screen icons in public/icons/ from src/logo/solenoidicon.svg, the six-rung mark ([[C119]] landscapePhoneIsTablet: installed,
+// Renders the home-screen icons in public/icons/ from src/logo/solenoidicon.svg, the six-rung mark ([[layout-chrome#Phones in landscape]]: installed,
 // the app opens without browser bars and keeps its landscape scale). Run after the logo changes: node scripts/pwa-icons.mjs
 import { readFileSync, mkdirSync } from "node:fs";
 import puppeteer from "puppeteer-core";

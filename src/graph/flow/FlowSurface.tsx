@@ -58,7 +58,7 @@ import { addMenuRequest } from "../addMenuStore";
 import { packsStore } from "../packs";
 import { CompositeNode, GroupNode, FormatControllerNode } from "../nodeClasses";
 import { reconcileFcs } from "../fcReconcile";
-import { MIN_ZOOM, MAX_ZOOM, floorZoom } from "../viewPresets";
+import { MIN_ZOOM, MAX_ZOOM, boundZoom } from "../viewPresets";
 import { gridSnapStore, DOT_SPACING } from "../gridSnapStore";
 import { isolateStore, isoEndpointSelect } from "../isolateStore";
 import { IsolateEndpoints } from "../components/IsolateEndpoints";
@@ -219,7 +219,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     const b = getNodesBounds(getNodes(), { nodeLookup: storeApi.getState().nodeLookup });
     const w = el.clientWidth;
     const h = el.clientHeight;
-    const zoom = floorZoom(getViewportForBounds(b, w, h, MIN_ZOOM, MAX_ZOOM, FIT_PADDING).zoom);
+    const zoom = boundZoom(getViewportForBounds(b, w, h, MIN_ZOOM, MAX_ZOOM, FIT_PADDING).zoom);
     void setViewport({ x: w / 2 - (b.x + b.width / 2) * zoom, y: h / 2 - (b.y + b.height / 2) * zoom, zoom });
   }, [nodesInitialized, getNodes, setViewport, storeApi]);
 

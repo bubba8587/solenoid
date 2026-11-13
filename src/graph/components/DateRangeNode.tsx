@@ -4,7 +4,7 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
-// A blank field is null; any day is a date, before 1900 too ([[D119]] datesBefore1900).
+// A blank field is null; any day is a date, before 1900 too ([[date-values#Days before 1900]]).
 function serialToISO(serial: number | null): string {
   if (serial === null || !Number.isFinite(serial)) return "";
   return serialToJsDate(serial).toISOString().slice(0, 10);

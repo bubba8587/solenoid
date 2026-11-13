@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType, [[touch-gestures#Chrome (bars and pop-ups)]], [[touch-gestures#Device configurations]],
+// [[B20]], [[touch-gestures#Standing rules]], [[touch-gestures#Chrome (bars and pop-ups)]], [[touch-gestures#Device configurations]],
 // [[layout-chrome#The two envelopes]]
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

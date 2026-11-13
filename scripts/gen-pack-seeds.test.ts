@@ -1,4 +1,4 @@
-// [[C79]] packActivationIsPresentation, [[C1]] demoVault
+// [[C79]] packActivationIsPresentation, [[vault-read#Which notes are read]]
 // Writes every pack's example seed (src/graph/seedGraphs/packs/pack-<id>.json) from the recipes below. A card is
 // made the way the Add menu makes it (its catalog entry's create(), or its class) and saved the way the app saves it
 // (savedNodeBody), so a preset carries exactly what the app would write. Run:
@@ -353,6 +353,18 @@ const RECIPES: Recipe[] = [
       "zs.result -> first.symbol", "first.elements -> ie.frame", "first.number -> ieFrame.vals0", "ie.values -> ieFrame.vals1",
       "ieFrame.frame -> ieChart.values",
     ],
+  },
+  {
+    pack: "probability",
+    label: "Probability: how sure can you be?",
+    nodes: [
+      note("head", [0, 0], "Probability", "**Probability Between** shades the chance a value lands in a range: drag its handles. **A/B Test** says how likely it is that version B really converts better than A. **Bootstrap** shows how far an average of twelve deliveries could be from the true one."),
+      card("between", [c(0), 220], "ProbabilityBetweenNode"),
+      card("ab", [c(1), 220], "AbTestNode"),
+      list("days", [c(2), 220], "Delivery days", "3, 5, 4, 6, 2, 8, 5, 4, 7, 3, 5, 6"),
+      card("boot", [c(3), 220], "BootstrapNode"),
+    ],
+    cables: ["days.list -> boot.list"],
   },
 ];
 

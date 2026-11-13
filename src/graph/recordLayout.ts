@@ -16,7 +16,7 @@ export function parseRecordLayout(text: string): RecordPlacement[] {
   return wasmInvokeSync<RecordPlacement[]>("engine_record_layout", { text });
 }
 
-/** A data:image URL: the one image a table grid shows in a text cell, since it fetches nothing ([[C103]] untrustedContentSeams). */
+/** A data:image URL: the one image a table grid shows in a text cell, since it fetches nothing ([[engineering#Untrusted content]]). */
 export function cellImageSrc(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();

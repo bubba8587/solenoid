@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[obsidian-plugin#What's new]]
+// [[obsidian-plugin]], [[obsidian-plugin#What's new]]
 import { SLIDES } from "../../src/graph/whatsNewSlides";
 import { WHATS_NEW_VERSION } from "../../src/graph/helpDialogStore";
 import type { PluginNotes } from "./pluginNotes";

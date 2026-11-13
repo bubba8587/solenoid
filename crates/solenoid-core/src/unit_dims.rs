@@ -207,7 +207,7 @@ fn branch_args(fn_: &str, argc: usize) -> Option<Vec<usize>> {
         "IF" => Some(if argc > 2 { vec![1, 2] } else { vec![1] }),
         "IFERROR" | "IFNA" => Some(vec![0, 1]),
         "CHOOSE" => Some((1..argc.max(1)).collect()),
-        "IFS" => Some((0..argc / 2).map(|i| 2 * i + 1).collect()),
+        "IFS" => Some(Vec::from_fn(argc / 2, |i| 2 * i + 1)),
         "SWITCH" => {
             let mut out: Vec<usize> = (2..argc).step_by(2).collect();
             if argc > 1 && argc.is_multiple_of(2) {
@@ -414,7 +414,7 @@ fn host_of(fn_: &str, argc: usize) -> Option<Host> {
         }
         "BYROW" | "BYCOL" if argc == 2 => Some(Host { lam_arg: 1, params: vec![Some((0, true))], fold: false }),
         "MAP" if argc >= 2 => {
-            Some(Host { lam_arg: argc - 1, params: (0..argc - 1).map(|i| Some((i, false))).collect(), fold: false })
+            Some(Host { lam_arg: argc - 1, params: Vec::from_fn(argc - 1, |i| Some((i, false))), fold: false })
         }
         "MAKEARRAY" if argc == 3 => Some(Host { lam_arg: 2, params: vec![None, None], fold: false }),
         _ => None,
@@ -432,7 +432,7 @@ fn lambda_of(n: Option<&Ast>, arity: usize, is_var: &dyn Fn(&str) -> bool) -> Op
         Ast::Name(name) if SCOPE_FNS.with(|f| f.borrow().contains_key(name)) => SCOPE_FNS
             .with(|f| f.borrow().get(name).map(|(params, body)| Lam { params: params.clone(), body: body.clone() })),
         Ast::Name(name) if !is_var(name) && resolves(&name.to_uppercase()) => {
-            let params: Vec<String> = (0..arity).map(|i| format!("#{i}")).collect();
+            let params: Vec<String> = Vec::from_fn(arity, |i| format!("#{i}"));
             let body = Ast::Call { name: name.clone(), args: params.iter().map(|p| Ast::Name(p.clone())).collect() };
             Some(Lam { params, body })
         }
@@ -624,10 +624,9 @@ pub fn dim_eval_with_code(
     fns: Option<&NamedLambdas>,
 ) -> OpResult {
     let Some(fns) = fns else { return op_eval(node, env, codes) };
-    let outer = SCOPE_FNS.with(|f| f.replace(fns.clone()));
-    let r = op_eval(node, env, codes);
-    SCOPE_FNS.with(|f| *f.borrow_mut() = outer);
-    r
+    let outer = SCOPE_FNS.replace(fns.clone());
+    let _scope = std::mem::DropGuard::new(outer, |outer| SCOPE_FNS.set(outer));
+    op_eval(node, env, codes)
 }
 
 // ─── Affine units (°C, °F): `affine_weight` ──────────────────────────────────────

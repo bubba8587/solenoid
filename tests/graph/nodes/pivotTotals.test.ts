@@ -1,4 +1,4 @@
-// [[C127]] pivotView, [[frame-verbs#pivot]]
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]], [[frame-verbs#pivot]]
 // A PIVOTBY card's totals are its view's: the Frame is the leaves, the totals ride on its layout, and Export totals
 // hands them on as Row Totals and Column Totals.
 import { describe, it, expect } from "vitest";

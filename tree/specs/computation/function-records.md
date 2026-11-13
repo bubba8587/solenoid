@@ -2,11 +2,16 @@
 aliases: ["Function records"]
 tags: [spec, computation]
 ---
-<!-- [[C140]] functionRecords; covers: scripts/function-records/*.ts, scripts/function-records/plans/*.ts -->
+<!-- [[A5]] -->
+<!-- [[A5]] excelParity; covers: scripts/function-records/*.ts, scripts/function-records/plans/*.ts -->
 
 # Spec: Function records
 
-Serves [[C140]] functionRecords. Every function Solenoid computes has one record: a Cube that lists the function's cases, each with Excel's answer beside Solenoid's, the kind of truth that settles it, a verdict, and the citation that explains any difference. The records are where a function's answers are checked, and the Function Reference shows a function's record in the Cube popup. This spec says what a record holds, how its cases are chosen, how answers are written and compared, how Excel's answers get in, and when a record is ready.
+Serves [[A5]] excelParity. Every function Solenoid computes has one record: a Cube that lists the function's cases, each with Excel's answer beside Solenoid's, the kind of truth that settles it, a verdict, and the citation that explains any difference. The records are where a function's answers are checked, and the Function Reference shows a function's record in the Cube popup. This spec says what a record holds, how its cases are chosen, how answers are written and compared, how Excel's answers get in, and when a record is ready.
+
+**MUST:** every function's answers are checked against one record for that function, which lists its cases with Excel's answer beside Solenoid's and says why any two differ. Excel's answer in a record is only ever what Excel computed when it opened the case; an answer copied from a document, remembered, or taken from another program is not Excel's. Every function is asked the same edge cases, drawn from what each of its arguments can receive, and a case without an answer shows as a gap. A difference from Excel is accepted only as the same under a written rule, a deliberate difference citing the leaf that decided it, or a known bug with its backlog line, and a function Excel doesn't have still gets a record, its cases answered by Solenoid's own rules or another reference.
+
+The records, the importer that alone writes Excel's answers, and the readiness check are not built yet.
 
 ```mermaid
 flowchart LR
@@ -100,7 +105,7 @@ Rules that keep the form exact:
 - **A list has one family.** Its items are untagged because the family says what they are. A blank or an error may stand among the items of any family, as `blank` and as `#N/A "message"`, and those are the only other item forms. A date list holds only dates beside blanks and errors, since a date beside another kind is refused ([[C137]] datesNeverSerials).
 - **A mixed list is a finding, never an answer.** If an answer holds items of more than one family, it is written `list:MIXED:[num:2, text:"a"]`, the one place items carry their own tags, and a case with that answer has the verdict `unexplained` until it is fixed or ruled on.
 - **A date is written as its day, never its serial.** Solenoid's calendar has no 29 February 1900 ([[C44]] dateSerials), so a Solenoid serial and an Excel serial name different days before 1 March 1900, and writing the day keeps that difference visible.
-- **An error is written as the app shows it.** A Formula.js-style error inside the core is written as the Solenoid error the app turns it into, and an error's origin and file reference (graph bookkeeping, [[E9]] errorsKeepOrigin) are left out.
+- **An error is written as the app shows it.** A Formula.js-style error inside the core is written as the Solenoid error the app turns it into, and an error's origin and file reference (graph bookkeeping, [[error-values#Producers and provenance]]) are left out.
 - **The left-out marker is a finding.** The core's left-out value (`Undef`) should never be an answer; if one is, it is written `undef:` and the case is `unexplained`.
 - **Text is quoted the same way everywhere**, so a comma, a bracket or a quote inside text can't break a list.
 
@@ -109,7 +114,7 @@ Rules that keep the form exact:
 The comparison reads Solenoid's kind first, then applies that kind's rule. A pair that passes is `same`; a pair that passes only through a rule named here is `same` with that rule in `cite`. Every other pair is a difference.
 
 - **Numbers** are the same when they agree to 15 significant digits, the precision Excel shows and the one Solenoid's comparisons use ([[formula-language#Scalar operators]]). A case that needs a looser tolerance (an iterative solver's answer) is a difference unless its `cite` names the rule that allows it.
-- **A date** is the same as Excel's number when the day, turned into a serial through Excel's calendar, equals it, to the millisecond for a time of day. A day before 1 January 1900 has no Excel serial, so Excel's error there is a difference settled by [[D119]] datesBefore1900. A function whose date class says it answers a date (`class_of`, [[date-values#Functions]]) answering `num:` is a difference, whatever the number.
+- **A date** is the same as Excel's number when the day, turned into a serial through Excel's calendar, equals it, to the millisecond for a time of day. A day before 1 January 1900 has no Excel serial, so Excel's error there is a difference settled by [[date-values#Days before 1900]]. A function whose date class says it answers a date (`class_of`, [[date-values#Functions]]) answering `num:` is a difference, whatever the number.
 - **Text and logicals** are the same only when exactly equal.
 - **Errors** are the same when the codes are equal, or when Solenoid's code is one Excel's splits into: #DOMAIN!, #CONV! and #OVERFLOW! for Excel's #NUM!, #SYNTAX! for Excel's #VALUE!, as the table in [[error-values]] gives them. That table is the one declaration of each code's Excel twin, and the comparison reads it. Messages are never compared, since Excel has none.
 - **A blank** is never the same as Excel's 0. It is a difference, accepted only with a `cite`.
@@ -185,7 +190,7 @@ A record is ready when it has no `unexplained` and no `gap`. The check that gate
 ## What stays outside the records
 
 - **The frozen fixtures** (`fixtures/core/`) stay as they are, as the check that tells whether any answer changed ([[rust-core]]). Their cases enter a record only as `past`.
-- **Checks with no single answer** stay as tests: a property (an inverse round trip, a total conserved), a card answering as its formula ([[C17]] shareImpl), a time limit ([[C120]] linearWork), a fuzz run that must not panic.
+- **Checks with no single answer** stay as tests: a property (an inverse round trip, a total conserved), a card answering as its formula ([[C17]] shareImpl), a time limit ([[engineering#Performance]]), a fuzz run that must not panic.
 - **Plumbing** (parsing, the socket lattice, CSV, the boundary) has no function to belong to.
 - A leaf that a test must cite (`rules.test.ts`) keeps a test that cites it, which reads the cases of the records that leaf settles.
 

@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[composite-nodes#Packs]]
 // Test-only.
 
 import { ExpressionNode, EquationNode } from "../nodeClasses";

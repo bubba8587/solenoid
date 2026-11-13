@@ -70,6 +70,7 @@
 
 .sol-landing__nav a:focus-visible,
 .sol-landing__theme:focus-visible,
+.sol-landing__nav .sol-landing__icon:focus-visible,
 .sol-landing__cta:focus-visible,
 .sol-landing__footer a:focus-visible,
 .sol-landing main p a:focus-visible {
@@ -144,7 +145,8 @@
   color: var(--text-bright);
 }
 
-.sol-landing__theme {
+.sol-landing__theme,
+.sol-landing__nav .sol-landing__icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,7 +160,8 @@
   padding: 0;
 }
 
-.sol-landing__theme:hover {
+.sol-landing__theme:hover,
+.sol-landing__nav .sol-landing__icon:hover {
   background: var(--btn-hover);
   border-color: var(--border-strong);
   color: var(--text);

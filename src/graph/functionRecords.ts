@@ -1,4 +1,4 @@
-// [[C140]] functionRecords
+// [[A5]] excelParity, [[function-records]]
 // A function's record opened in the Cube popup, read-only. The records load only when one is opened.
 import { recordsToCube } from "./frame";
 import { cubePopup } from "./cubePopupStore";

@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md modal rules)
+// [[A1]] visualGraphCalculator, [[components#The design system]] (DESIGN.md modal rules)
 import { useEffect, useRef } from "react";
 import { consumeEscape } from "./escapeLayers";
 

@@ -96,7 +96,7 @@ export class CableSwitchNode extends GraphNode {
 }
 
 /** Hands on what In held at the end of the previous recalculation, so a cable cycle through it steps instead of
- *  reading `#CIRC!` ([[D118]] delayedPass). The engine never fetches its input (`model.rs`, `Host::delayed`); the app
+ *  reading `#CIRC!` ([[compute-pass#Delayed Pass]]). The engine never fetches its input (`model.rs`, `Host::delayed`); the app
  *  pass hands it the next value afterwards (`advanceDelayedPasses`). */
 export class DelayedPassNode extends GraphNode {
   static socketDocs: Record<string, string> = {

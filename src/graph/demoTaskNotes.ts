@@ -1,4 +1,4 @@
-// [[D62]] demoVaultResolution, [[C1]] demoVault
+// [[D62]] demoVaultResolution, [[vault-read#Which notes are read]]
 // Canned TaskNotes replies, parsed by the real taskNotesApi parsers, for when no TaskNotes URL is set and the demo is
 // allowed, or the marketing page forces it. Writes are never faked.
 import { settingsStore } from "./settingsStore";

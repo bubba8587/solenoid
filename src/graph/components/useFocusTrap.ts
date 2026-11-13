@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem (DESIGN.md modal rules)
+// [[A1]] visualGraphCalculator, [[components#The design system]] (DESIGN.md modal rules)
 import { useEffect, type RefObject } from "react";
 
 const FOCUSABLE_SELECTOR =

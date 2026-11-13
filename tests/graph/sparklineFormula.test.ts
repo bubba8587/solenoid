@@ -1,4 +1,4 @@
-// [[D82]] sparklineCell, [[formula-language#Lists]]
+// [[C100]] chartIsAValue, [[formula-language#Lists]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { repaintSparkline } from "../../src/graph/nodes/visualOps";

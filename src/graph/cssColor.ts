@@ -1,4 +1,4 @@
-// [[B14]] oneDesignSystem
+// [[A1]] visualGraphCalculator, [[components#The design system]]
 import { clamp } from "./nodes/mathUtils";
 
 export interface RGBA { r: number; g: number; b: number; a: number }

@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[palette-and-theme#The Custom palette]]
+// [[A1]] visualGraphCalculator, [[group-expand-push#Who is a member]], [[palette-and-theme#The Custom palette]]
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GroupNode, DisplayNode } from "../../src/graph/nodeClasses";

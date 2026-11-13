@@ -1,4 +1,4 @@
-// [[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud#Modes]], [[alert-node-alerts-hud#When it fires]]
+// [[C23]] calcModes, [[alert-node-alerts-hud#When it fires]], [[alert-node-alerts-hud#Modes]], [[alert-node-alerts-hud#When it fires]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { AlertNode } from "../../../src/graph/nodes/display";
 import { extractInit } from "../../../src/graph/nodeInit";

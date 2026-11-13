@@ -1,4 +1,4 @@
-// [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType, [[pointer-gestures#What counts as a finger: the census]]
+// [[B20]], [[touch-gestures#Standing rules]], [[pointer-gestures#What counts as a finger: the census]]
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   installPointerCensus, resetPointerCensus, isPinching, touchCount,

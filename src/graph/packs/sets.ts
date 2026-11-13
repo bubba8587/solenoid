@@ -1,4 +1,4 @@
-// [[C51]] formulaNaming, [[D124]] comparisonFunctions
+// [[C51]] formulaNaming, [[formula-language#Scalar operators]]
 import { BetweenNode, IsInNode, SetsNode, TallyNode } from "../nodeClasses";
 import type { Pack } from "./packShared";
 import { SETS_PACK_FORMULAS } from "./setsFormulas";

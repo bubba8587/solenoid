@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[C67]] mdbaseCeiling, [[D90]] cubeTypesAtDepth, [[obsidian-plugin#The app reads the picks]]
+// [[obsidian-plugin]], [[C67]] mdbaseCeiling, [[frame-verbs#The Cube value]], [[obsidian-plugin#The app reads the picks]]
 import { describe, it, expect } from "vitest";
 import { parsePluginColumnTypes, parsePluginNestedTables } from "../../src/graph/pluginColumnTypes";
 import { PLUGIN_DATA_PATH } from "../../src/graph/pluginDataPath";

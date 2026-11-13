@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import { themeVars, type ThemeMode } from "../../src/graph/themeVars";
 import { DEFAULT_ACCENT } from "./lookTokens";
 

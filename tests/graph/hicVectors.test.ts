@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[html-in-canvas#Cables and overlays on the canvas]]
+// [[A1]] visualGraphCalculator, [[html-in-canvas]], [[html-in-canvas#Cables and overlays on the canvas]]
 import { describe, expect, it } from "vitest";
 import { shapeD, styleKey, visiblePaint } from "../../src/graph/hicVectors";
 

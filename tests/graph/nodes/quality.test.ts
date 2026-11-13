@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud#When it fires]]
+// [[A1]] visualGraphCalculator, [[alert-node-alerts-hud#When it fires]]
 import { describe, it, expect } from "vitest";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
 import { alertStore } from "../../../src/graph/alertStore";
@@ -210,7 +210,7 @@ describe("Expect reads values as they're shown: units, Cubes and the allowlist b
   });
 });
 
-describe("Expect's range takes the kind of value it checks ([[D120]] rangeBoundsTakeTheValuesKind)", () => {
+describe("Expect's range takes the kind of value it checks ([[date-values#Cards]])", () => {
   type Conn = { source: GraphNode; sourceOutput: string; target: GraphNode; targetInput: string };
   const source = (type: SocketDataType) => {
     const n = new GraphNode("Src");

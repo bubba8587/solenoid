@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault
+// [[B15]] leanCore, [[composite-nodes#Packs]]
 // A card's companions land to its left, stacked top down, each cabled into the input it names.
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";

@@ -1,4 +1,4 @@
-// [[D22]] oneNamePerCard
+// [[B16]] oneFormulaSurface, [[add-menu#Naming a placed node]]
 import type { GraphEditor } from "./graphEditor";
 import type { GraphConnection, GraphNode } from "./graphModel";
 

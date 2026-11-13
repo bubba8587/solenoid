@@ -1,4 +1,4 @@
-<!-- [[B14]] oneDesignSystem (DESIGN.md § Voice) -->
+<!-- [[A1]] visualGraphCalculator, [[components#The design system]] (DESIGN.md § Voice) -->
 ## What connects, exactly
 
 The ladder above is the whole rule for *shape*. These are its edges.

@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C120]] linearWork, [[D114]] dateIsAKind, [[C137]] datesNeverSerials, [[formula-language#The registry]]
+// [[C130]] rustCore, [[engineering#Performance]] linearWork, [[D114]] dateIsAKind, [[C137]] datesNeverSerials, [[formula-language#The registry]]
 //! Random formulas over every callable function with hostile arguments, dates among them: none panics or stalls.
 
 use solenoid_core::eval::{formula, function_names, Env};
@@ -57,7 +57,7 @@ fn env() -> Env {
     let list = |xs: &[f64]| V::List(xs.iter().map(|&x| V::Num(x)).collect::<Vec<_>>().into());
     env.insert("l".into(), list(&[1.0, -2.0, 0.0, 1e300, 5.5]));
     env.insert("m".into(), V::List(vec![list(&[1.0, 2.0]), list(&[3.0, 4.0]), list(&[0.0, -1.0])].into()));
-    // A date today, one before 1900 with a time of day, and a list of them ([[D119]] datesBefore1900).
+    // A date today, one before 1900 with a time of day, and a list of them ([[date-values#Days before 1900]] datesBefore1900).
     env.insert("d".into(), V::Date(D));
     env.insert("dd".into(), V::Date(DD));
     env.insert("dl".into(), V::List(vec![V::Date(D), V::Date(DD), V::Date(D + 45.0)].into()));
@@ -83,9 +83,8 @@ impl Gen {
             _ => {
                 let name = self.names[self.rng.usize(..self.names.len())].clone();
                 let n = self.rng.usize(0..6);
-                let args: Vec<String> = (0..n)
-                    .map(|_| if self.rng.u32(0..8) == 0 { String::new() } else { self.expr(depth - 1) })
-                    .collect();
+                let args: Vec<String> =
+                    Vec::from_fn(n, |_| if self.rng.u32(0..8) == 0 { String::new() } else { self.expr(depth - 1) });
                 format!("{name}({})", args.join(", "))
             }
         }

@@ -8,6 +8,8 @@ import { NodeShell, PortSockets, ValueDisplay, type NodeProps } from "./nodeKit"
 import { TableDisplay } from "./TableDisplay";
 import { nodeOutputElemFamily, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { FrameDisplay } from "./FrameDisplay";
+import { specialFrameView } from "./SpecialFrameView";
+import { getOwningEditor } from "../activeGraph";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure, type ChartShape } from "./chartView";
 import { ChartChip } from "./ChartChip";
@@ -48,7 +50,9 @@ function MeasuredChart({ value, fontScale, recordNav, ladderAction }: { value: C
     return () => ro.disconnect();
   }, []);
   return (
-    <div ref={ref} className={value.op === "record" ? "nowheel" : undefined} style={{ width: "100%", height: "100%", overflow: value.op === "record" ? "auto" : "hidden" }}>
+    // A Record scrolls in its box. Its gutter is kept whether or not the bar shows: a bar taking width as it appears would
+    // re-lay the cards narrower and shorter, the bar would go, the width come back, and the bar flash on and off.
+    <div ref={ref} className={value.op === "record" ? "nowheel" : undefined} style={{ width: "100%", height: "100%", overflow: value.op === "record" ? "auto" : "hidden", scrollbarGutter: value.op === "record" ? "stable" : undefined }}>
       <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} recordNav={recordNav} ladderAction={ladderAction} />
     </div>
   );
@@ -115,7 +119,9 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (
-        <FrameDisplay frame={v} label={nodeDisplayName(data)} full={full} />
+        // Open, a frame shows as its popup opens on it (a Pivot, Describe's tiles); collapsed, as its chip.
+        (full && specialFrameView(v, getOwningEditor(data.id)?.getConnections().find((c) => c.target === data.id && c.targetInput === "in")?.source))
+          || <FrameDisplay frame={v} label={nodeDisplayName(data)} full={full} />
       ) : isCube ? (
         <CubeDisplay cube={v} label={nodeDisplayName(data)} full={full} />
       ) : isChart ? (

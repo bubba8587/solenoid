@@ -9,7 +9,7 @@ const TAG_NULL = 0, TAG_NUM = 1, TAG_STR = 2, TAG_FALSE = 3, TAG_TRUE = 4, TAG_E
 
 /** A frame's cells for the core, with each column's unit and format unless `meta` is false; any other object crosses as
  *  its text, or with `flatOnly` (the card wire, which carries anything else as JSON: undefined, an object) the frame
- *  doesn't cross and the answer is undefined. The card wire keeps an error's origin ([[E9]] errorsKeepOrigin); the
+ *  doesn't cross and the answer is undefined. The card wire keeps an error's origin ([[error-values#Producers and provenance]]); the
  *  frame hand-offs don't carry it. */
 export function encodeBinary(frame: FrameValue, meta?: boolean): BinaryCells;
 export function encodeBinary(frame: FrameValue, meta: boolean, flatOnly: true): BinaryCells | undefined;

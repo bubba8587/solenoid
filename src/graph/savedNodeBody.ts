@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C77]] compositeIsSubgraph
+// [[save-format#A save loses nothing quietly]], [[C77]] compositeIsSubgraph
 import type { GraphNode } from "./graphModel";
 import { extractInit } from "./nodeInit";
 import { nodeSizeStore } from "./nodeSizeStore";

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { EarnedValueNode as EarnedValueNodeType } from "../nodeClasses";
+import { WeekendPick } from "./WeekendPick";
 import { NodeShell, InlineOutputRows, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { FrameDisplay } from "./FrameDisplay";
@@ -25,11 +26,13 @@ function moneyText(v: OutputRowValue): OutputRowValue {
   return typeof n === "number" ? Math.round(n).toLocaleString(APP_LOCALE) : v;
 }
 
-const CALENDAR_KEYS = ["holidays", "weekend_code"];
+const CALENDAR_KEYS = ["holidays"];
+// The section opens while the weekend is set away from Sat and Sun too.
+const CALENDAR_IN_USE = [...CALENDAR_KEYS, "weekend_code"];
 
 export function EarnedValueComponent({ data, emit }: NodeProps<EarnedValueNodeType>) {
   const frameOut = data.outputs.frame;
-  const calendar = useRowsInUse(data, CALENDAR_KEYS, EARNED_VALUE_DEFAULT_LITERALS);
+  const calendar = useRowsInUse(data, CALENDAR_IN_USE, EARNED_VALUE_DEFAULT_LITERALS);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
@@ -37,6 +40,7 @@ export function EarnedValueComponent({ data, emit }: NodeProps<EarnedValueNodeTy
       {!collapsed && (
         <CardSection label="Calendar" collapsible defaultOpen={calendar} sockets={{ node: data, emit, keys: CALENDAR_KEYS }}>
           <InlineInputs node={data} emit={emit} keys={CALENDAR_KEYS} />
+          <WeekendPick node={data} />
         </CardSection>
       )}
       {frameOut && (

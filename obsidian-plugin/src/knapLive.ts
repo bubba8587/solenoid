@@ -1,4 +1,4 @@
-// [[D87]] knapNotes
+// [[obsidian-plugin#Knap notes]]
 import { Component, MarkdownRenderer, editorInfoField, editorLivePreviewField } from "obsidian";
 import { syntaxTree } from "@codemirror/language";
 import { Prec, RangeSetBuilder, StateEffect, StateField, type EditorState, type Transaction } from "@codemirror/state";

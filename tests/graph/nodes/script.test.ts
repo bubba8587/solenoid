@@ -1,4 +1,4 @@
-// [[C66]] scriptNode, [[script-sandbox#The source]], [[script-sandbox#One call]], [[script-sandbox#The arguments]],
+// [[script-sandbox]], [[script-sandbox#The source]], [[script-sandbox#One call]], [[script-sandbox#The arguments]],
 // [[script-sandbox#The result]], [[C23]] calcModes
 import { solDate } from "../../../src/graph/dateValue";
 import { describe, it, expect } from "vitest";
@@ -136,7 +136,7 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     const r = (await run("() => [0 / 0, null, 2]")).result as unknown[];
     expect(r.map(code)).toEqual(["#DOMAIN!", null, 2]);
   });
-  it("the result socket takes the type of the value it carried, and keeps it through an empty answer ([[D117]])", async () => {
+  it("the result socket takes the type of the value it carried, and keeps it through an empty answer ([[socket-lattice#Requirements]])", async () => {
     const { node, typed } = await passed("() => 5");
     expect(typed()).toBe("numlist");
     for (const [expr, want] of [

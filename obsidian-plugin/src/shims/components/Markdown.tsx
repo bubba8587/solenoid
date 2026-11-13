@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import { useEffect, useRef } from "react";
 import { Component, MarkdownRenderer } from "obsidian";
 import { obsidianApp } from "../../obsidianApp";

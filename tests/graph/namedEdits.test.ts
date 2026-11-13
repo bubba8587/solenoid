@@ -106,6 +106,7 @@ const NO_EDIT: Record<string, string> = {
   "graph/connectionStore.ts": "a live connection's refresh, read in JavaScript by its cards, which are shells",
   "graph/canvasActions.ts": "new Conduits, removed cables, a docked Format Controller: nodes and cables, no field",
   "graph/persistence.ts": "a document loaded: every node is new",
+  "graph/graphDelta.ts": "an undo step: a changed card is rebuilt new, and each one's reach is reset before the pass",
 };
 
 describe("every edit names its node", () => {

@@ -474,7 +474,7 @@ export class GraphCore {
     }
     /**
      * Reads the type of each `[id, output, type now]` in `keys` off the value the last pass landed there, keeping the
-     * last reading where the value has nothing to read ([[D117]] emptyKeepsLastType). Whether the Type Settle should
+     * last reading where the value has nothing to read ([[socket-lattice#Requirements]] emptyKeepsLastType). Whether the Type Settle should
      * run again: a reading moved, or an output still shows a wildcard its reading would type.
      * @param {string} keys
      * @returns {boolean}
@@ -837,7 +837,7 @@ export function card_forget(ids) {
 }
 
 /**
- * The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
+ * The image a Record cell's text shows, if any ([[engineering#Untrusted content]]).
  * @param {string} text
  * @returns {string | undefined}
  */
@@ -1298,6 +1298,65 @@ export function engine_source_bin(schema, tags, nums, strs, lens) {
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
         wasm.__wbindgen_export3(deferred6_0, deferred6_1, 1);
+    }
+}
+
+/**
+ * Stages a workbook's Table `table` for the `take_*` calls and answers its schema, as `engine_csv_frame` does a CSV's
+ * (`xlsx::table_columnar`).
+ * @param {Uint8Array | number[]} bytes
+ * @param {string} table
+ * @returns {string}
+ */
+export function engine_xlsx_frame(bytes, table) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
+        let ptr0, len0, ptr1, len1;
+        try {
+            ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export);
+            len0 = WASM_VECTOR_LEN;
+            ptr1 = passStringToWasm0(table, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            len1 = WASM_VECTOR_LEN;
+        } catch (e) {
+            if (ptr1) { wasm.__wbindgen_export3(ptr1, len1 * 1, 1); }
+            if (ptr0) { wasm.__wbindgen_export3(ptr0, len0 * 1, 1); }
+            throw e;
+        }
+        wasm.engine_xlsx_frame(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export3(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * An Excel workbook's named Tables: name, sheet, columns and row count each (`xlsx::tables`).
+ * @param {Uint8Array | number[]} bytes
+ * @returns {string}
+ */
+export function engine_xlsx_tables(bytes) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
+        const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.engine_xlsx_tables(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export3(deferred2_0, deferred2_1, 1);
     }
 }
 
@@ -2405,7 +2464,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_8626(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_8950(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2511,8 +2570,8 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 936, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8624);
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 958, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8948);
             return ret;
         },
         __wbindgen_generic_0000000000000002: function(arg0) {
@@ -2540,14 +2599,14 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_8626(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_8626(arg0, arg1, arg2, arg3);
+function __wasm_bindgen_func_elem_8950(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_8950(arg0, arg1, arg2, arg3);
 }
 
-function __wasm_bindgen_func_elem_8624(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_8948(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-        wasm.__wasm_bindgen_func_elem_8624(retptr, arg0, arg1, arg2);
+        wasm.__wasm_bindgen_func_elem_8948(retptr, arg0, arg1, arg2);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {

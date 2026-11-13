@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C107]] obsidianPlugin
+// [[C130]] rustCore, [[obsidian-plugin]]
 //! The exports every build of the module carries: the app's and the Obsidian plugin's, which has no graph engine
 //! (`plugin` feature).
 

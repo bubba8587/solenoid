@@ -104,7 +104,7 @@ export class GraphCore {
     ports(id: string, output: boolean): Array<unknown> | undefined;
     /**
      * Reads the type of each `[id, output, type now]` in `keys` off the value the last pass landed there, keeping the
-     * last reading where the value has nothing to read ([[D117]] emptyKeepsLastType). Whether the Type Settle should
+     * last reading where the value has nothing to read ([[socket-lattice#Requirements]] emptyKeepsLastType). Whether the Type Settle should
      * run again: a reading moved, or an output still shows a wildcard its reading would type.
      */
     readTypes(keys: string): boolean;
@@ -189,7 +189,7 @@ export function auditNamedEdits(on: boolean): void;
 export function card_forget(ids: Uint32Array | number[]): void;
 
 /**
- * The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
+ * The image a Record cell's text shows, if any ([[engineering#Untrusted content]]).
  */
 export function card_image_src(text: string): string | undefined;
 
@@ -275,6 +275,17 @@ export function engine_invoke(command: string, args: string): string;
 export function engine_read_bin(handle: string, column?: string | null, limit?: number | null): string;
 
 export function engine_source_bin(schema: string, tags: Uint8Array | number[], nums: Float64Array | number[], strs: string, lens: Uint32Array | number[]): string;
+
+/**
+ * Stages a workbook's Table `table` for the `take_*` calls and answers its schema, as `engine_csv_frame` does a CSV's
+ * (`xlsx::table_columnar`).
+ */
+export function engine_xlsx_frame(bytes: Uint8Array | number[], table: string): string;
+
+/**
+ * An Excel workbook's named Tables: name, sheet, columns and row count each (`xlsx::tables`).
+ */
+export function engine_xlsx_tables(bytes: Uint8Array | number[]): string;
 
 /**
  * A unit id's unit (`unit_catalog::fc_unit_to_unit`) as `{ dim, scale, offset? }`, or `null` for an id that names none.
@@ -506,6 +517,8 @@ export interface InitOutput {
     readonly engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly engine_xlsx_frame: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly engine_xlsx_tables: (a: number, b: number, c: number) => void;
     readonly fcUnit: (a: number, b: number, c: number) => void;
     readonly findCellError: (a: unknown) => unknown;
     readonly fmt_annotated: (a: number, b: number, c: number, d: number) => void;
@@ -593,8 +606,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_8624: (a: number, b: number, c: number, d: unknown) => void;
-    readonly __wasm_bindgen_func_elem_8626: (a: number, b: number, c: unknown, d: unknown) => void;
+    readonly __wasm_bindgen_func_elem_8948: (a: number, b: number, c: number, d: unknown) => void;
+    readonly __wasm_bindgen_func_elem_8950: (a: number, b: number, c: unknown, d: unknown) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;

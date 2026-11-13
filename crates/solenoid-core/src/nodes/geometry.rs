@@ -419,7 +419,7 @@ fn triangle_solver(c: &mut Call) -> Answer {
         Ok(t) => t,
         Err(e) => return figure_error(c, &e, true),
     };
-    let mut out: Vec<Vec<V>> = (0..8).map(|_| Vec::with_capacity(t.rows)).collect();
+    let mut out: Vec<Vec<V>> = Vec::from_fn(8, |_| Vec::with_capacity(t.rows));
     let mut valid: Vec<V> = Vec::with_capacity(t.rows);
     let mut solved_by_row: Vec<V> = Vec::with_capacity(t.rows);
     for i in 0..t.rows {
@@ -771,7 +771,7 @@ fn unit_circle(c: &mut Call) -> Answer {
         v => vec![v.clone()],
     };
     let angle: Dim = Dim::from([("angle".to_string(), 1.0)]);
-    let mut out: Vec<Vec<V>> = (0..12).map(|_| Vec::with_capacity(items.len())).collect();
+    let mut out: Vec<Vec<V>> = Vec::from_fn(12, |_| Vec::with_capacity(items.len()));
     for item in items {
         let row = match item {
             V::Num(d) if d.is_finite() => circle_row(d),
@@ -860,7 +860,7 @@ fn circle_solver(c: &mut Call) -> Answer {
         Ok(t) => t,
         Err(e) => return figure_error(c, &e, true),
     };
-    let mut out: Vec<Vec<V>> = (0..10).map(|_| Vec::with_capacity(t.rows)).collect();
+    let mut out: Vec<Vec<V>> = Vec::from_fn(10, |_| Vec::with_capacity(t.rows));
     let mut valid = Vec::with_capacity(t.rows);
     let mut solved = Vec::with_capacity(t.rows);
     for i in 0..t.rows {
@@ -876,13 +876,11 @@ fn circle_solver(c: &mut Call) -> Answer {
         }
         match answer {
             Ok(Some((r, theta))) => {
-                let got: Vec<f64> = (0..10)
-                    .map(|k| match (k, theta) {
-                        (4, Some(th)) => th * R2D,
-                        (4.., None) => f64::NAN,
-                        (_, th) => circle_part(k, r, th.unwrap_or(0.0)),
-                    })
-                    .collect();
+                let got: Vec<f64> = Vec::from_fn(10, |k| match (k, theta) {
+                    (4, Some(th)) => th * R2D,
+                    (4.., None) => f64::NAN,
+                    (_, th) => circle_part(k, r, th.unwrap_or(0.0)),
+                });
                 for k in 0..10 {
                     out[k].push(if got[k].is_nan() {
                         deg[k].map_or(V::Null, V::Num)
@@ -1020,7 +1018,7 @@ fn regular_polygon(c: &mut Call) -> Answer {
         Ok(t) => t,
         Err(e) => return figure_error(c, &e, true),
     };
-    let mut out: Vec<Vec<V>> = (0..8).map(|_| Vec::with_capacity(t.rows)).collect();
+    let mut out: Vec<Vec<V>> = Vec::from_fn(8, |_| Vec::with_capacity(t.rows));
     let mut valid = Vec::with_capacity(t.rows);
     let mut solved = Vec::with_capacity(t.rows);
     for i in 0..t.rows {
@@ -1028,15 +1026,13 @@ fn regular_polygon(c: &mut Call) -> Answer {
         let bad_cells = cell_err.is_some();
         match cell_err.map_or_else(|| solve_polygon(&given), Err) {
             Ok(Some((n, s))) => {
-                let got: Vec<f64> = (0..8)
-                    .map(|k| {
-                        if s.is_none() && (1..6).contains(&k) {
-                            f64::NAN
-                        } else {
-                            polygon_part(k, n, s.unwrap_or(0.0))
-                        }
-                    })
-                    .collect();
+                let got: Vec<f64> = Vec::from_fn(8, |k| {
+                    if s.is_none() && (1..6).contains(&k) {
+                        f64::NAN
+                    } else {
+                        polygon_part(k, n, s.unwrap_or(0.0))
+                    }
+                });
                 for k in 0..8 {
                     out[k].push(if got[k].is_nan() {
                         given[k].map_or(V::Null, V::Num)
@@ -1178,7 +1174,7 @@ fn two_points(c: &mut Call) -> Answer {
         Ok(t) => t,
         Err(e) => return figure_error(c, &e, false),
     };
-    let mut out: Vec<Vec<V>> = (0..14).map(|_| Vec::with_capacity(t.rows)).collect();
+    let mut out: Vec<Vec<V>> = Vec::from_fn(14, |_| Vec::with_capacity(t.rows));
     for i in 0..t.rows {
         let (g, cell_err) = t.row(i);
         let row: Vec<V> = match (cell_err, g[0], g[1], g[2], g[3]) {
@@ -1211,7 +1207,7 @@ fn two_points(c: &mut Call) -> Answer {
                     line(V::str(&line_equation(m, b.unwrap_or(0.0), x1))),
                 ]
             }
-            _ => (0..14).map(|k| g[k].map_or(V::Null, V::Num)).collect(),
+            _ => Vec::from_fn(14, |k| g[k].map_or(V::Null, V::Num)),
         };
         for (k, v) in row.into_iter().enumerate() {
             out[k].push(v);
@@ -1333,7 +1329,7 @@ fn polygon_points(c: &mut Call) -> Answer {
             return Ok(vec![("vertices".into(), Cv::V(e.clone())), ("polygon".into(), Cv::V(e))]);
         }
     };
-    let mut out: Vec<Vec<V>> = (0..4).map(|_| vec![V::Null; t.rows]).collect();
+    let mut out: Vec<Vec<V>> = Vec::from_fn(4, |_| vec![V::Null; t.rows]);
     // The vertices in order, with the row each came from; the first bad row stops the polygon.
     let mut pts: Vec<(f64, f64)> = Vec::new();
     let mut at: Vec<usize> = Vec::new();
@@ -1592,7 +1588,7 @@ fn solve_solid(solid: &Solid, g: &[Option<f64>]) -> Result<Option<Vec<f64>>, V> 
             return Err(err(ErrorCode::Domain, format!("{} must be positive", solid.spec[k].0)));
         }
     }
-    let mut dims: Vec<f64> = (0..solid.dims).map(|k| g[k].unwrap_or(1.0)).collect();
+    let mut dims: Vec<f64> = Vec::from_fn(solid.dims, |k| g[k].unwrap_or(1.0));
     let missing: Vec<usize> = (0..solid.dims).filter(|&k| g[k].is_none()).collect();
     let parts: Vec<usize> = (solid.dims..solid.spec.len()).filter(|&k| g[k].is_some()).collect();
     let no_fit = || Err(err(ErrorCode::Domain, format!("No {} fits those parts", solid.spec[0].0)));
@@ -1645,7 +1641,7 @@ fn solid_solver(c: &mut Call) -> Answer {
         Err(e) => return figure_error(c, &e, true),
     };
     let cols = solid.spec.len();
-    let mut out: Vec<Vec<V>> = (0..cols).map(|_| Vec::with_capacity(t.rows)).collect();
+    let mut out: Vec<Vec<V>> = Vec::from_fn(cols, |_| Vec::with_capacity(t.rows));
     let mut valid = Vec::with_capacity(t.rows);
     let mut solved = Vec::with_capacity(t.rows);
     for i in 0..t.rows {
@@ -1653,7 +1649,7 @@ fn solid_solver(c: &mut Call) -> Answer {
         let bad_cells = cell_err.is_some();
         match cell_err.map_or_else(|| solve_solid(&solid, &given), Err) {
             Ok(Some(dims)) => {
-                let got: Vec<f64> = (0..cols).map(|k| (solid.part)(k, &dims)).collect();
+                let got: Vec<f64> = Vec::from_fn(cols, |k| (solid.part)(k, &dims));
                 for k in 0..cols {
                     out[k].push(V::Num(given[k].unwrap_or(got[k])));
                 }

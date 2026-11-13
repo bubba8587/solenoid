@@ -1,4 +1,4 @@
-// [[C127]] pivotView
+// [[B19]] spreadsheetHabits, [[table-popup#The Pivot view]]
 import type { FrameValue } from "./frame";
 
 const tables: WeakMap<FrameValue, unknown>[] = [];

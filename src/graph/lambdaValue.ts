@@ -15,6 +15,9 @@ export interface LambdaValue {
   /** A host calls an eta lambda with its meaningful arity only, never trailing row, col or pad arguments. */
   eta?: true;
   descriptions?: Record<string, string>;
+  /** The captures its LAMBDA card left empty, neither wired nor typed: each reads 0. A calculated field reads one
+   *  naming no column as `#NAME?`, so a misspelled column never computes as 0. */
+  empty?: string[];
 }
 
 export function isLambdaValue(v: unknown): v is LambdaValue {

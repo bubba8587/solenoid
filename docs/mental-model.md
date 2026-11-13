@@ -160,10 +160,10 @@ the slot rotation is `../tree/specs/documents/per-doc-autosave-persistence.md` Â
   connections (Web Source, CSV, Data Feed).
 - **Nodes:** current-Excel function parity up to matrices ([[C15]] matricesInFormulas);
   Equation (solves for any one variable); computed columns; composites (drill-in, with run
-  modes including Monte Carlo and by-row; Pipeline is a manual-mode preset of one chain, [[C53]]
+  modes including Monte Carlo and by-row; Pipeline is a manual-mode preset of one chain, [[composite-nodes#Manual refresh and Pipeline]]
   pipelineIsCompositePreset); charts; Note (a pure source), Report (a pure sink) and Mermaid;
   about ten domain packs; and Placeholder for unknown types.
-- **Desktop:** the Tauri shell (Windows portable exe; Linux AppImage and .deb), local files
+- **Desktop:** the Tauri shell (Windows portable exe; Linux .deb), local files
   (Parquet included), F12 devtools, the accent window border, and images bundled
   beside the document.
 

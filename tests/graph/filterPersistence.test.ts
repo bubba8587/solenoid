@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture
+// [[A1]] visualGraphCalculator, [[group-expand-push#Who is a member]]
 import { describe, it, expect } from "vitest";
 import type { GraphNode } from "../../src/graph/graphModel";
 import { extractInit } from "../../src/graph/nodeInit";

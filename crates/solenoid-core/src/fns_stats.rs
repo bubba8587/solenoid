@@ -266,7 +266,7 @@ fn answer(name: &str, a: &[V]) -> V {
             V::List(out.into_iter().map(V::Num).collect::<Vec<_>>().into())
         }
         "BESSELI" | "BESSELJ" | "BESSELK" | "BESSELY" => {
-            // An order past a million, or an infinite one, would hang ([[C120]] linearWork).
+            // An order past a million, or an infinite one, would hang ([[engineering#Performance]] linearWork).
             let order = to_num(arg(a, 1)).trunc();
             if matches!(arg(a, 1), V::Str(_)) && order.is_nan() {
                 return V::err(sol_error(ErrorCode::Value, format!("{name} needs a number")));
@@ -568,7 +568,7 @@ fn besselj(x: f64, n: f64) -> Option<f64> {
         if jsum {
             sum += bj;
         }
-        jsum = !jsum;
+        jsum.toggle();
         if j == n {
             ret = bjp;
         }
@@ -886,7 +886,7 @@ fn serial_to_date(serial: f64) -> f64 {
     civil::new_date(1970.0, 0.0, 1.0 + days, 0.0, 0.0, seconds, 0.0)
 }
 
-/// A serial as a date, any day of the calendar ([[D119]] datesBefore1900); text is never a date ([[C10]]
+/// A serial as a date, any day of the calendar ([[date-values#Days before 1900]] datesBefore1900); text is never a date ([[C10]]
 /// socketLattice).
 pub(crate) fn parse_date(v: &V) -> FxDate {
     use crate::date_serial::{END_SERIAL, FIRST_SERIAL};

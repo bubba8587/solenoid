@@ -82,7 +82,7 @@ fn replies_as_frozen() {
         let a = |k: usize| c["args"][k].clone();
         let got = match c["kind"].as_str().unwrap() {
             "weather" => {
-                let (d, now, cond) = weather(text, a(0).as_str().unwrap());
+                let (d, now, cond, _) = weather(text, a(0).as_str().unwrap());
                 json!([frame(&d), v(&now), v(&cond)])
             }
             "holidays" => {

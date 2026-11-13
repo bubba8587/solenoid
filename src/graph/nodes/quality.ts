@@ -1,4 +1,4 @@
-// [[D79]] effectsEdgeTriggered, [[C25]] firstClassUnits, [[C45]] excelComparisons
+// [[alert-node-alerts-hud#When it fires]], [[C25]] firstClassUnits, [[C45]] excelComparisons
 import { GraphInput, GraphNode } from "../graphModel";
 import { MutableSocket, SolenoidSocket, elementFamilyOf, type SocketDataType } from "../sockets";
 import { trueAnyIn, trueAnyOut, strIn, anyListIn } from "./shared";
@@ -73,7 +73,7 @@ export class ExpectNode extends GraphNode {
     return nodeOnCore(this, inputs) as { out: unknown };
   }
 
-  /** Min and Max take the kind of the value checked: dates for a date, numbers otherwise ([[D120]] rangeBoundsTakeTheValuesKind).
+  /** Min and Max take the kind of the value checked: dates for a date, numbers otherwise ([[date-values#Cards]]).
    *  Answers the bounds that retyped. */
   settleFollowers(): string[] {
     const t = (this.inputs.in?.socket as SolenoidSocket | undefined)?.dataType;

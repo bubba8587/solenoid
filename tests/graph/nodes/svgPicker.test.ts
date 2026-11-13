@@ -1,4 +1,4 @@
-// [[C68]], [[C86]] membershipByGesture, [[C103]] untrustedContentSeams
+// [[C68]], [[group-expand-push#Who is a member]], [[engineering#Untrusted content]]
 import { describe, it, expect } from "vitest";
 import { SvgPickerNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/nodeInit";

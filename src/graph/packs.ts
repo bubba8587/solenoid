@@ -14,6 +14,7 @@ import { CHEMISTRY_PACK } from "./packs/chemistry";
 import { SCIENTIFIC_PACK } from "./packs/scientific";
 import { SIGNALS_PACK } from "./packs/signals";
 import { DATA_SCIENCE_PACK } from "./packs/datascience";
+import { PROBABILITY_PACK } from "./packs/probability";
 import type { Pack, PackPlacement } from "./packs/packShared";
 
 export type { Pack, PackPlacement, FormulaPackEntry } from "./packs/packShared";
@@ -26,6 +27,7 @@ export const BUILTIN_PACKS: Pack[] = [
   SCIENTIFIC_PACK,
   SIGNALS_PACK,
   DATA_SCIENCE_PACK,
+  PROBABILITY_PACK,
   ELECTRICITY_PACK,
   ELECTROMAGNETISM_PACK,
   HEALTH_PACK,

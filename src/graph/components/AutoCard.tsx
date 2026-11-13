@@ -1,4 +1,4 @@
-// [[C114]] cardsView, [[D111]] cardLayouts, [[C103]] untrustedContentSeams
+// [[C114]] cardsView, [[table-popup#The Cards view]], [[engineering#Untrusted content]]
 import type { CSSProperties, ReactNode } from "react";
 import { CellImage } from "./cubeCell";
 import { splitTags, isHexColor, linkHref, shortLink, type CardColType, type CardPlan } from "../cardLayout";
@@ -241,7 +241,7 @@ export function AutoCard({
   );
 }
 
-/** A card drawn to an authored layout ([[D111]] cardLayouts): the title field heads it, every other placed field is a
+/** A card drawn to an authored layout ([[table-popup#The Cards view]]): the title field heads it, every other placed field is a
  *  tile at its place in the grid, and each tile draws the way the plan reads its column. A name that matches no column
  *  keeps its box with the layout's hint. */
 function LaidOutCard({ plan, layout, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, onEdit, tint, tintColumn }: {

@@ -1,4 +1,4 @@
-// [[D90]] cubeTypesAtDepth
+// [[C10]] socketLattice, [[frame-verbs#The Cube value]]
 import { describe, it, expect, afterEach } from "vitest";
 import { cubePopup, gridPosOf } from "../../src/graph/cubePopupStore";
 

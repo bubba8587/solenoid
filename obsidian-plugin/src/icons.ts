@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import type { Family, PropertyKind } from "./yamlValue";
 
 const BOX = (inner: string) =>

@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]
 
 export const CURRENT_SAVE_VERSION = 2;
 

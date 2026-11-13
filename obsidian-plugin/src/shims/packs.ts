@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import type { PackFormat, PackUnit } from "../../../src/graph/formatAnnotationStore";
 
 export function allPacks(): { id: string; units?: PackUnit[]; formats?: PackFormat[] }[] {

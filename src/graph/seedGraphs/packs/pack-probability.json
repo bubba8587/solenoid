@@ -1,0 +1,96 @@
+{
+  "v": 2,
+  "order": 5130,
+  "label": "Probability: how sure can you be?",
+  "group": "Packs",
+  "nodes": [
+    {
+      "id": "head",
+      "x": 0,
+      "y": 0,
+      "type": "NoteNode",
+      "init": {
+        "label": "Probability",
+        "color": "amber",
+        "collapsed": false,
+        "width": 760,
+        "height": 150,
+        "body": "**Probability Between** shades the chance a value lands in a range: drag its handles. **A/B Test** says how likely it is that version B really converts better than A. **Bootstrap** shows how far an average of twelve deliveries could be from the true one.",
+        "fieldTypes": {}
+      }
+    },
+    {
+      "id": "between",
+      "x": 0,
+      "y": 220,
+      "type": "ProbabilityBetweenNode",
+      "init": {
+        "label": "",
+        "op": "normal",
+        "width": 240,
+        "height": 300
+      },
+      "literals": {
+        "mean": 0,
+        "stdev": 1,
+        "lo": -1,
+        "hi": 1
+      }
+    },
+    {
+      "id": "ab",
+      "x": 440,
+      "y": 220,
+      "type": "AbTestNode",
+      "init": {
+        "label": "",
+        "width": 240,
+        "height": 360
+      },
+      "literals": {
+        "na": 1000,
+        "ca": 50,
+        "nb": 1000,
+        "cb": 65
+      }
+    },
+    {
+      "id": "days",
+      "x": 880,
+      "y": 220,
+      "type": "ListInputNode",
+      "init": {
+        "label": "Delivery days",
+        "dataType": "number",
+        "width": 180,
+        "height": 200,
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "3, 5, 4, 6, 2, 8, 5, 4, 7, 3, 5, 6"
+      }
+    },
+    {
+      "id": "boot",
+      "x": 1320,
+      "y": 220,
+      "type": "BootstrapNode",
+      "init": {
+        "label": "",
+        "op": "mean",
+        "width": 240,
+        "height": 300
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "days",
+      "sourceOutput": "list",
+      "target": "boot",
+      "targetInput": "list"
+    }
+  ]
+}

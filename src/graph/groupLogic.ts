@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[C112]] noOverlapsEver, [[A1]] visualGraphCalculator, [[C52]] visibleSelection
+// [[group-expand-push#Who is a member]], [[group-expand-push#LayoutFx]], [[A1]] visualGraphCalculator, [[C52]] visibleSelection
 import type { View } from "./view";
 import type { GraphEditor } from "./graphEditor";
 import type { GraphNode } from "./graphModel";
@@ -138,7 +138,7 @@ export async function autofitGroupBox(
   };
   if (keep && after.x === before.x && after.y === before.y && after.width === before.width && after.height === before.height) return null;
   if (group.lockedPosition) {
-    // [[C112]] noOverlapsEver: the lock holds the corner, so the members come to it.
+    // [[group-expand-push#LayoutFx]]: the lock holds the corner, so the members come to it.
     moveGroupMembers(editor, view, group, gv.x - after.x, gv.y - after.y);
     after.x = gv.x;
     after.y = gv.y;
@@ -151,7 +151,7 @@ export async function autofitGroupBox(
   return { before, after };
 }
 
-/** The No-Overlap Pass inside each open group that holds one of `placed` ([[C112]] noOverlapsEver): its members pull
+/** The No-Overlap Pass inside each open group that holds one of `placed` ([[group-expand-push#LayoutFx]]): its members pull
  *  apart, the placed ones holding still where they can, and the box grows over a member pushed past its edge. The
  *  top-level pass that follows separates a grown group from its neighbors. */
 export async function settleMemberOverlaps(editor: Editor, view: View, placed: ReadonlySet<string>): Promise<void> {

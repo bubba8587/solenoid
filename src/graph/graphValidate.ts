@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]
 
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 import { readTextForm, parseNodeLine } from "./textForm";
@@ -13,6 +13,7 @@ import {
   type SocketDataType,
 } from "./sockets";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
+import { readCalcPlaces, readPivotSort } from "./pivotConfig";
 import type { CompositeSavedNode } from "./nodes/composite";
 
 export interface GraphIssue {
@@ -207,6 +208,20 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       if (fix) issues.push({ line: at(name), node: name, message: `${k}=${JSON.stringify(v)}: ${k} on ${sn.type} is ${fix}. As written it would be read as blank or 0.` });
     }
 
+    // A pivot saves its sorts and its calculated fields' places by name. A position, as both once were, would be read
+    // as none, so it is refused with the form that works.
+    if (sn.type === "PivotNode") {
+      for (const k of ["rowSort", "colSort"] as const) {
+        const v = sn.init?.[k];
+        if (v == null || v === 0 || readPivotSort(v)) continue;
+        issues.push({ line: at(name), node: name, message: `${k}=${JSON.stringify(v)}: a pivot's sort names what it sorts by, so write ${k}={"by":"value","name":"<a value>","desc":true} (by is field, value or calc; a calculated field by its id). As written it would be read as no sort.` });
+      }
+      const places = sn.init?.calcPlace;
+      if (places != null && (!Array.isArray(places) || readCalcPlaces(places).length !== places.length)) {
+        issues.push({ line: at(name), node: name, message: `calcPlace=${JSON.stringify(places)}: a calculated field's place names the value it sits before, so write calcPlace=[["<field id>","<a value>"]] (null for after the values, false for off the pivot). As written it would be read as no places.` });
+      }
+    }
+
     const internal = sn.init?.internal as { nodes?: unknown; connections?: unknown } | undefined;
     if (internal && Array.isArray(internal.nodes) && Array.isArray(internal.connections)) {
       const sub: SavedGraph = {
@@ -246,8 +261,10 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     // A key that names no input, and that the card isn't born holding, is read by nothing: the loader keeps it in
     // the map (a card's own keys live there too, and a card with no inputs keeps only its own), so a misspelled input (`str:column` for Get Column's `name`) would
     // load, compute from a blank and say nothing.
+    // A card's `savedFields` are settings it keeps in the literal maps with no socket (the Chart Builder's picks).
+    const savedFields = (Ctor as unknown as { savedFields?: ReadonlySet<string> }).savedFields;
     const strayKey = (k: string, map: "literals" | "stringLiterals"): boolean =>
-      inputKeys.length > 0 && !inputKeys.includes(k) && !(k in ((fresh?.[map] as object | undefined) ?? {})) && fresh !== null;
+      inputKeys.length > 0 && !inputKeys.includes(k) && !savedFields?.has(k) && !(k in ((fresh?.[map] as object | undefined) ?? {})) && fresh !== null;
     const stray = (k: string, map: "lit" | "str"): void => {
       const own = Object.keys((fresh?.[map === "lit" ? "literals" : "stringLiterals"] as object | undefined) ?? {});
       issues.push({ line: at(name), node: name, message: `${map}:${k}: ${sn.type} has no input or field named "${k}"${nearest(k, new Set([...inputKeys, ...own]))}, so this value would be silently ignored. Inputs: ${keyList(inputKeys)}.` });
@@ -335,7 +352,7 @@ function findCycle(g: SavedGraph): string[] | null {
   const indeg = new Map<string, number>();
   const adj = new Map<string, string[]>();
   const nameOf = new Map<string, string>();
-  // A cable into a Delayed Pass card carries last pass's value, so it closes no cycle ([[D118]] delayedPass).
+  // A cable into a Delayed Pass card carries last pass's value, so it closes no cycle ([[compute-pass#Delayed Pass]]).
   const delayed = new Set(g.nodes.filter((n) => n.type === "DelayedPassNode").map((n) => n.id));
   for (const n of g.nodes) { indeg.set(n.id, 0); nameOf.set(n.id, n.name ?? n.id); }
   for (const c of g.connections) {

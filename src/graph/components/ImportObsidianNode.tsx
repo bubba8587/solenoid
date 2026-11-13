@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet, [[C1]] demoVault
+// [[B1]] obsidianBet, [[vault-read#Which notes are read]]
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { sanitizeNoteHtml, useNetworkGrant } from "../noteHtml";

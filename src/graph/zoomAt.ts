@@ -1,12 +1,12 @@
 // [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator
 import { getNodesBounds, getViewportForBounds } from "@xyflow/react";
-import { floorZoom, MIN_ZOOM } from "./viewPresets";
+import { boundZoom, MIN_ZOOM } from "./viewPresets";
 import type { View } from "./view";
-// Never zooms in past 1; zoom floors to the snap step. Collapsed-group callers: [[group-collapse#Camera targets across collapsed groups]].
+// Never zooms in past 1; the zoom is exact, off the step grid, as every fit is. Collapsed-group callers: [[group-collapse#Camera targets across collapsed groups]].
 
 type NodeLike = { id: string; width?: number; height?: number };
 
-type ZoomView = Pick<View, "position" | "nodeElement" | "measured" | "container" | "pan" | "zoom">;
+type ZoomView = Pick<View, "position" | "nodeElement" | "measured" | "container" | "setCamera">;
 
 const FRAME_PADDING = 0.1;
 
@@ -38,7 +38,6 @@ export async function zoomAt(
   const bounds = getNodesBounds(lites);
   const w = surface.container.clientWidth;
   const h = surface.container.clientHeight;
-  const k = floorZoom(getViewportForBounds(bounds, w, h, MIN_ZOOM, 1, params?.padding ?? FRAME_PADDING).zoom);
-  await surface.pan(w / 2 - (bounds.x + bounds.width / 2) * k, h / 2 - (bounds.y + bounds.height / 2) * k);
-  await surface.zoom(k);
+  const k = boundZoom(getViewportForBounds(bounds, w, h, MIN_ZOOM, 1, params?.padding ?? FRAME_PADDING).zoom);
+  await surface.setCamera({ x: w / 2 - (bounds.x + bounds.width / 2) * k, y: h / 2 - (bounds.y + bounds.height / 2) * k, k });
 }

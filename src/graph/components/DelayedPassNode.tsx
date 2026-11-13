@@ -1,4 +1,4 @@
-// [[D118]] delayedPass
+// [[compute-pass#Delayed Pass]]
 import type { DelayedPassNode as DelayedPassNodeType } from "../nodeClasses";
 import { processGraph, getEngine } from "../process";
 import { NodeShell, type NodeProps } from "./nodeKit";

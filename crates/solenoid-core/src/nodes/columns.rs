@@ -141,7 +141,7 @@ fn text_values(cells: &[V]) -> Vec<V> {
 
 /// A column of values as a typed column, by its declared type when it has one.
 fn scalar_read(col: &CubeColumn, rows: usize, u: &Result<Option<(Json, bool)>, V>) -> TableColumn {
-    let cells: Vec<V> = (0..rows).map(|i| cube_cell(col, i)).collect();
+    let cells: Vec<V> = Vec::from_fn(rows, |i| cube_cell(col, i));
     let read = super::list::infer_column(&col.name, &cells);
     let column = |ty: FrameColType, values: Vec<V>| TableColumn {
         row: RowColumn { name: col.name.clone(), values, whole: None },
@@ -238,8 +238,7 @@ pub(crate) fn cube_row_table(cube: &Cube) -> Vec<TableColumn> {
             let table_err = err(ErrorCode::Shape, format!("This row of \"{}\" holds a table; a formula reads values and lists", col.name));
             let base = matches!(u, Ok(Some((_, true))));
             let mut items = Vec::new();
-            let values: Vec<V> = (0..rows)
-                .map(|i| {
+            let values: Vec<V> = Vec::from_fn(rows, |i| {
                     if col.cells.get(i).is_some_and(is_table) {
                         return table_err.clone();
                     }
@@ -253,8 +252,7 @@ pub(crate) fn cube_row_table(cube: &Cube) -> Vec<TableColumn> {
                         other => items.push(other.clone()),
                     }
                     v
-                })
-                .collect();
+                });
             let ty = col.ty.unwrap_or_else(|| super::list::infer_column(&col.name, &items).ty);
             let whole = if tables {
                 err(ErrorCode::Shape, format!("\"{}\" holds a table in some row, so it has no single table to read. Use {} to read this row's.", col.name, at_ref(&col.name)))
@@ -385,6 +383,7 @@ pub(crate) fn lambda_with_captures(lam: &Rc<LambdaV>, units: &[V], side: &dyn Fn
         src: lam.src.clone(),
         units: lam.units.clone(),
         descriptions: lam.descriptions.clone(),
+        empty: lam.empty.clone(),
     })
 }
 

@@ -1,4 +1,4 @@
-// [[C120]] linearWork
+// [[engineering#Performance]] linearWork
 //! The evaluator's per-site caches (the range memo, the call sites) are keyed by node address: one LAMBDA body's entry
 //! must never answer another's. The native allocator reuses a freed body's address at once, so these run natively.
 
@@ -90,36 +90,34 @@ fn a_kept_criteria_tally_answers_as_the_scan_does() {
     use solenoid_core::eval::{formula, Env};
     use solenoid_core::excel_functions::V;
     use std::rc::Rc;
-    let cells: Vec<V> = (0..90)
-        .map(|i| match i % 10 {
-            0 => V::Num(-0.0),
-            1 => V::Num(f64::INFINITY),
-            2 => V::Num(f64::NAN),
-            3 => V::Bool(i % 20 == 3),
-            4 => V::Null,
-            5 => V::str(""),
-            6 => V::str(if i % 20 == 6 { "Apple" } else { "apple" }),
-            7 => V::str("5"),
-            8 => V::err(sol_error(ErrorCode::Value, "bad")),
-            _ => V::Num((i % 7) as f64),
-        })
-        .collect();
-    let numbers: Vec<V> = (0..90)
-        .map(|i| match i {
-            _ if i % 9 == 0 => V::Null,
-            _ if i % 13 == 0 => V::Bool(true),
-            _ if i % 17 == 0 => V::str(""),
-            _ if i % 19 == 0 => V::Num(f64::NAN),
-            _ if i % 23 == 0 => V::err(sol_error(ErrorCode::Value, "bad")),
-            _ if i % 29 == 0 => V::Num(f64::NEG_INFINITY),
-            _ => V::Num(((i * 37) % 11) as f64 - 5.0),
-        })
-        .collect();
-    let vals = V::List(Rc::new(
-        (0..85)
-            .map(|i| if i == 61 { V::err(sol_error(ErrorCode::Ref, "gone")) } else { V::Num(i as f64 * 0.1) })
-            .collect(),
-    ));
+    let cells: Vec<V> = Vec::from_fn(90, |i| match i % 10 {
+        0 => V::Num(-0.0),
+        1 => V::Num(f64::INFINITY),
+        2 => V::Num(f64::NAN),
+        3 => V::Bool(i % 20 == 3),
+        4 => V::Null,
+        5 => V::str(""),
+        6 => V::str(if i % 20 == 6 { "Apple" } else { "apple" }),
+        7 => V::str("5"),
+        8 => V::err(sol_error(ErrorCode::Value, "bad")),
+        _ => V::Num((i % 7) as f64),
+    });
+    let numbers: Vec<V> = Vec::from_fn(90, |i| match i {
+        _ if i % 9 == 0 => V::Null,
+        _ if i % 13 == 0 => V::Bool(true),
+        _ if i % 17 == 0 => V::str(""),
+        _ if i % 19 == 0 => V::Num(f64::NAN),
+        _ if i % 23 == 0 => V::err(sol_error(ErrorCode::Value, "bad")),
+        _ if i % 29 == 0 => V::Num(f64::NEG_INFINITY),
+        _ => V::Num(((i * 37) % 11) as f64 - 5.0),
+    });
+    let vals = V::List(Rc::new(Vec::from_fn(85, |i| {
+        if i == 61 {
+            V::err(sol_error(ErrorCode::Ref, "gone"))
+        } else {
+            V::Num(i as f64 * 0.1)
+        }
+    })));
     let formulas = [
         "COUNTIF(range, crit)",
         "SUMIFS(vals, range, crit)",
@@ -177,28 +175,24 @@ fn a_sorted_run_answers_as_the_scan_does() {
     use solenoid_core::eval::{formula, Env};
     use solenoid_core::excel_functions::V;
     use std::rc::Rc;
-    let range: Vec<V> = (0..90)
-        .map(|i| match i % 11 {
-            0 => V::Num(-0.0),
-            1 => V::Num(f64::INFINITY),
-            2 => V::Num(f64::NAN),
-            3 => V::Bool(true),
-            4 => V::Null,
-            5 => V::str("x"),
-            6 => V::Num(f64::NEG_INFINITY),
-            _ => V::Num(((i * 37) % 13) as f64 - 6.0),
-        })
-        .collect();
-    let whole: Vec<V> = (0..90)
-        .map(|i| match i {
-            _ if i % 17 == 0 => V::Null,
-            _ if i % 19 == 0 => V::Num(f64::NAN),
-            _ if i % 29 == 0 => V::Bool(true),
-            _ if i == 77 => V::Num(-0.0),
-            _ => V::Num(((i * 7) % 23) as f64 - 11.0),
-        })
-        .collect();
-    let mut fractions: Vec<V> = (0..90).map(|i| V::Num(i as f64 * 0.1 - 3.3)).collect();
+    let range: Vec<V> = Vec::from_fn(90, |i| match i % 11 {
+        0 => V::Num(-0.0),
+        1 => V::Num(f64::INFINITY),
+        2 => V::Num(f64::NAN),
+        3 => V::Bool(true),
+        4 => V::Null,
+        5 => V::str("x"),
+        6 => V::Num(f64::NEG_INFINITY),
+        _ => V::Num(((i * 37) % 13) as f64 - 6.0),
+    });
+    let whole: Vec<V> = Vec::from_fn(90, |i| match i {
+        _ if i % 17 == 0 => V::Null,
+        _ if i % 19 == 0 => V::Num(f64::NAN),
+        _ if i % 29 == 0 => V::Bool(true),
+        _ if i == 77 => V::Num(-0.0),
+        _ => V::Num(((i * 7) % 23) as f64 - 11.0),
+    });
+    let mut fractions: Vec<V> = Vec::from_fn(90, |i| V::Num(i as f64 * 0.1 - 3.3));
     fractions[40] = V::Num(f64::INFINITY);
     let mut with_error = whole.clone();
     with_error[50] = V::err(sol_error(ErrorCode::Ref, "gone"));
@@ -243,36 +237,30 @@ fn a_grouped_run_answers_as_the_scan_does() {
     use solenoid_core::excel_functions::V;
     use std::rc::Rc;
     let n = 120;
-    let groups: Vec<V> = (0..n)
-        .map(|i| match i % 7 {
-            0 => V::str("a"),
-            1 => V::str("A"),
-            2 => V::Num(2.0),
-            3 => V::Null,
-            4 => V::str("b"),
-            5 => V::Num(-0.0),
-            _ => V::str("a"),
-        })
-        .collect();
-    let range: Vec<V> = (0..n)
-        .map(|i| match i % 11 {
-            0 => V::Num(-0.0),
-            1 => V::Num(f64::INFINITY),
-            2 => V::Num(f64::NAN),
-            3 => V::Bool(true),
-            4 => V::Null,
-            5 => V::str("x"),
-            _ => V::Num(((i * 37) % 13) as f64 - 6.0),
-        })
-        .collect();
-    let whole: Vec<V> = (0..n).map(|i| V::Num(((i * 7) % 23) as f64 - 11.0)).collect();
-    let mut fractions: Vec<V> = (0..n)
-        .map(|i| match i % 3 {
-            0 => V::Num(0.1),
-            1 => V::Num(0.2),
-            _ => V::Num(-0.3),
-        })
-        .collect();
+    let groups: Vec<V> = Vec::from_fn(n, |i| match i % 7 {
+        0 => V::str("a"),
+        1 => V::str("A"),
+        2 => V::Num(2.0),
+        3 => V::Null,
+        4 => V::str("b"),
+        5 => V::Num(-0.0),
+        _ => V::str("a"),
+    });
+    let range: Vec<V> = Vec::from_fn(n, |i| match i % 11 {
+        0 => V::Num(-0.0),
+        1 => V::Num(f64::INFINITY),
+        2 => V::Num(f64::NAN),
+        3 => V::Bool(true),
+        4 => V::Null,
+        5 => V::str("x"),
+        _ => V::Num(((i * 37) % 13) as f64 - 6.0),
+    });
+    let whole: Vec<V> = Vec::from_fn(n, |i| V::Num(((i * 7) % 23) as f64 - 11.0));
+    let mut fractions: Vec<V> = Vec::from_fn(n, |i| match i % 3 {
+        0 => V::Num(0.1),
+        1 => V::Num(0.2),
+        _ => V::Num(-0.3),
+    });
     fractions[40] = V::Num(f64::INFINITY);
     let mut with_error = whole.clone();
     with_error[50] = V::err(sol_error(ErrorCode::Ref, "gone"));
@@ -365,16 +353,14 @@ fn a_kept_column_extreme_answers_as_the_scan_does() {
     use solenoid_core::excel_functions::V;
     use std::rc::Rc;
     let n = 100;
-    let col: Vec<FrameCell> = (0..n)
-        .map(|i| match i % 9 {
-            0 => FrameCell::Num(-0.0),
-            1 => FrameCell::Null,
-            2 => FrameCell::Bool(i % 2 == 0),
-            _ => FrameCell::Num(((i * 13) % 7) as f64 - 3.0),
-        })
-        .collect();
+    let col: Vec<FrameCell> = Vec::from_fn(n, |i| match i % 9 {
+        0 => FrameCell::Num(-0.0),
+        1 => FrameCell::Null,
+        2 => FrameCell::Bool(i % 2 == 0),
+        _ => FrameCell::Num(((i * 13) % 7) as f64 - 3.0),
+    });
     let xs: Vec<FrameCell> =
-        (0..n).map(|i| if i % 5 == 0 { FrameCell::Num(0.0) } else { FrameCell::Num(i as f64 - 50.0) }).collect();
+        Vec::from_fn(n, |i| if i % 5 == 0 { FrameCell::Num(0.0) } else { FrameCell::Num(i as f64 - 50.0) });
     let f = FrameValue {
         columns: vec![
             FrameColumn::new("v", FrameColType::Number, col.clone()),
@@ -425,16 +411,14 @@ fn a_cached_criterion_reads_numbers_to_15_digits() {
     use solenoid_core::excel_functions::V;
     use std::rc::Rc;
     let n = 100;
-    let range: Vec<V> = (0..n)
-        .map(|i| match i % 5 {
-            0 => V::Num(0.1 + 0.2),
-            1 => V::Num(0.3),
-            2 => V::Num(0.29999999999999),
-            _ => V::Num((i % 7) as f64 * 0.1),
-        })
-        .collect();
-    let keys: Vec<V> = (0..n).map(|i| V::str(if i % 2 == 0 { "a" } else { "b" })).collect();
-    let vals: Vec<V> = (0..n).map(|i| V::Num(i as f64 + 1.0)).collect();
+    let range: Vec<V> = Vec::from_fn(n, |i| match i % 5 {
+        0 => V::Num(0.1 + 0.2),
+        1 => V::Num(0.3),
+        2 => V::Num(0.29999999999999),
+        _ => V::Num((i % 7) as f64 * 0.1),
+    });
+    let keys: Vec<V> = Vec::from_fn(n, |i| V::str(if i % 2 == 0 { "a" } else { "b" }));
+    let vals: Vec<V> = Vec::from_fn(n, |i| V::Num(i as f64 + 1.0));
     let formulas = [
         "COUNTIF(range, crit)",
         "COUNTIFS(range, crit)",

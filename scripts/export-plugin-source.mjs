@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 // Exports the Solenoid Properties plugin's source into its own repository (the community directory needs
 // the source it is built from): a snapshot of every file the build reads or imports for types, at the same
 // paths, plus a pinned package.json and lock file, so `npm ci && npm run build` there makes the same bundle.

@@ -1,4 +1,4 @@
-# [[C121]]
+# [[motion-graphics]]
 """A generic spreadsheet for comparison clips, built as pieces like a card's: a formula bar, column letters, row
 numbers, a grid, cell text, the selected cell, and the colored boxes a spreadsheet draws around the cells a
 formula refers to while it is being edited. It is not Solenoid's UI, so it wears a neutral system font and

@@ -1,4 +1,4 @@
-// [[C89]] standoffsSolveLast (the seed rule), [[C1]] demoVault, [[C79]] packActivationIsPresentation
+// [[standoffs#The solver runs last]] (the seed rule), [[vault-read#Which notes are read]], [[C79]] packActivationIsPresentation
 import { useSyncExternalStore } from "react";
 import { loadGraph } from "./persistence";
 import type { SavedGraph } from "./persistence";

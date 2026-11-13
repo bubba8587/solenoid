@@ -1,4 +1,4 @@
-/* [[C93]] gestureByPointerType, [[B14]] oneDesignSystem */
+/* [[touch-gestures#Standing rules]], [[components#The design system]] */
 
 html.is-mobile {
   .solenoid-mobile-bar { display: flex; }

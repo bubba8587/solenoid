@@ -1,4 +1,4 @@
-// [[C98]] paletteMirrorsMenubar
+// [[A1]] visualGraphCalculator, [[command-palette]]
 import { createNotifier } from "./storeKit";
 
 // Most-recently-used command labels; a run from the Command Palette or the menu bar records here.

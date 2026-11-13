@@ -1,4 +1,4 @@
-// [[C121]]
+// [[motion-graphics]]
 // Find the mistake, 14 s: "4 units" was typed where a quantity goes. In the spreadsheet the total reads #VALUE!
 // and each cell its formula uses is checked until the text turns up. In Solenoid #VALUE! shows on the Quantity
 // card itself; retyping it sends the fix down the cable to the total. Capture: scenes/mistake.json.

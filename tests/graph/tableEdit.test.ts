@@ -1,4 +1,4 @@
-// [[C28]] literalsIffEditable, [[D90]] cubeTypesAtDepth, [[table-popup#The grid]]
+// [[C28]] literalsIffEditable, [[frame-verbs#The Cube value]], [[table-popup#The grid]]
 import { describe, it, expect } from "vitest";
 import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex } from "../../src/graph/tableEdit";
 import { shiftNestedRows, dropNestedUnder, tableKey } from "../../src/graph/cubeTypes";

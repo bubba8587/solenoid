@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C44]] dateSerials
+// [[composite-nodes#Packs]], [[C44]] dateSerials
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";

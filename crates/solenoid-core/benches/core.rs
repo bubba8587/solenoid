@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C120]] linearWork
+// [[C130]] rustCore, [[engineering#Performance]] linearWork
 //! The core's hot paths timed natively at 800,000 rows (the Engine Speed Test seed's): `cargo bench --bench core`
 //! (`-- <name>` runs the matching ones). For comparing changes, not a gate: `wasmEngineBench.test.ts` times the wasm.
 
@@ -28,16 +28,13 @@ fn best(mut f: impl FnMut(usize)) -> Duration {
 
 fn numbers(n: usize) -> Vec<f64> {
     let mut r = fastrand::Rng::with_seed(7);
-    (0..n).map(|_| (r.f64() * 2e6).round() / 100.0 - 1e4).collect()
+    Vec::from_fn(n, |_| (r.f64() * 2e6).round() / 100.0 - 1e4)
 }
 
 fn env_with(xs: &[f64]) -> Env {
     let mut env = Env::default();
     env.insert("l".into(), V::List(xs.iter().map(|&x| V::Num(x)).collect::<Vec<_>>().into()));
-    env.insert(
-        "t".into(),
-        V::List((0..xs.len()).map(|i| V::str(&format!("item {i} straße"))).collect::<Vec<_>>().into()),
-    );
+    env.insert("t".into(), V::List(Vec::from_fn(xs.len(), |i| V::str(&format!("item {i} straße"))).into()));
     env
 }
 
@@ -45,7 +42,7 @@ fn main() {
     let only: Vec<String> = std::env::args().skip(1).filter(|a| !a.starts_with('-')).collect();
     let xs = numbers(ROWS);
     // One list per run, each its own allocation: a formula over a list the core has seen is answered from its memo.
-    let fresh = || -> Vec<Env> { (0..RUNS).map(|_| env_with(&xs)).collect() };
+    let fresh = || -> Vec<Env> { Vec::from_fn(RUNS, |_| env_with(&xs)) };
     let texts: Vec<String> = xs.iter().map(|&x| number_to_string(x)).collect();
     let on = |src: &'static str| {
         let envs = fresh();

@@ -30,6 +30,9 @@ vi.mock("../../../src/graph/process", () => ({
   },
 }));
 
+// The snapshot stack under test; the delta that applies a step is `graphDelta.test.ts`'s, so every step loads whole here.
+vi.mock("../../../src/graph/graphDelta", () => ({ applyGraphDelta: async () => null }));
+
 import { flowHistory } from "../../../src/graph/flow/flowHistory";
 
 const doc = (name: string, value: unknown = 1): SavedGraph =>

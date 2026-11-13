@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[obsidian-plugin]]
 import { createPortal as realCreatePortal, flushSync } from "react-dom";
 import type { ReactNode, ReactPortal } from "react";
 import { popupPortalRoot } from "../shadow";

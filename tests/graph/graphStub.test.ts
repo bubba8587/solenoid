@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet, [[C101]] onePatchPath
+// [[B1]] obsidianBet, [[vault-bridge#What every VaultBridgeFx holds to]]
 import { describe, it, expect } from "vitest";
 import { sanitizeDocName, stubRelPath, stubLink, buildStub, mergeStub } from "../../src/graph/graphStub";
 

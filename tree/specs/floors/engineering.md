@@ -2,11 +2,12 @@
 aliases: ["Engineering rules"]
 tags: [spec, floors]
 ---
-<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork, [[C139]] mathlibLaws -->
+<!-- [[B18]], [[B19]] -->
+<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[B19]] spreadsheetHabits, [[C139]] mathlibLaws -->
 
 # Spec: Engineering rules
 
-Serves [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork and [[C139]] mathlibLaws.
+Serves [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[B19]] spreadsheetHabits and [[C139]] mathlibLaws.
 
 The cross-cutting code-hygiene rules. Unlike the other floors this spec has no `covers:` glob: each rule binds every file in the repo, source and tests alike, whenever the file does the thing the rule names. A file that relies on one cites the parent leaf it serves, or nothing.
 
@@ -114,6 +115,10 @@ recharts is the largest optional dependency, and most documents never draw a cha
 
 Tests: `sourceInvariants.test.ts`: exactly one file under `src/` imports from `recharts`, `components/chartRender.tsx`, and nothing imports `pele` or `elkjs` statically.
 
+## Untrusted content
+
+**MUST:** content entering or leaving the app is made safe at the one place it crosses, so every new way in or out gets the guard. A shared `.solenoid` file can carry anything, so nothing it brings in is trusted. The seams and their guards are listed in [[reports-and-notes#What is sanitized, and where]]: rendered markdown, the webpage export, SVG, links, file links and the vault write, plus CSV formula-injection escaping on every export ([[table-popup]]). The network gate, which every fetch path asks before reaching out for a foreign document, is [[live-connections#The network gate]].
+
 ## Comments
 
 A comment is a copy of knowledge that has a better home, and copies drift. A reason that governs code belongs in the leaf the code cites, where `trace` and `blast` find it; in a comment it is found only by someone who opens that file. When a comment is reviewed, the default outcome is deletion. DTE's own B38 commentsMigrate makes the same split: the why goes to the leaf, the how to the spec, and only what the code does stays in the code.
@@ -126,7 +131,7 @@ A comment is a copy of knowledge that has a better home, and copies drift. A rea
 
 ## Performance
 
-Serves [[C120]] linearWork. Each rule names the shape that broke it, since every one of these passed its tests on 20 rows.
+Work on a Frame or list costs time in proportion to its size, never its size squared, and drawing it costs no more than what fits on screen. Speed never buys a different answer. Each rule below names the shape that broke it, since every one of these passed its tests on 20 rows.
 
 ### Nothing whole-table runs once per row
 

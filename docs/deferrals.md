@@ -34,6 +34,12 @@ the decision tree (`dte.md`).
 
 ## Reopen only if the trigger returns
 
+- **Reading an Excel sheet or range, not a Table** (author 2026-11-12: "only enable it on named Tables… just note that
+  in case people really need sheet-wide reading / typed range"). Local File and Web Source read only a workbook's
+  named Tables (`tree/specs/computation/live-connections.md` § Excel workbooks). Reopen when a real workbook's data
+  can't be made a Table (a protected file, a report someone else owns). calamine's `worksheet_range` and
+  `Range::range` already give both; the open questions are the header row and where the data ends.
+
 - **Drawn cables in the composite drill-in** (author 2026-09-06: drop if overly complex — it is).
   The drawn-cable store is one module-global singleton wired main-only; a drill-in layer needs it
   instanced per surface, a store seam through the layer / capture / inspector, per-composite
@@ -134,13 +140,11 @@ the decision tree (`dte.md`).
   `archive/dev-notes-history.md` (sweep 2026-08-25). Reopens only on the author's say-so,
   and then starts at T1/T2 (pin `k`, trace inside vs outside the band), nothing built before.
 
-- **AppImage catalog listing (author 2026-09-30: wait for Tauri upstream).** The catalog's bot
-  opened AppImage/appimage.github.io#9072; its firejail test fails because Tauri's bundler writes
-  the AppRun launcher 0770, so a non-root user can't start the app (tauri-apps/tauri#16155).
-  The workaround (seed `~/.cache/tauri/AppRun-x86_64` at 0755 before bundling) is passed over:
-  it adds a downloaded-binary build step. Reopens when a Tauri release carries the fix: bump Tauri, rename
-  the release asset to `solenoid-<v>-x86_64.AppImage` (the catalog rejects "linux" in the name),
-  cut a release, comment `/retest` on the PR. The glibc 2.35 note is the chosen floor, not a blocker.
+- **AppImage (author 2026-11-11: "drop AppImage support unless requested").** Releases ship the Windows exe and the
+  .deb; the AppImage (92 MB to the .deb's 18, as it carries WebKitGTK) is out of `desktop-build.yml`. Reopens when a
+  user asks: add `appimage` back to `--bundles`, the upload and the release files. The catalog listing it would then
+  allow (AppImage/appimage.github.io#9072) waits on Tauri's AppRun mode fix (tauri-apps/tauri#16155) and an asset
+  named `solenoid-<v>-x86_64.AppImage` (the catalog rejects "linux" in the name).
 
 ## Parked features (revisit only if the trigger returns)
 

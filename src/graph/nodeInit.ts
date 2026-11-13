@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator, [[save-format#A save loses nothing quietly]]
 // What a save holds of a card: its init fields, captured as plain JSON. Free of the editor, so a card's body on the
 // core (nodeOnCore.ts) and the Obsidian plugin can read it.
 import type { GraphNode } from "./graphModel";
@@ -39,12 +39,13 @@ export const INIT_FIELD_ORDER = [
   "dateOrder",
   "columnTypes",
   "exportTotals",
+  "tableName",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [
   "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "varRequired", "bindings",
   "keyOrder", "pivotView", "detailFields", "boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues",
-  "literalKinds", "cellEdits",
+  "literalKinds", "cellEdits", "calcPlace", "assigned",
 ] as const;
 
 /** The saved fields only the canvas reads (a card's size, fold, colour, place, text styling): a card's call leaves them
@@ -79,7 +80,7 @@ function inheritedInitKeys(proto: object | null): number[] {
 export function extractInit(src: GraphNode): Record<string, unknown> {
   const n = src as unknown as Record<string, unknown>;
   const init: Record<string, unknown> = {};
-  // The saved names the card has, own or inherited, in their order ([[C120]] linearWork: a call reads it every pass).
+  // The saved names the card has, own or inherited, in their order ([[engineering#Performance]]: a call reads it every pass).
   const at = [...inheritedInitKeys(Object.getPrototypeOf(n) as object | null)];
   for (const k of Object.getOwnPropertyNames(n)) {
     const i = INIT_INDEX.get(k);
@@ -111,6 +112,11 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
   if (Array.isArray(n.cellEdits) && n.cellEdits.length) {
     init.cellEdits = (n.cellEdits as { row: string; column: string; value: string }[]).map((e) => ({ row: e.row, column: e.column, value: e.value }));
   }
+  // A pivot's sorts and its calculated fields' places are copied, so a save never shares them with the live card.
+  for (const k of ["rowSort", "colSort"] as const) if (init[k] && typeof init[k] === "object") init[k] = { ...(init[k]) };
+  if (Array.isArray(n.calcPlace) && n.calcPlace.length) init.calcPlace = (n.calcPlace as unknown[][]).map((p) => [...p]);
+  // A Categorize card's sort, copied the same way.
+  if (Array.isArray(n.assigned) && n.assigned.length) init.assigned = (n.assigned as [string, string[]][]).map(([c, ks]) => [c, [...ks]]);
   for (const k of ["boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues", "literalKinds"] as const) {
     if (n[k] && typeof n[k] === "object" && Object.keys(n[k]).length) init[k] = { ...(n[k]) };
   }

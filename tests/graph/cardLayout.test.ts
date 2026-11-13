@@ -1,4 +1,4 @@
-// [[C114]] cardsView, [[C103]] untrustedContentSeams, [[table-popup#The Cards view]]
+// [[C114]] cardsView, [[engineering#Untrusted content]], [[table-popup#The Cards view]]
 import { describe, it, expect } from "vitest";
 import {
   planCards, cardMatches, linkHref, shortLink, splitTags, isHexColor,
