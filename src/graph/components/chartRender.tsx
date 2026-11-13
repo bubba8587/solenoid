@@ -708,7 +708,7 @@ const LINE_DASH: Record<LineStyle, string | undefined> = {
 };
 const BUBBLE_AREA: [number, number] = [40, 420];
 
-type XYRow = XYPoint & { _j: number; label?: string };
+type XYRow = XYPoint & { _j: number; _i?: number; label?: string };
 
 const NO_SHAPE = () => <g />;
 
@@ -921,13 +921,20 @@ export function XYView({ payload, width, height, opts, fontScale, refs, under, o
   const cats = series.find((s) => s.cCats)?.cCats;
   const cRange = series.find((s) => s.cRange)?.cRange;
   const catLegend = !multi && !!cats && cats.length > 0;
-  const pointFill = (p: XYPoint, j: number): string => {
+  const pointFill = (p: XYPoint & { _i?: number }, j: number): string => {
     const s = series[j];
     if (typeof p.c === "number" && s.cRange) {
       const [lo, hi] = s.cRange;
       return rampCss(hi > lo ? (p.c - lo) / (hi - lo) : 0.5, opts?.cmap);
     }
     if (typeof p.c === "string" && s.cCats) return colors[Math.max(0, s.cCats.indexOf(p.c)) % colors.length];
+    // With no Color column a colormap colors the points in their order: the theme palette cycles its colors, a named
+    // map steps along its ramp. Left unset, every point keeps its series' one color.
+    if (opts?.cmap && p._i !== undefined && !s.cRange && !s.cCats) {
+      if (opts.cmap === "palette") return colors[p._i % colors.length];
+      const n = s.points.length;
+      return rampCss(n > 1 ? p._i / (n - 1) : 0.5, opts.cmap);
+    }
     return paint(j);
   };
   const pointR = (p: XYPoint, j: number): number => {
@@ -998,11 +1005,11 @@ export function XYView({ payload, width, height, opts, fontScale, refs, under, o
   const runs: { j: number; rows: XYRow[]; dots?: XYRow[] }[] = [];
   series.forEach((s, j) => {
     let cur: XYRow[] = [];
-    for (const p of s.points) {
-      if (p === null || (logY && !(p.y > 0))) { if (cur.length) runs.push({ j, rows: cur }); cur = []; continue; }
+    s.points.forEach((p, i) => {
+      if (p === null || (logY && !(p.y > 0))) { if (cur.length) runs.push({ j, rows: cur }); cur = []; return; }
       if (cur.length && opts?.maxgap !== undefined && Math.abs(p.x - cur[cur.length - 1].x) > opts.maxgap) { runs.push({ j, rows: cur }); cur = []; }
-      cur.push({ ...p, _j: j, ...(p.text ? { label: sanitizeChartLabel(p.text, 12) } : {}) });
-    }
+      cur.push({ ...p, _j: j, _i: i, ...(p.text ? { label: sanitizeChartLabel(p.text, 12) } : {}) });
+    });
     if (cur.length) runs.push({ j, rows: cur });
   });
   // A run denser than its pixels draws the same from the points that land on distinct pixels ([[engineering#Performance]]).

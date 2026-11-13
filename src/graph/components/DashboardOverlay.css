@@ -121,6 +121,9 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 /* Its scrollbar's room is kept whether the bar shows or not (as a sized Display's is): a bar taking width as it appears
    re-lays the masonry narrower and shorter, the bar goes, the width comes back, and the bar flashes on and off. */
 .dashboard-box__value .solenoid-ref-chartbody--stack { overflow: auto; overscroll-behavior: auto; scrollbar-gutter: stable; }
+/* The stack is the one scroller in its box: the box's own body never scrolls around it, so no second bar can come and
+   go. */
+.dashboard-box__value:has(> .solenoid-ref-figure > .solenoid-ref-chartbody--stack) { overflow: hidden; }
 .dashboard-box__value .report-embed__body > :first-child { margin-top: 0; }
 /* A diagram scales to its box, keeping its shape, as in a resized Display. */
 .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid { flex: 1 1 auto; min-height: 0; overflow: hidden; align-items: center; }
@@ -200,6 +203,10 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
   color: var(--box-ink);
 }
 .dashboard-box--tinted .dashboard-box__dots { color: inherit; }
+/* The collapsed Filter's magnifier and Edit Layout's grip take the bar's contrast ink, as its ⋯ does: their own grays
+   vanish on a color. */
+.dashboard-box--tinted .dashboard-box__label .sol-search-btn { color: var(--box-ink); opacity: 0.85; }
+.dashboard-box--tinted.dashboard-box--edit .dashboard-box__label svg { color: var(--box-ink); opacity: 0.75; }
 .dashboard-box--tinted .dashboard-box__dots:hover { background: rgba(255, 255, 255, 0.2); border-color: transparent; color: inherit; }
 .dashboard-box--tinted .dashboard-box__value { padding-top: 10px; }
 

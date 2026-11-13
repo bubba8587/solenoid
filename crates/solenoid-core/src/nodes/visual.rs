@@ -223,6 +223,10 @@ const CMAPS: [&str; 21] = [
 /// A map's own spelling, `_r` kept for a reversed one.
 fn normalize_cmap(text: &str) -> Option<String> {
     let s = trim_space(text);
+    // The theme's own palette: a figure's points cycle its colors where no Color column sets them.
+    if s.eq_ignore_ascii_case("palette") {
+        return Some("palette".to_string());
+    }
     let reversed = s.len() >= 2 && s.is_char_boundary(s.len() - 2) && s[s.len() - 2..].eq_ignore_ascii_case("_r");
     let stem = if reversed { &s[..s.len() - 2] } else { s };
     let lower = lower_text(stem);

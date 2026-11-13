@@ -61,6 +61,25 @@ spelled! {
     }
 }
 
+/// Excel's value field caption word, as the Pivot view's (`FUNC_CAPTION`, `pivotLayout.ts`): `Sum` of Revenue.
+fn agg_caption(op: AggOp) -> &'static str {
+    match op {
+        AggOp::Sum => "Sum",
+        AggOp::Avg => "Average",
+        AggOp::Min => "Min",
+        AggOp::Max => "Max",
+        AggOp::Count => "Count",
+        AggOp::Product => "Product",
+        AggOp::Median => "Median",
+        AggOp::Mode => "Mode",
+        AggOp::Stdev => "StdDev",
+        AggOp::StdevP => "StdDevp",
+        AggOp::Var => "Var",
+        AggOp::VarP => "Varp",
+        AggOp::PercentOf => "Share",
+    }
+}
+
 impl AggOp {
     /// Whether its answer over dates is still a date ([[C137]] datesNeverSerials, [[C118]] formatTravelsWithValue):
     /// the min, max, mean, median or mode of dates is a date; a sum, count, product or spread is not.
@@ -2076,6 +2095,22 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
     let named = |v: usize| if v < v_n { value_names[v].clone() } else { calcs[v - v_n].name.clone() };
     let all_values: Vec<String> = Vec::from_fn(v_n + calcs.len(), named);
     let value_names = &all_values;
+    // A value column is headed by its field's name, unless that name is a row or column field's, or another value's,
+    // when two columns would answer to one name and a reader take the wrong one: it is then headed by its caption,
+    // `Count of Projected Year`, as the Pivot view captions it.
+    let field_names: Vec<&str> = row_fields.iter().chain(&col_fields).map(String::as_str).collect();
+    let header_names: Vec<String> = (0..all_values.len())
+        .map(|v| {
+            let name = &all_values[v];
+            let clashes =
+                field_names.contains(&name.as_str()) || value_names[..v_n].iter().filter(|n| *n == name).count() > 1;
+            if v < v_n && clashes {
+                format!("{} of {name}", agg_caption(funcs[v]))
+            } else {
+                name.clone()
+            }
+        })
+        .collect();
     let multi_val = all_values.len() > 1;
     let col_header = |co: &AxisOut, v: usize| -> String {
         // Each key as its column shows it, so a date field heads its columns with dates, never serials ([[C137]]).
@@ -2098,10 +2133,10 @@ pub fn pivot_frame_calc(f: &FrameValue, spec: &PivotSpec, calcs: &[PivotCalc]) -
             AxisKind::Leaf => join(&co.tuple).join(" | "),
         };
         if multi_val {
-            return if base.is_empty() { value_names[v].clone() } else { format!("{base} | {}", value_names[v]) };
+            return if base.is_empty() { header_names[v].clone() } else { format!("{base} | {}", header_names[v]) };
         }
         if base.is_empty() {
-            value_names[v].clone()
+            header_names[v].clone()
         } else {
             base
         }

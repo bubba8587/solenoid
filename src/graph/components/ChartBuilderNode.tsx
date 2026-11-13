@@ -72,7 +72,8 @@ const targetOpts = (current: string) => CHART_TARGET_LIST
 const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "x", "y", "s", "c", "annotate", "by", "fmt", "window", "columns"];
 
 const CMAP_OPTS: readonly SelectOption[] = [
-  { value: "", label: "Theme palette", group: "Palette" },
+  { value: "", label: "—", group: "Palette" },
+  { value: "palette", label: "Theme palette", group: "Palette" },
   ...COLORMAP_LIST.map((m) => ({ value: m.name, label: m.name, group: m.family })),
   ...COLORMAP_LIST.map((m) => ({ value: `${m.name}_r`, label: `${m.name}_r`, group: "Reversed" })),
 ];
