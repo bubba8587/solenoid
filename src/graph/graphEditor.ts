@@ -150,7 +150,12 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
       this.replaying || run((data === undefined ? { type } : { type, data }) as GraphSignal<GraphSchemes>) != null);
   }
 
+  private _topology = 0;
+  /** Counts every card and cable added or removed, gated or not: what a cache keyed on the wiring checks. */
+  get topologyVersion(): number { return this._topology; }
+
   private track(signal: GraphSignal<S>): void {
+    if (signal.type === "nodecreated" || signal.type === "noderemoved" || signal.type === "connectioncreated" || signal.type === "connectionremoved") this._topology++;
     switch (signal.type) {
       case "nodecreated":
         this.nodes.set(signal.data.id, signal.data);
