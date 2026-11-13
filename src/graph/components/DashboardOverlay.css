@@ -110,13 +110,15 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 .dashboard-box .sol-kpi { flex: 1 1 auto; gap: 8px; }
 .dashboard-box .sol-kpi__delta { font-size: clamp(11px, min(7cqh, 8cqw), 18px); white-space: nowrap; }
 
-/* The box's label is the figure's title, so the figure's own caption would repeat it. */
-.dashboard-box .solenoid-ref-figure__title { display: none; }
+/* A chart's own title, under the box's name; one that repeats the name is left out (`figureFor`). */
+.dashboard-box__value > .solenoid-ref-figure > .solenoid-ref-figure__title { flex-shrink: 0; margin-bottom: 6px; font-size: 13px; color: var(--text); }
 /* A figure takes the box and fits what is left: a chart measures it, a diagram or picture scales into it. A document,
    a table or a cube keeps its own height instead, so the box scrolls it. */
 .dashboard-box__value > .solenoid-ref-figure { flex: 1 1 auto; min-height: 0; margin: 0; display: flex; flex-direction: column; }
 .dashboard-box__value > .solenoid-ref-figure:has(> .report-embed__body, > .solenoid-table-display) { flex: 0 0 auto; display: block; }
 .dashboard-box__value .solenoid-ref-chartbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+/* Cards and a Record's Gallery, Board or List are a stack taller than the box: the box scrolls it, as the popup does. */
+.dashboard-box__value .solenoid-ref-chartbody--stack { overflow: auto; overscroll-behavior: auto; }
 .dashboard-box__value .report-embed__body > :first-child { margin-top: 0; }
 /* A diagram scales to its box, keeping its shape, as in a resized Display. */
 .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid { flex: 1 1 auto; min-height: 0; overflow: hidden; align-items: center; }
@@ -137,6 +139,9 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 
 .dashboard-crumb { color: var(--text-dim); font-weight: 400; }
 .dashboard-box__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* The Filter its value's popup carries, in the label's row, in the UI's own case; a narrow box shows it as a magnifier. */
+.dashboard-box__label .sol-search { flex: 0 1 200px; min-width: 90px; height: 24px; text-transform: none; letter-spacing: normal; font-weight: 400; }
+.dashboard-box__label .sol-search-btn { width: 24px; height: 24px; }
 .dashboard-box__rename {
   flex: 1 1 auto;
   min-width: 0;
@@ -298,9 +303,10 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
   .dashboard-box--half .dashboard-box__value > .solenoid-ref-inline--text { font-size: clamp(16px, calc(140cqw / var(--chars, 8)), 34px); }
   .dashboard-box__value { container-type: inline-size; }
   .dashboard-box:not(.dashboard-box--half):has(.solenoid-ref-chartbody):not(:has(.sol-kpi)) { min-height: 300px; }
-  /* A document, table or cards grow with their content up to a tall cap, so one that still scrolls has room for a
+  /* A document, table or cards (a Frame's, or a Cards or Record stack) grow with their content up to a tall cap, so one that still scrolls has room for a
      thumb, and a short one stays short. */
   .dashboard-box:has(.report-embed__body, .solenoid-table-display, .table-cards-wrap) .dashboard-box__value { flex: 0 0 auto; max-height: min(480px, 65vh); }
+  .dashboard-box:has(.solenoid-ref-chartbody--stack) .dashboard-box__value { max-height: min(480px, 65vh); }
   /* A diagram scales to the box's width, so a tall one would take the whole screen. */
   .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid svg { max-height: 360px; }
   .dashboard-edit-btn { display: none; }

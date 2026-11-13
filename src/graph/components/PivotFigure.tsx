@@ -10,7 +10,7 @@ import type { FrameValue } from "../frame";
 
 /** A PIVOTBY output where a Dashboard box or a Report shows a value: the popup's Pivot view in the Pivot node's own
  *  options, without the ribbon. A fold here is the node's, as in the popup. */
-export function PivotFigure({ frame, layout, sourceId }: { frame: FrameValue; layout: PivotLayout; sourceId?: string }) {
+export function PivotFigure({ frame, layout, sourceId, query = "" }: { frame: FrameValue; layout: PivotLayout; sourceId?: string; query?: string }) {
   useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
   const host = sourceId ? getPivotHostAction()?.find(sourceId) ?? null : null;
   const [options, setOptions] = useState<PivotViewOptions>(() => {
@@ -35,7 +35,7 @@ export function PivotFigure({ frame, layout, sourceId }: { frame: FrameValue; la
         onOptions={onOptions}
         cellText={cellText}
         isErrorAt={(r, c) => isSolError(at(r, c))}
-        query=""
+        query={query}
         ribbon={null}
       />
     </div>

@@ -15,7 +15,7 @@ import { unwrapUnitCells, annotationForValue } from "./valueDisplayFormat";
 import { formatScalar } from "./format";
 import { useKatexRender, useKatexReady } from "./katexLoader";
 import { isFrameValue, isCubeValue } from "../frame";
-import { isChartValue, type ChartValue } from "../chartValue";
+import { isChartValue, stacksRecords, type ChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { isImageValue } from "../imageValue";
 import { isSvgValue } from "../svgValue";
@@ -27,6 +27,7 @@ import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
 import { lambdaToLatex } from "../excelFormula";
 import { FrameDisplay } from "./FrameDisplay";
 import { specialFrameView } from "./SpecialFrameView";
+import { filterFrameRows, filterGantt } from "./boxFilter";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
 import { isSolError } from "../errorValue";
@@ -144,7 +145,8 @@ function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView 
 
 /** `fill` takes the container's whole box, as a Dashboard's does; otherwise 200 px high and at most 640 wide. */
 /** `sourceId` is the node feeding the ref: a Record's pager and a Choice Ladder's actions step it, as on a Display. */
-function ChartBody({ value, fontScale, fill, sourceId }: { value: ChartValue; fontScale?: number; fill?: boolean; sourceId?: string }) {
+function ChartBody({ value: given, fontScale, fill, sourceId, query = "" }: { value: ChartValue; fontScale?: number; fill?: boolean; sourceId?: string; query?: string }) {
+  const value = useMemo(() => filterGantt(given, query).chart, [given, query]);
   const recordId = sourceId && value.op === "record" ? recordNavTarget(sourceId) : null;
   const ladderId = sourceId && value.op === "ladder" ? ladderTarget(sourceId) : null;
   const ref = useRef<HTMLSpanElement>(null);
@@ -162,7 +164,7 @@ function ChartBody({ value, fontScale, fill, sourceId }: { value: ChartValue; fo
   const width = fill ? w : Math.min(w, 640);
   const cardOp = value.op === "kpi" || value.op === "scale";
   return (
-    <span className="solenoid-ref-chartbody" ref={ref}>
+    <span className={`solenoid-ref-chartbody${stacksRecords(value) ? " solenoid-ref-chartbody--stack" : ""}`} ref={ref}>
       {cardOp || width > 0
         ? <ChartFigure
             value={{ ...value, title: undefined, options: value.options ? { ...value.options, title: undefined } : value.options }}
@@ -221,12 +223,15 @@ function figureFor(
   ann?: FormatAnnotation,
   frameNodeId?: string,
   fill?: boolean,
+  query = "",
 ): { title: string; caption: ReactNode; body: ReactNode } | null {
   if (isChartValue(value)) {
+    // A Dashboard box is labeled with its name, so its caption shows only a title that says something else.
+    const repeats = fill && value.title?.trim().toLowerCase() === refKey.trim().toLowerCase();
     return {
       title: value.title || refKey,
-      caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
-      body: <ChartBody value={value} fontScale={ann?.chartFontScale} fill={fill} sourceId={frameNodeId} />,
+      caption: value.title && !repeats ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
+      body: <ChartBody value={value} fontScale={ann?.chartFontScale} fill={fill} sourceId={frameNodeId} query={query} />,
     };
   }
   if (isMermaidValue(value)) {
@@ -263,12 +268,13 @@ function figureFor(
     };
   }
   if (isFrameValue(value)) {
-    const special = rich ? specialFrameView(value, frameNodeId) : null;
+    const special = rich ? specialFrameView(value, frameNodeId, query) : null;
     if (special) return { title: refKey, caption: null, body: special };
+    const shown = query.trim() ? filterFrameRows(value, query, frameNodeId).frame : value;
     return {
       title: refKey,
       caption: null,
-      body: <FrameDisplay frame={value} label={refKey} previewRows={rich ? 25 : 3} previewCols={rich ? 12 : 3} scroll={rich} formatNodeId={frameNodeId} />,
+      body: <FrameDisplay frame={shown} label={refKey} previewRows={rich ? 25 : 3} previewCols={rich ? 12 : 3} scroll={rich} formatNodeId={frameNodeId} />,
     };
   }
   if (isCubeValue(value)) {
@@ -281,8 +287,8 @@ function figureFor(
 }
 
 /** `rich` draws a figure at full size (a Frame's 25 rows, scrolling); a collapsible figure is always rich. `fill`
- *  sizes a chart to its container's box. */
-export function InlineRefValue({ nodeId, refKey, collapsible, rich, fill, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; rich?: boolean; fill?: boolean; highlight?: boolean }) {
+ *  sizes a chart to its container's box. `query` is a Dashboard box's Filter (`boxFilter.ts`). */
+export function InlineRefValue({ nodeId, refKey, collapsible, rich, fill, highlight, query }: { nodeId: string; refKey: string; collapsible?: boolean; rich?: boolean; fill?: boolean; highlight?: boolean; query?: string }) {
   const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
   const value = useSyncExternalStore(cableValueStore.subscribe, () => node?.refValue(refKey));
@@ -290,7 +296,7 @@ export function InlineRefValue({ nodeId, refKey, collapsible, rich, fill, highli
 
   const srcNodeId = editor?.getConnections().find((c) => c.target === nodeId && c.targetInput === refKey)?.source;
 
-  const fig = figureFor(value, refKey, !!(collapsible || rich), ann, srcNodeId, fill);
+  const fig = figureFor(value, refKey, !!(collapsible || rich), ann, srcNodeId, fill, query);
   if (fig) {
     return collapsible
       ? <CollapsibleFigure title={fig.title}>{fig.body}</CollapsibleFigure>

@@ -34,7 +34,7 @@ export const RULES = [
   ["documents", /(^|\/)(persistence\w*|textForm\w*|coreTextForm|seeds\w*|packSeeds|documentExamples|desktopDocs|\w+Seed|seedsCompute|pfSeedCheck|document\w*|saveTimeStore|fileSession|historyDigest|copyPasteSnapshot|foreignPaste|recentDocs|workspace\w*|relocationKeepsStores|filterPersistence|activeGraph|graphStub|sketchExport|textDiff|draftFlush)\.test\./],
 
   // ── named exceptions, above the broad rules below that would claim them by prefix ──
-  ["ui", /(^|\/)(tableEdit|tableSortFilter|tablePopupSuggest)\.test\./],
+  ["ui", /(^|\/)(tableEdit|tableSortFilter|tablePopupSuggest|boxFilter)\.test\./],
   ["canvas", /(^|\/)(baseView|renderMode|liveCardUnmounted|isolate\w*|drillStackGate|cablePendingReconnect|deleteSelectionScope|presentSocketStore|socketFlip|fcDockReload|pushWorldDockedFc|tidyDisplayFcWidth|fcChainDelete)\.test\./],
 
   // ── frames: tables, cubes and their verbs ──
