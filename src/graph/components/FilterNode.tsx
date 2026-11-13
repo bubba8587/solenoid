@@ -32,11 +32,11 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
     const next = { ...rowCfg(id), ...patch };
     setCfg((c) => ({ ...c, [id]: next }));
     data.condConfig[id] = next;
-    data.edited(); void processGraph();
+    void processGraph(data.id);
   };
   const setStr = (key: string, v: string) => {
     strLiterals[key] = v;
-    data.edited(); void processGraph();
+    void processGraph(data.id);
   };
 
   async function addRow() {

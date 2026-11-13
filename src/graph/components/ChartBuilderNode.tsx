@@ -28,7 +28,7 @@ function TogglePicks({ node, toggles }: {
   const isOn = (key: string, dflt: boolean) => { const v = node.stringLiterals[key] ?? ""; return v.trim() === "" ? dflt : isOnValue(v); };
   const set = (key: string, checked: boolean, dflt: boolean) => {
     node.stringLiterals[key] = checked === dflt ? "" : checked ? "on" : "off";
-    node.edited(); void processGraph();
+    void processGraph(node.id);
   };
   return (
     <div className="chart-builder__toggles">
@@ -55,7 +55,7 @@ function SelectPickRow({ node, socketKey, label, options, clearValue }: {
   const value = node.stringLiterals[socketKey] || clearValue || options[0].value;
   const set = (v: string) => {
     node.stringLiterals[socketKey] = v === clearValue ? "" : v;
-    node.edited(); void processGraph();
+    void processGraph(node.id);
   };
   return (
     <div className="solenoid-node__io-row chart-builder__pick">
