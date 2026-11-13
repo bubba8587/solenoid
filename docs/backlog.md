@@ -6,6 +6,10 @@ the dev-notes digests are the record. **1.5.0 shipped 2026-10-08; the 1.6 cut is
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
+## Dashboard (author 2026-11-13)
+
+- [ ] **A chart box's settings gear opens a Chart Builder with no sockets.** Author's design: with a real Chart Builder wired into the chart's Options, the gear edits that builder and locks every slot wired into it; with nothing wired, the gear writes the options straight into the chart's Options field; Dashboards take exceptions to graph rules for this. Found so far: the builder's rows (`ChartBuilderNode.tsx`, `BuilderRows`, `InlineInputs`) edit the node's own literals and already show a wired slot as `↩ Source`, so rendering a real builder's rows in a panel locks for free; outside a canvas a socket is a plain dot (`useFlowSocket` is null), hideable by CSS. A standalone builder needs a commit seam, since every row ends in `processGraph(node.id)` on a node no graph holds: a context `InlineInputs`, `TogglePicks` and `SelectPickRow` read, defaulting to today's call. Its options text comes from the core (`chart_builder`, `nodes/visual.rs`: `k=v` joined by `;`, `xlim=lo,hi` for the axis bounds, no escaping, so a `;` in a title would split it), and the parse back into fields must keep pairs the builder has no field for. Open: what the gear does when Options is wired from something that is not a Chart Builder (read-only, most likely).
+
 ## Leaves the code breaks
 
 Each line is a leaf whose rule the code doesn't keep yet. The leaf carries an `*Unenforced:*` bullet pointing here ([dte.md](dte.md) § Solenoid practice). Highest stakes first; delete a line when the code keeps the rule, and delete the leaf's bullet with it.
