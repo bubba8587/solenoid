@@ -118,15 +118,17 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 .dashboard-box__value > .solenoid-ref-figure:has(> .report-embed__body, > .solenoid-table-display) { flex: 0 0 auto; display: block; }
 .dashboard-box__value .solenoid-ref-chartbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 /* Cards and a Record's Gallery, Board or List are a stack taller than the box: the box scrolls it, as the popup does. */
-.dashboard-box__value .solenoid-ref-chartbody--stack { overflow: auto; overscroll-behavior: auto; }
+/* Its scrollbar's room is kept whether the bar shows or not (as a sized Display's is): a bar taking width as it appears
+   re-lays the masonry narrower and shorter, the bar goes, the width comes back, and the bar flashes on and off. */
+.dashboard-box__value .solenoid-ref-chartbody--stack { overflow: auto; overscroll-behavior: auto; scrollbar-gutter: stable; }
 .dashboard-box__value .report-embed__body > :first-child { margin-top: 0; }
 /* A diagram scales to its box, keeping its shape, as in a resized Display. */
 .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid { flex: 1 1 auto; min-height: 0; overflow: hidden; align-items: center; }
 .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid svg { width: 100%; height: 100%; max-height: 100%; }
-/* A table is the box's whole content, so it runs to the box's edges on its own sunken ground, as a sheet does, under a
+/* A table (a Frame's grid, a Cube's, a Pivot) is the box's whole content, so it runs to the box's edges on its own sunken ground, as a sheet does, under a
    hairline from the box's name: no inset well inside the box, and no tint, since a table's ground stays neutral as a
    chart's does. The first and last columns keep the box's inner margin, so the text lines up with the name. */
-.dashboard-box__value:has(> .solenoid-ref-figure > .solenoid-table-display) {
+.dashboard-box__value:has(> .solenoid-ref-figure > :is(.solenoid-table-display, .pivot-figure)) {
   padding: 0;
   margin-top: 8px;
   background: var(--surface-sunken);
@@ -146,11 +148,13 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 }
 .dashboard-box__value .solenoid-table-display__grid tbody tr + tr td { border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
 .dashboard-box__value .solenoid-table-display__chip { padding: 6px 14px 8px; }
+/* A Pivot sits flush the same way: its first column lines up with the box's name. */
+.dashboard-box__value .pivot-figure .pivot-view__table tr > :first-child { padding-left: 14px; }
 /* Under a tint's solid name bar the bar is the edge, so the table starts right below it. */
-.dashboard-box--tinted .dashboard-box__value:has(> .solenoid-ref-figure > .solenoid-table-display) { margin-top: 0; border-top: none; }
+.dashboard-box--tinted .dashboard-box__value:has(> .solenoid-ref-figure > :is(.solenoid-table-display, .pivot-figure)) { margin-top: 0; border-top: none; }
 /* A Frame shown as cards: the popup's one 460 px column becomes a grid across the box, scrolling in the box and,
    at its end, handing the scroll on to the board (the popup's overscroll contain would keep it). */
-.dashboard-box__value > .table-cards-wrap { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; overscroll-behavior: auto; }
+.dashboard-box__value > .table-cards-wrap { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; overscroll-behavior: auto; scrollbar-gutter: stable; }
 .dashboard-box .table-cards__bar { max-width: none; background: transparent; }
 .dashboard-box .table-cards {
   max-width: none;
