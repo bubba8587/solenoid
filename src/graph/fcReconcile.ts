@@ -103,12 +103,14 @@ export function reconcileFcs(editor: GraphEditor<Schemes>, view: View | null): v
   if (anyRetyped && view) requestAnimationFrame(() => { void view.rerenderCables(); });
 }
 
+/** The cards whose sockets the settle moved, for the pass after the edit to reach (`processEdited`). */
 export function reconcileTypesAfterEdit(
   editor: GraphEditor<Schemes>,
   view: View | null,
-): void {
+): Set<string> {
   const settled = settleWildcardTypes(editor);
-  if (!settled.conduitChanged && settled.adopted.size === 0) return;
+  if (!settled.conduitChanged && settled.adopted.size === 0) return settled.retyped;
   // The cards this settle retyped redraw: settling again would find nothing moved and redraw none of them.
   reconcileFcTypes(editor, view, settled);
+  return settled.retyped;
 }

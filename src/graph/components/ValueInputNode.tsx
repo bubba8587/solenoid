@@ -3,7 +3,7 @@ import { useEffect, useState, useSyncExternalStore, type ChangeEvent } from "rea
 import { VALUE_INPUT_OP_META, type ValueInputNode as ValueInputNodeType, type ValueInputOp } from "../nodeClasses";
 import { NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS, type FormatStyleId, type TextCase, type TextAlign, type LogicalStyle, type DecimalMode, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { familyOf, controlsFor, groupingApplies, negativeApplies, scaleApplies } from "../formatModel";
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { reconcileFcs, retypeOutputCables } from "../fcReconcile";
 import { clamp } from "../nodes/mathUtils";
@@ -43,7 +43,7 @@ async function applyValueOp(node: ValueInputNodeType, t: ValueInputOp): Promise<
   card?.style.removeProperty("width");
   if (editor && view) await retypeOutputCables(editor, view, node.id, "value");
   if (view) await view.rerenderNode(node.id);
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }
 
 /** A display pick changes no value, so it re-resolves every FC (one inheriting from this card) and redraws the whole graph, as the FC's own picks do. */

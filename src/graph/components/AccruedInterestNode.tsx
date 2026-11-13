@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ACCRUED_INTEREST_OP_OPTIONS, type AccruedInterestNode as AccruedInterestNodeType, type AccruedInterestOp } from "../nodeClasses";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -17,7 +17,7 @@ export function AccruedInterestComponent({ data, emit }: NodeProps<AccruedIntere
     data.setOp(next);
     setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   return (

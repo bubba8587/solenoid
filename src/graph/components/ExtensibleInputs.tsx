@@ -2,7 +2,7 @@
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { GraphSocket } from "../graphModel";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
@@ -58,18 +58,18 @@ export function ExtensibleInputs({
   async function setLiteral(key: string, v: number | undefined) {
     if (v === undefined) delete literals[key];
     else literals[key] = v;
-    node.edited(); await processGraph();
+    await processEdited(node.id);
   }
 
   async function setStr(key: string, v: string) {
     strLiterals[key] = v;
-    node.edited(); await processGraph();
+    await processEdited(node.id);
   }
 
   async function addRow() {
     node.addValueInput();
     await getOwningView(node.id)?.rerenderNode(node.id);
-    node.edited(); await processGraph();
+    await processEdited(node.id, [], { topology: true });
   }
 
   async function removeRow(key: string) {
@@ -77,7 +77,7 @@ export function ExtensibleInputs({
     node.removeValueInput(key);
     await getOwningView(node.id)?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
-    node.edited(); await processGraph();
+    await processEdited(node.id, [], { topology: true });
   }
 
   if (collapsed) {

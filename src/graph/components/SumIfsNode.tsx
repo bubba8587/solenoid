@@ -4,7 +4,7 @@ import { CollapsedInputPill } from "./CollapsedInputPill";
 import type { SumIfsNode as SumIfsNodeType, CondAggOp } from "../nodeClasses";
 import { COND_AGG_OP_META } from "../nodeClasses";
 import type { FilterCondConfig } from "../frameOps";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
@@ -45,17 +45,17 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
     const next = { ...rowCfg(id), ...patch };
     setCfg((c) => ({ ...c, [id]: next }));
     data.condConfig[id] = next;
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   };
   const setStr = (key: string, v: string) => {
     strLiterals[key] = v;
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   };
 
   async function addPair() {
     data.addValuePair();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   async function removePair(colKey: string, valKey: string) {
@@ -63,7 +63,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
     data.removeValuePair(colKey);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   return (

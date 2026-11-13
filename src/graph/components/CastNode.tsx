@@ -3,7 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CastNode as CastNodeType } from "../nodeClasses";
 import { CAST_OP_META, type CastOp } from "../nodeClasses";
 import { dropInputCables } from "./cablePrune";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
@@ -34,7 +34,7 @@ async function applyCastOp(node: CastNodeType, op: CastOp): Promise<void> {
   if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
 
   if (view) await view.rerenderNode(node.id);
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }
 
 export function CastComponent({ data, emit }: NodeProps<CastNodeType>) {

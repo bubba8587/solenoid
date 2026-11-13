@@ -2,7 +2,7 @@
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { GraphSocket } from "../graphModel";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { literalFieldOf } from "../literalFields";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
@@ -62,19 +62,19 @@ export function PairedExtensibleInputs({
   async function setLiteral(key: string, v: number | undefined) {
     if (v === undefined) delete literals[key];
     else literals[key] = v;
-    node.edited(); await processGraph();
+    await processEdited(node.id);
   }
 
   async function setStrLiteral(key: string, v: string) {
     if (v === "") delete strLiterals[key];
     else strLiterals[key] = v;
-    node.edited(); await processGraph();
+    await processEdited(node.id);
   }
 
   async function addPair() {
     node.addValuePair();
     await getOwningView(node.id)?.rerenderNode(node.id);
-    node.edited(); await processGraph();
+    await processEdited(node.id, [], { topology: true });
   }
 
   async function removePair(keys: string[]) {
@@ -83,7 +83,7 @@ export function PairedExtensibleInputs({
     node.removeValuePair(keys[0]);
     await getOwningView(node.id)?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
-    node.edited(); await processGraph();
+    await processEdited(node.id, [], { topology: true });
   }
 
   if (collapsed) {

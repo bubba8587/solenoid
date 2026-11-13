@@ -96,7 +96,6 @@ const NO_EDIT: Record<string, string> = {
   "graph/flow/FlowCanvas.tsx": "a cable's change, and the bulk settle after cables change",
   "graph/process.ts": "the pass itself: F9, an exact pass, a coalesced rerun, a bulk settle",
   "graph/devHarness.ts": "a column format, which frameFormatStore names itself",
-  "graph/catalogUtils.ts": "a new node",
   "graph/collapseSweep.ts": "new source nodes and their cables",
   "graph/landing/LandingGraph.tsx": "a new node or cable on a site page",
   "graph/landing/landingCompute.ts": "a site page's graph, built fresh",

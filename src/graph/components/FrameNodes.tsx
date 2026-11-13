@@ -73,7 +73,7 @@ function FrameOrCubeDisplay({ value, label }: { value: FrameValue | CubeValue | 
     ? <CubeDisplay cube={value} label={label} />
     : <FrameDisplay frame={value} label={label} />;
 }
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { scheduleAutosave } from "../persistence";
 import { getOwningEditor, getOwningView } from "../activeGraph";
@@ -130,9 +130,9 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     // A text edit fires no connection event, so downstream types are settled by hand.
     const ed = getOwningEditor(data.id);
     const ar = getOwningView(data.id);
-    if (ed && ar) reconcileTypesAfterEdit(ed, ar);
+    const retyped = ed && ar ? reconcileTypesAfterEdit(ed, ar) : [];
     scheduleAutosave();
-    data.edited(); void processGraph();
+    void processEdited(data.id, retyped);
   }, [data]);
   const onCommitSource = useCallback(async (columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
@@ -396,7 +396,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
   async function addPair() {
     data.addValuePair();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   async function removePair(aKey: string, bKey: string) {
@@ -404,7 +404,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
     data.removeValuePair(aKey);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   return (
@@ -922,9 +922,9 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
       }
     }
     const view = getOwningView(data.id);
-    if (ed && view) reconcileTypesAfterEdit(ed, view);
+    const retyped = ed && view ? reconcileTypesAfterEdit(ed, view) : [];
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, retyped, { topology: true });
   }
 
   const transfersOut = data.outputs.transfers;
@@ -1180,7 +1180,7 @@ export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
     await dropInputCables(data.id, [...XLookupNode.axisKeys(data.direction)]);
     data.setDirection(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
   const fallback = useRowsInUse(data, XLOOKUP_OPTION_KEYS);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));

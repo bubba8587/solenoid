@@ -1,7 +1,7 @@
 // [[B11]] maximalMerge
 import type { GetColumnNode, AddColumnNode, SplitFrameNode } from "../nodeClasses";
 import type { GetColumnReadAs, AddColumnAddAs, SplitColType } from "../nodeClasses";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables, retypeInputCables } from "../fcReconcile";
 
@@ -13,7 +13,7 @@ export async function applyGetColumnReadAs(node: GetColumnNode, readAs: GetColum
   const view = getOwningView(node.id);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "values");
   if (view) await view.rerenderNode(node.id);
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }
 
 export async function applyAddColumnAddAs(node: AddColumnNode, addAs: AddColumnAddAs): Promise<void> {
@@ -23,7 +23,7 @@ export async function applyAddColumnAddAs(node: AddColumnNode, addAs: AddColumnA
   const view = getOwningView(node.id);
   if (editor) await retypeInputCables(editor, view, node.id, "values");
   if (view) await view.rerenderNode(node.id);
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }
 
 export async function applySplitColType(node: SplitFrameNode, colType: SplitColType): Promise<void> {
@@ -33,5 +33,5 @@ export async function applySplitColType(node: SplitFrameNode, colType: SplitColT
   const view = getOwningView(node.id);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "matrix");
   if (view) await view.rerenderNode(node.id);
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }

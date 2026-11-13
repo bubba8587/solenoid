@@ -6,7 +6,7 @@ import { copyText } from "../clipboard";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
 import type { GraphNode, GraphSocket } from "../graphModel";
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { formatCxDisplay, isCx, type Cx } from "../cxValue";
@@ -101,8 +101,7 @@ export function useNodeField<N extends { id: string; edited(): void }, K extends
       // Config can feed a derived socket type (a GROUPBY aggregate's column type), and no connection event fires here.
       const ed = getOwningEditor(node.id);
       const ar = getOwningView(node.id);
-      if (ed && ar) reconcileTypesAfterEdit(ed, ar);
-      node.edited(); void processGraph();
+      void processEdited(node.id, ed && ar ? reconcileTypesAfterEdit(ed, ar) : []);
     },
     [node, key],
   );

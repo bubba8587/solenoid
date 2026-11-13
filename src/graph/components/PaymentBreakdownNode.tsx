@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PAYMENT_BREAKDOWN_OP_META, PAYMENT_TIMING_META } from "../nodeClasses";
 import type { PaymentBreakdownNode as PaymentBreakdownNodeType, PaymentBreakdownOp, PaymentTiming } from "../nodeClasses";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
@@ -28,7 +28,7 @@ export function PaymentBreakdownComponent({ data, emit }: NodeProps<PaymentBreak
     data.setOp(next);
     setOpState(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   return (

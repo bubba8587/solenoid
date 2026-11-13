@@ -35,7 +35,7 @@ export function DashboardComponent({ data, emit }: NodeProps<DashboardNodeType>)
         <>
           <CollapsedInputPill node={data} emit={emit} keys={refKeys} />
           {/* As a collapsed Report ends on its Document chip, this one opens the board. */}
-          <div className="solenoid-node__display-value" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+          <div className="solenoid-node__display-value solenoid-node__display-value--chip">
             <DocumentChip size="sm" label="Dashboard" onOpen={() => dashboardStore.open(data.id)} />
           </div>
         </>

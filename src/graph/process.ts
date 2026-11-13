@@ -31,6 +31,38 @@ export function setEditorRefs(
   _view = view;
 }
 
+/** The pass after a card is edited in place, a field or a pick ([[compute-pass#What triggers a pass]]): the card's
+ *  reach, a targeted pass that names it. `alsoChanged` is what else the edit moved (the cards a type settle retyped,
+ *  `reconcileTypesAfterEdit`): one outside the card's reach makes it the whole pass instead, every one named.
+ *  `topology` when the edit removed cables (a formula losing a variable), so the loops are found again. */
+export function processEdited(nodeId: string, alsoChanged: Iterable<string> = [], opts?: { topology?: boolean }): Promise<void> {
+  const targeted = opts?.topology ? { topology: true } : undefined;
+  const others = [...alsoChanged].filter((id) => id !== nodeId);
+  if (others.length === 0) return processGraph(nodeId, undefined, targeted);
+  for (const id of others) _editor?.named(id);
+  const reach = _editor?.getNode(nodeId) && _engine ? _engine.downstreamClosure(nodeId) : null;
+  if (reach && others.every((id) => reach.has(id))) return processGraph(nodeId, undefined, targeted);
+  _editor?.named(nodeId);
+  return processGraph();
+}
+
+/** The pass after several cards changed on their own (background fetches landing): each one's reach, cleared and
+ *  rendered in one additive pass, each card named. A card the main canvas does not hold (inside a composite) makes it
+ *  the whole pass, which finds the composite holding it. */
+export function processChanged(ids: Iterable<string>): Promise<void> {
+  const all = [...new Set(ids)];
+  if (all.length === 1 && _editor?.getNode(all[0])) return processGraph(all[0]);
+  if (all.length === 0 || !_engine || !all.every((id) => _editor?.getNode(id))) return processGraph();
+  const reach = new Set<string>();
+  for (const id of all) {
+    _editor!.named(id);
+    if (reach.has(id)) continue;
+    _engine.reset(id);
+    for (const r of _engine.downstreamClosure(id)) reach.add(r);
+  }
+  return processGraph(undefined, reach);
+}
+
 export function getView() {
   return _view;
 }

@@ -1,7 +1,7 @@
 import { CASHFLOW_OP_OPTIONS } from "../nodeClasses";
 import type { IRRNode as IRRNodeType, CashflowOp } from "../nodeClasses";
 import { useState } from "react";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -17,7 +17,7 @@ export function IrrComponent({ data, emit }: NodeProps<IRRNodeType>) {
     data.setOp(next);
     setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   return (

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { GraphSocket } from "../graphModel";
 import { castResultSocket, CAST_TO_META, type CastTo, type ResultDim } from "../nodes/shared";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { CardSection } from "./CardSection";
@@ -32,7 +32,7 @@ async function applyCast(node: Producer, dim: ResultDim, castTo: CastTo): Promis
   if (out) out.socket = castResultSocket(dim, castTo);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
   if (view) await view.rerenderNode(node.id);
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }
 
 /** The Cast section on a card's result. */

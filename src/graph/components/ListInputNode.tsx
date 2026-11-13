@@ -1,7 +1,7 @@
 // [[C58]] tableInputRawText, [[B11]] maximalMerge, [[C26]] opArgDistinct (the type toggle is an argument)
 import { useEffect, useState, type ReactNode } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../nodeClasses";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeInputCables, retypeOutputCables } from "../fcReconcile";
 import { ExtensibleInputs } from "./ExtensibleInputs";
@@ -30,7 +30,7 @@ async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise
     await retypeOutputCables(editor, view, node.id, "list");
   }
   if (view) await view.rerenderNode(node.id);
-  node.edited(); await processGraph();
+  await processEdited(node.id, [], { topology: true });
 }
 
 export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>) {

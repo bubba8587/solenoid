@@ -15,7 +15,7 @@ import { calendarHeight } from "./heatmapLayout";
 import { ChartChip } from "./ChartChip";
 import { OpToggle } from "./SegToggle";
 import { collapseStore } from "../collapseStore";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView } from "../activeGraph";
 
 // One shared card for every figure node; the figure comes from ChartFigure, so a card and a Report embed render identically.
@@ -105,7 +105,7 @@ function ProportionControls({ data }: { data: ProportionNode }) {
     data.setOp(next); // sockets are identical for both layouts — no cable prune
     setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id);
   }
   return <OpToggle value={op} options={PROPORTION_LAYOUT_OPTIONS} onChange={(s) => void pick(s)} />;
 }

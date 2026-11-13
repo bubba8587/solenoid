@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { LinestNode as LinestNodeType, FitOp } from "../nodeClasses";
 import { FIT_OP_OPTIONS } from "../nodeClasses";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
@@ -15,7 +15,7 @@ export function LinestComponent({ data, emit }: NodeProps<LinestNodeType>) {
     data.setOp(next);
     setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id);
   }
 
   return (

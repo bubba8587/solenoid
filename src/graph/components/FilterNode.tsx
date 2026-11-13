@@ -3,7 +3,7 @@ import { collapseStore } from "../collapseStore";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import type { FilterNode as FilterNodeType } from "../nodeClasses";
 import type { FilterCondConfig } from "../frameOps";
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
@@ -42,7 +42,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
   async function addRow() {
     data.addValueInput();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   async function removeRow(key: string) {
@@ -50,7 +50,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
     data.removeValueInput(key);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   return (

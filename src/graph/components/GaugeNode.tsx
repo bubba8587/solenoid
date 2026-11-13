@@ -3,7 +3,7 @@ import { useState, useSyncExternalStore } from "react";
 import type { GaugeNode as GaugeNodeType, GaugeStyle } from "../nodeClasses";
 import { GAUGE_STYLE_OPTIONS } from "../nodeClasses";
 import { collapseStore } from "../collapseStore";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
@@ -42,7 +42,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
     data.setMode(next);
     setMode(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
 
   const dial = mode === "dial";

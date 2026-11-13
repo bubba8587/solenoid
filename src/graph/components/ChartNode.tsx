@@ -10,14 +10,14 @@ import { ChartExpandButton } from "./ChartExpandButton";
 import { ChartChip } from "./ChartChip";
 import { ErrorChip } from "./ErrorChip";
 import { collapseStore } from "../collapseStore";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import type { ChartValue } from "../chartValue";
 import { nodeDisplayName } from "../catalogUtils";
 
 async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> {
   node.op = newOp;
-  node.edited(); await processGraph();
+  await processEdited(node.id);
 }
 
 const CHART_OPS = Object.keys(CHART_OP_META) as ChartOp[];

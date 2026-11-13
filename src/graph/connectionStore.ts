@@ -1,7 +1,7 @@
 // [[engineering#Untrusted content]]
 import { isTrustedSource } from "./deploymentConfig";
 import { createNotifier } from "./storeKit";
-import { processGraph } from "./process";
+import { processGraph, processChanged } from "./process";
 import { allTopEditors } from "./activeGraph";
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
@@ -222,17 +222,26 @@ export function hasInflightConnections(ids?: Iterable<string>): boolean {
   return ids ? pendingFor(ids).length > 0 : _inflight.size > 0;
 }
 
-/** `id` names the card whose fetch landed, so a heavy composite holding it turns stale. */
+/** `id` names the card whose fetch landed, so a heavy composite holding it turns stale. The landings of one tick
+ *  recompute together, only what those cards feed; one with no id asks for the whole graph. */
+let _landedSince = new Set<string>();
+let _wholeSince = false;
 export function scheduleConnectionRecalc(id?: string): void {
-  if (id) _landed.set(id, (_landed.get(id) ?? 0) + 1);
+  if (id) { _landed.set(id, (_landed.get(id) ?? 0) + 1); _landedSince.add(id); }
+  else _wholeSince = true;
   if (_recalcQueued) return;
   _recalcQueued = true;
-  setTimeout(() => { _recalcQueued = false; void processGraph(); }, 0);
+  setTimeout(() => {
+    _recalcQueued = false;
+    const ids = _landedSince, whole = _wholeSince;
+    _landedSince = new Set(); _wholeSince = false;
+    void (whole ? processGraph() : processChanged(ids));
+  }, 0);
 }
 
 export async function refreshConnection(id: string): Promise<void> {
   _tokens.set(id, (_tokens.get(id) ?? 0) + 1);
-  await processGraph();
+  await processChanged([id]);
 }
 
 export async function refreshAllConnections(): Promise<void> {

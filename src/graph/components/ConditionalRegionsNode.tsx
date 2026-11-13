@@ -11,7 +11,7 @@ import { dropInputCables } from "./cablePrune";
 import { collapseStore } from "../collapseStore";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import { getOwningView } from "../activeGraph";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { stopDragStart } from "../coarse";
 
 const RegionsFigure = lazy(() => import("./chartRender").then((m) => ({ default: m.RegionsFigure })));
@@ -59,7 +59,7 @@ export function ConditionalRegionsComponent({ data, emit }: NodeProps<Conditiona
   const [margin, setMargin] = useState(data.margin);
   const pickMargin = (on: boolean) => { data.margin = on; setMargin(on); recompute(); };
 
-  const recompute = () => { data.edited(); void processGraph(); };
+  const recompute = () => { void processEdited(data.id); };
   const pickMode = (m: RegionsMode) => { data.mode = m; setMode(m); recompute(); };
   async function pickOp(next: RegionsOp) {
     if (next === data.op) return;

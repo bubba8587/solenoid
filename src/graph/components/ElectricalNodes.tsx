@@ -10,7 +10,7 @@ import { NodeShell, OpSelect, ArgSelect, InlineOutputRows, useNodeField, type No
 import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";
 
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { useState } from "react";
 
 export const ParallelCombineComponent =
@@ -99,7 +99,7 @@ export function ResistorCodeComponent({ data, emit }: NodeProps<ResistorCodeNode
   const set = (key: string, v: string) => {
     L[key] = v;
     bump((n) => n + 1);
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   };
   const five = bandCount === "5";
   const bands = five ? [L.b1, L.b2, L.b3, L.mult, L.tol] : [L.b1, L.b2, L.mult, L.tol];

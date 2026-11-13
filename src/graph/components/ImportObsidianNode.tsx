@@ -16,7 +16,7 @@ import { hasFs, isDesktop, listVaultMarkdownFiles, readVaultFile, readVaultFileH
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { getOwningView, getOwningEditor } from "../activeGraph";
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { connectionStore } from "../connectionStore";
 import { bumpConnectionVersion } from "../graphSignals";
 import { reconcileFcTypes } from "../fcReconcile";
@@ -85,7 +85,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     await view?.rerenderNode(data.id);
     if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion();
-    data.edited(); await processGraph();
+    if (retyped.length) { data.edited(); await processGraph(); } else await processEdited(data.id, [], { topology: true });
     scheduleAutosave();
   }
 

@@ -17,7 +17,7 @@ import type {
   FxNode as FxNodeType,
   VaultFolderNode as VaultFolderNodeType,
 } from "../nodeClasses";
-import { processGraph } from "../process";
+import { processEdited } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
@@ -167,8 +167,7 @@ async function retypeAndReopen(data: RetypableSource, c: number, type: FrameColT
   data.columnTypes = next;
   // A popup edit fires no canvas event, so the save is scheduled by hand, as a Frame Input's popup save does.
   scheduleAutosave();
-  data.edited();
-  await processGraph();
+  await processEdited(data.id);
   const shown = tablePopup.get();
   const after = data.cachedResult;
   if (!shown || !isFrameValue(after)) return;
@@ -204,7 +203,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
 
   function commit() {
     const next = url.trim();
-    if (next !== data.url) { data.url = next; data.edited(); void processGraph(); }
+    if (next !== data.url) { data.url = next; void processEdited(data.id); }
   }
 
   return (
@@ -250,7 +249,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
     const nextIdx = Math.max(1, Math.round(Number(idx) || 1));
     setIdx(String(nextIdx));
     if (nextUrl !== data.url || nextIdx !== data.tableIndex) {
-      data.url = nextUrl; data.tableIndex = nextIdx; data.edited(); void processGraph();
+      data.url = nextUrl; data.tableIndex = nextIdx; void processEdited(data.id);
     }
   }
 
@@ -302,7 +301,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
     const nextUrl = url.trim();
     const nextQuery = query;
     if (nextUrl !== data.url || nextQuery !== data.query) {
-      data.url = nextUrl; data.query = nextQuery; data.edited(); void processGraph();
+      data.url = nextUrl; data.query = nextQuery; void processEdited(data.id);
     }
   }
 
@@ -378,7 +377,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
   function pick(next: string) {
     setName(next);
     data.fileName = next;
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   }
 
   function refresh() {
@@ -490,17 +489,17 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
     // Refinements are provider-specific, so a stale one would build a bad URL — reset them.
     data.stringLiterals.freq = ""; data.stringLiterals.start = ""; data.stringLiterals.end = "";
     setFreq(""); setStart(""); setEnd("");
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   }
   function commitInput(next: string) {
     const v = next.trim();
     setInput(v);
-    if (v !== (data.stringLiterals.input ?? "")) { data.stringLiterals.input = v; data.edited(); void processGraph(); }
+    if (v !== (data.stringLiterals.input ?? "")) { data.stringLiterals.input = v; void processEdited(data.id); }
   }
   function setParam(key: "freq" | "start" | "end", v: string) {
     data.stringLiterals[key] = v;
     if (key === "freq") setFreq(v); else if (key === "start") setStart(v); else setEnd(v);
-    data.edited(); void processGraph();
+    void processEdited(data.id);
   }
 
   return (
@@ -567,7 +566,7 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
             className="sol-conn__select"
             value={data.pickedLabel || data.matches[0].label}
             title="Which match"
-            onChange={(e) => { data.pickedLabel = e.target.value; data.edited(); void processGraph(); }}
+            onChange={(e) => { data.pickedLabel = e.target.value; void processEdited(data.id); }}
           >
             {data.matches.map((m2) => <option key={m2.label} value={m2.label}>{m2.label}</option>)}
           </LazySelect>
@@ -616,7 +615,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
     setPast(String(nPast)); setFwd(String(nFwd));
     if (nPast !== data.pastDays || nFwd !== data.forecastDays) {
       data.pastDays = nPast; data.forecastDays = nFwd;
-      data.edited(); void processGraph();
+      void processEdited(data.id);
     }
   }
   const numField = (label: string, val: string, set: (s: string) => void) => (
@@ -639,7 +638,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
         <SegToggle
           value={data.unit}
           options={WEATHER_UNIT_OPTIONS}
-          onChange={(u) => { data.unit = u; data.edited(); void processGraph(); }}
+          onChange={(u) => { data.unit = u; void processEdited(data.id); }}
         />
       </div>
       <InlineInputs node={data} emit={emit} />
@@ -688,12 +687,12 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
   function commitYear() {
     const n = Math.max(0, Math.round(Number(year) || 0));
     setYear(n ? String(n) : "");
-    if (n !== data.year) { data.year = n; data.edited(); void processGraph(); }
+    if (n !== data.year) { data.year = n; void processEdited(data.id); }
   }
   function commitRegion() {
     const next = region.trim();
     setRegion(next);
-    if (next !== data.region) { data.region = next; data.edited(); void processGraph(); }
+    if (next !== data.region) { data.region = next; void processEdited(data.id); }
   }
 
   const applicable = data.applicable();
@@ -709,7 +708,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
           className="sol-conn__select"
           value={data.country}
           title="Country"
-          onChange={(e) => { data.country = e.target.value; data.edited(); void processGraph(); }}
+          onChange={(e) => { data.country = e.target.value; void processEdited(data.id); }}
         >
           <option value="">Pick a country…</option>
           {NAGER_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
@@ -773,7 +772,7 @@ function CurrencyRow({ data, emit, socketKey, label }: {
           className="sol-conn__select"
           value={data.stringLiterals[socketKey] ?? ""}
           title={label}
-          onChange={(e) => { data.stringLiterals[socketKey] = e.target.value; data.edited(); void processGraph(); }}
+          onChange={(e) => { data.stringLiterals[socketKey] = e.target.value; void processEdited(data.id); }}
           {...stopDrag}
         >
           <option value="">Pick…</option>
@@ -795,7 +794,7 @@ function FxDateRow({ data, emit, socketKey, label }: {
   useEffect(() => { setVal(data.stringLiterals[socketKey] ?? ""); }, [data.stringLiterals[socketKey]]);
   function commit() {
     const v = val.trim();
-    if (v !== (data.stringLiterals[socketKey] ?? "")) { data.stringLiterals[socketKey] = v; data.edited(); void processGraph(); }
+    if (v !== (data.stringLiterals[socketKey] ?? "")) { data.stringLiterals[socketKey] = v; void processEdited(data.id); }
   }
   return (
     <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={data.id} emit={emit} payload={socket}>
@@ -826,7 +825,7 @@ async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => vo
   data.setMode(next);
   set(next);
   await getOwningView(data.id)?.rerenderNode(data.id);
-  data.edited(); await processGraph();
+  await processEdited(data.id, [], { topology: true });
 }
 
 export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
@@ -918,7 +917,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   }, [vault]);
   function pickFolder(next: string) {
     setFolder(next);
-    if (next !== data.folder) { data.folder = next; data.edited(); void processGraph(); }
+    if (next !== data.folder) { data.folder = next; void processEdited(data.id); }
   }
   function refresh() {
     void listVaultFolders(vault).then(setFolders);
@@ -928,7 +927,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   function commitField(next: string, current: string, set: (v: string) => void, apply: (v: string) => void) {
     const v = next.trim();
     set(v);
-    if (v !== current) { apply(v); data.edited(); void processGraph(); }
+    if (v !== current) { apply(v); void processEdited(data.id); }
   }
 
   const cube = data.cached;
@@ -999,7 +998,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                   <label key={key} className="sol-conn__field" title={title}>
                     <input
                       type="checkbox" checked={data[key]}
-                      onChange={(e) => { data[key] = e.target.checked; data.edited(); void processGraph(); }}
+                      onChange={(e) => { data[key] = e.target.checked; void processEdited(data.id); }}
                       onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
                     />
                     {label}
@@ -1052,7 +1051,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
     data.setProvider(next);
     setProvider(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    data.edited(); await processGraph();
+    await processEdited(data.id, [], { topology: true });
   }
   function commitToken() {
     if (token.trim() !== apiKeyStore.get(TASKNOTES_KEY_ID)) {

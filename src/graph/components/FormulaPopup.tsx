@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSPro
 import { useKatexRender, getKatexRenderer } from "./katexLoader";
 import type { GraphNode } from "../graphModel";
 import { formulaPopup } from "../formulaPopupStore";
-import { processGraph } from "../process";
+import { processGraph, processEdited } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
 import { closeParens } from "../closeParens";
@@ -77,7 +77,7 @@ function formulaHostOf(node: GraphNode | undefined): FormulaHost | null {
       label,
       text: n.stringLiterals.formula ?? "",
       locked: false,
-      setText: async (s) => { n.stringLiterals.formula = s; n.edited(); await processGraph(); },
+      setText: async (s) => { n.stringLiterals.formula = s; await processEdited(n.id); },
     };
   }
   return null;
