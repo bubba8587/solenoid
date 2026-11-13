@@ -187,6 +187,11 @@
   rx: 5px;
   stroke-width: 2px;
 }
+/* Grouped, the body's 2px edge sits exactly under the header's 2px accent cap, and the cap's antialiased edges let the
+   group color through as a dark fringe. Under the header the cap is the edge, so the body's stops where the cap ends. */
+.solenoid-node--grouped .solenoid-node__frame:not(.solenoid-node__frame-head) {
+  clip-path: inset(var(--header-h, 0px) -4px -4px -4px);
+}
 .solenoid-node--grouped:not(.solenoid-node--selected) .solenoid-node__frame-body,
 .solenoid-node--grouped:not(.solenoid-node--selected):hover .solenoid-node__frame-body {
   stroke: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, transparent);
