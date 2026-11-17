@@ -1,8 +1,11 @@
 // The dispatch Monte Carlo: a Composite in Data Table mode, a pass per run. Each pass draws a year of incidents (each
-// site, each day, an incident with its daily share of the site's yearly rate, a severity of 1 to 5), runs them through
-// the Dispatch Queue card (each operator serves one open incident a day: highest severity, then the longest waiting,
-// then the nearest to the last stop; the rest wait) and totals the drive. An operator starts at their first job. The
-// card's Hours a day, service minutes, pick rule and day start are there for the next version of the question.
+// site, each day, an incident with its daily share of the site's yearly rate, a severity of 1 to 5) and runs them
+// through the Greedy Queue card, a queue per operator a day at a time. The dispatch rule is the two LAMBDA cards beside
+// it: Score (highest severity, then the longest waiting, then the nearest to the last stop, by the Earth & Sky pack's
+// great-circle formula) and Cost (the drive in minutes). An operator starts at their first job.
+
+// The Earth & Sky pack's Great-Circle Distance in km, from the last stop to this incident.
+const KM = "2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))";
 
 const cc = (id, label, name, expr, sideVars = [], addAs = "number") =>
   ({ id, type: "ComputedColumnNode", init: { label, expr, addAs, ...(sideVars.length ? { sideVars } : {}) }, stringLiterals: { name } });
@@ -29,8 +32,17 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     at({ id: "m_new", type: "FilterFrameNode", init: { label: "Incidents", condConfig: { 0: { op: "eq" } }, valueKeys: ["frame", "column0", "value0"] }, stringLiterals: { column0: "Hit", value0: "TRUE" } }, 1540, 0),
     at(cc("m_sev", "Severity", "Severity", "RANDBETWEEN(1, 5)"), 1860, 0),
     // ── the year dispatched ──
-    at({ id: "m_disp", type: "DispatchNode", init: { label: "Dispatch Queue", mode: "priority" }, literals: { perDay: 1 }, stringLiterals: { priority: "Severity" } }, 2180, 0),
-    at(getCol("m_dmin", "Drive Min"), 2820, 0),
+    // ── the rule ──
+    at({ id: "m_score", type: "LambdaNode", init: { label: "Score: severity, then age, then distance",
+      params: "Severity, Day, Latitude, Longitude, last_Latitude, last_Longitude",
+      expr: `-Severity * 1000000 + Day * 1000 + IF(ISBLANK(last_Latitude), 0, ${KM})` } }, 1860, 300),
+    at({ id: "m_cost", type: "LambdaNode", init: { label: "Cost: drive minutes",
+      params: "Latitude, Longitude, last_Latitude, last_Longitude",
+      expr: `IF(ISBLANK(last_Latitude), 0, ${KM} * road / 1.609344 / mph * 60)` } }, 1860, 560),
+    // ── the year dispatched ──
+    at({ id: "m_queue", type: "GreedyQueueNode", init: { label: "Each operator, a day at a time" }, literals: { perStep: 1 },
+      stringLiterals: { group: "Operator", step: "Day" } }, 2180, 0),
+    at(getCol("m_dmin", "Cost"), 2820, 0),
     at(getCol("m_wait", "Wait"), 2820, 160),
     at(getCol("m_left", "Site"), 2820, 320),
     at(expr("m_hours", "Drive hours", "ROUND(SUM(m) / 60, 1)"), 3140, 0),
@@ -50,13 +62,15 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     wire("m_cross", "frame", "m_hit", "frame"),
     wire("m_hit", "frame", "m_new", "frame"),
     wire("m_new", "frame", "m_sev", "frame"),
-    wire("m_sev", "frame", "m_disp", "incidents"),
-    wire("m_days", "value", "m_disp", "days"),
-    wire("m_road", "value", "m_disp", "road"),
-    wire("m_mph", "value", "m_disp", "mph"),
-    wire("m_disp", "jobs", "m_dmin", "frame"),
-    wire("m_disp", "jobs", "m_wait", "frame"),
-    wire("m_disp", "open", "m_left", "frame"),
+    wire("m_sev", "frame", "m_queue", "items"),
+    wire("m_days", "value", "m_queue", "steps"),
+    wire("m_score", "result", "m_queue", "score"),
+    wire("m_cost", "result", "m_queue", "cost"),
+    wire("m_road", "value", "m_cost", "road"),
+    wire("m_mph", "value", "m_cost", "mph"),
+    wire("m_queue", "picks", "m_dmin", "frame"),
+    wire("m_queue", "picks", "m_wait", "frame"),
+    wire("m_queue", "left", "m_left", "frame"),
     wire("m_dmin", "values", "m_hours", "m"),
     wire("m_dmin", "values", "m_jobs", "m"),
     wire("m_wait", "values", "m_meanwait", "w"),

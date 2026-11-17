@@ -51,8 +51,8 @@ import type {
   HeaderOp,
   BlankRowMode,
 } from "../nodeClasses";
-import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, DISPATCH_RULE_OPTIONS, DISPATCH_DAY_START_OPTIONS } from "../nodeClasses";
-import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, DispatchNode as DispatchNodeType } from "../nodeClasses";
+import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS } from "../nodeClasses";
+import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import type { FilterCondConfig, SettleMode } from "../nodes/frame";
@@ -1304,27 +1304,27 @@ const WINDOW_FN_OPTIONS = (Object.keys(WINDOW_FN_META) as WindowFn[]).map((f) =>
   value: f, label: WINDOW_FN_META[f].label, title: WINDOW_FN_META[f].description,
 }));
 
-// The served jobs are the card's table; the incidents left open ride a second output with their count.
-export function DispatchComponent({ data, emit }: NodeProps<DispatchNodeType>) {
-  const open = previewed(() => data.cachedOpen);
-  const left = open && isFrameValue(open) ? frameRowCount(open) : null;
-  const [mode, setMode] = useNodeField(data, "mode");
-  const [dayStart, setDayStart] = useNodeField(data, "dayStart");
+// The picks are the card's table; the items left ride a second output with their count. Score and Cost are LAMBDA cards
+// on the canvas, wired in, so the rule stays where it can be read.
+export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeType>) {
+  const left = previewed(() => data.cachedLeft);
+  const count = left && isFrameValue(left) ? frameRowCount(left) : null;
+  const [stepStart, setStepStart] = useNodeField(data, "stepStart");
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <ArgSelect value={mode} options={DISPATCH_RULE_OPTIONS} onChange={setMode} />
-      <ArgSelect value={dayStart} options={DISPATCH_DAY_START_OPTIONS} onChange={setDayStart} />
-      <InlineInputs node={data} emit={emit} />
-      <MeasuredSocketRow side="output" socketKey="jobs" nodeId={data.id} emit={emit} payload={data.outputs.jobs!.socket} hero>
+      <ArgSelect value={stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={setStepStart} />
+      <InlineInputs node={data} emit={emit} cableOnlyKeys={QUEUE_LAMBDA_KEYS} />
+      <MeasuredSocketRow side="output" socketKey="picks" nodeId={data.id} emit={emit} payload={data.outputs.picks!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
-      <MeasuredSocketRow side="output" socketKey="open" nodeId={data.id} emit={emit} payload={data.outputs.open!.socket}>
-        <span className="solenoid-node__io-label">Still open</span>
-        {left !== null && <span className="solenoid-node__io-wired">{left}</span>}
+      <MeasuredSocketRow side="output" socketKey="left" nodeId={data.id} emit={emit} payload={data.outputs.left!.socket}>
+        <span className="solenoid-node__io-label">Left</span>
+        {count !== null && <span className="solenoid-node__io-wired">{count}</span>}
       </MeasuredSocketRow>
     </NodeShell>
   );
 }
+const QUEUE_LAMBDA_KEYS = new Set(["score", "cost"]);
 
 export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
   const [agg, setAgg] = useNodeField(data, "agg");

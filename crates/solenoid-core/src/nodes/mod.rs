@@ -14,7 +14,6 @@ mod complex;
 mod control;
 mod cube_source;
 mod date;
-mod dispatch;
 mod docs;
 mod edit_frame;
 pub(crate) mod elements;
@@ -31,6 +30,7 @@ mod matrix;
 pub(crate) mod packs;
 mod probability;
 pub mod qr;
+mod queue;
 pub mod refs;
 mod scalar;
 mod sched;
@@ -411,7 +411,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| backend_verbs::run(kind, c))
         .or_else(|| lambda::run(kind, c))
         .or_else(|| qr::run(kind, c))
-        .or_else(|| dispatch::run(kind, c))
+        .or_else(|| queue::run(kind, c))
 }
 
 /// The classes whose `data()` is their body here and nothing else (for `OFF_CORE`, that and handing on what the core
@@ -502,7 +502,6 @@ pub const DIRECT: &[&str] = &[
     "DescribeNode",
     "DiffNode",
     "DiscountSecurityNode",
-    "DispatchNode",
     "DisplayNode",
     "DistinctNode",
     "DistributionsNode",
@@ -543,6 +542,7 @@ pub const DIRECT: &[&str] = &[
     "GaugeNode",
     "GetColumnNode",
     "GetRowNode",
+    "GreedyQueueNode",
     "GridPainterNode",
     "GroupByFrameNode",
     "GroupListsNode",

@@ -413,7 +413,15 @@ pub(crate) enum Body {
 
 /// The body, or the message the card shows and the code its error carries.
 pub(crate) fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, SolError> {
-    if let V::Lambda(lam) = slot(c, "lambda") {
+    if let Some(body) = wired_lambda(c, "lambda", vars)? {
+        return Ok(body);
+    }
+    resolve_typed(c, fallback, vars)
+}
+
+/// The LAMBDA wired into `key`, its parameters matched to `vars` by name; None when nothing is wired there.
+pub(crate) fn wired_lambda(c: &Call, key: &str, vars: &[&str]) -> Result<Option<Body>, SolError> {
+    if let V::Lambda(lam) = slot(c, key) {
         let unknown: Vec<&str> = lam.params.iter().map(String::as_str).filter(|p| !vars.contains(p)).collect();
         if !unknown.is_empty() {
             return Err(sol_error(
@@ -422,8 +430,12 @@ pub(crate) fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, S
             ));
         }
         let order = lam.params.iter().map(|p| vars.iter().position(|v| v == p)).collect();
-        return Ok(Body::Lambda(lam, order));
+        return Ok(Some(Body::Lambda(lam, order)));
     }
+    Ok(None)
+}
+
+fn resolve_typed(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, SolError> {
     let inline = match c.unwired("formula") {
         V::Str(s) if !trim_space(&s).is_empty() => s.to_string(),
         _ => fallback.to_string(),

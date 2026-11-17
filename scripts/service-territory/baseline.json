@@ -2480,17 +2480,39 @@
        "y": 0
       },
       {
-       "id": "m_disp",
-       "type": "DispatchNode",
+       "id": "m_score",
+       "type": "LambdaNode",
        "init": {
-        "label": "Dispatch Queue",
-        "mode": "priority"
+        "label": "Score: severity, then age, then distance",
+        "params": "Severity, Day, Latitude, Longitude, last_Latitude, last_Longitude",
+        "expr": "-Severity * 1000000 + Day * 1000 + IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2)))"
+       },
+       "x": 1860,
+       "y": 300
+      },
+      {
+       "id": "m_cost",
+       "type": "LambdaNode",
+       "init": {
+        "label": "Cost: drive minutes",
+        "params": "Latitude, Longitude, last_Latitude, last_Longitude",
+        "expr": "IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2)) * road / 1.609344 / mph * 60)"
+       },
+       "x": 1860,
+       "y": 560
+      },
+      {
+       "id": "m_queue",
+       "type": "GreedyQueueNode",
+       "init": {
+        "label": "Each operator, a day at a time"
        },
        "literals": {
-        "perDay": 1
+        "perStep": 1
        },
        "stringLiterals": {
-        "priority": "Severity"
+        "group": "Operator",
+        "step": "Day"
        },
        "x": 2180,
        "y": 0
@@ -2499,10 +2521,10 @@
        "id": "m_dmin",
        "type": "GetColumnNode",
        "init": {
-        "label": "Drive Min"
+        "label": "Cost"
        },
        "stringLiterals": {
-        "name": "Drive Min"
+        "name": "Cost"
        },
        "x": 2820,
        "y": 0
@@ -2654,42 +2676,54 @@
       {
        "source": "m_sev",
        "sourceOutput": "frame",
-       "target": "m_disp",
-       "targetInput": "incidents"
+       "target": "m_queue",
+       "targetInput": "items"
       },
       {
        "source": "m_days",
        "sourceOutput": "value",
-       "target": "m_disp",
-       "targetInput": "days"
+       "target": "m_queue",
+       "targetInput": "steps"
+      },
+      {
+       "source": "m_score",
+       "sourceOutput": "result",
+       "target": "m_queue",
+       "targetInput": "score"
+      },
+      {
+       "source": "m_cost",
+       "sourceOutput": "result",
+       "target": "m_queue",
+       "targetInput": "cost"
       },
       {
        "source": "m_road",
        "sourceOutput": "value",
-       "target": "m_disp",
+       "target": "m_cost",
        "targetInput": "road"
       },
       {
        "source": "m_mph",
        "sourceOutput": "value",
-       "target": "m_disp",
+       "target": "m_cost",
        "targetInput": "mph"
       },
       {
-       "source": "m_disp",
-       "sourceOutput": "jobs",
+       "source": "m_queue",
+       "sourceOutput": "picks",
        "target": "m_dmin",
        "targetInput": "frame"
       },
       {
-       "source": "m_disp",
-       "sourceOutput": "jobs",
+       "source": "m_queue",
+       "sourceOutput": "picks",
        "target": "m_wait",
        "targetInput": "frame"
       },
       {
-       "source": "m_disp",
-       "sourceOutput": "open",
+       "source": "m_queue",
+       "sourceOutput": "left",
        "target": "m_left",
        "targetInput": "frame"
       },

@@ -615,17 +615,6 @@
    "yieldmat"
   ]
  },
- "DispatchNode": {
-  "dayStart": [
-   "continue",
-   "start"
-  ],
-  "mode": [
-   "nearest",
-   "oldest",
-   "priority"
-  ]
- },
  "DisplayNode": {
   "unitSuffix": [
    "deg",
@@ -893,6 +882,12 @@
    "logical",
    "number",
    "text"
+  ]
+ },
+ "GreedyQueueNode": {
+  "stepStart": [
+   "continue",
+   "start"
   ]
  },
  "GroupByFrameNode": {

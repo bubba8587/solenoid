@@ -41,7 +41,7 @@ export const INIT_FIELD_ORDER = [
   "exportTotals",
   "tableName",
   "scope",
-  "dayStart",
+  "stepStart",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [
