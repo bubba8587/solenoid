@@ -80,6 +80,8 @@ export const CARD_TAGS: Record<string, readonly string[]> = {
   append: ["stack rows", "union", "combine tables"],
   "filter-frame": ["filter rows", "where"],
   "sort-frame": ["sort rows", "sort table", "order by"],
+  "keep-columns": ["select columns", "choose columns", "pick columns", "subset columns", "only these columns"],
+  "drop-columns": ["remove columns", "delete columns", "exclude columns"],
   distinct: ["drop duplicates", "distinct rows"],
   head: ["first rows", "top rows", "preview"],
   "add-column": ["new column"],

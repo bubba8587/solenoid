@@ -106,6 +106,18 @@
   z-index: 1;
 }
 thead .pivot-view__label--sticky { z-index: 3; }
+/* A box at a fractional x (a Dashboard's grid) rounds the frozen column and the scrolled cells to different pixels, and
+   a sliver of the scrolled cells showed at the left edge: the frozen cell covers 2px past its left side in its own
+   background, so a subtotal, band or header row keeps its tint. */
+.pivot-view__label--sticky::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -2px;
+  width: 2px;
+  background: inherit;
+}
 .pivot-view__value {
   text-align: right;
   font-family: var(--font-mono);

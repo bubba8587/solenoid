@@ -229,7 +229,10 @@ export function buildGroundingSpec(): string {
     const first = info.variants[0];
     const allSameSockets = info.variants.every((v) => v.inputs === first.inputs && v.outputs === first.outputs);
     w();
-    w(`#### \`${ctorName}\`${info.variants.length === 1 ? ` — ${first.leaf.label}` : ""}`);
+    // A class hosting a few cards names them all, so a search by a card's name finds it (Keep Columns lives on
+    // ColumnsNode); a family of many lists them below instead.
+    const names = info.variants.length <= 4 ? [...new Set(info.variants.map((v) => v.leaf.label))].join(" · ") : "";
+    w(`#### \`${ctorName}\`${names ? ` — ${names}` : ""}`);
     if (first.leaf.description) w(first.leaf.description);
     if (allSameSockets) {
       w(`- in: ${first.inputs || "—"}`);
