@@ -43,7 +43,7 @@
     "test:core": "cargo test --manifest-path crates/solenoid-core/Cargo.toml --target-dir crates/solenoid-core/target"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.9.0",
+    "@anthropic-ai/sdk": "^1.10.0",
     "@fontsource-variable/atkinson-hyperlegible-mono": "^5.3.0",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "@lezer/common": "^1.5.5",
@@ -53,9 +53,9 @@
     "@tauri-apps/plugin-dialog": "^2.8.4",
     "@tauri-apps/plugin-fs": "^2.7.1",
     "@tauri-apps/plugin-opener": "^2.7.3",
-    "@xyflow/react": "13.0.1",
+    "@xyflow/react": "13.0.2",
     "@xyflow/system": "1.0.0",
-    "colord": "^2.13.0",
+    "colord": "^2.14.0",
     "dompurify": "^3.4.18",
     "elkjs": "^0.12.1",
     "katex": "^0.19.1",
@@ -66,7 +66,7 @@
     "react-dom": "^19.3.1",
     "react-grid-layout": "^2.3.0",
     "react-is": "^19.3.1",
-    "recharts": "^3.10.1",
+    "recharts": "^3.11.0",
     "web-worker": "^1.5.0",
     "yaml": "^2.9.1"
   },
@@ -85,7 +85,7 @@
     "obsidian": "^1.14.4",
     "papaparse": "^5.7.1",
     "postcss": "8.5.33",
-    "puppeteer-core": "^25.17.0",
+    "puppeteer-core": "^25.18.1",
     "rollup-plugin-license": "^3.7.2",
     "three": "0.187.0",
     "tsrs": "0.25.0-ts7.1.0-beta",
