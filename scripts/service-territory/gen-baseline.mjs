@@ -3,8 +3,9 @@
 // operator and a random relative frequency of incidents. Seeded, so the baseline is the same on every run and a later
 // simulation compares against one fixed world.
 //   node scripts/service-territory/gen-baseline.mjs [--seed 2026]
-// baseline-app.json is the same graph as the app opens it:
-//   npm run -s validate-graph -- scripts/service-territory/baseline.json --json > scripts/service-territory/baseline-app.json
+// The seed src/graph/seedGraphs/service-territory.json is this graph as the app saves it, with the menu fields added:
+// `npm run -s validate-graph -- scripts/service-territory/baseline.json --json`, then label, order and group. A stand-in
+// until the simulation is built; remove both together.
 import { writeFileSync } from "node:fs";
 
 const seedArg = process.argv.indexOf("--seed");
