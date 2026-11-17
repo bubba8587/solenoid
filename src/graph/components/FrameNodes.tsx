@@ -51,7 +51,7 @@ import type {
   HeaderOp,
   BlankRowMode,
 } from "../nodeClasses";
-import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS } from "../nodeClasses";
+import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS } from "../nodeClasses";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
@@ -1304,16 +1304,37 @@ const WINDOW_FN_OPTIONS = (Object.keys(WINDOW_FN_META) as WindowFn[]).map((f) =>
   value: f, label: WINDOW_FN_META[f].label, title: WINDOW_FN_META[f].description,
 }));
 
-// The picks are the card's table; the items left ride a second output with their count. Score and Cost are LAMBDA cards
+// The picks are the card's table; the items left ride a second output with their count. Order by and Cost are LAMBDA cards
 // on the canvas, wired in, so the rule stays where it can be read.
 export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeType>) {
   const left = previewed(() => data.cachedLeft);
   const count = left && isFrameValue(left) ? frameRowCount(left) : null;
   const [stepStart, setStepStart] = useNodeField(data, "stepStart");
+  const [fit, setFit] = useNodeField(data, "mode");
+  const [turns, setTurns] = useNodeField(data, "turns");
+  const connected = useConnectedInputs(data.id);
+  // Each pick says something only where it can change the run: the step start with a Start wired, the fit with a budget.
+  const hasStart = connected.has("start") || stepStart !== "continue";
+  const hasBudget = connected.has("budget") || data.literals.budget != null || fit !== "stop";
+  // A simple run (a route, a sort with a cost) needs only the first three rows; each section opens once it is used.
+  const groupsUsed = useRowsInUse(data, QUEUE_GROUP_KEYS) || stepStart !== "continue" || turns !== "rotate";
+  const stepsUsed = useRowsInUse(data, QUEUE_STEP_KEYS);
+  const budgetUsed = useRowsInUse(data, QUEUE_BUDGET_KEYS) || fit !== "stop";
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <ArgSelect value={stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={setStepStart} />
-      <InlineInputs node={data} emit={emit} cableOnlyKeys={QUEUE_LAMBDA_KEYS} />
+      <InlineInputs node={data} emit={emit} keys={["items", "order", "cost"]} cableOnlyKeys={QUEUE_LAMBDA_KEYS} />
+      <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: QUEUE_GROUP_KEYS }}>
+        <InlineInputs node={data} emit={emit} keys={QUEUE_GROUP_KEYS} cableOnlyKeys={QUEUE_LAMBDA_KEYS} />
+        {hasStart && <ArgSelect value={stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={setStepStart} />}
+        {groupsUsed && <ArgSelect value={turns} options={QUEUE_TURNS_OPTIONS} onChange={setTurns} />}
+      </CardSection>
+      <CardSection label="Steps" collapsible defaultOpen={stepsUsed} sockets={{ node: data, emit, keys: QUEUE_STEP_KEYS }}>
+        <InlineInputs node={data} emit={emit} keys={QUEUE_STEP_KEYS} />
+      </CardSection>
+      <CardSection label="Budget" collapsible defaultOpen={budgetUsed} sockets={{ node: data, emit, keys: QUEUE_BUDGET_KEYS }}>
+        <InlineInputs node={data} emit={emit} keys={QUEUE_BUDGET_KEYS} />
+        {hasBudget && <ArgSelect value={fit} options={QUEUE_FIT_OPTIONS} onChange={setFit} />}
+      </CardSection>
       <MeasuredSocketRow side="output" socketKey="picks" nodeId={data.id} emit={emit} payload={data.outputs.picks!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
@@ -1321,10 +1342,17 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
         <span className="solenoid-node__io-label">Left</span>
         {count !== null && <span className="solenoid-node__io-wired">{count}</span>}
       </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="total" nodeId={data.id} emit={emit} payload={data.outputs.total!.socket}>
+        <span className="solenoid-node__io-label">Total cost</span>
+        <ValueDisplay value={data.cachedTotal} />
+      </MeasuredSocketRow>
     </NodeShell>
   );
 }
-const QUEUE_LAMBDA_KEYS = new Set(["score", "cost"]);
+const QUEUE_LAMBDA_KEYS = new Set(["order", "cost", "allowed"]);
+const QUEUE_GROUP_KEYS = ["group", "start", "allowed"];
+const QUEUE_STEP_KEYS = ["step", "steps"];
+const QUEUE_BUDGET_KEYS = ["budget", "perStep"];
 
 export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
   const [agg, setAgg] = useNodeField(data, "agg");

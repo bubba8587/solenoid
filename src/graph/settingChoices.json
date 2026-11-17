@@ -885,9 +885,17 @@
   ]
  },
  "GreedyQueueNode": {
+  "mode": [
+   "skip",
+   "stop"
+  ],
   "stepStart": [
    "continue",
    "start"
+  ],
+  "turns": [
+   "best",
+   "rotate"
   ]
  },
  "GroupByFrameNode": {

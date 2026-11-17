@@ -42,6 +42,7 @@ export const INIT_FIELD_ORDER = [
   "tableName",
   "scope",
   "stepStart",
+  "turns",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

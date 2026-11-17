@@ -7,14 +7,18 @@ first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
 ### SESSION DIGEST (2026-11-17b: the US Map card, a service-territory baseline; cloud session)
-- **Dispatch Queue** (`DispatchNode`, `nodes/dispatch.rs`, [[frame-verbs#Dispatch Queue]]): a day-by-day service queue per
-  crew, the one sequential step of a dispatch simulation; jobs a day or hours a day (drive + service minutes), a pick
-  rule (priority, nearest, oldest), day start (last stop or start). A year of the service-territory seed runs in well
-  under a second against ~5 s for the same loop as a Simulation Composite of table cards, which stays in git history.
+- **Greedy Queue** (`GreedyQueueNode`, `nodes/queue.rs`, [[frame-verbs#Greedy Queue]]): the sequential loop of a
+  run-optimization model, generic; the rule is LAMBDA cards (Order by, a number or a list sorted in turn; Cost; Allowed)
+  over the item's columns, `last_` (the group's last pick), `group_` (its Start row), `wait`, `step`, `used`. Groups take
+  turns or best pair first; budget a step with stop or skip on a misfit; blank group = shared; blank Steps = until done.
+  The **Greedy Queue: three run problems** seed (`scripts/greedy-queue/gen-examples.mjs`): a job shop (earliest due
+  4 days late in total vs shortest first 37), truck loading (first-fit decreasing 12 trucks vs 14), a route (nearest
+  next 310 km vs 684). It replaced a dispatch-only card from the same day, which buried the rule in Rust.
 - **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
-  per run (sites × days, a draw each, then the Dispatch Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
+  per run (sites × days, a draw each, then the Greedy Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
   a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common
-  random numbers (a seeded draw) to compare assignments on the same incidents, and pooled dispatch.
+  random numbers (a seeded draw) to compare assignments on the same incidents. Pooled dispatch (best pair first)
+  measured ~3,500 h a year against ~2,330 for the territories; the author's real problem assigns by set lists.
 - **Pivot inside Markdown**: `.sol-md`'s table rules out-ranked the Pivot view's in Dashboard boxes and Reports
   (collapsed borders, so a seam beside the frozen column); its grid rules now sit under `.pivot-view`.
 - Tooling: `run-graph --solve`; `shot-graph --eval`, `--hscroll`, `--wheel`; the grounding names every card of a

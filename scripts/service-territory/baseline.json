@@ -2483,9 +2483,9 @@
        "id": "m_score",
        "type": "LambdaNode",
        "init": {
-        "label": "Score: severity, then age, then distance",
+        "label": "Order by: severity, then age, then distance",
         "params": "Severity, Day, Latitude, Longitude, last_Latitude, last_Longitude",
-        "expr": "-Severity * 1000000 + Day * 1000 + IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2)))"
+        "expr": "HSTACK(-Severity, Day, IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))))"
        },
        "x": 1860,
        "y": 300
@@ -2558,7 +2558,7 @@
        "type": "ExpressionNode",
        "init": {
         "label": "Drive hours",
-        "expr": "ROUND(SUM(m) / 60, 1)"
+        "expr": "ROUND(minutes / 60, 1)"
        },
        "x": 3140,
        "y": 0
@@ -2689,7 +2689,7 @@
        "source": "m_score",
        "sourceOutput": "result",
        "target": "m_queue",
-       "targetInput": "score"
+       "targetInput": "order"
       },
       {
        "source": "m_cost",
@@ -2728,10 +2728,10 @@
        "targetInput": "frame"
       },
       {
-       "source": "m_dmin",
-       "sourceOutput": "values",
+       "source": "m_queue",
+       "sourceOutput": "total",
        "target": "m_hours",
-       "targetInput": "m"
+       "targetInput": "minutes"
       },
       {
        "source": "m_dmin",

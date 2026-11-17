@@ -1,7 +1,7 @@
 // The dispatch Monte Carlo: a Composite in Data Table mode, a pass per run. Each pass draws a year of incidents (each
 // site, each day, an incident with its daily share of the site's yearly rate, a severity of 1 to 5) and runs them
 // through the Greedy Queue card, a queue per operator a day at a time. The dispatch rule is the two LAMBDA cards beside
-// it: Score (highest severity, then the longest waiting, then the nearest to the last stop, by the Earth & Sky pack's
+// it: Order by (highest severity, then the longest waiting, then the nearest to the last stop, by the Earth & Sky pack's
 // great-circle formula) and Cost (the drive in minutes). An operator starts at their first job.
 
 // The Earth & Sky pack's Great-Circle Distance in km, from the last stop to this incident.
@@ -33,9 +33,9 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     at(cc("m_sev", "Severity", "Severity", "RANDBETWEEN(1, 5)"), 1860, 0),
     // ── the year dispatched ──
     // ── the rule ──
-    at({ id: "m_score", type: "LambdaNode", init: { label: "Score: severity, then age, then distance",
+    at({ id: "m_score", type: "LambdaNode", init: { label: "Order by: severity, then age, then distance",
       params: "Severity, Day, Latitude, Longitude, last_Latitude, last_Longitude",
-      expr: `-Severity * 1000000 + Day * 1000 + IF(ISBLANK(last_Latitude), 0, ${KM})` } }, 1860, 300),
+      expr: `HSTACK(-Severity, Day, IF(ISBLANK(last_Latitude), 0, ${KM}))` } }, 1860, 300),
     at({ id: "m_cost", type: "LambdaNode", init: { label: "Cost: drive minutes",
       params: "Latitude, Longitude, last_Latitude, last_Longitude",
       expr: `IF(ISBLANK(last_Latitude), 0, ${KM} * road / 1.609344 / mph * 60)` } }, 1860, 560),
@@ -45,7 +45,7 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     at(getCol("m_dmin", "Cost"), 2820, 0),
     at(getCol("m_wait", "Wait"), 2820, 160),
     at(getCol("m_left", "Site"), 2820, 320),
-    at(expr("m_hours", "Drive hours", "ROUND(SUM(m) / 60, 1)"), 3140, 0),
+    at(expr("m_hours", "Drive hours", "ROUND(minutes / 60, 1)"), 3140, 0),
     at(expr("m_jobs", "Jobs served", "COUNT(m)"), 3140, 160),
     at(expr("m_meanwait", "Mean wait (days)", "ROUND(AVERAGE(w), 2)"), 3140, 320),
     at(expr("m_open", "Still open", "COUNTA(s)"), 3140, 480),
@@ -64,14 +64,14 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     wire("m_new", "frame", "m_sev", "frame"),
     wire("m_sev", "frame", "m_queue", "items"),
     wire("m_days", "value", "m_queue", "steps"),
-    wire("m_score", "result", "m_queue", "score"),
+    wire("m_score", "result", "m_queue", "order"),
     wire("m_cost", "result", "m_queue", "cost"),
     wire("m_road", "value", "m_cost", "road"),
     wire("m_mph", "value", "m_cost", "mph"),
     wire("m_queue", "picks", "m_dmin", "frame"),
     wire("m_queue", "picks", "m_wait", "frame"),
     wire("m_queue", "left", "m_left", "frame"),
-    wire("m_dmin", "values", "m_hours", "m"),
+    wire("m_queue", "total", "m_hours", "minutes"),
     wire("m_dmin", "values", "m_jobs", "m"),
     wire("m_wait", "values", "m_meanwait", "w"),
     wire("m_left", "values", "m_open", "s"),
