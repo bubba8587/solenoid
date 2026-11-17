@@ -1,12 +1,16 @@
 // Writes baseline.json beside this file: the service-territory Monte Carlo's step 1, a graph of 400 sites across
-// Austin, Little Rock, Alabama, lower Georgia, Chattanooga and Knoxville, 10 operators, each site's class, its assigned
+// Austin, Little Rock, Alabama, lower Georgia, Chattanooga and Knoxville (none in Mississippi or west Tennessee), 10 operators, each site's class, its assigned
 // operator and a random relative frequency of incidents. Seeded, so the baseline is the same on every run and a later
 // simulation compares against one fixed world.
 //   node scripts/service-territory/gen-baseline.mjs [--seed 2026]
 // The seed src/graph/seedGraphs/service-territory.json is this graph as the app saves it, with the menu fields added:
 // `npm run -s validate-graph -- scripts/service-territory/baseline.json --json`, then label, order and group. A stand-in
 // until the simulation is built; remove both together.
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+
+// The Earth & Sky pack's Great-Circle Distance card, read from the pack so the two can't drift apart.
+const pack = readFileSync(new URL("../../src/graph/packs/earthsky.ts", import.meta.url), "utf8");
+const GREAT_CIRCLE = pack.match(/type: "es-haversine", label: "Great-Circle Distance", expr:\s*"([^"]+)"/)[1];
 
 const seedArg = process.argv.indexOf("--seed");
 let state = seedArg > 0 ? Number(process.argv[seedArg + 1]) : 2026;
@@ -19,54 +23,61 @@ const rand = () => {
 };
 const normal = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
 
+// Four bases west, six east, so neither side's operators carry several times the other's load.
 const OPERATORS = [
-  ["OP-01", "Austin, TX", 30.2672, -97.7431],
-  ["OP-02", "Little Rock, AR", 34.7465, -92.2896],
-  ["OP-03", "Birmingham, AL", 33.5186, -86.8104],
-  ["OP-04", "Huntsville, AL", 34.7304, -86.5861],
-  ["OP-05", "Montgomery, AL", 32.3792, -86.3077],
-  ["OP-06", "Mobile, AL", 30.6954, -88.0399],
-  ["OP-07", "Albany, GA", 31.5785, -84.1557],
-  ["OP-08", "Savannah, GA", 32.0809, -81.0912],
+  ["OP-01", "Round Rock, TX", 30.5083, -97.6789],
+  ["OP-02", "San Marcos, TX", 29.8833, -97.9414],
+  ["OP-03", "Little Rock, AR", 34.7465, -92.2896],
+  ["OP-04", "Conway, AR", 35.0887, -92.4421],
+  ["OP-05", "Birmingham, AL", 33.5186, -86.8104],
+  ["OP-06", "Montgomery, AL", 32.3792, -86.3077],
+  ["OP-07", "Mobile, AL", 30.6954, -88.0399],
+  ["OP-08", "Albany, GA", 31.5785, -84.1557],
   ["OP-09", "Chattanooga, TN", 35.0456, -85.3097],
   ["OP-10", "Knoxville, TN", 35.9606, -83.9207],
 ];
 
-// Area, state, center, radius in miles, sites, and the bearings (degrees clockwise from north) land lies on.
+// Area, center, radius in miles, sites, and the bearings (degrees clockwise from north) land lies on. The radii are wide
+// enough that neighboring clusters touch, so the sites between two bases are close calls.
 const AREAS = [
-  ["Austin", "TX", 30.27, -97.74, 35, 58],
-  ["Little Rock", "AR", 34.75, -92.29, 40, 44],
-  ["Birmingham", "AL", 33.52, -86.80, 35, 34],
-  ["Huntsville", "AL", 34.73, -86.59, 30, 24],
-  ["Montgomery", "AL", 32.37, -86.30, 40, 26],
-  ["Mobile", "AL", 30.69, -88.04, 35, 22, [-100, 100]],
-  ["Tuscaloosa", "AL", 33.21, -87.57, 25, 10],
-  ["Dothan", "AL", 31.22, -85.39, 25, 10],
-  ["Albany", "GA", 31.58, -84.16, 40, 30],
-  ["Valdosta", "GA", 30.83, -83.28, 30, 16],
-  ["Savannah", "GA", 32.08, -81.09, 35, 22, [180, 360]],
-  ["Macon", "GA", 32.84, -83.63, 30, 14],
-  ["Chattanooga", "TN", 35.05, -85.31, 35, 40],
-  ["Knoxville", "TN", 35.96, -83.92, 35, 38],
+  ["Austin", 30.27, -97.74, 50, 50],
+  ["Round Rock", 30.62, -97.62, 40, 25],
+  ["San Marcos", 29.85, -98.02, 35, 22],
+  ["Little Rock", 34.75, -92.29, 50, 38],
+  ["Conway", 35.09, -92.44, 40, 20],
+  ["Hot Springs", 34.50, -93.06, 30, 12],
+  ["Pine Bluff", 34.23, -92.00, 30, 10],
+  ["Birmingham", 33.52, -86.80, 45, 30],
+  ["Tuscaloosa", 33.21, -87.57, 35, 14],
+  ["Huntsville", 34.73, -86.59, 40, 20],
+  ["Montgomery", 32.37, -86.30, 45, 24],
+  ["Mobile", 30.69, -88.04, 35, 18, [-15, 100]],
+  ["Dothan", 31.22, -85.39, 35, 12],
+  ["Albany", 31.58, -84.16, 45, 22],
+  ["Valdosta", 30.83, -83.28, 35, 12],
+  ["Waycross", 31.21, -82.35, 30, 8],
+  ["Chattanooga", 35.05, -85.31, 45, 28],
+  ["Knoxville", 35.96, -83.92, 45, 26],
 ];
 
 // Far from any base, each kept with the operator named: the outliers a better assignment might move.
 const OUTLIERS = [
-  ["Houston", "TX", 29.76, -95.37, "OP-01"],
-  ["Corpus Christi", "TX", 27.80, -97.40, "OP-01"],
-  ["Texarkana", "AR", 33.43, -94.05, "OP-02"],
-  ["Memphis", "TN", 35.15, -90.05, "OP-02"],
-  ["Jonesboro", "AR", 35.84, -90.70, "OP-02"],
-  ["Jackson", "MS", 32.30, -90.18, "OP-03"],
-  ["Meridian", "MS", 32.36, -88.70, "OP-03"],
-  ["Nashville", "TN", 36.16, -86.78, "OP-04"],
-  ["Panama City", "FL", 30.16, -85.66, "OP-07"],
-  ["Tallahassee", "FL", 30.44, -84.28, "OP-07"],
-  ["Atlanta", "GA", 33.75, -84.39, "OP-09"],
-  ["Asheville", "NC", 35.60, -82.55, "OP-10"],
+  ["Houston", 29.76, -95.37, "OP-02"],
+  ["Corpus Christi", 27.80, -97.40, "OP-02"],
+  ["Texarkana", 33.43, -94.05, "OP-03"],
+  ["Jonesboro", 35.84, -90.70, "OP-04"],
+  ["Nashville", 36.16, -86.78, "OP-09"],
+  ["Panama City", 30.16, -85.66, "OP-08"],
+  ["Tallahassee", 30.44, -84.28, "OP-08"],
+  ["Atlanta", 33.75, -84.39, "OP-09"],
+  ["Asheville", 35.60, -82.55, "OP-10"],
 ];
 
-const CROSSOVERS = 14;
+const CROSSOVERS = 30;
+
+// Mississippi and west Tennessee stay empty: a random point that lands in either is drawn again.
+const offLimits = (lat, lon) =>
+  (lat > 30.2 && lat < 35.0 && lon > -91.6 && lon < -88.1) || (lat >= 35.0 && lat < 36.7 && lon > -90.3 && lon < -87.9);
 
 const miles = (lat1, lon1, lat2, lon2) => {
   const r = Math.PI / 180;
@@ -77,14 +88,17 @@ const byDistance = (lat, lon) =>
   OPERATORS.map(([id, , blat, blon]) => ({ id, d: miles(lat, lon, blat, blon) })).sort((a, b) => a.d - b.d);
 
 const sites = [];
-for (const [area, st, lat, lon, radius, n, arc = [0, 360]] of AREAS) {
+for (const [area, lat, lon, radius, n, arc = [0, 360]] of AREAS) {
   for (let k = 0; k < n; k++) {
-    const r = radius * Math.sqrt(rand());
-    const bearing = ((arc[0] + rand() * (arc[1] - arc[0])) * Math.PI) / 180;
-    const sLat = lat + (r * Math.cos(bearing)) / 69;
-    const sLon = lon + (r * Math.sin(bearing)) / (69 * Math.cos((lat * Math.PI) / 180));
+    let sLat, sLon;
+    do {
+      const r = radius * Math.sqrt(rand());
+      const bearing = ((arc[0] + rand() * (arc[1] - arc[0])) * Math.PI) / 180;
+      sLat = lat + (r * Math.cos(bearing)) / 69;
+      sLon = lon + (r * Math.sin(bearing)) / (69 * Math.cos((lat * Math.PI) / 180));
+    } while (offLimits(sLat, sLon));
     const near = byDistance(sLat, sLon);
-    sites.push({ area, st, lat: sLat, lon: sLon, op: near[0].id, how: "Nearest", near });
+    sites.push({ area, lat: sLat, lon: sLon, op: near[0].id, how: "Nearest", near });
   }
 }
 // A crossover goes to the second-nearest base where the two are close calls: the sites a dispatcher would argue over.
@@ -94,14 +108,13 @@ for (let k = 0; k < CROSSOVERS && contested.length > 0; k++) {
   s.op = s.near[1].id;
   s.how = "Crossover";
 }
-for (const [area, st, lat, lon, op] of OUTLIERS) {
-  sites.push({ area, st, lat: lat + (rand() - 0.5) * 0.1, lon: lon + (rand() - 0.5) * 0.1, op, how: "Outlier" });
+for (const [area, lat, lon, op] of OUTLIERS) {
+  sites.push({ area, lat: lat + (rand() - 0.5) * 0.1, lon: lon + (rand() - 0.5) * 0.1, op, how: "Outlier" });
 }
 
 const rows = sites.map((s, i) => ({
   Site: `S-${String(i + 1).padStart(3, "0")}`,
   Area: s.area,
-  State: s.st,
   Latitude: Math.round(s.lat * 10000) / 10000,
   Longitude: Math.round(s.lon * 10000) / 10000,
   Class: rand() < 0.35 ? "Class I" : "Class II",
@@ -117,7 +130,7 @@ const cc = (id, label, name, expr, init = {}) => ({ id, type: "ComputedColumnNod
 const graph = {
   nodes: [
     { id: "sites", type: "FrameInputNode", init: { label: "Sites" }, frame: [
-      col("Site", "string"), col("Area", "string"), col("State", "string"), col("Latitude", "number"), col("Longitude", "number"),
+      col("Site", "string"), col("Area", "string"), col("Latitude", "number"), col("Longitude", "number"),
       col("Class", "string"), col("Operator", "string"), col("Assignment", "string"), col("Rel Freq", "number"),
     ] },
     { id: "ops", type: "FrameInputNode", init: { label: "Operators" }, frame: [
@@ -129,9 +142,13 @@ const graph = {
     { id: "annual", type: "ValueInputNode", init: { label: "Incidents per year", value: "1500" } },
     { id: "speed", type: "ValueInputNode", init: { label: "Average speed (mph)", value: "50" } },
     { id: "join", type: "JoinNode", init: { label: "Sites with their base", how: "left" }, stringLiterals: { leftKey: "Operator", rightKey: "Operator" } },
-    // Great-circle miles to the base, times 1.25 for roads.
-    cc("roadmi", "Road miles to base", "Road Miles",
-      "ROUND(1.25 * 3958.8 * 2 * ASIN(SQRT(SIN(RADIANS(@[Base Lat] - @Latitude) / 2) ^ 2 + COS(RADIANS(@Latitude)) * COS(RADIANS(@[Base Lat])) * SIN(RADIANS(@[Base Lon] - @Longitude) / 2) ^ 2)), 1)"),
+    ...[["Latitude", "site_lat"], ["Longitude", "site_lon"], ["Base Lat", "base_lat"], ["Base Lon", "base_lon"]].map(([name, id]) =>
+      ({ id, type: "GetColumnNode", init: { label: name, readAs: "number" }, stringLiterals: { name } })),
+    { id: "gcd", type: "ExpressionNode", init: { label: "Great-Circle Distance", expr: GREAT_CIRCLE, locked: true,
+      varDescriptions: { lat1: "Start latitude (°)", lon1: "Start longitude (°)", lat2: "End latitude (°)", lon2: "End longitude (°)" } } },
+    { id: "addkm", type: "AddColumnNode", init: { label: "Distance to base", addAs: "number" }, stringLiterals: { name: "Great Circle km" } },
+    // Kilometers to miles, times 1.25 for roads.
+    cc("roadmi", "Road miles to base", "Road Miles", "ROUND(@[Great Circle km] * 0.621371 * 1.25, 1)"),
     cc("drive", "One-way drive", "Drive Min", "ROUND(@[Road Miles] / mph * 60, 0)", { sideVars: ["mph"] }),
     cc("expected", "Expected incidents", "Incidents per Yr", "ROUND(annual * @[Rel Freq] / SUM([Rel Freq]), 2)", { sideVars: ["annual"] }),
     {
@@ -170,7 +187,17 @@ const graph = {
   cables: [
     "sites.frame -> join.left",
     "ops.frame -> join.right",
-    "join.frame -> roadmi.frame",
+    "join.frame -> site_lat.frame",
+    "join.frame -> site_lon.frame",
+    "join.frame -> base_lat.frame",
+    "join.frame -> base_lon.frame",
+    "base_lat.values -> gcd.lat1",
+    "base_lon.values -> gcd.lon1",
+    "site_lat.values -> gcd.lat2",
+    "site_lon.values -> gcd.lon2",
+    "join.frame -> addkm.frame",
+    "gcd.result -> addkm.values",
+    "addkm.frame -> roadmi.frame",
     "roadmi.frame -> drive.frame",
     "speed.value -> drive.mph",
     "drive.frame -> expected.frame",
@@ -181,11 +208,16 @@ const graph = {
   ],
 };
 const AT = {
-  sites: [0, 0], ops: [0, 300], annual: [0, 560], speed: [0, 700], join: [340, 0], roadmi: [660, 0], drive: [980, 0],
-  expected: [1300, 0], load: [1640, 0], map_ops: [1640, 340], map_how: [2300, 340],
+  sites: [0, 0], ops: [0, 300], annual: [0, 560], speed: [0, 700], join: [340, 0],
+  site_lat: [660, 0], site_lon: [660, 150], base_lat: [660, 300], base_lon: [660, 450], gcd: [940, 0], addkm: [940, 330],
+  roadmi: [1260, 0], drive: [1580, 0], expected: [1900, 0], load: [2240, 0], map_ops: [2240, 340], map_how: [2900, 340],
 };
 for (const n of graph.nodes) [n.x, n.y] = AT[n.id];
 for (const id of ["map_ops", "map_how"]) graph.nodes.find((n) => n.id === id).init.width = 620;
 writeFileSync(new URL("./baseline.json", import.meta.url), JSON.stringify(graph, null, 1) + "\n");
 const count = (k, v) => rows.filter((r) => r[k] === v).length;
+const west = sites.filter((x) => x.lon < -91).length;
+const loads = OPERATORS.map(([id]) => `${id} ${sites.filter((x) => x.op === id).length}`).join(", ");
+if (sites.some((x) => offLimits(x.lat, x.lon))) throw new Error("a site landed in Mississippi or west Tennessee");
+console.log(`west ${west}, east ${sites.length - west}; ${loads}`);
 console.log(`${rows.length} sites: ${count("Assignment", "Nearest")} nearest, ${count("Assignment", "Crossover")} crossovers, ${count("Assignment", "Outlier")} outliers; ${count("Class", "Class I")} Class I`);
