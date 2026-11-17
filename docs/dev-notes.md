@@ -6,6 +6,15 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-17: React Flow 13.0.1; cloud session)
+
+- **React Flow is 13.0.1, `@xyflow/system` 1.0.0** (exact, as RF pins it): bleeding-edge's next.3 port (`3374277`) carried to the
+  stable release. The split stores, changesets and `forceColorMode` are as that finding had them; the stable release added two
+  things it didn't: a bare-number fit padding is pixels (every fit now passes RF 12's fraction as the same-zoom percentage,
+  [[react-flow-surface-contract#What RF owns]]), and the pane cursor lives on `::before`. `elevateEdgesOnSelect` is held at false.
+- Checked live (card drag, grip resize, socket drag, pane cursor, theme, minimap) and the full suite. Not re-measured: the frame
+  cost the split stores should save (`docs/canvas-frame-cost-findings.md` § 4).
+
 ### SESSION DIGEST (2026-11-12d: Rust 1.100, the crate cooldown; cloud session)
 
 - **The pin is Rust 1.100.0** (`rust-toolchain.toml`, the author's word). The crates needed no change: fmt, clippy, the three crates'
@@ -18,7 +27,7 @@ specific item.
   the cooldown); marked 18.1.3, @lezer/common 1.5.5, @anthropic-ai/sdk 1.5.0, vitest 5.1.0, @vitejs/plugin-react 6.2.1
   (`npm install --before=2026-11-05`). zip stays at 9.5.1, locked by the workbook work before the cooldown existed: a full
   `cargo update` would take it down to 9.4.0, which the reader was never run on; it passes a week old on 2026-11-17. Left on
-  bleeding-edge: React Flow 13 (a prerelease), eslint 10, tsrs 0.25, magic-string 1.4, three 0.187. `npm audit`'s one
+  bleeding-edge: eslint 10, tsrs 0.25, magic-string 1.4, three 0.187. `npm audit`'s one
   moderate (minimatch under typescript-eslint, lint only) predates this.
   A crate bump also moves `public/third-party-licenses-rust.txt`: run `node scripts/rust-licenses.mjs` (needs
   `cargo install --locked cargo-about --features cli`), or Rust supply chain's `licenses` job goes red. `port.mjs` doesn't

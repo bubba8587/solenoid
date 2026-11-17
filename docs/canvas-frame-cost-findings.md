@@ -118,6 +118,9 @@ cables change, never on a camera change. It touches cable selection, hover and c
 callbacks), deletion, the cable z-order, `view.connectionElement` (which queries `.react-flow__edge[data-id]`), the
 HTML-in-Canvas cable snapshot and the drag line. It is an architecture decision, not a tuning.
 
+**React Flow 13 (on `develop` since 2026-11-17)** keeps the camera in its own store and subscribes cables and cards by id, which
+is this change made upstream. Not re-measured yet: rerun the camera update above before building an app cable layer, and § 5 too.
+
 ## 5. The desktop minimap subscribes once per card (candidate)
 
 React Flow's minimap renders a `NodeComponentWrapper` per card, each with its own `useStore` selector recomputing that
