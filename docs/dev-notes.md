@@ -33,6 +33,10 @@ specific item.
 - **Local Search runs of 2 and 3** (Or-opt) beside single moves: 250 random stops 12,595 to 12,375 km at no
   measurable time. **Greedy Queue guards:** a Budget with no Cost is `#VALUE!`; picks over the budget on their own
   (a step's first always goes) show as an **Over budget** count on the card.
+- **Plan B on the same incidents** (service-territory seed): Plan B Operator is a visible column (crossovers back to
+  the nearest operator; the outliers were already their nearest's, so moving them saved exactly 0). Each run feeds one
+  draw of incidents to both queues, so the saving is paired (common random numbers): 110 h a year ± 6.7, where one
+  plan's own total carries ± 23.
 - **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
   per run (sites × days, a draw each, then the Greedy Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
   a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common

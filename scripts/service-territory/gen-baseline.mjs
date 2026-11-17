@@ -125,7 +125,9 @@ for (let k = 0; k < CROSSOVERS && contested.length > 0; k++) {
   s.how = "Crossover";
 }
 for (const [area, lat, lon, op] of OUTLIERS) {
-  sites.push({ area, lat: lat + (rand() - 0.5) * 0.1, lon: lon + (rand() - 0.5) * 0.1, op, how: "Outlier" });
+  const oLat = lat + (rand() - 0.5) * 0.1;
+  const oLon = lon + (rand() - 0.5) * 0.1;
+  sites.push({ area, lat: oLat, lon: oLon, op, how: "Outlier", near: byDistance(oLat, oLon) });
 }
 
 const rows = sites.map((s, i) => ({
@@ -136,6 +138,7 @@ const rows = sites.map((s, i) => ({
   Class: rand() < 0.35 ? "Class I" : "Class II",
   Operator: s.op,
   Assignment: s.how,
+  "Nearest Operator": s.near[0].id,
   // Lognormal: most sites see a few incidents, a handful see many.
   "Rel Freq": Math.round(Math.exp(0.6 * normal()) * 100) / 100,
 }));
@@ -147,10 +150,12 @@ const graph = {
   nodes: [
     { id: "sites", type: "FrameInputNode", init: { label: "Sites" }, frame: [
       col("Site", "string"), col("Area", "string"), col("Latitude", "number"), col("Longitude", "number"),
-      col("Class", "string"), col("Operator", "string"), col("Assignment", "string"), col("Rel Freq", "number"),
+      col("Class", "string"), col("Operator", "string"), col("Assignment", "string"), col("Nearest Operator", "string"), col("Rel Freq", "number"),
     ] },
     { id: "annual", type: "ValueInputNode", init: { label: "Incidents per year", value: "1500" } },
     cc("expected", "Expected incidents", "Incidents per Yr", "ROUND(annual * @[Rel Freq] / SUM([Rel Freq]), 2)", { sideVars: ["annual"] }),
+    // ── plan B: the same sites with the crossovers handed back to their nearest operator ──
+    cc("plan_b", "Plan B: crossovers back to the nearest operator", "Plan B Operator", 'IF(@Assignment = "Crossover", @[Nearest Operator], @Operator)'),
     {
       id: "load", type: "CompositeNode",
       init: {
@@ -182,6 +187,9 @@ const graph = {
     { id: "days", type: "ValueInputNode", init: { label: "Days to simulate", value: "365" } },
     runsComposite({ runs: 50 }),
     { id: "mc_mean", type: "ExpressionNode", init: { label: "Mean drive hours a run", expr: "ROUND(AVERAGE(h), 1)" } },
+    // Both plans run on each run's same incidents, so the saving is measured run by run and its interval is narrow.
+    { id: "b_mean", type: "ExpressionNode", init: { label: "Plan B saves (hours a year)", expr: "ROUND(AVERAGE(saved), 1)" } },
+    { id: "b_ci", type: "ExpressionNode", init: { label: "Plan B saving, 95% interval ± hours", expr: "ROUND(1.96 * STDEV.S(saved) / SQRT(COUNT(saved)), 1)" } },
     { id: "mc_ci", type: "ExpressionNode", init: { label: "95% interval ± hours", expr: "ROUND(1.96 * STDEV.S(h) / SQRT(COUNT(h)), 1)" } },
     { id: "mc_run", type: "ExpressionNode", init: { label: "Run", expr: "SEQUENCE(COUNT(h))" } },
     { id: "mc_running", type: "ExpressionNode", init: { label: "Running mean", expr: "SCAN(0, h, LAMBDA(a, v, a + v)) / SEQUENCE(COUNT(h))" } },
@@ -198,7 +206,8 @@ const graph = {
     "expected.frame -> load.in_sites",
     "expected.frame -> map_ops.frame",
     "expected.frame -> map_how.frame",
-    "expected.frame -> runs.in_sites",
+    "expected.frame -> plan_b.frame",
+    "plan_b.frame -> runs.in_sites",
     "days.value -> runs.in_days",
     "runs.o_hours -> mc_mean.h",
     "runs.o_hours -> mc_ci.h",
@@ -210,10 +219,12 @@ const graph = {
     "mc_frame.frame -> mc_chart.values",
     "runs.o_hours -> mc_opts.h",
     "mc_opts.result -> mc_chart.options",
+    "runs.o_saved -> b_mean.saved",
+    "runs.o_saved -> b_ci.saved",
   ],
 };
 const AT = {
-  sites: [0, 0], annual: [0, 300], expected: [340, 0], load: [700, 0], map_ops: [700, 300], map_how: [1360, 300],
+  sites: [0, 0], annual: [0, 300], expected: [340, 0], plan_b: [340, 260], b_mean: [1000, 1100], b_ci: [1000, 1240], load: [700, 0], map_ops: [700, 300], map_how: [1360, 300],
   days: [340, 520], runs: [340, 700], mc_mean: [700, 960], mc_ci: [700, 1100], mc_run: [700, 1240], mc_running: [700, 1380],
   mc_frame: [1000, 960], mc_opts: [1000, 1400], mc_chart: [1360, 960],
 };
