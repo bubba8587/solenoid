@@ -1348,6 +1348,12 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
         <span className="solenoid-node__io-label">Left</span>
         {count !== null && <span className="solenoid-node__io-wired">{count}</span>}
       </MeasuredSocketRow>
+      {!!data.cachedOver && (
+        <div className="solenoid-node__io-row" title="Each was over the budget on its own. A step's first pick always goes, so an item too big for any step still gets picked.">
+          <span className="solenoid-node__io-label">Over budget</span>
+          <span className="solenoid-node__io-wired">{data.cachedOver}</span>
+        </div>
+      )}
       <MeasuredSocketRow side="output" socketKey="total" nodeId={data.id} emit={emit} payload={data.outputs.total!.socket}>
         <span className="solenoid-node__io-label">Total cost</span>
         <ValueDisplay value={data.cachedTotal} />

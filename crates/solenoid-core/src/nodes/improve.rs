@@ -22,6 +22,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     }
 }
 
+/// The longest run of neighbors moved together (Or-opt's 1, 2 and 3).
+const MAX_RUN: usize = 3;
 /// A search runs at most this many passes over every item.
 const MAX_PASSES: f64 = 1000.0;
 /// A search stops, keeping its best plan, after this many item walks: a time limit that answers the same everywhere.
@@ -181,26 +183,42 @@ impl Model<'_> {
                 *best = Some((d, mv));
             }
         };
-        // Taking the item out joins its neighbors.
-        let (before, after) = (spot(a, s, i, self), next(s, i));
-        let out = minus(
-            self.link(a, before, after)?,
-            plus(self.link(a, before, Some(item))?, self.link(a, Spot::Item(item), after)?),
-        );
-        let without: Vec<usize> = s.iter().enumerate().filter(|&(p, _)| p != i).map(|(_, &r)| r).collect();
-        for b in 0..seqs.len() {
-            if !across && b != a {
-                continue;
-            }
-            let q: &[usize] = if b == a { &without } else { &seqs[b] };
-            for j in 0..=q.len() {
-                if b == a && j == i {
+        // Taking out the run of 1 to 3 items from i joins its neighbors; putting it between two items parts them. The
+        // run's own links stay, though in another group they are that group's.
+        for len in 1..=MAX_RUN.min(n - i) {
+            let (first, last) = (s[i], s[i + len - 1]);
+            let (before, after) = (spot(a, s, i, self), s.get(i + len).copied());
+            let out = minus(
+                self.link(a, before, after)?,
+                plus(self.link(a, before, Some(first))?, self.link(a, Spot::Item(last), after)?),
+            );
+            let without: Vec<usize> = s[..i].iter().chain(&s[i + len..]).copied().collect();
+            for b in 0..seqs.len() {
+                if !across && b != a {
                     continue;
                 }
-                let (u, v) = (spot(b, q, j, self), q.get(j).copied());
-                let put =
-                    minus(plus(self.link(b, u, Some(item))?, self.link(b, Spot::Item(item), v)?), self.link(b, u, v)?);
-                offer(plus(out, put), Move::Relocate(b, j), &mut best);
+                let inner = if b == a {
+                    (0, 0.0)
+                } else {
+                    let mut d = (0, 0.0);
+                    for p in i + 1..i + len {
+                        let (from, to) = (Spot::Item(s[p - 1]), Some(s[p]));
+                        d = plus(d, minus(self.link(b, from, to)?, self.link(a, from, to)?));
+                    }
+                    d
+                };
+                let q: &[usize] = if b == a { &without } else { &seqs[b] };
+                for j in 0..=q.len() {
+                    if b == a && j == i {
+                        continue;
+                    }
+                    let (u, v) = (spot(b, q, j, self), q.get(j).copied());
+                    let put = minus(
+                        plus(self.link(b, u, Some(first))?, self.link(b, Spot::Item(last), v)?),
+                        self.link(b, u, v)?,
+                    );
+                    offer(plus(plus(out, put), inner), Move::Relocate(b, j, len), &mut best);
+                }
             }
         }
         // Trading places: the links on both sides of each item, the pair's own link once when they are neighbors.
@@ -273,11 +291,15 @@ impl Model<'_> {
                 continue;
             }
             if b == a {
-                moves.extend((0..n).filter(|&j| j != i).map(|j| Move::Relocate(a, j)));
+                for len in 1..=MAX_RUN.min(n - i) {
+                    moves.extend((0..=n - len).filter(|&j| j != i).map(|j| Move::Relocate(a, j, len)));
+                }
                 moves.extend((i + 1..n).map(|j| Move::Swap(a, j)));
                 moves.extend((i + 2..n).map(Move::Reverse));
             } else {
-                moves.extend((0..=seqs[b].len()).map(|j| Move::Relocate(b, j)));
+                for len in 1..=MAX_RUN.min(n - i) {
+                    moves.extend((0..=seqs[b].len()).map(|j| Move::Relocate(b, j, len)));
+                }
                 moves.extend((0..seqs[b].len()).map(|j| Move::Swap(b, j)));
             }
         }
@@ -339,7 +361,8 @@ impl Model<'_> {
 /// a), trading places with the item at j of b, or reversing a's run from i through j.
 #[derive(Clone, Copy)]
 enum Move {
-    Relocate(usize, usize),
+    /// The run of this many items from i, to position j of group b.
+    Relocate(usize, usize, usize),
     Swap(usize, usize),
     Reverse(usize),
 }
@@ -347,7 +370,9 @@ enum Move {
 impl Move {
     fn kind(self) -> &'static str {
         match self {
-            Move::Relocate(..) => "move",
+            Move::Relocate(_, _, 1) => "move",
+            Move::Relocate(_, _, 2) => "move 2 together",
+            Move::Relocate(..) => "move 3 together",
             Move::Swap(..) => "swap",
             Move::Reverse(_) => "flip",
         }
@@ -358,15 +383,15 @@ impl Move {
 fn changes(seqs: &[Vec<usize>], a: usize, i: usize, mv: Move) -> Vec<(usize, Vec<usize>, usize)> {
     let mut sa = seqs[a].clone();
     match mv {
-        Move::Relocate(b, j) if b == a => {
-            let item = sa.remove(i);
-            sa.insert(j, item);
+        Move::Relocate(b, j, len) if b == a => {
+            let run: Vec<usize> = sa.drain(i..i + len).collect();
+            sa.splice(j..j, run);
             vec![(a, sa, i.min(j))]
         }
-        Move::Relocate(b, j) => {
-            let item = sa.remove(i);
+        Move::Relocate(b, j, len) => {
+            let run: Vec<usize> = sa.drain(i..i + len).collect();
             let mut sb = seqs[b].clone();
-            sb.insert(j, item);
+            sb.splice(j..j, run);
             vec![(a, sa, i), (b, sb, j)]
         }
         Move::Swap(b, j) if b == a => {

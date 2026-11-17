@@ -58,7 +58,7 @@ export class GreedyQueueNode extends GraphNode {
     group: "The column saying which group each item belongs to. An item left blank can go to any group. Left empty, there is one group.",
     step: "The column saying when each item becomes available, such as a day number. Left empty, everything is available from the start.",
     perStep: "The most items a group takes each step. Left empty, one, or as many as fit the budget.",
-    budget: "How much a group can use each step, such as 8 hours a day or 1,000 kg a truck. Each item's Cost counts against it. A step's first item always goes, even if it is over.",
+    budget: "How much a group can use each step, such as 8 hours a day or 1,000 kg a truck. Each item's Cost counts against it. A step's first item always goes, even if it is over, and the card counts those.",
     steps: "How many steps to run. Left empty, it keeps going until every item is taken.",
     orderColumn: "The column that decides which waiting item goes next, such as a due day or a weight. Left empty, first come, first served.",
     order: "A LAMBDA card for an order the columns don't hold, such as the distance from the group's last item: the lowest number goes first. After an Order by column it breaks ties.",
@@ -87,6 +87,8 @@ export class GreedyQueueNode extends GraphNode {
   cachedResult: FrameValue | SolError | null = null;
   cachedLeft: FrameValue | SolError | null = null;
   cachedTotal: number | SolError | null = null;
+  /** How many picks were over the budget on their own (a step's first pick always goes), shown when any were. */
+  cachedOver: number | null = null;
   width = 280; height = 300;
 
   constructor(init?: { label?: string; stepStart?: QueueStepStart; mode?: QueueFit; turns?: QueueTurns; orderDir?: QueueOrderDir }) {

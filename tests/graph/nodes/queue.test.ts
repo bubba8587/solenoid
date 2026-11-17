@@ -44,7 +44,7 @@ describe("Greedy Queue", () => {
     expect(pick(by("desc"))).toEqual(["a", "c", "b", "d"]);
     expect(pick(by("desc"), { order: lambda("X", "X") })).toEqual(["c", "a", "b", "d"]);
     const costed = Object.assign(new GreedyQueueNode(), { stringLiterals: { group: "", step: "", orderColumn: "", costColumn: "Hours" } });
-    const out = run(costed, { items, cost: lambda("X", "X") }) as { picks: unknown; total: number };
+    const out = run(costed, { items, cost: lambda("X", "X") }) as unknown as { picks: unknown; total: number };
     expect(rows(out.picks).map((r) => r.Cost)).toEqual([11, 6, 5, 1]);
     expect(out.total).toBe(23);
     const missing = Object.assign(new GreedyQueueNode(), { stringLiterals: { group: "", step: "", orderColumn: "Nope", costColumn: "" } });
@@ -57,8 +57,12 @@ describe("Greedy Queue", () => {
     const out = run(new GreedyQueueNode(), { items, cost, budget: 6, steps: 1 });
     expect(rows(out.picks).map((r) => [r.X, r.Cost, r["Used Before"]])).toEqual([[0, 2, 0], [1, 3, 2]]);
     expect(rows(out.left)).toHaveLength(2);
-    const big = run(new GreedyQueueNode(), { items: frame([job("A", 1, 1, 0, 9)]), cost, budget: 6, steps: 1 });
+    const bigNode = new GreedyQueueNode();
+    const big = run(bigNode, { items: frame([job("A", 1, 1, 0, 9)]), cost, budget: 6, steps: 1 });
     expect(rows(big.picks)).toHaveLength(1);
+    expect(bigNode.cachedOver).toBe(1);
+    const noCost = run(new GreedyQueueNode(), { items, budget: 6, steps: 1 });
+    expect(isSolError(noCost.picks)).toBe(true);
   });
 
   it("reads last_ from the Start row each step when set to", () => {

@@ -214,6 +214,9 @@ fn take(
 
 fn greedy_queue(c: &mut Call) -> Answer {
     let out = |c: &mut Call, picks: Cv, left: Cv, total: V| {
+        if !matches!(total, V::Num(_)) {
+            c.show("cachedOver", V::Null);
+        }
         c.show("cachedResult", picks.clone());
         c.show("cachedLeft", left.clone());
         c.show("cachedTotal", total.clone());
@@ -293,6 +296,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
         vars,
     };
     let var_refs: Vec<&str> = scope.vars.iter().map(String::as_str).collect();
+
     let bodies = (|| -> Result<_, crate::error_value::SolError> {
         Ok((
             wired_lambda(c, "order", &var_refs)?,
@@ -304,6 +308,16 @@ fn greedy_queue(c: &mut Call) -> Answer {
         Ok(b) => b,
         Err(e) => return fail(c, V::Err(e.into())),
     };
+    // A budget nothing spends from would never stop a group: say so rather than answer as if it did.
+    if budget.is_some() && ci.is_none() && cost.is_none() {
+        return fail(
+            c,
+            err(
+                ErrorCode::Value,
+                "Budget per step needs a cost to count against it: pick a Cost column or wire a Cost formula",
+            ),
+        );
+    }
 
     // The groups: Start's rows first, then each new name among the items. Without a group column, one group.
     let mut groups: Vec<String> = Vec::new();
@@ -510,5 +524,8 @@ fn greedy_queue(c: &mut Call) -> Answer {
     cols.push(column("Used Before", &|p| p.used));
     let left: Vec<usize> = (0..rows).filter(|&r| !picked[r]).collect();
     let total = V::Num(picks.iter().map(|p| p.cost).sum());
+    // A step's first pick goes even when it alone is over the budget; the card says how many did.
+    let over = budget.map_or(0, |b| picks.iter().filter(|p| p.used == 0.0 && p.cost > b).count());
+    c.show("cachedOver", V::Num(over as f64));
     out(c, frame_v(cols), frame_v(taken(&f, &left)), total)
 }
