@@ -14,8 +14,9 @@ specific item.
   Spec: [[chart-figures#US Map]]. Not done: a Chart Builder target, and a fit-to-pins view (a regional data set draws small).
 - **`.ownwheel`** ([[pointer-gestures#Opt-out classes]]): a figure that zooms itself takes the wheel only while its card is
   selected, so a map passed over never traps canvas zoom. `shot-graph` gained `--wheel <css> <dy>` to check it.
-- **`scripts/service-territory/`** and the **Service territory baseline** seed (Modeling; temporary, the author will remove it): a seeded 400-site baseline (`gen-baseline.mjs`; 180 west on four bases, 220 east on six, none in Mississippi or west Tennessee, 30 crossovers, distances through the Earth & Sky Great-Circle Distance card) for a dispatch Monte Carlo,
-  with an Operator Load Composite and two maps. Friction worth a look: PIVOTBY renames values to `Sum of …`, and a later
+- **`scripts/service-territory/`** and the **Service territory baseline** seed (Modeling; temporary, the author will remove it): a seeded 400-site baseline (`gen-baseline.mjs`; 180 west, mostly spread over southeast Texas with about 30 in
+  Arkansas, 220 east; none in Mississippi, west Tennessee or the Gulf; 30 crossovers) for a dispatch Monte Carlo, with an
+  Operator Load Composite and two maps. No home bases: service starts at a site, so the graph carries no distances yet. Friction worth a look: PIVOTBY renames values to `Sum of …`, and a later
   `@[Old Name]` reads 0 quietly rather than `#REF!` (the documented unknown-name-is-an-input rule, but here it hid a real slip).
 
 ### SESSION DIGEST (2026-11-17: React Flow 13.0.1; cloud session)

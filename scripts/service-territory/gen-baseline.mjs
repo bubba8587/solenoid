@@ -6,11 +6,8 @@
 // The seed src/graph/seedGraphs/service-territory.json is this graph as the app saves it, with the menu fields added:
 // `npm run -s validate-graph -- scripts/service-territory/baseline.json --json`, then label, order and group. A stand-in
 // until the simulation is built; remove both together.
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 
-// The Earth & Sky pack's Great-Circle Distance card, read from the pack so the two can't drift apart.
-const pack = readFileSync(new URL("../../src/graph/packs/earthsky.ts", import.meta.url), "utf8");
-const GREAT_CIRCLE = pack.match(/type: "es-haversine", label: "Great-Circle Distance", expr:\s*"([^"]+)"/)[1];
 
 const seedArg = process.argv.indexOf("--seed");
 let state = seedArg > 0 ? Number(process.argv[seedArg + 1]) : 2026;
@@ -23,12 +20,13 @@ const rand = () => {
 };
 const normal = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
 
-// Four bases west, six east, so neither side's operators carry several times the other's load.
+// Each operator's territory center, used only here to hand out sites: four west (three in Texas), six east, so neither side's operators
+// carry several times the other's load. Service starts at a site, so the graph carries no home base.
 const OPERATORS = [
   ["OP-01", "Round Rock, TX", 30.5083, -97.6789],
   ["OP-02", "San Marcos, TX", 29.8833, -97.9414],
   ["OP-03", "Little Rock, AR", 34.7465, -92.2896],
-  ["OP-04", "Conway, AR", 35.0887, -92.4421],
+  ["OP-04", "Houston, TX", 29.7604, -95.3698],
   ["OP-05", "Birmingham, AL", 33.5186, -86.8104],
   ["OP-06", "Montgomery, AL", 32.3792, -86.3077],
   ["OP-07", "Mobile, AL", 30.6954, -88.0399],
@@ -38,15 +36,19 @@ const OPERATORS = [
 ];
 
 // Area, center, radius in miles, sites, and the bearings (degrees clockwise from north) land lies on. The radii are wide
-// enough that neighboring clusters touch, so the sites between two bases are close calls.
+// enough that neighboring clusters touch, so the sites between two territories are close calls.
 const AREAS = [
-  ["Austin", 30.27, -97.74, 50, 50],
-  ["Round Rock", 30.62, -97.62, 40, 25],
-  ["San Marcos", 29.85, -98.02, 35, 22],
-  ["Little Rock", 34.75, -92.29, 50, 38],
-  ["Conway", 35.09, -92.44, 40, 20],
-  ["Hot Springs", 34.50, -93.06, 30, 12],
-  ["Pine Bluff", 34.23, -92.00, 30, 10],
+  ["Austin", 30.27, -97.74, 55, 30],
+  ["Round Rock", 30.62, -97.62, 40, 12],
+  ["San Marcos", 29.85, -98.02, 40, 12],
+  ["Houston", 29.85, -95.45, 60, 30],
+  ["Bryan", 30.67, -96.37, 45, 10],
+  ["Beaumont", 30.08, -94.13, 40, 10, [180, 360]],
+  ["Victoria", 28.81, -97.00, 45, 10],
+  ["East Texas", 31.25, -94.90, 70, 16],
+  ["Southeast Texas", 29.90, -96.30, 110, 19],
+  ["Little Rock", 34.75, -92.29, 50, 22],
+  ["Hot Springs", 34.50, -93.06, 30, 6],
   ["Birmingham", 33.52, -86.80, 45, 30],
   ["Tuscaloosa", 33.21, -87.57, 35, 14],
   ["Huntsville", 34.73, -86.59, 40, 20],
@@ -60,12 +62,12 @@ const AREAS = [
   ["Knoxville", 35.96, -83.92, 45, 26],
 ];
 
-// Far from any base, each kept with the operator named: the outliers a better assignment might move.
+// Far from every territory, each kept with the operator named: the outliers a better assignment might move.
 const OUTLIERS = [
-  ["Houston", 29.76, -95.37, "OP-02"],
+  ["Laredo", 27.53, -99.49, "OP-02"],
   ["Corpus Christi", 27.80, -97.40, "OP-02"],
   ["Texarkana", 33.43, -94.05, "OP-03"],
-  ["Jonesboro", 35.84, -90.70, "OP-04"],
+  ["Jonesboro", 35.84, -90.70, "OP-03"],
   ["Nashville", 36.16, -86.78, "OP-09"],
   ["Panama City", 30.16, -85.66, "OP-08"],
   ["Tallahassee", 30.44, -84.28, "OP-08"],
@@ -75,9 +77,11 @@ const OUTLIERS = [
 
 const CROSSOVERS = 30;
 
-// Mississippi and west Tennessee stay empty: a random point that lands in either is drawn again.
+// Mississippi and west Tennessee stay empty, and so does the Gulf off Texas (south of a line along the coast from Corpus
+// Christi to Sabine Pass): a random point that lands in any of them is drawn again.
 const offLimits = (lat, lon) =>
-  (lat > 30.2 && lat < 35.0 && lon > -91.6 && lon < -88.1) || (lat >= 35.0 && lat < 36.7 && lon > -90.3 && lon < -87.9);
+  (lat > 30.2 && lat < 35.0 && lon > -91.6 && lon < -88.1) || (lat >= 35.0 && lat < 36.7 && lon > -90.3 && lon < -87.9) ||
+  (lon > -97.6 && lon < -93.6 && lat < 27.55 + (lon + 97.6) * 0.5) || (lon > -93.85 && lon < -91.6 && lat < 30.2);
 
 const miles = (lat1, lon1, lat2, lon2) => {
   const r = Math.PI / 180;
@@ -101,7 +105,7 @@ for (const [area, lat, lon, radius, n, arc = [0, 360]] of AREAS) {
     sites.push({ area, lat: sLat, lon: sLon, op: near[0].id, how: "Nearest", near });
   }
 }
-// A crossover goes to the second-nearest base where the two are close calls: the sites a dispatcher would argue over.
+// A crossover goes to the second-nearest territory where the two are close calls: the sites a dispatcher would argue over.
 const contested = sites.filter((s) => s.near[1].d < s.near[0].d * 1.6 && s.near[1].d < 150);
 for (let k = 0; k < CROSSOVERS && contested.length > 0; k++) {
   const s = contested.splice(Math.floor(rand() * contested.length), 1)[0];
@@ -133,23 +137,7 @@ const graph = {
       col("Site", "string"), col("Area", "string"), col("Latitude", "number"), col("Longitude", "number"),
       col("Class", "string"), col("Operator", "string"), col("Assignment", "string"), col("Rel Freq", "number"),
     ] },
-    { id: "ops", type: "FrameInputNode", init: { label: "Operators" }, frame: [
-      { name: "Operator", type: "string", cells: OPERATORS.map((o) => o[0]) },
-      { name: "Base", type: "string", cells: OPERATORS.map((o) => o[1]) },
-      { name: "Base Lat", type: "number", cells: OPERATORS.map((o) => o[2]) },
-      { name: "Base Lon", type: "number", cells: OPERATORS.map((o) => o[3]) },
-    ] },
     { id: "annual", type: "ValueInputNode", init: { label: "Incidents per year", value: "1500" } },
-    { id: "speed", type: "ValueInputNode", init: { label: "Average speed (mph)", value: "50" } },
-    { id: "join", type: "JoinNode", init: { label: "Sites with their base", how: "left" }, stringLiterals: { leftKey: "Operator", rightKey: "Operator" } },
-    ...[["Latitude", "site_lat"], ["Longitude", "site_lon"], ["Base Lat", "base_lat"], ["Base Lon", "base_lon"]].map(([name, id]) =>
-      ({ id, type: "GetColumnNode", init: { label: name, readAs: "number" }, stringLiterals: { name } })),
-    { id: "gcd", type: "ExpressionNode", init: { label: "Great-Circle Distance", expr: GREAT_CIRCLE, locked: true,
-      varDescriptions: { lat1: "Start latitude (°)", lon1: "Start longitude (°)", lat2: "End latitude (°)", lon2: "End longitude (°)" } } },
-    { id: "addkm", type: "AddColumnNode", init: { label: "Distance to base", addAs: "number" }, stringLiterals: { name: "Great Circle km" } },
-    // Kilometers to miles, times 1.25 for roads.
-    cc("roadmi", "Road miles to base", "Road Miles", "ROUND(@[Great Circle km] * 0.621371 * 1.25, 1)"),
-    cc("drive", "One-way drive", "Drive Min", "ROUND(@[Road Miles] / mph * 60, 0)", { sideVars: ["mph"] }),
     cc("expected", "Expected incidents", "Incidents per Yr", "ROUND(annual * @[Rel Freq] / SUM([Rel Freq]), 2)", { sideVars: ["annual"] }),
     {
       id: "load", type: "CompositeNode",
@@ -163,20 +151,15 @@ const graph = {
             { id: "load_in", type: "CompositeInputNode", init: { label: "Sites" } },
             cc("l_one", "Count each site", "Sites", "1"),
             cc("l_c1", "Class I flag", "Class I Sites", "IF(@Class = \"Class I\", 1, 0)"),
-            cc("l_hrs", "Round-trip hours", "Drive Hours per Yr", "ROUND(@[Incidents per Yr] * @[Drive Min] * 2 / 60, 1)"),
             { id: "l_pivot", type: "PivotNode", init: { label: "Per operator", agg: "sum" },
-              stringLiterals: { rowFields: "Operator", values: "Sites, Class I Sites, Incidents per Yr, Drive Hours per Yr" } },
-            // PIVOTBY names each value "Sum of …".
-            cc("l_avg", "Average response", "Avg Drive Min", "IF(@[Sum of Incidents per Yr] > 0, ROUND(@[Sum of Drive Hours per Yr] * 30 / @[Sum of Incidents per Yr], 1), 0)"),
+              stringLiterals: { rowFields: "Operator", values: "Sites, Class I Sites, Incidents per Yr" } },
             { id: "load_out", type: "CompositeOutputNode", init: { label: "Load" } },
           ],
           connections: [
             { source: "load_in", sourceOutput: "value", target: "l_one", targetInput: "frame" },
             { source: "l_one", sourceOutput: "frame", target: "l_c1", targetInput: "frame" },
-            { source: "l_c1", sourceOutput: "frame", target: "l_hrs", targetInput: "frame" },
-            { source: "l_hrs", sourceOutput: "frame", target: "l_pivot", targetInput: "frame" },
-            { source: "l_pivot", sourceOutput: "frame", target: "l_avg", targetInput: "frame" },
-            { source: "l_avg", sourceOutput: "frame", target: "load_out", targetInput: "value" },
+            { source: "l_c1", sourceOutput: "frame", target: "l_pivot", targetInput: "frame" },
+            { source: "l_pivot", sourceOutput: "frame", target: "load_out", targetInput: "value" },
           ],
         },
       },
@@ -185,22 +168,7 @@ const graph = {
     { id: "map_how", type: "UsMapNode", init: { label: "Crossovers and outliers" }, stringLiterals: { options: "c=Assignment; annotate=Site; title=How each site was assigned" } },
   ],
   cables: [
-    "sites.frame -> join.left",
-    "ops.frame -> join.right",
-    "join.frame -> site_lat.frame",
-    "join.frame -> site_lon.frame",
-    "join.frame -> base_lat.frame",
-    "join.frame -> base_lon.frame",
-    "base_lat.values -> gcd.lat1",
-    "base_lon.values -> gcd.lon1",
-    "site_lat.values -> gcd.lat2",
-    "site_lon.values -> gcd.lon2",
-    "join.frame -> addkm.frame",
-    "gcd.result -> addkm.values",
-    "addkm.frame -> roadmi.frame",
-    "roadmi.frame -> drive.frame",
-    "speed.value -> drive.mph",
-    "drive.frame -> expected.frame",
+    "sites.frame -> expected.frame",
     "annual.value -> expected.annual",
     "expected.frame -> load.in_sites",
     "expected.frame -> map_ops.frame",
@@ -208,9 +176,7 @@ const graph = {
   ],
 };
 const AT = {
-  sites: [0, 0], ops: [0, 300], annual: [0, 560], speed: [0, 700], join: [340, 0],
-  site_lat: [660, 0], site_lon: [660, 150], base_lat: [660, 300], base_lon: [660, 450], gcd: [940, 0], addkm: [940, 330],
-  roadmi: [1260, 0], drive: [1580, 0], expected: [1900, 0], load: [2240, 0], map_ops: [2240, 340], map_how: [2900, 340],
+  sites: [0, 0], annual: [0, 300], expected: [340, 0], load: [700, 0], map_ops: [700, 300], map_how: [1360, 300],
 };
 for (const n of graph.nodes) [n.x, n.y] = AT[n.id];
 for (const id of ["map_ops", "map_how"]) graph.nodes.find((n) => n.id === id).init.width = 620;
@@ -218,6 +184,6 @@ writeFileSync(new URL("./baseline.json", import.meta.url), JSON.stringify(graph,
 const count = (k, v) => rows.filter((r) => r[k] === v).length;
 const west = sites.filter((x) => x.lon < -91).length;
 const loads = OPERATORS.map(([id]) => `${id} ${sites.filter((x) => x.op === id).length}`).join(", ");
-if (sites.some((x) => offLimits(x.lat, x.lon))) throw new Error("a site landed in Mississippi or west Tennessee");
+if (sites.some((x) => offLimits(x.lat, x.lon))) throw new Error("a site landed in Mississippi, west Tennessee or the Gulf");
 console.log(`west ${west}, east ${sites.length - west}; ${loads}`);
 console.log(`${rows.length} sites: ${count("Assignment", "Nearest")} nearest, ${count("Assignment", "Crossover")} crossovers, ${count("Assignment", "Outlier")} outliers; ${count("Class", "Class I")} Class I`);
