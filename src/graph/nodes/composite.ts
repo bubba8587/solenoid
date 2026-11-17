@@ -728,6 +728,10 @@ export class CompositeNode extends GraphNode {
     const stopFeed = this.resolveStopFeed(conns);
 
     const loopOrder = this.internalEditor.getNodes().map((n) => n.id).filter((id) => loop.has(id));
+    // Only an output fed straight from a member reads the rounds back, so only those members keep a snapshot: every
+    // member's every round held a long run's tables alive until the solve ended.
+    const outputMarkers = new Set(this.outputPorts.map((p) => p.internalNodeId));
+    const seriesMembers = new Set(conns.filter((c) => outputMarkers.has(c.target) && c.targetInput === "value" && loop.has(c.source)).map((c) => c.source));
     const steps = Math.max(1, Math.round(this.simulationSteps));
     const fullSeries: Record<string, Record<string, unknown>>[] = [];
     const state = new Map<string, Record<string, unknown>>();
@@ -743,7 +747,7 @@ export class CompositeNode extends GraphNode {
         state.set(id, await this.internalEngine.compute(id, nodeInputs));
       }
       const snapshot: Record<string, Record<string, unknown>> = {};
-      for (const id of loopOrder) snapshot[id] = state.get(id)!;
+      for (const id of seriesMembers) snapshot[id] = state.get(id)!;
       fullSeries.push(snapshot);
       if (stopFeed && (await this.stopSignalTrue(stopFeed, state, loop))) break;
     }

@@ -113,6 +113,8 @@ export interface RunOptions {
   data?: string;
   tasknotes?: string;
   run?: string;
+  /** Press Solve on every Composite whose run mode waits for it (Simulation, Monte Carlo, Data Table…). */
+  solve?: boolean;
   /** Values typed into input cards before the run, by the card's name. */
   set?: Record<string, string>;
   /** The only cards to print, by name; every card when empty. */
@@ -225,6 +227,10 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
     await whenConnectionsSettled();
     values = await computeAll(editor, engine);
   }
+  if (opts.solve) {
+    for (const node of byId.values()) if (node instanceof CompositeNode && node.isHeavyMode()) node.solveRequested = true;
+    values = await computeAll(editor, engine);
+  }
   if (opts.run) {
     const want = opts.run.trim().toLowerCase();
     const sink = [...byId.values()].find((n) => ((n as unknown as { label?: string }).label ?? "").trim().toLowerCase() === want) as
@@ -259,7 +265,7 @@ export async function main(args: string[]): Promise<void> {
   const rest: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (a === "--force" || a === "--raw") continue;
+    if (a === "--force" || a === "--raw" || a === "--solve") continue;
     if (["--vault", "--data", "--tasknotes", "--run", "--set", "--out", "--formula"].includes(a)) {
       if (args[i + 1] === undefined) throw new Error(`${a} needs a value after it.`);
       (flags[a] ??= []).push(args[++i]);
@@ -271,7 +277,7 @@ export async function main(args: string[]): Promise<void> {
     if (eq < 1) throw new Error(`--set ${pair}: write it as name=value.`);
     set[pair.slice(0, eq).trim()] = pair.slice(eq + 1);
   }
-  const opts: RunOptions = { vault: flags["--vault"]?.[0], data: flags["--data"]?.[0], tasknotes: flags["--tasknotes"]?.[0], run: flags["--run"]?.[0], set, out: flags["--out"] ?? [] };
+  const opts: RunOptions = { vault: flags["--vault"]?.[0], data: flags["--data"]?.[0], tasknotes: flags["--tasknotes"]?.[0], run: flags["--run"]?.[0], solve: args.includes("--solve"), set, out: flags["--out"] ?? [] };
   const print = (v: unknown) => console.log(JSON.stringify(args.includes("--raw") ? v : plainValue(v), null, 2));
   const formula = flags["--formula"]?.[0];
   if (formula !== undefined) {
@@ -281,7 +287,7 @@ export async function main(args: string[]): Promise<void> {
   }
   const file = rest[0];
   if (!file) {
-    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--raw] [--set name=value]… [--out name]… [--vault <path>] [--data <folder>] [--tasknotes <url>] [--run <sink name>]\n       npm run run-graph -- --formula '<formula>' [--set name=number]… [--raw]");
+    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--raw] [--set name=value]… [--out name]… [--vault <path>] [--data <folder>] [--tasknotes <url>] [--run <sink name>] [--solve]\n       npm run run-graph -- --formula '<formula>' [--set name=number]… [--raw]");
     process.exit(1);
   }
   const raw = readFileSync(file, "utf8");
