@@ -15,6 +15,7 @@
 //   --click-edge <css>   click the first match 5px in from its top-left corner (a popup's overlay, outside the card)
 //   --type <css> <text>  focus the first match, select all, type the text
 //   --press <key>        press a key (Enter, Escape, Tab…) or a combo (Control+Shift+Equal)
+//   --eval <js>          evaluate an expression in the page and print its JSON (a layout measurement)
 //   --hscroll <css> <px> scroll the first match sideways to that many px (a wide table's scroller)
 //   --wheel <css> <dy>   turn the wheel by dy (negative zooms in) over the first match's center
 //   --drag <css> <dx> <dy>  press the first match's center, move by (dx, dy) screen px, release; prints each card's box before and after
@@ -42,6 +43,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--rclick") opt.steps.push({ click: argv[++i], right: true });
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
+  else if (a === "--eval") opt.steps.push({ evaluate: argv[++i] });
   else if (a === "--hscroll") opt.steps.push({ hscroll: argv[++i], px: Number(argv[++i]) });
   else if (a === "--wheel") opt.steps.push({ wheel: argv[++i], dy: Number(argv[++i]) });
   else if (a === "--drag" || a === "--drag-hold") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]), hold: a === "--drag-hold" });
@@ -57,7 +59,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--hscroll css px] [--wheel css dy] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--insets top,bottom] [--scale N]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--eval js] [--hscroll css px] [--wheel css dy] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--insets top,bottom] [--scale N]"); process.exit(2); }
 
 // A text-form file (the AI grounding's format) is validated and read by the app's own reader first.
 const source = readFileSync(opt.file, "utf8");
@@ -157,6 +159,9 @@ try {
       for (const k of keys) await page.keyboard.down(k);
       await page.keyboard.press(last);
       for (const k of keys.reverse()) await page.keyboard.up(k);
+    }
+    else if (step.evaluate) {
+      console.log("eval:", JSON.stringify(await page.evaluate(step.evaluate)));
     }
     else if (step.hscroll) {
       await page.$eval(step.hscroll, (el, px) => { el.scrollLeft = px; }, step.px);

@@ -153,6 +153,8 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 .dashboard-box__value .solenoid-table-display__chip { padding: 6px 14px 8px; }
 /* A Pivot sits flush the same way: its first column lines up with the box's name. */
 .dashboard-box__value .pivot-figure .pivot-view__table tr > :first-child { padding-left: 14px; }
+/* Its header stays on the table's neutral ground, as a Frame's does, not the view's accent tint. */
+.dashboard-box__value .pivot-figure .pivot-view__head { background: var(--surface-sunken); }
 /* Under a tint's solid name bar the bar is the edge, so the table starts right below it. */
 .dashboard-box--tinted .dashboard-box__value:has(> .solenoid-ref-figure > :is(.solenoid-table-display, .pivot-figure)) { margin-top: 0; border-top: none; }
 /* A Frame shown as cards: the popup's one 460 px column becomes a grid across the box, scrolling in the box and,
