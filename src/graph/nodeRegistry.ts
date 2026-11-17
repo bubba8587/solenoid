@@ -6,7 +6,7 @@ import type { JSXElementConstructor } from "react";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DelayedPassNode, NoteNode, ReportNode, DashboardNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
   SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ValueInputNode, DateRangeNode, XYPadNode,
-  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, UsMapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode,
   ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
@@ -82,7 +82,7 @@ import {
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, DelayedPassComponent, NoteComponent, ReportComponent, DashboardComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
   SparklineComponent, ChartComponent, MergePlotsComponent, ConditionalRegionsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
-  WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, RecordComponent, CardsComponent, GanttComponent,
+  WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, UsMapComponent, QuiverComponent, RecordComponent, CardsComponent, GanttComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent, EditFrameComponent,
   ArithmeticComponent, DisplayComponent, ComparisonComponent,
@@ -198,6 +198,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [CandlestickNode, comp(CandlestickComponent)],
   [BoxplotNode,     comp(BoxplotComponent)],
   [CalendarHeatmapNode, comp(CalendarHeatmapComponent)],
+  [UsMapNode, comp(UsMapComponent)],
   [QuiverNode,      comp(QuiverComponent)],
   [RecordNode,      comp(RecordComponent)],
   [CardsNode,       comp(CardsComponent)],

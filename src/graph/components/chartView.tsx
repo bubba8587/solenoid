@@ -4,7 +4,7 @@ import type { ChartShape } from "./chartCore";
 import { toSeries, partSlices, figurePoints, HEAVY_FIGURE_POINTS } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
-import type { ChartRef, ChartValue, ScalePayload, OverlayPayload, XYPayload } from "../chartValue";
+import type { ChartRef, ChartValue, ScalePayload, OverlayPayload, XYPayload, UsMapPayload } from "../chartValue";
 import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { SurfaceView } from "./SurfaceView";
@@ -33,6 +33,7 @@ const SankeyViewInner = lazy(() => import("./chartRender").then((m) => ({ defaul
 const XYViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.XYView })));
 const MultiSeriesViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.MultiSeriesView })));
 const OverlayViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.OverlayView })));
+const UsMapViewInner = lazy(() => import("./usMapView").then((m) => ({ default: m.UsMapView })));
 const GanttFigureInner = lazy(() => import("@solenoid/gantt-react").then((m) => ({ default: m.GanttFigure })));
 
 const GANTT_EXPORT_W = 1000;
@@ -104,6 +105,15 @@ function OverlayView(props: { payload: OverlayPayload; width: number; height: nu
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <OverlayViewInner {...props} />
+    </Suspense>
+  );
+}
+
+// The outlines ride the map's own chunk, so a graph without one never loads them.
+function UsMapView(props: { payload: UsMapPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
+  return (
+    <Suspense fallback={box(props.width, props.height)}>
+      <UsMapViewInner {...props} />
     </Suspense>
   );
 }
@@ -235,6 +245,8 @@ const FigureBody = memo(function FigureBody({ value, width, height, axes = true,
     return <LadderView payload={value.payload} width={width} height={height} fscale={fscale} onAction={ladderAction} />;
   if (value.op === "forecast" && value.payload?.kind === "forecast")
     return <ForecastView payload={value.payload} width={width} height={height} fscale={fscale} />;
+  if (value.op === "usmap" && value.payload?.kind === "usmap")
+    return <UsMapView payload={value.payload} options={value.options} width={width} height={height} fscale={fscale} />;
   if (value.op === "scatter" || value.op === "xyline" || value.op === "bubble") return EMPTY_FIGURE;
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
 });

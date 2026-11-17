@@ -45,7 +45,7 @@ mindmap
     ["title: popup, embed and chip only"]
 ```
 
-`ChartValueOp` is the union of the Chart node's eleven ops (`column`, `bar`, `line`, `area`, `scatter`, `xyline`, `pie`, `radar`, `radialbar`, `funnel`, `bubble`, the keys of `CHART_OP_META`) and the seventeen special ops in `CHART_SPECIAL_OPS` (`kpi`, `scale`, `proportion`, `sankey`, `surface`, `contour`, `waterfall`, `candle`, `boxplot`, `calheat`, `heatmap`, `quiver`, `record`, `overlay`, `gantt`, `ladder`, `forecast`). `chartValueOps()` enumerates all 28 at runtime, and `chartPopupCoverage.test.ts` checks that every one reaches the shared popup path.
+`ChartValueOp` is the union of the Chart node's eleven ops (`column`, `bar`, `line`, `area`, `scatter`, `xyline`, `pie`, `radar`, `radialbar`, `funnel`, `bubble`, the keys of `CHART_OP_META`) and the eighteen special ops in `CHART_SPECIAL_OPS` (`kpi`, `scale`, `proportion`, `sankey`, `surface`, `contour`, `waterfall`, `candle`, `boxplot`, `calheat`, `heatmap`, `quiver`, `record`, `overlay`, `gantt`, `ladder`, `forecast`, `usmap`). `chartValueOps()` enumerates all 29 at runtime, and `chartPopupCoverage.test.ts` checks that every one reaches the shared popup path.
 
 ### Payloads
 
@@ -67,6 +67,7 @@ The figure picks its renderer, not the surface ([[C100]] chartIsAValue): rechart
 | `boxplot` | `boxes: { name, lo, q1, med, q3, hi, outliers: number[] }[]`. |
 | `calheat` | `days: number[]` (whole date serials, each once, ascending), `values: number[]` (each day's total), parallel. |
 | `heatmap` | `z: (number \| null)[][]` row-major, null a gap; `rows`, `cols: string[]` (the labels); `totalRows?`, `totalCols?`, set only when the table was cut to `HEATMAP_MAX` (400) rows or columns. |
+| `usmap` | `scope: "lower48" \| "all50"`, `lat`, `lon: number[]` (one pin per drawn row, in row order), `text?: string[]` (each pin's name), `c?: (number \| null)[]` (a number, or an index into `cCats` when the color column is text), `cCats?`, `cRange?: [lo, hi]`, `s?: (number \| null)[]`, `sRange?`, `names: { c?, s?, text? }` (the column names, for the tooltip and the legend), `skipped` (rows with no finite latitude and longitude in range, drawn as no pin). |
 | `quiver` | `u`, `v`: same-shaped `(number \| null)[][]` of the x and y components, one arrow per cell. |
 | `record` | See The Record figure. |
 | `overlay` | `series: OverlaySeries[]`, `labels?: (string \| number)[]`. An `OverlaySeries` is `{ name, kind: "line" \| "area" \| "column" \| "bar", values: (number \| null)[], color?, markersize?, linewidth?, alpha?, marker?: boolean }`. |
@@ -108,6 +109,7 @@ Each figure node computes its value in `data()`, caches it on the node (`cachedC
 | Candlestick | `frame` (Date + OHLC), `options` | `candle` | the known closes | yes |
 | Boxplot | `values` (frame or list, received raw), `options` | `boxplot` | null | yes |
 | Calendar Heatmap | `frame` (Date + Value), `options` | `calheat` | the values | yes |
+| US Map | `frame` (Lat + Lon), `options`; Lower 48 or All 50 on the card (`scope`) | `usmap` | null | yes |
 | Heatmap | `values` (frame, table or list, received raw), `options` | `heatmap` | null | yes |
 | Record | `frame`, `rows`, `by` (Board only), `layout` (all but Cards), `options` | `record` | null | yes |
 | Vector Field (Quiver) | `u`, `v` (tables), `options` | `quiver` | null | yes |
@@ -115,7 +117,7 @@ Each figure node computes its value in `data()`, caches it on the node (`cachedC
 | Choice Ladder | `frame` (Options), `weights`, `limits`, `close`; outputs `frame` (Plan) and `chart` | `ladder` | null | none, `{}` |
 | Mermaid | `source` (string) | MermaidValue | n/a | n/a |
 
-Title defaults (used when neither the options `title` nor the label is set): Sparkline `"Sparkline"`, Chart `"Chart"`, Merge Plots `"Merged Plot"`, Histogram `"Histogram"`, Gauge `"Gauge"`, KPI `"KPI"`, Proportion `"Proportion"`, Sankey `"Sankey"`, Surface `"Surface"` or `"Contour"`, Waterfall `"Waterfall"`, Candlestick `"Candlestick"`, Boxplot `"Boxplot"`, Calendar Heatmap `"Calendar Heatmap"`, Heatmap `"Heatmap"`, Record `"Record"`, Vector Field `"Vector Field"`, Gantt `"Gantt"`, Choice Ladder `"Choice Ladder"`. Nodes without options take the title from the label alone.
+Title defaults (used when neither the options `title` nor the label is set): Sparkline `"Sparkline"`, Chart `"Chart"`, Merge Plots `"Merged Plot"`, Histogram `"Histogram"`, Gauge `"Gauge"`, KPI `"KPI"`, Proportion `"Proportion"`, Sankey `"Sankey"`, Surface `"Surface"` or `"Contour"`, Waterfall `"Waterfall"`, Candlestick `"Candlestick"`, Boxplot `"Boxplot"`, Calendar Heatmap `"Calendar Heatmap"`, US Map `"US Map"`, Heatmap `"Heatmap"`, Record `"Record"`, Vector Field `"Vector Field"`, Gantt `"Gantt"`, Choice Ladder `"Choice Ladder"`. Nodes without options take the title from the label alone.
 
 ### Sparkline
 
@@ -201,6 +203,18 @@ Proportion, Sankey, Waterfall, Candlestick and Calendar Heatmap read their frame
 - **Waterfall:** names column 0, deltas column 1 with null kept as a gap; `total` is always true.
 - **Candlestick:** no columns gives a null output. Fewer than four columns is `#SHAPE!` "Candlestick needs Open, High, Low and Close columns (a date column first is optional)". Five or more: column 0 is the label axis (as text) and columns 1 to 4 are OHLC. Exactly four: all four are OHLC and labels are `"1"`, `"2"`, ….
 - **Calendar Heatmap:** column 0 is read raw (a date stays a serial) and a row without a finite date is dropped; the day is `floor(serial)`. Each day carries the sum of its rows: a row adds its column 1 number when column 1 is a Number column and the cell is a finite number, else 1, so a blank value counts the row and a frame of dated entries (a second column of text, or none) counts entries per day (author 2026-11-02). The days come out once each, in date order. The figure still sums any repeated day it is handed.
+
+### US Map
+
+Code: `us_map` in `nodes/visual.rs`; the figure in `components/usMapView.tsx`, its geometry in `geo/usMapLayout.ts` and `geo/albersUsa.ts`.
+
+A pin per row of a frame on a map of the states. The place columns are the ones the options name (`lat`, `lon`, plotly's `scatter_geo` names), else the first column named Lat or Latitude and the first named Lon, Lng, Long or Longitude (case-insensitive). `c` colors the pins (a text column as categories on the palette, with a legend; a number column on `cmap`, viridis by default, with a colorbar), `s` sizes them (a number column, 2.5 to 9 px across its range), and `annotate` names them, else the first text column that is neither a place nor the color. A named column the data lacks is `#REF!`, as on the XY plots; so is a non-empty frame with no place columns found, since a map with no pins would read as no data. A text `s` column is `#TYPE!`. A row whose latitude or longitude is blank, not a number or out of range draws no pin and is counted in `skipped`.
+
+- **Scope.** Lower 48 (default) draws the contiguous states and DC; All 50 adds Alaska and Hawaii in insets. The scope is a setting of the card (`scope`, a toggle with no socket), not an option, and not an op: nobody searches the Add menu for "Lower 48" ([[C26]] opArgDistinct).
+- **Projection.** d3-geo's `geoAlbersUsa` written out (`albersUsa`, checked against d3 to a hundredth of a pixel in `usMapLayout.test.ts`), so the 975×610 frame matches us-atlas's own pre-projected files. A point goes to the first of the lower-48, Alaska and Hawaii conics whose box holds it, as d3 routes it. On Lower 48 a point routed to an inset, and on either scope a point no box holds, draws no pin and is counted under the map as "N off the map": a pin is never drawn somewhere it isn't.
+- **Outlines.** `geo/usStates.json`, the Census cartographic boundaries from us-atlas 3.0.1 simplified to about 44 KB (`scripts/gen-us-states.mjs`), loaded with the figure's lazy chunk so a graph without a map never fetches it.
+- **Zoom and pan.** The figure owns its view: the wheel zooms about the pointer, a drag pans, a double-click or Reset shows the whole map; the view is held between the whole map and 40 times closer and never pans off it (`zoomBox`, `panBox`). Pins and borders keep their screen size at any zoom. On the canvas the wheel is the map's only while its card is selected (`.ownwheel`, [[pointer-gestures#Opt-out classes]]), so a wheel passing over an unselected map zooms the canvas; a click on the map selects the card. The view is the figure's own state, not saved and not on the value.
+- **Options read:** `title`, `fontsize`, `lat`, `lon`, `c`, `s`, `annotate`, `color` (the pins' one color when there is no `c`), `cmap`, `markersize`, `alpha`. Chart Builder has no US Map target yet.
 
 ### Heatmap
 
@@ -292,6 +306,7 @@ Code: `parse_chart_options` (`nodes/visual.rs`).
 | `aspect` | `equal` or `auto` | auto; equal on Heatmap | `equal` pads the axis ranges so a unit spans the same pixels on x and y (a circle draws round), with round-number ticks. On a Heatmap it draws square cells, and `auto` stretches them to fill the plot. |
 | `linestyle`, `ls` | `-` or `solid`, `--` or `dashed`, `:` or `dotted`, `-.` or `dashdot`, `none` | `solid` on XY Line, `none` on Scatter and Bubble | The line joining an XY series' points in row order, broken at each gap. |
 | `x`, `s`, `c`, `annotate`, `by` | non-empty text (a column name) | see XY plots | The x, size, color, point-text and split-by columns of an XY figure. `s` and `c` are pandas' scatter names; `annotate` and `by` are our own. |
+| `lat`, `lon` | non-empty text (a column name) | the usual names (see US Map) | The US Map's latitude and longitude columns, plotly's `scatter_geo` names. |
 | `y` | a comma list of column names | see XY plots | The y columns of an XY figure. |
 | `cmap` | a colormap name, any case, `_r` reversing (see The Heatmap figure), or `palette`, the theme's own palette; stored in matplotlib's spelling | the palette's height ramp, or its diverging ramp when `center` is set; an XY figure's points with no `c` keep their series' one color | The Heatmap's colors, and the ramp an XY figure's numeric `c` paints with. Set with no `c`, it colors an XY figure's points in their order: `palette` cycles the theme's series colors, a named map steps along its ramp from the first point to the last. A `c` column always decides instead. The Chart Builder lists `—` (unset) first, then Theme palette and the maps. |
 | `vmin`, `vmax` | number | the data's range | The values at the colormap's ends; values past them take the end color. |
@@ -333,6 +348,7 @@ A key a renderer does not read is inert on that figure. For each Chart Builder t
 | Merge Plots (`overlay`) | `title`, `xlabel`, `ylabel`, `grid`, `aspect`, `xmin`/`xmax`, `ymin`/`ymax`, and on an XY merge `yscale`, `maxgap`, `linewidth` (a fallback for series without one), `fontsize`; each series keeps its inherited `color`, `markersize`, `linewidth`, `alpha`, `marker` |
 | KPI, Gauge (`scale`), Proportion, Sankey, Waterfall, Candlestick, Boxplot | `title`, `fontsize` |
 | Calendar Heatmap | `title`, `cmap`, `center`, `vmin`/`vmax`, `cbar`, `fontsize` |
+| US Map | `title`, `fontsize`, `lat`, `lon`, `c`, `s`, `annotate`, `color`, `cmap`, `markersize`, `alpha` |
 | Contour (Surface, Flat view) | `title`, `xlabel`, `ylabel`, `cmap`, `center`, `vmin`/`vmax`, `cbar`, `fontsize` |
 | Surface (3-D view), Vector Field | `title`, `cmap`, `fontsize` |
 | Heatmap, Histogram 2-D | `title`, `xlabel`, `ylabel`, `cmap`, `center`, `vmin`/`vmax`, `annot`, `fmt`, `cbar`, `aspect`, `origin`, `fontsize` |
@@ -530,6 +546,7 @@ Every figure node except Chart is subject to the error guard's short-circuit ([[
 | Sankey | `#SHAPE!` when every flow closes a loop. |
 | Candlestick | `#SHAPE!` with fewer than four columns. |
 | Gantt | `#VALUE!` with no task column, or a task without Start or Finish. |
+| US Map | `#REF!` when the options name a column the data lacks, or the data has no place columns; `#TYPE!` when the size column is not numbers. |
 
 A chart output that is a `SolError` renders as an error everywhere else: Display's error value box, a Report's inline error code, the Merge Plots card's error chip, the shared figure card's code with the message as its tooltip.
 

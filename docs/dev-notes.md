@@ -6,6 +6,18 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-17b: the US Map card, a service-territory baseline; cloud session)
+
+- **US Map** (`UsMapNode`, `us_map` in `nodes/visual.rs`, op `usmap`): a pin per frame row on the states, Lower 48 or All 50 on a
+  `scope` toggle, `c`/`s`/`annotate` plus new `lat`/`lon` option keys. The projection is d3's `geoAlbersUsa` written out
+  (`geo/albersUsa.ts`, pinned to d3 in a test); outlines are `geo/usStates.json` (44 KB, lazy, `scripts/gen-us-states.mjs`).
+  Spec: [[chart-figures#US Map]]. Not done: a Chart Builder target, and a fit-to-pins view (a regional data set draws small).
+- **`.ownwheel`** ([[pointer-gestures#Opt-out classes]]): a figure that zooms itself takes the wheel only while its card is
+  selected, so a map passed over never traps canvas zoom. `shot-graph` gained `--wheel <css> <dy>` to check it.
+- **`scripts/service-territory/`**: a seeded 400-site, 10-operator baseline (`gen-baseline.mjs`) for a dispatch Monte Carlo,
+  with an Operator Load Composite and two maps. Friction worth a look: PIVOTBY renames values to `Sum of …`, and a later
+  `@[Old Name]` reads 0 quietly rather than `#REF!` (the documented unknown-name-is-an-input rule, but here it hid a real slip).
+
 ### SESSION DIGEST (2026-11-17: React Flow 13.0.1; cloud session)
 
 - **React Flow is 13.0.1, `@xyflow/system` 1.0.0** (exact, as RF pins it): bleeding-edge's next.3 port (`3374277`) carried to the

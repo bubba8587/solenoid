@@ -34,6 +34,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "BoxplotNode" => boxplot(c),
         "CalendarHeatmapNode" => calendar_heatmap(c),
         "QuiverNode" => quiver(c),
+        "UsMapNode" => us_map(c),
         "ChartBuilderNode" => chart_builder(c),
         "ConditionalRegionsNode" => conditional_regions(c),
         _ => return None,
@@ -280,7 +281,9 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
             }
         };
         match key.as_str() {
-            "title" | "xlabel" | "ylabel" | "color" | "x" | "s" | "c" | "annotate" | "by" => text(&mut o, &key),
+            "title" | "xlabel" | "ylabel" | "color" | "x" | "s" | "c" | "annotate" | "by" | "lat" | "lon" => {
+                text(&mut o, &key)
+            }
             "grid" | "marker" | "annot" | "cbar" => flag(&mut o, &key),
             "pielabels" => word(&mut o, "pielabels", to_pie_labels(val)),
             "radarscale" => word(&mut o, "radarscale", to_radar_scale(val)),
@@ -1985,6 +1988,146 @@ fn quiver(c: &mut Call) -> Answer {
     };
     let payload = json!({ "kind": "quiver", "u": norm(first_v(c, "u")), "v": norm(first_v(c, "v")) });
     figure(c, "quiver", Json::Null, payload, opts, "Vector Field")
+}
+
+// ─── US Map ─────────────────────────────────────────────────────────────────────
+
+const LAT_NAMES: [&str; 2] = ["lat", "latitude"];
+const LON_NAMES: [&str; 4] = ["lon", "lng", "long", "longitude"];
+
+/// The pins of a frame with a latitude and a longitude column, each found by the options' `lat` and `lon` or else by its
+/// usual name. A named column the frame lacks is `#REF!`, and so is a frame with neither name; a row whose place isn't a
+/// pair of finite degrees in range is counted in `skipped` rather than drawn somewhere wrong.
+fn us_map(c: &mut Call) -> Answer {
+    let opts = read_options(c)?;
+    match us_map_figure(c, opts) {
+        Err(V::Err(e)) => {
+            let e = V::Err(e);
+            c.show("cachedChart", e.clone());
+            Ok(vec![("chart".into(), Cv::from(e))])
+        }
+        answer => answer,
+    }
+}
+
+/// The map's figure, or the error the card shows in its place.
+fn us_map_figure(c: &mut Call, opts: Obj) -> Answer {
+    let scope = if c.field_str("scope", "lower48") == "all50" { "all50" } else { "lower48" };
+    let frame = first(c, "frame");
+    let cols = frame_columns(&frame);
+    let key = |s: &str| lower_text(trim_space(s)).into_owned();
+    let find = |k: &str, role: &str, usual: &[&str]| -> Result<Option<usize>, V> {
+        if let Some(name) = opts.get(k).and_then(Json::as_str) {
+            let want = key(name);
+            return cols.iter().position(|c| key(&c.name) == want).map(Some).ok_or_else(|| {
+                err(ErrorCode::Ref, format!("The options name a {role} column \"{name}\", which the data doesn't have"))
+            });
+        }
+        Ok(usual.iter().find_map(|u| cols.iter().position(|c| key(&c.name) == *u)))
+    };
+    let lat_col = find("lat", "latitude", &LAT_NAMES)?;
+    let lon_col = find("lon", "longitude", &LON_NAMES)?;
+    let c_col = find("c", "color", &[])?;
+    let s_col = find("s", "size", &[])?;
+    let t_col = find("annotate", "annotate", &[])?;
+    let mut payload = json!({ "kind": "usmap", "scope": scope, "lat": [], "lon": [], "skipped": 0, "names": {} });
+    if cols.is_empty() {
+        return figure(c, "usmap", Json::Null, payload, opts, "US Map");
+    }
+    let (Some(lat_col), Some(lon_col)) = (lat_col, lon_col) else {
+        return Err(err(
+            ErrorCode::Ref,
+            "The data has no Latitude and Longitude columns; name them with lat= and lon= in the options",
+        ));
+    };
+    if let Some(i) = s_col.filter(|i| cols[*i].ty != FrameColType::Number) {
+        return Err(err(
+            ErrorCode::Type,
+            format!("Column \"{}\" is the size column but holds {}, not numbers", cols[i].name, cols[i].ty),
+        ));
+    }
+    let lats = col_numbers(cols.get(lat_col));
+    let lons = col_numbers(cols.get(lon_col));
+    // With no annotate column, the first text column that isn't the color names each pin.
+    let t_col = t_col.or_else(|| {
+        (0..cols.len())
+            .find(|i| cols[*i].ty == FrameColType::String && Some(*i) != c_col && *i != lat_col && *i != lon_col)
+    });
+    let rows = cols.iter().map(|c| c.values.len()).max().unwrap_or(0);
+    let c_numeric = c_col.is_some_and(|i| cols[i].ty == FrameColType::Number);
+    let (mut lat, mut lon, mut text, mut color, mut size) = (vec![], vec![], vec![], vec![], vec![]);
+    let (mut cats, mut cat_at): (Vec<String>, HashMap<String, usize>) = (vec![], HashMap::new());
+    let (mut c_lo, mut c_hi, mut s_lo, mut s_hi) = (f64::INFINITY, f64::NEG_INFINITY, f64::INFINITY, f64::NEG_INFINITY);
+    let mut skipped = 0usize;
+    for r in 0..rows {
+        let (Some(y), Some(x)) = (lats.get(r).copied().flatten(), lons.get(r).copied().flatten()) else {
+            skipped += 1;
+            continue;
+        };
+        if y.abs() > 90.0 || x.abs() > 180.0 {
+            skipped += 1;
+            continue;
+        }
+        lat.push(jn(y));
+        lon.push(jn(x));
+        if let Some(t) = t_col {
+            text.push(Json::String(shown_text(&cols[t], r, cols[t].format.as_ref()).unwrap_or_default()));
+        }
+        if let Some(ci) = c_col {
+            if c_numeric {
+                let v = finite(&cell(&cols[ci], r));
+                if let Some(v) = v {
+                    c_lo = c_lo.min(v);
+                    c_hi = c_hi.max(v);
+                }
+                color.push(jopt(v));
+            } else {
+                let t = shown_text(&cols[ci], r, cols[ci].format.as_ref()).unwrap_or_default();
+                let at = *cat_at.entry(t.clone()).or_insert_with(|| {
+                    cats.push(t);
+                    cats.len() - 1
+                });
+                color.push(jn(at as f64));
+            }
+        }
+        if let Some(si) = s_col {
+            let v = finite(&cell(&cols[si], r));
+            if let Some(v) = v {
+                s_lo = s_lo.min(v);
+                s_hi = s_hi.max(v);
+            }
+            size.push(jopt(v));
+        }
+    }
+    let p = payload.as_object_mut().expect("an object");
+    let mut names = Obj::new();
+    p.insert("lat".into(), Json::Array(lat));
+    p.insert("lon".into(), Json::Array(lon));
+    p.insert("skipped".into(), jn(skipped as f64));
+    if let Some(t) = t_col {
+        p.insert("text".into(), Json::Array(text));
+        names.insert("text".into(), Json::String(cols[t].name.clone()));
+    }
+    if let Some(ci) = c_col {
+        p.insert("c".into(), Json::Array(color));
+        names.insert("c".into(), Json::String(cols[ci].name.clone()));
+        if c_numeric {
+            if c_lo <= c_hi {
+                p.insert("cRange".into(), json!([jn(c_lo), jn(c_hi)]));
+            }
+        } else {
+            p.insert("cCats".into(), strs(&cats));
+        }
+    }
+    if let Some(si) = s_col {
+        p.insert("s".into(), Json::Array(size));
+        names.insert("s".into(), Json::String(cols[si].name.clone()));
+        if s_lo <= s_hi {
+            p.insert("sRange".into(), json!([jn(s_lo), jn(s_hi)]));
+        }
+    }
+    p.insert("names".into(), Json::Object(names));
+    figure(c, "usmap", Json::Null, payload, opts, "US Map")
 }
 
 // ─── Chart Builder ──────────────────────────────────────────────────────────────

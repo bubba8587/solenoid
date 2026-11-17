@@ -500,6 +500,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("UnpivotNode", "idColumns", Empty::Fallback(Fill::Text(""))),
     ("UnpivotNode", "valueColumns", Empty::Fallback(Fill::Text(""))),
     ("UrlEncodeNode", "text", Empty::Fallback(Fill::Text(""))),
+    ("UsMapNode", "options", Empty::Fallback(Fill::Text(""))),
     ("VaultFolderNode", "folder", Empty::Fallback(Fill::Text(""))),
     ("VaultFolderNode", "glob", Empty::Fallback(Fill::Text(""))),
     ("WaterfallNode", "options", Empty::Fallback(Fill::Text(""))),

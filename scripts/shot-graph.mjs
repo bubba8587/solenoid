@@ -15,6 +15,7 @@
 //   --click-edge <css>   click the first match 5px in from its top-left corner (a popup's overlay, outside the card)
 //   --type <css> <text>  focus the first match, select all, type the text
 //   --press <key>        press a key (Enter, Escape, Tab…) or a combo (Control+Shift+Equal)
+//   --wheel <css> <dy>   turn the wheel by dy (negative zooms in) over the first match's center
 //   --drag <css> <dx> <dy>  press the first match's center, move by (dx, dy) screen px, release; prints each card's box before and after
 // --setting key=value opens with that app setting (Settings' key, JSON value): --setting wasmEngine=false.
 // --size 390x844 shoots a phone (mobile UA, coarse pointer, touch) instead of the 1600×1000 desktop; --click taps and --drag drags a finger there.
@@ -40,6 +41,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--rclick") opt.steps.push({ click: argv[++i], right: true });
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
+  else if (a === "--wheel") opt.steps.push({ wheel: argv[++i], dy: Number(argv[++i]) });
   else if (a === "--drag" || a === "--drag-hold") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]), hold: a === "--drag-hold" });
   else if (a === "--wait") opt.wait = Number(argv[++i]);
   else if (a === "--palette") opt.palette = argv[++i];
@@ -53,7 +55,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--insets top,bottom] [--scale N]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--wheel css dy] [--drag css dx dy] [--drag-hold css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--insets top,bottom] [--scale N]"); process.exit(2); }
 
 // A text-form file (the AI grounding's format) is validated and read by the app's own reader first.
 const source = readFileSync(opt.file, "utf8");
@@ -153,6 +155,12 @@ try {
       for (const k of keys) await page.keyboard.down(k);
       await page.keyboard.press(last);
       for (const k of keys.reverse()) await page.keyboard.up(k);
+    }
+    else if (step.wheel) {
+      const b = await (await page.$(step.wheel)).boundingBox();
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+      await page.mouse.wheel({ deltaY: step.dy });
+      await new Promise((r) => setTimeout(r, 200));
     }
     else if (step.drag) {
       const boxes = () => page.evaluate(() => [...document.querySelectorAll(".solenoid-node")]

@@ -227,7 +227,7 @@ export { SankeyComponent } from "./SankeyNode";
 export { SurfaceComponent } from "./SurfaceNode";
 export {
   WaterfallComponent, CandlestickComponent, BoxplotComponent,
-  CalendarHeatmapComponent, HeatmapComponent, ProportionComponent, QuiverComponent,
+  CalendarHeatmapComponent, HeatmapComponent, UsMapComponent, ProportionComponent, QuiverComponent,
 } from "./FigureNodes";
 export { RecordComponent, CardsComponent } from "./RecordNode";
 export { GanttComponent } from "./GanttNode";

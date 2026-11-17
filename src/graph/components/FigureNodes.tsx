@@ -3,17 +3,18 @@ import type { ReactNode } from "react";
 import type { GraphNode } from "../graphModel";
 import type {
   WaterfallNode, CandlestickNode, BoxplotNode,
-  CalendarHeatmapNode, HeatmapNode, ProportionNode, ProportionLayout, QuiverNode,
+  CalendarHeatmapNode, HeatmapNode, ProportionNode, ProportionLayout, QuiverNode, UsMapNode, UsMapScope,
 } from "../nodeClasses";
-import { PROPORTION_LAYOUT_OPTIONS } from "../nodeClasses";
+import { PROPORTION_LAYOUT_OPTIONS, US_MAP_SCOPE_OPTIONS } from "../nodeClasses";
 import type { ChartValue, ChartPayload } from "../chartValue";
 import { isSolError, type SolError } from "../errorValue";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
 import { calendarHeight } from "./heatmapLayout";
+import { legendLines } from "../geo/usMapLegend";
 import { ChartChip } from "./ChartChip";
-import { OpToggle } from "./SegToggle";
+import { OpToggle, SegToggle } from "./SegToggle";
 import { collapseStore } from "../collapseStore";
 import { processEdited } from "../process";
 import { getOwningView } from "../activeGraph";
@@ -119,4 +120,27 @@ export const ProportionComponent = makeFigureComponent<ProportionNode>(
 export const QuiverComponent = makeFigureComponent<QuiverNode>(
   190,
   (p) => p?.kind === "quiver" && p.u.length > 0 && (p.u[0]?.length ?? 0) > 0,
+);
+
+function UsMapControls({ data }: { data: UsMapNode }) {
+  const [scope, setScope] = useState<UsMapScope>(data.scope);
+  async function pick(next: UsMapScope) {
+    if (next === data.scope) return;
+    data.setScope(next); // both scopes take the same sockets
+    setScope(next);
+    await getOwningView(data.id)?.rerenderNode(data.id);
+    await processEdited(data.id);
+  }
+  return <SegToggle value={scope} options={US_MAP_SCOPE_OPTIONS} onChange={(s) => void pick(s)} />;
+}
+
+// The map's frame is 975×610 on All 50 and a little wider on the lower 48; the legend and the notes ride below it.
+export const UsMapComponent = makeFigureComponent<UsMapNode>(
+  (cv, w) => {
+    const p = cv.payload?.kind === "usmap" ? cv.payload : null;
+    const extra = (cv.options.title ? 16 : 0) + (p ? legendLines(p.cCats, !!p.cRange, w) * 16 : 0);
+    return Math.round(w * (p?.scope === "all50" ? 0.63 : 0.6)) + extra;
+  },
+  (p) => p?.kind === "usmap",
+  (data) => <UsMapControls data={data} />,
 );

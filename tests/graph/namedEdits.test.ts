@@ -135,7 +135,7 @@ const VIEW_NAMES_ELSEWHERE: Record<string, { counts: Record<string, number>; why
   "nodes/list.rs": { counts: { height: 2 }, why: "Find Peaks' height input, in its List and Grid modes" },
   "nodes/qr.rs": { counts: { height: 1 }, why: "a key of the image it makes" },
   "nodes/sched.rs": { counts: { color: 2 }, why: "a key of a task row on its input" },
-  "nodes/visual.rs": { counts: { color: 9 }, why: "a chart option read from its inputs" },
+  "nodes/visual.rs": { counts: { color: 10 }, why: "a chart option read from its inputs" },
   "nodes/widgets.rs": { counts: { color: 2, height: 1 }, why: "the color cards' output and a chart payload's key" },
 };
 

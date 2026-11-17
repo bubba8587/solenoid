@@ -701,6 +701,7 @@ pub const DIRECT: &[&str] = &[
     "UnnestNode",
     "UnpivotNode",
     "UrlEncodeNode",
+    "UsMapNode",
     "UuidNode",
     "ValueInputNode",
     "WaterfallNode",

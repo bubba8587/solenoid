@@ -40,6 +40,7 @@ export const INIT_FIELD_ORDER = [
   "columnTypes",
   "exportTotals",
   "tableName",
+  "scope",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

@@ -235,15 +235,31 @@ export interface ForecastPayload {
   unit: "C" | "F";
   today: number;
 }
+/** Pins in row order; `c` is a number, or an index into `cCats` when the color column is text. */
+export interface UsMapPayload {
+  kind: "usmap";
+  scope: "lower48" | "all50";
+  lat: number[];
+  lon: number[];
+  text?: string[];
+  c?: (number | null)[];
+  cCats?: string[];
+  cRange?: [number, number];
+  s?: (number | null)[];
+  sRange?: [number, number];
+  names: { c?: string; s?: string; text?: string };
+  /** Rows without a finite latitude and longitude in range. */
+  skipped: number;
+}
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
   | CalHeatPayload | HeatmapPayload | QuiverPayload | RecordPayload | OverlayPayload
-  | XYPayload | GanttPayload | LadderPayload | ForecastPayload;
+  | XYPayload | GanttPayload | LadderPayload | ForecastPayload | UsMapPayload;
 
 const CHART_SPECIAL_OPS = [
   "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",
-  "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt", "ladder", "forecast",
+  "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt", "ladder", "forecast", "usmap",
 ] as const;
 
 export type ChartValueOp = ChartOp | (typeof CHART_SPECIAL_OPS)[number];

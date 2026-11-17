@@ -104,3 +104,6 @@ scripts/fix-unused.mjs
 
 why: JSON can't carry a citation; scripts/setting-choices.mjs generates it from the card classes' types and cites [[C26]] opArgDistinct
 src/graph/settingChoices.json
+
+why: JSON can't carry a citation; scripts/gen-us-states.mjs writes the US Map's state outlines from us-atlas, and usMapLayout.ts, which reads them, cites [[C100]] chartIsAValue
+src/graph/geo/usStates.json

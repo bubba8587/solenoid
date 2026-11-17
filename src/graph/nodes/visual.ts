@@ -455,6 +455,54 @@ export class KpiNode extends GraphNode {
   }
 }
 
+// ─── US Map ─────────────────────────────────────────────────────────────────────
+
+export type UsMapScope = "lower48" | "all50";
+export const US_MAP_SCOPE_META = {
+  lower48: { label: "Lower 48" },
+  all50:   { label: "All 50" },
+} satisfies Record<UsMapScope, { label: string }>;
+export const US_MAP_SCOPE_OPTIONS = Object.entries(US_MAP_SCOPE_META).map(([value, m]) => ({ value: value as UsMapScope, label: m.label }));
+
+export class UsMapNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    frame: "A pin per row, placed by its Latitude and Longitude columns (Lat, Lon and Lng also read). A row without both draws no pin.",
+    options: "key=value pairs separated by semicolons. lat and lon name the place columns, c a color column, s a size column and annotate the label; also title, color, markersize, alpha, cmap.",
+  };
+
+  label: string;
+  scope: UsMapScope = "lower48";
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | SolError | null = null;
+  width = 340;
+  height = 260;
+
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Lat", type: "number", cells: [30.27, 34.75, 35.96] },
+      { name: "Lon", type: "number", cells: [-97.74, -92.29, -83.92] },
+    ] },
+  };
+
+  constructor(init?: { label?: string; scope?: UsMapScope }) {
+    super("UsMap");
+    this.label = init?.label ?? "";
+    if (init?.scope === "all50") this.scope = "all50";
+    this.addInput("frame", frameIn("Lat + Lon"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  setScope(next: UsMapScope): void {
+    this.scope = next;
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError };
+  }
+}
+
 // ─── Proportion ─────────────────────────────────────────────────────────────────
 
 export type ProportionLayout = "treemap" | "waffle";

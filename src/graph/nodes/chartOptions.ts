@@ -28,6 +28,9 @@ export interface ChartOptions {
   s?: string;
   c?: string;
   annotate?: string;
+  /** The US Map's latitude and longitude columns, by plotly's `scatter_geo` names. */
+  lat?: string;
+  lon?: string;
   by?: string;
   cmap?: string;
   vmin?: number;

@@ -1683,6 +1683,12 @@
    "unbase64"
   ]
  },
+ "UsMapNode": {
+  "scope": [
+   "all50",
+   "lower48"
+  ]
+ },
  "ValueInputNode": {
   "decimalMode": [
    "places",

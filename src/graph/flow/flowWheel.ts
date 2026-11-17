@@ -27,6 +27,10 @@ export function installWheelZoom(
     const target = e.target as HTMLElement | null;
     if (!target?.closest?.(".react-flow")) return;
     if (target.closest(".react-flow__minimap, .react-flow__panel")) return;
+    // A figure that zooms itself (`.ownwheel`) takes the wheel once its card is selected; over an unselected card the
+    // canvas zooms, so passing over a map never traps the canvas.
+    const own = target.closest(".ownwheel");
+    if (own && own.closest(".react-flow__node.selected")) return;
     const nowheel = target.closest<HTMLElement>(".nowheel");
     if (nowheel && scrollsInDirection(target, nowheel, e.deltaX, e.deltaY)) return;
     e.preventDefault();

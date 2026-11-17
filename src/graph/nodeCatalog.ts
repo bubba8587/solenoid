@@ -3,7 +3,7 @@ import {
   AngleDialNode, SlicerNode, CableSwitchNode, DelayedPassNode, ValueInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode,
-  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, UsMapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, WindowNode,
   ArithmeticNode, DisplayNode, MathFXNode,
   FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupListsNode,
@@ -86,6 +86,7 @@ import {
   ExpectNode, TornadoNode,
 } from "./nodeClasses";
 import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
+import { NEXT_RELEASE } from "./release";
 
 
 const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     keywords: "arithmetic", create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
@@ -275,6 +276,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
               { type: "candlestick", label: "Candlestick", description: "OHLC candles for price history from a Date, Open, High, Low, Close frame, the shape Data Feed's stock history has.", create: () => new CandlestickNode(), parity: false, keywords: "candlestick candle ohlc stock price open high low close market trading finance" },
               { type: "waterfall", label: "Waterfall", description: "The finance bridge chart: each row of a 2-column frame (Label, Delta) steps the running total up or down, with a computed Total bar at the end.", create: () => new WaterfallNode(), parity: false, keywords: "waterfall bridge chart delta variance walk finance running total steps" },
               { type: "calendar-heatmap", label: "Calendar Heatmap", description: "A year of daily activity as a weeks-by-weekdays grid, each day tinted by the sum of its rows from a Date, Value frame. A row without a number counts as 1, so a list of dated entries shows how many fall on each day.", create: () => new CalendarHeatmapNode(), parity: false, keywords: "calendar heatmap daily activity year contribution github days streak" },
+              { type: "us-map", added: NEXT_RELEASE, label: "US Map", description: "Drops a pin per row on a map of the states, placed by its Latitude and Longitude columns, with Lower 48 or All 50 on a toggle. Options color the pins by a column (`c`), size them by one (`s`) and name them (`annotate`). A drag pans the map, and once the card is selected the wheel zooms it; a double-click shows the whole map again. A place outside the map's states is counted under it. Geocode gives a place name its coordinates.", create: () => new UsMapNode(), parity: false, keywords: "us map usa united states america states geo geographic pins points locations latitude longitude lat lon plot scatter_geo choropleth territory route contiguous lower 48 alaska hawaii" },
             ],
           },
         ],
