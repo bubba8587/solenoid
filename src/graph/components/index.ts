@@ -123,7 +123,7 @@ export {
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent, ChoiceLadderComponent, SettleComponent, PayoffPlannerComponent, AllocatorComponent,
   ReconcileComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent, EditFrameComponent,
-  DescribeComponent, CorrMatrixComponent, KMeansComponent, PcaComponent, LogisticComponent, WindowComponent, GreedyQueueComponent,
+  DescribeComponent, CorrMatrixComponent, KMeansComponent, PcaComponent, LogisticComponent, WindowComponent, GreedyQueueComponent, LocalSearchComponent,
 } from "./FrameNodes";
 
 export { ExpectComponent } from "./ExpectNode";

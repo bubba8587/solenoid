@@ -332,6 +332,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("ListIndexNode", "column", Empty::Behavior("all")),
     ("ListIndexNode", "index", Empty::Behavior("all")),
     ("ListInputNode", "v0", Empty::Fallback(Fill::Text(""))),
+    ("LocalSearchNode", "group", Empty::Behavior("one group")),
     ("LogisticNode", "target", Empty::Fallback(Fill::Text(""))),
     ("MRoundNode", "value", Empty::Fallback(Fill::Num(0.0))),
     ("MakeArrayNode", "cols", Empty::Fallback(Fill::Num(0.0))),

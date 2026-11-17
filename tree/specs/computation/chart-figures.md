@@ -295,7 +295,7 @@ Code: `parse_chart_options` (`nodes/visual.rs`).
 | `grid` | boolean | on | Grid lines on axed figures. |
 | `marker` | boolean | on for single-series axed line, area, radar and XY Line; off elsewhere | Dots on line, area, radar and XY Line points. |
 | `ylim` | `lo,hi`, either side may be blank | none | Sets `ymin` and `ymax`. |
-| `ymin`, `ymax` | number | open (`auto`) | The value-axis bounds. On a horizontal Bar chart they bound the horizontal value axis. |
+| `ymin`, `ymax` | number | open (`auto`) | The value-axis bounds. On a horizontal Bar chart they bound the horizontal value axis. One set alone leaves the other where the axis puts it with neither: on Column, Bar, Line, Area and Radar the floor stays at 0 (data below 0 still widens it), so `ymax=1000` alone doesn't lift the floor to the smallest value. An XY figure's unset bound stays fitted to the data. |
 | `linewidth`, `lw` | number | 1.5 | Line, area and radar stroke width. |
 | `markersize`, `ms` | number greater than 0 | 2 on lines, 3 on scatter | Marker radius in pixels. |
 | `alpha` | number | 0.25 area and radar fill (0.18 when two or more area series overlap); lines, bars and dots opaque | Mark opacity: the fill of areas, radar polygons and bars, the stroke of lines, the dots of scatter. |

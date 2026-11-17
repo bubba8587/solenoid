@@ -340,6 +340,17 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     }
   }
 
+  for (const sn of g.nodes) {
+    if (sn.type !== "GroupNode") continue;
+    const members = (sn.init as { members?: unknown } | undefined)?.members;
+    for (const m of Array.isArray(members) ? members : []) {
+      const inner = byId.get(String(m));
+      if (inner?.type === "GroupNode") {
+        issues.push({ line: at(displayName(sn)), node: displayName(sn), message: `group ${displayName(inner)} is a member of this group: groups don't nest. Make them side-by-side groups.` });
+      }
+    }
+  }
+
   const cycleNames = findCycle(g);
   if (cycleNames) {
     issues.push({ line: null, node: null, severity: "warning", message: `dependency cycle: ${cycleNames.join(" → ")}. These nodes will compute as #CIRC!.` });

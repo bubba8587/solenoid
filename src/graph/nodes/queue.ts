@@ -1,4 +1,5 @@
-// [[A1]] visualGraphCalculator: the Greedy Queue card (tree/specs/computation/frame-verbs.md § Greedy Queue).
+// [[A1]] visualGraphCalculator: the Greedy Queue and Local Search cards (tree/specs/computation/frame-verbs.md § Greedy
+// Queue, § Local Search).
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { setting, LEFT_OUT } from "../inputRoles";
@@ -15,22 +16,22 @@ const PICK_COLUMNS = ["Picked", "Wait", "Cost", "Used Before"];
 /** Where a group's state starts each step: its last pick, or its Start row again. */
 export type QueueStepStart = "continue" | "start";
 export const QUEUE_STEP_START_OPTIONS: { value: QueueStepStart; label: string }[] = [
-  { value: "continue", label: "Each step from the last pick" },
-  { value: "start", label: "Each step from the Start row" },
+  { value: "continue", label: "Carry on from the last item" },
+  { value: "start", label: "Go back to Start each step" },
 ];
 
 /** When the next item in order doesn't fit the budget: the group's step ends, or it tries the next in order. */
 export type QueueFit = "stop" | "skip";
 export const QUEUE_FIT_OPTIONS: { value: QueueFit; label: string }[] = [
-  { value: "stop", label: "Next doesn't fit: end the step" },
-  { value: "skip", label: "Next doesn't fit: try the one after" },
+  { value: "stop", label: "Stop at the first item that won't fit" },
+  { value: "skip", label: "Skip items that won't fit" },
 ];
 
 /** Who picks next: the groups in turn, one pick each a round; or the best group and item pair anywhere. */
 export type QueueTurns = "rotate" | "best";
 export const QUEUE_TURNS_OPTIONS: { value: QueueTurns; label: string }[] = [
-  { value: "rotate", label: "Groups take turns" },
-  { value: "best", label: "Best pair first" },
+  { value: "rotate", label: "Each group picks in turn" },
+  { value: "best", label: "Best match goes first, any group" },
 ];
 
 export class GreedyQueueNode extends GraphNode {
@@ -40,19 +41,19 @@ export class GreedyQueueNode extends GraphNode {
     steps: setting(LEFT_OUT, "until done"),
   };
   static socketDocs: Record<string, string> = {
-    items: "A row per item to pick. Every column is a name the formulas can read, and the same name with last_ in front reads the group's last pick.",
-    start: "A row per group, matched by the group column. Its columns read as group_ names in the formulas (a skill, its hours), and as last_ names before the group's first pick where they match the items'. A group named here exists even with no item of its own.",
-    group: "An item with a group is that group's alone; one with a blank group is anyone's, and the groups take turns picking. Items without the column are all anyone's, the groups named by Start. Blank: one group takes everything.",
-    step: "The step an item opens on. Blank: every item is open from step 1.",
-    perStep: "The most picks a group makes a step. Blank: one, or with a Budget, as many as fit.",
-    budget: "What a group can spend a step: it keeps picking while each pick's Cost still fits. A step's first pick always goes.",
-    steps: "How many steps run from the first item's step; items still waiting then are left. Blank: until every item is picked.",
-    order: "A LAMBDA over the item's columns, last_ columns, wait, step and used: the waiting item it puts first, smallest first, is picked. A list sorts by its first value, then its second. Unwired, the first in line.",
-    cost: "A LAMBDA over the same names: what a pick spends from the Budget. Unwired, 0.",
-    allowed: "A LAMBDA over the same names answering TRUE or FALSE: whether this group may take this item now. A group passes over an item it may not take. Unwired, every item.",
-    picks: "The items picked, in the order they were picked, with the group that took each, the step, the steps waited, the cost and the budget used before it.",
-    left: "The items never picked in the steps run.",
-    total: "Every pick's Cost added up: the run's total drive, hours or weight.",
+    items: "The things to hand out, a row per item: jobs, stops, boxes. Formulas use its columns by name, and last_ plus a name for the item the group did just before.",
+    start: "One row per group, such as a crew, a machine or a truck, with the group column to match. Formulas read its columns as group_ plus the name, such as group_Skill. A column with the same name as one of the items' is where the group starts, like a home address.",
+    group: "The column saying which group each item belongs to. An item left blank can go to any group. Left empty, there is one group.",
+    step: "The column saying when each item becomes available, such as a day number. Left empty, everything is available from the start.",
+    perStep: "The most items a group takes each step. Left empty, one, or as many as fit the budget.",
+    budget: "How much a group can use each step, such as 8 hours a day or 1,000 kg a truck. Each item's Cost counts against it. A step's first item always goes, even if it is over.",
+    steps: "How many steps to run. Left empty, it keeps going until every item is taken.",
+    order: "A formula that ranks the waiting items: the lowest number goes first. A list breaks ties: sort by the first value, then the next. Left empty, first come, first served.",
+    cost: "A formula for what one item uses up: drive minutes, hours of work, kilograms. These add up to the total cost.",
+    allowed: "A formula answering TRUE or FALSE: can this group take this item now? Use it for skills, opening hours or limits.",
+    picks: "Every item taken, in the order taken, with the group that took it, the step, how long it waited and its cost.",
+    left: "The items nobody took before the run ended.",
+    total: "Every item's cost added up.",
   };
   static frameHints: Record<string, FrameHint> = {
     items: { columns: [
@@ -88,8 +89,8 @@ export class GreedyQueueNode extends GraphNode {
     this.addInput("allowed", lambdaIn("Allowed"));
     this.addInput("step", strIn("Step column"));
     this.addInput("steps", numIn("Steps"));
-    this.addInput("perStep", numIn("Picks a step"));
-    this.addInput("budget", numIn("Budget a step"));
+    this.addInput("perStep", numIn("Picks per step"));
+    this.addInput("budget", numIn("Budget per step"));
     this.addOutput("picks", frameOut("Picks"));
     this.addOutput("left", frameOut("Left"));
     this.addOutput("total", numOut("Total cost"));
@@ -117,5 +118,93 @@ export class GreedyQueueNode extends GraphNode {
 
   data(inputs: Record<string, unknown[] | undefined>): { picks: FrameValue | SolError | null; left: FrameValue | SolError | null; total: number | SolError | null } {
     return nodeOnCore(this, inputs) as { picks: FrameValue | SolError | null; left: FrameValue | SolError | null; total: number | SolError | null };
+  }
+}
+
+/** The columns the plan adds after the items' own, as the core names them (`nodes/improve.rs`). */
+const PLAN_COLUMNS: { name: string; type: "number" | "logical" }[] = [
+  { name: "Position", type: "number" }, { name: "Cost", type: "number" }, { name: "At", type: "number" },
+  { name: "Penalty", type: "number" }, { name: "Allowed", type: "logical" },
+];
+
+/** Which moves a search makes: only reorder each group's own items, or also move items between groups. */
+export type SearchReach = "across" | "within";
+export const SEARCH_REACH_OPTIONS: { value: SearchReach; label: string }[] = [
+  { value: "across", label: "Can move items between groups" },
+  { value: "within", label: "Only reorder within each group" },
+];
+
+/** Whether a group's walk ends at its last item, or comes back to its Start row (a round trip). */
+export type SearchEnds = "open" | "return";
+export const SEARCH_ENDS_OPTIONS: { value: SearchEnds; label: string }[] = [
+  { value: "open", label: "One way: ends at the last item" },
+  { value: "return", label: "Round trip: back to Start" },
+];
+
+export class LocalSearchNode extends GraphNode {
+  static inputRoles = {
+    passes: setting(LEFT_OUT, "until nothing improves"),
+  };
+  static socketDocs: Record<string, string> = {
+    items: "A plan to improve: a row per item, each group's items in the order they are done. Greedy Queue's picks work as they are. Formulas use its columns by name, and last_ plus a name for the item just before.",
+    start: "One row per group, with the group column to match. Formulas read its columns as group_ plus the name. A column with the same name as one of the items' is where the group starts. A group listed here can take items even if it has none yet.",
+    group: "The column saying which group each item belongs to. Left empty, there is one group and the search only reorders.",
+    cost: "A formula for what one item adds, such as the drive from the stop before or a job's hours. It can read before, the group's cost so far, and position, the item's place in line.",
+    penalty: "A formula for an extra charge on top of the cost, such as for finishing late. It can read at, the group's cost so far including this item.",
+    allowed: "A formula answering TRUE or FALSE: can this item go here? A plan that breaks fewer of these always wins, then the one with the lower total.",
+    passes: "How many times to go over every item looking for a better place. Left empty, until nothing improves.",
+    plan: "The improved plan: each group's items in order, with the position, the cost, the running cost at, the penalty and whether it is allowed.",
+    total: "Every cost and penalty added up. This is what the search makes smaller.",
+    history: "One row per change made, starting from the plan as it came in: the kind of change and the total after it.",
+  };
+  static frameHints: Record<string, FrameHint> = {
+    items: { columns: [
+      { name: "Group", type: "string", cells: ["A", "A", "B"] },
+      { name: "X", type: "number", cells: [3, 1, 2] },
+    ] },
+  };
+
+  label: string;
+  reach: SearchReach = "across";
+  ends: SearchEnds = "open";
+  literals: Record<string, number> = {};
+  stringLiterals: Record<string, string> = { group: "" };
+  cachedResult: FrameValue | SolError | null = null;
+  cachedTotal: number | SolError | null = null;
+  cachedHistory: FrameValue | SolError | null = null;
+  width = 240; height = 280;
+
+  constructor(init?: { label?: string; reach?: SearchReach; ends?: SearchEnds }) {
+    super("LocalSearch");
+    this.label = init?.label ?? "Local Search";
+    if (init?.reach === "within") this.reach = "within";
+    if (init?.ends === "return") this.ends = "return";
+    this.addInput("items", frameIn("Plan"));
+    this.addInput("cost", lambdaIn("Cost"));
+    this.addInput("penalty", lambdaIn("Penalty"));
+    this.addInput("group", strIn("Group column"));
+    this.addInput("start", frameIn("Start"));
+    this.addInput("allowed", lambdaIn("Allowed"));
+    this.addInput("passes", numIn("Passes"));
+    this.addOutput("plan", frameOut("Plan"));
+    this.addOutput("total", numOut("Total"));
+    this.addOutput("history", frameOut("Changes"));
+  }
+
+  /** The plan is the items with its numbers after them, replacing a column of the same name; the moves are fixed. */
+  frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
+    if (outKey === "history") {
+      return { columns: [
+        { name: "Change", type: "number" }, { name: "Kind", type: "string" }, { name: "Total", type: "number" }, { name: "Not Allowed", type: "number" },
+      ] };
+    }
+    const input = ctx.inputShape("items");
+    if (!input) return null;
+    const taken = new Set(PLAN_COLUMNS.map((c) => c.name.toLowerCase()));
+    return { ...input, columns: [...input.columns.filter((c) => !taken.has(c.name.trim().toLowerCase())), ...PLAN_COLUMNS] };
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { plan: FrameValue | SolError | null; total: number | SolError | null; history: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { plan: FrameValue | SolError | null; total: number | SolError | null; history: FrameValue | SolError | null };
   }
 }

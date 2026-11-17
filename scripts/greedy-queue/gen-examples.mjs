@@ -1,5 +1,5 @@
 // Writes src/graph/seedGraphs/greedy-queue.json: three run problems on the Greedy Queue card, each a rule written as
-// LAMBDA cards and compared against a second rule on the same items. Seeded, so the seed is the same on every run;
+// LAMBDA cards and compared against a second rule on the same items, two then improved by the Local Search card. Seeded, so the seed is the same on every run;
 // `node scripts/tune-seeds.mjs greedy-queue` then lays it out.
 //   node scripts/greedy-queue/gen-examples.mjs
 import { writeFileSync } from "node:fs";
@@ -44,6 +44,21 @@ for (const [id, label, rule] of [["by_due", "Earliest due first", "edd"], ["by_s
   sumOf(`${id}_sum`, `${label}: days late`, "SUM(late)");
   wire(`${id}.picks -> ${id}_late.frame`, `${id}_late.frame -> ${id}_col.frame`, `${id}_col.values -> ${id}_sum.late`);
 }
+// Then improved: the earliest-due plan as a start, in machine hours. A job waits for its arrival day, and each hour past
+// its due day's end costs an hour; Local Search moves jobs between machines and reorders them while that helps.
+lambda("job_time", "Wait, then the work", "Arrives, Hours, before", "MAX(0, (Arrives - 1) * 8 - before) + Hours");
+lambda("job_late", "Hours late", "Due, at", "MAX(0, at - Due * 8)");
+add("jobs_better", "LocalSearchNode", { label: "Earliest due, improved" }, { stringLiterals: { group: "Machine" } });
+wire("by_due.picks -> jobs_better.items", "machines.frame -> jobs_better.start", "job_time.result -> jobs_better.cost", "job_late.result -> jobs_better.penalty");
+add("jobs_scored", "LocalSearchNode", { label: "Earliest due, as it came" }, { stringLiterals: { group: "Machine" }, literals: { passes: 0 } });
+wire("by_due.picks -> jobs_scored.items", "machines.frame -> jobs_scored.start", "job_time.result -> jobs_scored.cost", "job_late.result -> jobs_scored.penalty");
+getCol("jobs_scored_pen", "Penalty", "Penalty");
+sumOf("jobs_scored_sum", "Before: days late", "ROUND(SUM(late) / 8, 1)");
+wire("jobs_scored.plan -> jobs_scored_pen.frame", "jobs_scored_pen.values -> jobs_scored_sum.late");
+getCol("jobs_better_pen", "Penalty", "Penalty");
+sumOf("jobs_better_sum", "After: days late", "ROUND(SUM(late) / 8, 1)");
+add("jobs_better_chart", "ChartNode", { label: "Each change", op: "line" }, { stringLiterals: { options: "x=Change; y=Total; xlabel=Change; ylabel=Hours" } });
+wire("jobs_better.plan -> jobs_better_pen.frame", "jobs_better_pen.values -> jobs_better_sum.late", "jobs_better.history -> jobs_better_chart.values");
 
 // ── 2. Loading trucks: boxes, 1,000 kg a truck, heaviest first ──
 const kg = Array.from({ length: 36 }, () => pick([60, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500, 600]));
@@ -73,18 +88,49 @@ for (const [id, label, ordered] of [["nearest", "Nearest next", true], ["listed"
   add(`${id}_chart`, "ChartNode", { label, op: "xyline" }, { stringLiterals: { options: "x=Longitude; y=Latitude; annotate=Stop; aspect=equal" } });
   wire(`${id}.total -> ${id}_sum.km`, `${id}.picks -> ${id}_chart.values`);
 }
+// Then improved: 2-opt and relocate on the nearest-next route, by the same km formula.
+add("route_better", "LocalSearchNode", { label: "Nearest next, improved" });
+wire("nearest.picks -> route_better.items", "depot.frame -> route_better.start", "km.result -> route_better.cost");
+sumOf("route_better_sum", "Improved: km", "ROUND(km, 1)");
+add("route_better_chart", "ChartNode", { label: "Nearest next, improved", op: "xyline" }, { stringLiterals: { options: "x=Longitude; y=Latitude; annotate=Stop; aspect=equal" } });
+wire("route_better.total -> route_better_sum.km", "route_better.plan -> route_better_chart.values");
 
-const groups = [
-  ["grp_jobs", "A job shop: which job next on a free machine", ["jobs", "machines", "edd", "spt", "work", "by_due", "by_short", "by_due_late", "by_short_late", "by_due_col", "by_short_col", "by_due_sum", "by_short_sum"]],
-  ["grp_trucks", "Loading trucks: which box next", ["boxes", "heaviest", "weight", "fit", "nofit", "fit_kg", "nofit_kg", "fit_chart", "nofit_chart"]],
-  ["grp_route", "A delivery route: which stop next", ["stops", "depot", "km", "nearest", "listed", "nearest_sum", "listed_sum", "nearest_chart", "listed_chart"]],
+// Each problem is three groups: what both plans share with a note on the problem, then the weaker plan and the better,
+// each with a note on its rule.
+const note = (id, label, body) => add(id, "NoteNode", { label, body, width: 320, height: 150 });
+const problems = [
+  ["grp_jobs", "Job shop: the jobs and machines", ["jobs", "machines", "work"],
+    ["note_jobs", "Three machines, 8-hour days", "Jobs arrive over the first days, each with hours of work and a **due day**. Both plans hand jobs to the machines with the same Greedy Queue; only the **Order by** formula differs."],
+    ["grp_jobs_weak", "Job shop, not optimized: shortest job first", ["spt", "by_short", "by_short_late", "by_short_col", "by_short_sum"],
+      ["note_jobs_weak", "Shortest first", "Quick jobs go first, so long jobs keep getting pushed back and finish days late."]],
+    ["grp_jobs_good", "Job shop, optimized: earliest due first, then improved", ["edd", "by_due", "by_due_late", "by_due_col", "by_due_sum", "job_time", "job_late", "jobs_scored", "jobs_scored_pen", "jobs_scored_sum", "jobs_better", "jobs_better_pen", "jobs_better_sum", "jobs_better_chart"],
+      ["note_jobs_good", "Earliest due first", "The job due soonest goes next. **Local Search** then tries moving and swapping jobs between machines, counting by the hour, and keeps each change that cuts the hours late. The chart shows the total falling with each change."]]],
+  ["grp_trucks", "Loading trucks: the boxes", ["boxes", "heaviest", "weight"],
+    ["note_trucks", "1,000 kg a truck", "Boxes go heaviest first. A truck is one step, and the **Budget** is what it can carry."],
+    ["grp_trucks_weak", "Loading trucks, not optimized: stop at the first box that won't fit", ["nofit", "nofit_kg", "nofit_chart"],
+      ["note_trucks_weak", "Stop at the first misfit", "A truck leaves as soon as the next box is too heavy, even with room for a smaller one."]],
+    ["grp_trucks_good", "Loading trucks, optimized: skip boxes that won't fit", ["fit", "fit_kg", "fit_chart"],
+      ["note_trucks_good", "Skip what won't fit", "A truck keeps filling with smaller boxes that still fit. This is first-fit decreasing, a packing rule known to come close to the fewest trucks."]]],
+  ["grp_route", "Delivery route: the stops", ["stops", "depot", "km"],
+    ["note_route", "16 stops around Knoxville", "One driver leaves the depot. **Km from the last stop** is the great-circle distance, and it is the Cost in both plans."],
+    ["grp_route_weak", "Delivery route, not optimized: the stops in listed order", ["listed", "listed_sum", "listed_chart"],
+      ["note_route_weak", "In listed order", "No Order by formula, so the stops go in the order they were typed in, crossing back and forth."]],
+    ["grp_route_good", "Delivery route, optimized: nearest stop next, then improved", ["nearest", "nearest_sum", "nearest_chart", "route_better", "route_better_sum", "route_better_chart"],
+      ["note_route_good", "Nearest next", "The same km formula as the Order by sends the driver to the closest stop each time. **Local Search** then untangles the route by moving stops and flipping stretches of it."]]],
 ];
-for (const [id, label, members] of groups) nodes.push({ id, type: "GroupNode", init: { label, members, color: "gray" } });
+for (const [id, label, shared, [nid, nlabel, nbody], ...sides] of problems) {
+  note(nid, nlabel, nbody);
+  nodes.push({ id, type: "GroupNode", init: { label, members: [nid, ...shared], color: "gray" } });
+  for (const [sid, slabel, members, [mid, mlabel, mbody]] of sides) {
+    note(mid, mlabel, mbody);
+    nodes.push({ id: sid, type: "GroupNode", init: { label: slabel, members: [mid, ...members], color: sid.endsWith("good") ? "green" : "amber" } });
+  }
+}
 
 const shortForm = new URL("./examples.json", import.meta.url);
 writeFileSync(shortForm, JSON.stringify({ nodes, cables }, null, 1) + "\n");
 const saved = JSON.parse(execFileSync("npm", ["run", "-s", "validate-graph", "--", shortForm.pathname, "--json"], { encoding: "utf8", maxBuffer: 1 << 26 }));
 delete saved.cables;
-const seed = { v: saved.v, order: 335, label: "Greedy Queue: three run problems", group: "Modeling", nodes: saved.nodes, connections: saved.connections };
+const seed = { v: saved.v, order: 335, label: "Greedy Queue and Local Search: three run problems", group: "Modeling", nodes: saved.nodes, connections: saved.connections };
 writeFileSync(new URL("../../src/graph/seedGraphs/greedy-queue.json", import.meta.url), JSON.stringify(seed, null, 2) + "\n");
 console.log(`${seed.nodes.length} cards`);

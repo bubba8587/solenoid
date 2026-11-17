@@ -1059,6 +1059,16 @@
    "YMD"
   ]
  },
+ "LocalSearchNode": {
+  "ends": [
+   "open",
+   "return"
+  ],
+  "reach": [
+   "across",
+   "within"
+  ]
+ },
  "MakeArrayNode": {
   "castTo": [
    "date",

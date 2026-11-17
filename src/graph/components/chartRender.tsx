@@ -74,8 +74,9 @@ export function sanitizeChartLabel(raw: string, cap = 16): string {
   return cps.length > cap ? `${cps.slice(0, cap - 1).join("").trimEnd()}…` : clean;
 }
 
+/** The value axis' bounds: a bound left unset stays where the axis puts it with neither set, the floor at 0. */
 function yDomainOf(opts: ChartOptions | undefined): [number | string, number | string] | undefined {
-  return opts?.ymin !== undefined || opts?.ymax !== undefined ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] : undefined;
+  return opts?.ymin !== undefined || opts?.ymax !== undefined ? [opts?.ymin ?? 0, opts?.ymax ?? "auto"] : undefined;
 }
 
 export function ChartView({
@@ -547,9 +548,7 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
     return idx >= 0 ? String(idx + 1) : "";
   };
   const showGrid = opts?.grid ?? true;
-  const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
-    ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
-    : undefined;
+  const yDomain = yDomainOf(opts);
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
   const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis } : undefined;

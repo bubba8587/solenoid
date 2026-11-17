@@ -14,6 +14,16 @@ specific item.
   The **Greedy Queue: three run problems** seed (`scripts/greedy-queue/gen-examples.mjs`): a job shop (earliest due
   4 days late in total vs shortest first 37), truck loading (first-fit decreasing 12 trucks vs 14), a route (nearest
   next 310 km vs 684). It replaced a dispatch-only card from the same day, which buried the rule in Rust.
+- **Local Search** (`LocalSearchNode`, `nodes/improve.rs`, [[frame-verbs#Local Search]]): the improvement half (OR-Tools'
+  first solution, then local search). Moves: move (relocate), swap, flip (2-opt), between groups or within; fewer
+  Allowed refusals first, then the lower total; Cost reads `before`/`position`, Penalty reads `at`. With no formula
+  reading those, a move is scored by its links, O(1); else by walking from the change. 250 stops: nearest-next 14,693
+  to 12,595 in well under a second. Not built: a metaheuristic past the local optimum (guided local search,
+  annealing). The seed is now "Greedy Queue and Local Search: three run problems", each problem three flat groups
+  (shared, not optimized, optimized) with a note each; the job shop's earliest-due plan goes 2.0 to 0.8 days late by
+  the hour. Both cards' copy is plain English (dropdowns included). A value-axis bound set alone now keeps the other
+  at the axis' default (floor 0), so `ymax` alone no longer lifts a Column chart's floor to its smallest bar.
+  `validate-graph` flags a group inside a group (groups don't nest; the tidy scatters one).
 - **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
   per run (sites × days, a draw each, then the Greedy Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
   a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common

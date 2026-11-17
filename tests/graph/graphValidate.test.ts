@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { validateGraph, validateText, formatIssues, hardIssues } from "../../src/graph/graphValidate";
 import { writeTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
+import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";
 
 const CLEAN = `Price: ValueInputNode label="Price" value="25"
 Qty: ValueInputNode label="Qty" value="4"
@@ -53,6 +54,16 @@ describe("validateText — grammar", () => {
 });
 
 describe("validateGraph — semantics", () => {
+  it("flags a group placed inside another group, since groups don't nest", () => {
+    const g = { v: CURRENT_SAVE_VERSION, nodes: [
+      { id: "a", type: "ValueInputNode", x: 0, y: 0, init: { value: "1" } },
+      { id: "inner", type: "GroupNode", x: 0, y: 0, init: { label: "Inner", members: ["a"] } },
+      { id: "outer", type: "GroupNode", x: 0, y: 0, init: { label: "Outer", members: ["inner"] } },
+    ], connections: [] } as unknown as SavedGraph;
+    const issue = validateGraph(g).find((i) => i.message.includes("groups don't nest"));
+    expect(issue?.node).toBe("outer");
+  });
+
   it("suggests the nearest class for an unknown type", () => {
     const { issues } = validateText(`A: ValueInputNod value=1\n---\n{}`);
     const issue = issues.find((i) => i.message.includes("unknown node type"));

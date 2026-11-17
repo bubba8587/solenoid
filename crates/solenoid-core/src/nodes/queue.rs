@@ -27,11 +27,11 @@ const MAX_STEPS: f64 = 100_000.0;
 /// The columns the picks add after the items' own, replacing an item column of the same name.
 const ADDED: [&str; 4] = ["Picked", "Wait", "Cost", "Used Before"];
 
-fn key(s: &str) -> String {
+pub(super) fn key(s: &str) -> String {
     lower_text(trim_space(s)).into_owned()
 }
 
-fn position(f: &Frame, name: &str) -> Option<usize> {
+pub(super) fn position(f: &Frame, name: &str) -> Option<usize> {
     let want = key(name);
     f.columns.iter().position(|c| key(&c.name) == want)
 }
@@ -43,14 +43,14 @@ fn number(v: Option<&V>) -> Option<f64> {
     }
 }
 
-fn text(v: Option<&V>) -> String {
+pub(super) fn text(v: Option<&V>) -> String {
     match v {
         None | Some(V::Null | V::Undef) => String::new(),
         Some(v) => value_text(v),
     }
 }
 
-fn taken(f: &Frame, rows: &[usize]) -> Vec<Column> {
+pub(super) fn taken(f: &Frame, rows: &[usize]) -> Vec<Column> {
     f.columns
         .iter()
         .map(|col| Column {
@@ -65,7 +65,7 @@ fn taken(f: &Frame, rows: &[usize]) -> Vec<Column> {
 }
 
 /// A setting's number: blank is `None`, anything but a finite number at or above `min` is `#DOMAIN!` naming it.
-fn setting(c: &Call, key: &str, min: f64) -> Result<Option<f64>, V> {
+pub(super) fn setting(c: &Call, key: &str, min: f64) -> Result<Option<f64>, V> {
     match read_role(c, key, &Role::Setting(V::Undef)) {
         V::Undef | V::Null => Ok(None),
         V::Num(n) if n.is_finite() && n >= min => Ok(Some(n)),
@@ -137,7 +137,7 @@ impl Scope<'_> {
 
 /// Whether Allowed lets the group take the item: TRUE or a non-zero number does, FALSE, 0 or a blank doesn't; unwired,
 /// every item is allowed.
-fn allowed(body: Option<&Body>, ev: &Eval, args: &[V], row: usize) -> Result<bool, V> {
+pub(super) fn allowed(body: Option<&Body>, ev: &Eval, args: &[V], row: usize) -> Result<bool, V> {
     let Some(body) = body else { return Ok(true) };
     match body.call(ev, args) {
         V::Bool(b) => Ok(b),
@@ -153,7 +153,7 @@ fn allowed(body: Option<&Body>, ev: &Eval, args: &[V], row: usize) -> Result<boo
 
 /// A formula's answer for one candidate as numbers to compare in turn: a number is one key, a list or a table is its
 /// cells in order (sort by this, then this), a blank is 0; anything else not a number stops the run, naming the row.
-fn keys(body: Option<&Body>, ev: &Eval, args: &[V], what: &str, row: usize) -> Result<Vec<f64>, V> {
+pub(super) fn keys(body: Option<&Body>, ev: &Eval, args: &[V], what: &str, row: usize) -> Result<Vec<f64>, V> {
     let Some(body) = body else { return Ok(vec![0.0]) };
     let mut out = Vec::new();
     fn walk(v: &V, out: &mut Vec<f64>, what: &str, row: usize) -> Result<(), V> {

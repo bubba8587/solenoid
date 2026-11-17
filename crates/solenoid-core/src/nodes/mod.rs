@@ -22,6 +22,7 @@ mod finance;
 mod formula;
 pub mod frames;
 pub(crate) mod geometry;
+mod improve;
 mod kit;
 mod lambda;
 mod list;
@@ -412,6 +413,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| lambda::run(kind, c))
         .or_else(|| qr::run(kind, c))
         .or_else(|| queue::run(kind, c))
+        .or_else(|| improve::run(kind, c))
 }
 
 /// The classes whose `data()` is their body here and nothing else (for `OFF_CORE`, that and handing on what the core
@@ -573,6 +575,7 @@ pub const DIRECT: &[&str] = &[
     "ListIndexNode",
     "ListInputNode",
     "ListLengthNode",
+    "LocalSearchNode",
     "LogisticNode",
     "MRoundNode",
     "MakeArrayNode",

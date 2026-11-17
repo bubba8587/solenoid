@@ -459,6 +459,14 @@ fn resolve_typed(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, SolErr
 }
 
 impl Body {
+    /// Whether the formula reads the variable at `i` of the names it was bound over; a typed formula, as if it does.
+    pub(crate) fn reads(&self, i: usize) -> bool {
+        match self {
+            Body::Lambda(_, order) => order.contains(&Some(i)),
+            Body::Inline(..) => true,
+        }
+    }
+
     /// The fold's unit wrapper (`unit_fold.rs`) over a table holding a unit cell; None where it has no reading.
     pub(crate) fn fold(&self, kind: FoldKind, m: &[Vec<V>], initial: &V) -> Option<V> {
         match self {

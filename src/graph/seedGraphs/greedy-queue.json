@@ -1,7 +1,7 @@
 {
   "v": 2,
   "order": 335,
-  "label": "Greedy Queue: three run problems",
+  "label": "Greedy Queue and Local Search: three run problems",
   "group": "Modeling",
   "nodes": [
     {
@@ -11,8 +11,8 @@
         "label": "Jobs",
         "frameText": "[{\"name\":\"Job\",\"type\":\"string\",\"cells\":[\"J03\",\"J16\",\"J31\",\"J43\",\"J49\",\"J54\",\"J06\",\"J08\",\"J42\",\"J44\",\"J52\",\"J58\",\"J60\",\"J11\",\"J23\",\"J26\",\"J29\",\"J56\",\"J04\",\"J05\",\"J07\",\"J09\",\"J17\",\"J21\",\"J48\",\"J53\",\"J55\",\"J01\",\"J02\",\"J14\",\"J18\",\"J32\",\"J33\",\"J35\",\"J50\",\"J59\",\"J13\",\"J19\",\"J20\",\"J22\",\"J25\",\"J36\",\"J37\",\"J38\",\"J40\",\"J41\",\"J47\",\"J10\",\"J15\",\"J24\",\"J27\",\"J45\",\"J46\",\"J12\",\"J28\",\"J30\",\"J34\",\"J39\",\"J51\",\"J57\"]},{\"name\":\"Arrives\",\"type\":\"number\",\"cells\":[\"1\",\"1\",\"1\",\"1\",\"1\",\"1\",\"2\",\"2\",\"2\",\"2\",\"2\",\"2\",\"2\",\"3\",\"3\",\"3\",\"3\",\"3\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"7\",\"7\",\"7\",\"7\",\"7\",\"7\",\"8\",\"8\",\"8\",\"8\",\"8\",\"8\",\"8\"]},{\"name\":\"Hours\",\"type\":\"number\",\"cells\":[\"3\",\"1\",\"1\",\"3\",\"1\",\"3\",\"1\",\"4\",\"5\",\"6\",\"4\",\"5\",\"1\",\"1\",\"3\",\"2\",\"3\",\"4\",\"3\",\"5\",\"2\",\"6\",\"3\",\"2\",\"1\",\"3\",\"5\",\"3\",\"6\",\"6\",\"5\",\"3\",\"4\",\"3\",\"5\",\"4\",\"2\",\"1\",\"8\",\"2\",\"4\",\"4\",\"1\",\"8\",\"1\",\"3\",\"1\",\"2\",\"6\",\"1\",\"4\",\"1\",\"4\",\"2\",\"4\",\"2\",\"4\",\"2\",\"8\",\"2\"]},{\"name\":\"Due\",\"type\":\"number\",\"cells\":[\"3\",\"4\",\"3\",\"2\",\"4\",\"2\",\"3\",\"4\",\"3\",\"5\",\"3\",\"3\",\"5\",\"5\",\"4\",\"6\",\"3\",\"4\",\"7\",\"6\",\"6\",\"7\",\"5\",\"4\",\"7\",\"4\",\"5\",\"7\",\"7\",\"5\",\"5\",\"5\",\"8\",\"5\",\"8\",\"5\",\"8\",\"7\",\"7\",\"9\",\"6\",\"9\",\"6\",\"7\",\"7\",\"8\",\"7\",\"9\",\"8\",\"7\",\"8\",\"8\",\"9\",\"8\",\"9\",\"9\",\"10\",\"11\",\"8\",\"9\"]}]"
       },
-      "x": 24,
-      "y": 6168
+      "x": 303,
+      "y": 8962
     },
     {
       "id": "machines",
@@ -22,7 +22,7 @@
         "frameText": "[{\"name\":\"Machine\",\"type\":\"string\",\"cells\":[\"Lathe 1\",\"Lathe 2\",\"Mill\"]}]"
       },
       "x": 24,
-      "y": 7172
+      "y": 8962
     },
     {
       "id": "edd",
@@ -32,8 +32,8 @@
         "params": "Due",
         "expr": "Due"
       },
-      "x": 24,
-      "y": 7420
+      "x": 1219,
+      "y": 8860
     },
     {
       "id": "spt",
@@ -43,8 +43,8 @@
         "params": "Hours",
         "expr": "Hours"
       },
-      "x": 24,
-      "y": 5970
+      "x": 864,
+      "y": 10922
     },
     {
       "id": "work",
@@ -55,7 +55,7 @@
         "expr": "Hours"
       },
       "x": 24,
-      "y": 6696
+      "y": 8782
     },
     {
       "id": "by_due",
@@ -71,8 +71,8 @@
       "literals": {
         "budget": 8
       },
-      "x": 412,
-      "y": 6955
+      "x": 1548,
+      "y": 8782
     },
     {
       "id": "by_due_late",
@@ -84,8 +84,8 @@
       "stringLiterals": {
         "name": "Late"
       },
-      "x": 741,
-      "y": 7286
+      "x": 1944,
+      "y": 9057
     },
     {
       "id": "by_due_col",
@@ -96,8 +96,8 @@
       "stringLiterals": {
         "name": "Late"
       },
-      "x": 1070,
-      "y": 7451
+      "x": 2339,
+      "y": 9221
     },
     {
       "id": "by_due_sum",
@@ -106,8 +106,8 @@
         "label": "Earliest due first: days late",
         "expr": "SUM(late)"
       },
-      "x": 1399,
-      "y": 7454
+      "x": 2718,
+      "y": 9225
     },
     {
       "id": "by_short",
@@ -123,8 +123,8 @@
       "literals": {
         "budget": 8
       },
-      "x": 412,
-      "y": 6236
+      "x": 1193,
+      "y": 10844
     },
     {
       "id": "by_short_late",
@@ -136,8 +136,8 @@
       "stringLiterals": {
         "name": "Late"
       },
-      "x": 741,
-      "y": 6567
+      "x": 1522,
+      "y": 11175
     },
     {
       "id": "by_short_col",
@@ -148,8 +148,8 @@
       "stringLiterals": {
         "name": "Late"
       },
-      "x": 1070,
-      "y": 6732
+      "x": 1851,
+      "y": 11340
     },
     {
       "id": "by_short_sum",
@@ -158,8 +158,114 @@
         "label": "Shortest first: days late",
         "expr": "SUM(late)"
       },
-      "x": 1399,
-      "y": 6745
+      "x": 2180,
+      "y": 11353
+    },
+    {
+      "id": "job_time",
+      "type": "LambdaNode",
+      "init": {
+        "label": "Wait, then the work",
+        "params": "Arrives, Hours, before",
+        "expr": "MAX(0, (Arrives - 1) * 8 - before) + Hours"
+      },
+      "x": 1548,
+      "y": 9716
+    },
+    {
+      "id": "job_late",
+      "type": "LambdaNode",
+      "init": {
+        "label": "Hours late",
+        "params": "Due, at",
+        "expr": "MAX(0, at - Due * 8)"
+      },
+      "x": 1548,
+      "y": 10053
+    },
+    {
+      "id": "jobs_better",
+      "type": "LocalSearchNode",
+      "init": {
+        "label": "Earliest due, improved"
+      },
+      "stringLiterals": {
+        "group": "Machine"
+      },
+      "x": 1944,
+      "y": 10003
+    },
+    {
+      "id": "jobs_scored",
+      "type": "LocalSearchNode",
+      "init": {
+        "label": "Earliest due, as it came"
+      },
+      "stringLiterals": {
+        "group": "Machine"
+      },
+      "literals": {
+        "passes": 0
+      },
+      "x": 1944,
+      "y": 9447
+    },
+    {
+      "id": "jobs_scored_pen",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Penalty"
+      },
+      "stringLiterals": {
+        "name": "Penalty"
+      },
+      "x": 2339,
+      "y": 9693
+    },
+    {
+      "id": "jobs_scored_sum",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Before: days late",
+        "expr": "ROUND(SUM(late) / 8, 1)"
+      },
+      "x": 2718,
+      "y": 9706
+    },
+    {
+      "id": "jobs_better_pen",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Penalty"
+      },
+      "stringLiterals": {
+        "name": "Penalty"
+      },
+      "x": 2339,
+      "y": 10031
+    },
+    {
+      "id": "jobs_better_sum",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "After: days late",
+        "expr": "ROUND(SUM(late) / 8, 1)"
+      },
+      "x": 2718,
+      "y": 10044
+    },
+    {
+      "id": "jobs_better_chart",
+      "type": "ChartNode",
+      "init": {
+        "label": "Each change",
+        "op": "line"
+      },
+      "stringLiterals": {
+        "options": "x=Change; y=Total; xlabel=Change; ylabel=Hours"
+      },
+      "x": 2289,
+      "y": 10240
     },
     {
       "id": "boxes",
@@ -168,8 +274,8 @@
         "label": "Boxes",
         "frameText": "[{\"name\":\"Box\",\"type\":\"string\",\"cells\":[\"B01\",\"B02\",\"B03\",\"B04\",\"B05\",\"B06\",\"B07\",\"B08\",\"B09\",\"B10\",\"B11\",\"B12\",\"B13\",\"B14\",\"B15\",\"B16\",\"B17\",\"B18\",\"B19\",\"B20\",\"B21\",\"B22\",\"B23\",\"B24\",\"B25\",\"B26\",\"B27\",\"B28\",\"B29\",\"B30\",\"B31\",\"B32\",\"B33\",\"B34\",\"B35\",\"B36\"]},{\"name\":\"Kg\",\"type\":\"number\",\"cells\":[\"80\",\"450\",\"120\",\"350\",\"450\",\"400\",\"450\",\"80\",\"80\",\"400\",\"120\",\"80\",\"200\",\"80\",\"500\",\"350\",\"400\",\"300\",\"450\",\"400\",\"200\",\"450\",\"120\",\"120\",\"80\",\"350\",\"60\",\"300\",\"600\",\"500\",\"300\",\"500\",\"60\",\"300\",\"450\",\"150\"]}]"
       },
-      "x": 1153,
-      "y": 4614
+      "x": 379,
+      "y": 7413
     },
     {
       "id": "heaviest",
@@ -179,8 +285,8 @@
         "params": "Kg",
         "expr": "-Kg"
       },
-      "x": 1153,
-      "y": 5029
+      "x": 24,
+      "y": 7233
     },
     {
       "id": "weight",
@@ -190,8 +296,8 @@
         "params": "Kg",
         "expr": "Kg"
       },
-      "x": 1153,
-      "y": 5291
+      "x": 303,
+      "y": 7233
     },
     {
       "id": "fit",
@@ -204,8 +310,8 @@
       "literals": {
         "budget": 1000
       },
-      "x": 1526,
-      "y": 5135
+      "x": 772,
+      "y": 6982
     },
     {
       "id": "fit_kg",
@@ -218,8 +324,8 @@
         "keys": "Picked",
         "column": "Kg"
       },
-      "x": 1855,
-      "y": 5322
+      "x": 1101,
+      "y": 7169
     },
     {
       "id": "fit_chart",
@@ -231,8 +337,8 @@
       "stringLiterals": {
         "options": "xlabel=Truck; ylabel=Kg; ymax=1000"
       },
-      "x": 2184,
-      "y": 5374
+      "x": 1430,
+      "y": 7221
     },
     {
       "id": "nofit",
@@ -245,8 +351,8 @@
       "literals": {
         "budget": 1000
       },
-      "x": 1526,
-      "y": 4616
+      "x": 772,
+      "y": 7825
     },
     {
       "id": "nofit_kg",
@@ -259,8 +365,8 @@
         "keys": "Picked",
         "column": "Kg"
       },
-      "x": 1855,
-      "y": 4793
+      "x": 1101,
+      "y": 8003
     },
     {
       "id": "nofit_chart",
@@ -272,8 +378,8 @@
       "stringLiterals": {
         "options": "xlabel=Truck; ylabel=Kg; ymax=1000"
       },
-      "x": 2184,
-      "y": 4855
+      "x": 1430,
+      "y": 8064
     },
     {
       "id": "stops",
@@ -282,8 +388,8 @@
         "label": "Stops",
         "frameText": "[{\"name\":\"Stop\",\"type\":\"string\",\"cells\":[\"Stop 1\",\"Stop 2\",\"Stop 3\",\"Stop 4\",\"Stop 5\",\"Stop 6\",\"Stop 7\",\"Stop 8\",\"Stop 9\",\"Stop 10\",\"Stop 11\",\"Stop 12\",\"Stop 13\",\"Stop 14\",\"Stop 15\",\"Stop 16\"]},{\"name\":\"Latitude\",\"type\":\"number\",\"cells\":[\"36.2979\",\"36.2225\",\"36.2589\",\"35.8822\",\"35.915\",\"35.7414\",\"35.6719\",\"35.9952\",\"35.7721\",\"35.6641\",\"35.8001\",\"35.9193\",\"35.7081\",\"35.7022\",\"36.0153\",\"36.3051\"]},{\"name\":\"Longitude\",\"type\":\"number\",\"cells\":[\"-84.2811\",\"-83.9476\",\"-83.4295\",\"-83.9574\",\"-84.3212\",\"-84.3253\",\"-83.483\",\"-83.8488\",\"-83.4857\",\"-83.584\",\"-84.357\",\"-84.0385\",\"-84.0479\",\"-83.5229\",\"-83.9591\",\"-84.0718\"]}]"
       },
-      "x": 24,
-      "y": 4614
+      "x": 1842,
+      "y": 7006
     },
     {
       "id": "depot",
@@ -292,8 +398,8 @@
         "label": "Depot",
         "frameText": "[{\"name\":\"Stop\",\"type\":\"string\",\"cells\":[\"Depot\"]},{\"name\":\"Latitude\",\"type\":\"number\",\"cells\":[\"35.96\"]},{\"name\":\"Longitude\",\"type\":\"number\",\"cells\":[\"-83.92\"]}]"
       },
-      "x": 24,
-      "y": 5375
+      "x": 1842,
+      "y": 6812
     },
     {
       "id": "km",
@@ -303,8 +409,8 @@
         "params": "Latitude, Longitude, last_Latitude, last_Longitude",
         "expr": "2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))"
       },
-      "x": 24,
-      "y": 4877
+      "x": 2121,
+      "y": 7006
     },
     {
       "id": "nearest",
@@ -313,8 +419,8 @@
         "label": "Nearest next"
       },
       "stringLiterals": {},
-      "x": 401,
-      "y": 4666
+      "x": 3004,
+      "y": 7189
     },
     {
       "id": "nearest_sum",
@@ -323,8 +429,8 @@
         "label": "Nearest next: km",
         "expr": "ROUND(km, 1)"
       },
-      "x": 741,
-      "y": 5052
+      "x": 3375,
+      "y": 7720
     },
     {
       "id": "nearest_chart",
@@ -336,8 +442,8 @@
       "stringLiterals": {
         "options": "x=Longitude; y=Latitude; annotate=Stop; aspect=equal"
       },
-      "x": 741,
-      "y": 4700
+      "x": 3375,
+      "y": 7368
     },
     {
       "id": "listed",
@@ -346,8 +452,8 @@
         "label": "In the listed order"
       },
       "stringLiterals": {},
-      "x": 401,
-      "y": 5269
+      "x": 3004,
+      "y": 8053
     },
     {
       "id": "listed_sum",
@@ -356,8 +462,8 @@
         "label": "In the listed order: km",
         "expr": "ROUND(km, 1)"
       },
-      "x": 741,
-      "y": 5655
+      "x": 3342,
+      "y": 8467
     },
     {
       "id": "listed_chart",
@@ -369,81 +475,326 @@
       "stringLiterals": {
         "options": "x=Longitude; y=Latitude; annotate=Stop; aspect=equal"
       },
-      "x": 741,
-      "y": 5303
+      "x": 3342,
+      "y": 8115
+    },
+    {
+      "id": "route_better",
+      "type": "LocalSearchNode",
+      "init": {
+        "label": "Nearest next, improved"
+      },
+      "x": 3441,
+      "y": 6812
+    },
+    {
+      "id": "route_better_sum",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Improved: km",
+        "expr": "ROUND(km, 1)"
+      },
+      "x": 3813,
+      "y": 7199
+    },
+    {
+      "id": "route_better_chart",
+      "type": "ChartNode",
+      "init": {
+        "label": "Nearest next, improved",
+        "op": "xyline"
+      },
+      "stringLiterals": {
+        "options": "x=Longitude; y=Latitude; annotate=Stop; aspect=equal"
+      },
+      "x": 3813,
+      "y": 6847
+    },
+    {
+      "id": "note_jobs",
+      "type": "NoteNode",
+      "init": {
+        "label": "Three machines, 8-hour days",
+        "body": "Jobs arrive over the first days, each with hours of work and a **due day**. Both plans hand jobs to the machines with the same Greedy Queue; only the **Order by** formula differs.",
+        "width": 320,
+        "height": 150
+      },
+      "x": 303,
+      "y": 8782
     },
     {
       "id": "grp_jobs",
       "type": "GroupNode",
       "init": {
-        "label": "A job shop: which job next on a free machine",
+        "label": "Job shop: the jobs and machines",
         "members": [
+          "note_jobs",
           "jobs",
           "machines",
-          "edd",
-          "spt",
-          "work",
-          "by_due",
-          "by_short",
-          "by_due_late",
-          "by_short_late",
-          "by_due_col",
-          "by_short_col",
-          "by_due_sum",
-          "by_short_sum"
+          "work"
         ],
         "color": "gray",
-        "width": 1667,
-        "height": 1792
+        "width": 647,
+        "height": 487
       },
       "x": 0,
-      "y": 5912
+      "y": 8724
+    },
+    {
+      "id": "note_jobs_weak",
+      "type": "NoteNode",
+      "init": {
+        "label": "Shortest first",
+        "body": "Quick jobs go first, so long jobs keep getting pushed back and finish days late.",
+        "width": 320,
+        "height": 150
+      },
+      "x": 864,
+      "y": 10674
+    },
+    {
+      "id": "grp_jobs_weak",
+      "type": "GroupNode",
+      "init": {
+        "label": "Job shop, not optimized: shortest job first",
+        "members": [
+          "note_jobs_weak",
+          "spt",
+          "by_short",
+          "by_short_late",
+          "by_short_col",
+          "by_short_sum"
+        ],
+        "color": "amber",
+        "width": 1608,
+        "height": 974
+      },
+      "x": 840,
+      "y": 10616
+    },
+    {
+      "id": "note_jobs_good",
+      "type": "NoteNode",
+      "init": {
+        "label": "Earliest due first",
+        "body": "The job due soonest goes next. **Local Search** then tries moving and swapping jobs between machines, counting by the hour, and keeps each change that cuts the hours late. The chart shows the total falling with each change.",
+        "width": 320,
+        "height": 150
+      },
+      "x": 864,
+      "y": 8782
+    },
+    {
+      "id": "grp_jobs_good",
+      "type": "GroupNode",
+      "init": {
+        "label": "Job shop, optimized: earliest due first, then improved",
+        "members": [
+          "note_jobs_good",
+          "edd",
+          "by_due",
+          "by_due_late",
+          "by_due_col",
+          "by_due_sum",
+          "job_time",
+          "job_late",
+          "jobs_scored",
+          "jobs_scored_pen",
+          "jobs_scored_sum",
+          "jobs_better",
+          "jobs_better_pen",
+          "jobs_better_sum",
+          "jobs_better_chart"
+        ],
+        "color": "green",
+        "width": 2146,
+        "height": 1854
+      },
+      "x": 840,
+      "y": 8724
+    },
+    {
+      "id": "note_trucks",
+      "type": "NoteNode",
+      "init": {
+        "label": "1,000 kg a truck",
+        "body": "Boxes go heaviest first. A truck is one step, and the **Budget** is what it can carry.",
+        "width": 320,
+        "height": 150
+      },
+      "x": 24,
+      "y": 7413
     },
     {
       "id": "grp_trucks",
       "type": "GroupNode",
       "init": {
-        "label": "Loading trucks: which box next",
+        "label": "Loading trucks: the boxes",
         "members": [
+          "note_trucks",
           "boxes",
           "heaviest",
-          "weight",
-          "fit",
-          "nofit",
-          "fit_kg",
-          "nofit_kg",
-          "fit_chart",
-          "nofit_chart"
+          "weight"
         ],
         "color": "gray",
-        "width": 1423,
-        "height": 1156
+        "width": 647,
+        "height": 487
       },
-      "x": 1129,
-      "y": 4556
+      "x": 0,
+      "y": 7175
+    },
+    {
+      "id": "note_trucks_weak",
+      "type": "NoteNode",
+      "init": {
+        "label": "Stop at the first misfit",
+        "body": "A truck leaves as soon as the next box is too heavy, even with room for a smaller one.",
+        "width": 320,
+        "height": 150
+      },
+      "x": 757,
+      "y": 7655
+    },
+    {
+      "id": "grp_trucks_weak",
+      "type": "GroupNode",
+      "init": {
+        "label": "Loading trucks, not optimized: stop at the first box that won't fit",
+        "members": [
+          "note_trucks_weak",
+          "nofit",
+          "nofit_kg",
+          "nofit_chart"
+        ],
+        "color": "amber",
+        "width": 1065,
+        "height": 805
+      },
+      "x": 733,
+      "y": 7597
+    },
+    {
+      "id": "note_trucks_good",
+      "type": "NoteNode",
+      "init": {
+        "label": "Skip what won't fit",
+        "body": "A truck keeps filling with smaller boxes that still fit. This is first-fit decreasing, a packing rule known to come close to the fewest trucks.",
+        "width": 320,
+        "height": 150
+      },
+      "x": 757,
+      "y": 6812
+    },
+    {
+      "id": "grp_trucks_good",
+      "type": "GroupNode",
+      "init": {
+        "label": "Loading trucks, optimized: skip boxes that won't fit",
+        "members": [
+          "note_trucks_good",
+          "fit",
+          "fit_kg",
+          "fit_chart"
+        ],
+        "color": "green",
+        "width": 1065,
+        "height": 805
+      },
+      "x": 733,
+      "y": 6754
+    },
+    {
+      "id": "note_route",
+      "type": "NoteNode",
+      "init": {
+        "label": "16 stops around Knoxville",
+        "body": "One driver leaves the depot. **Km from the last stop** is the great-circle distance, and it is the Cost in both plans.",
+        "width": 320,
+        "height": 150
+      },
+      "x": 2121,
+      "y": 6812
     },
     {
       "id": "grp_route",
       "type": "GroupNode",
       "init": {
-        "label": "A delivery route: which stop next",
+        "label": "Delivery route: the stops",
         "members": [
+          "note_route",
           "stops",
           "depot",
-          "km",
-          "nearest",
-          "listed",
-          "nearest_sum",
-          "listed_sum",
-          "nearest_chart",
-          "listed_chart"
+          "km"
         ],
         "color": "gray",
-        "width": 1109,
-        "height": 1336
+        "width": 647,
+        "height": 510
       },
-      "x": 0,
-      "y": 4556
+      "x": 1818,
+      "y": 6754
+    },
+    {
+      "id": "note_route_weak",
+      "type": "NoteNode",
+      "init": {
+        "label": "In listed order",
+        "body": "No Order by formula, so the stops go in the order they were typed in, crossing back and forth.",
+        "width": 320,
+        "height": 150
+      },
+      "x": 2634,
+      "y": 8053
+    },
+    {
+      "id": "grp_route_weak",
+      "type": "GroupNode",
+      "init": {
+        "label": "Delivery route, not optimized: the stops in listed order",
+        "members": [
+          "note_route_weak",
+          "listed",
+          "listed_sum",
+          "listed_chart"
+        ],
+        "color": "amber",
+        "width": 1100,
+        "height": 709
+      },
+      "x": 2610,
+      "y": 7995
+    },
+    {
+      "id": "note_route_good",
+      "type": "NoteNode",
+      "init": {
+        "label": "Nearest next",
+        "body": "The same km formula as the Order by sends the driver to the closest stop each time. **Local Search** then untangles the route by moving stops and flipping stretches of it.",
+        "width": 320,
+        "height": 150
+      },
+      "x": 2634,
+      "y": 6812
+    },
+    {
+      "id": "grp_route_good",
+      "type": "GroupNode",
+      "init": {
+        "label": "Delivery route, optimized: nearest stop next, then improved",
+        "members": [
+          "note_route_good",
+          "nearest",
+          "nearest_sum",
+          "nearest_chart",
+          "route_better",
+          "route_better_sum",
+          "route_better_chart"
+        ],
+        "color": "green",
+        "width": 1571,
+        "height": 1203
+      },
+      "x": 2610,
+      "y": 6754
     }
   ],
   "connections": [
@@ -530,6 +881,84 @@
       "sourceOutput": "values",
       "target": "by_short_sum",
       "targetInput": "late"
+    },
+    {
+      "source": "by_due",
+      "sourceOutput": "picks",
+      "target": "jobs_better",
+      "targetInput": "items"
+    },
+    {
+      "source": "machines",
+      "sourceOutput": "frame",
+      "target": "jobs_better",
+      "targetInput": "start"
+    },
+    {
+      "source": "job_time",
+      "sourceOutput": "result",
+      "target": "jobs_better",
+      "targetInput": "cost"
+    },
+    {
+      "source": "job_late",
+      "sourceOutput": "result",
+      "target": "jobs_better",
+      "targetInput": "penalty"
+    },
+    {
+      "source": "by_due",
+      "sourceOutput": "picks",
+      "target": "jobs_scored",
+      "targetInput": "items"
+    },
+    {
+      "source": "machines",
+      "sourceOutput": "frame",
+      "target": "jobs_scored",
+      "targetInput": "start"
+    },
+    {
+      "source": "job_time",
+      "sourceOutput": "result",
+      "target": "jobs_scored",
+      "targetInput": "cost"
+    },
+    {
+      "source": "job_late",
+      "sourceOutput": "result",
+      "target": "jobs_scored",
+      "targetInput": "penalty"
+    },
+    {
+      "source": "jobs_scored",
+      "sourceOutput": "plan",
+      "target": "jobs_scored_pen",
+      "targetInput": "frame"
+    },
+    {
+      "source": "jobs_scored_pen",
+      "sourceOutput": "values",
+      "target": "jobs_scored_sum",
+      "targetInput": "late"
+    },
+    {
+      "source": "jobs_better",
+      "sourceOutput": "plan",
+      "target": "jobs_better_pen",
+      "targetInput": "frame"
+    },
+    {
+      "source": "jobs_better_pen",
+      "sourceOutput": "values",
+      "target": "jobs_better_sum",
+      "targetInput": "late"
+    },
+    {
+      "source": "jobs_better",
+      "sourceOutput": "history",
+      "target": "jobs_better_chart",
+      "targetInput": "values"
     },
     {
       "source": "boxes",
@@ -655,6 +1084,36 @@
       "source": "listed",
       "sourceOutput": "picks",
       "target": "listed_chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "nearest",
+      "sourceOutput": "picks",
+      "target": "route_better",
+      "targetInput": "items"
+    },
+    {
+      "source": "depot",
+      "sourceOutput": "frame",
+      "target": "route_better",
+      "targetInput": "start"
+    },
+    {
+      "source": "km",
+      "sourceOutput": "result",
+      "target": "route_better",
+      "targetInput": "cost"
+    },
+    {
+      "source": "route_better",
+      "sourceOutput": "total",
+      "target": "route_better_sum",
+      "targetInput": "km"
+    },
+    {
+      "source": "route_better",
+      "sourceOutput": "plan",
+      "target": "route_better_chart",
       "targetInput": "values"
     }
   ]

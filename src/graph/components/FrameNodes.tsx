@@ -51,8 +51,8 @@ import type {
   HeaderOp,
   BlankRowMode,
 } from "../nodeClasses";
-import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS } from "../nodeClasses";
-import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType } from "../nodeClasses";
+import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS, SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS } from "../nodeClasses";
+import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType, LocalSearchNode as LocalSearchNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import type { FilterCondConfig, SettleMode } from "../nodes/frame";
@@ -1353,6 +1353,42 @@ const QUEUE_LAMBDA_KEYS = new Set(["order", "cost", "allowed"]);
 const QUEUE_GROUP_KEYS = ["group", "start", "allowed"];
 const QUEUE_STEP_KEYS = ["step", "steps"];
 const QUEUE_BUDGET_KEYS = ["budget", "perStep"];
+
+// The improved plan is the card's table; the total and the moves made ride below it. Cost, Penalty and Allowed are
+// LAMBDA cards on the canvas, as on Greedy Queue, so the plan it feeds in and the rule both stay in view.
+export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeType>) {
+  const history = previewed(() => data.cachedHistory);
+  const moves = history && isFrameValue(history) ? Math.max(0, frameRowCount(history) - 1) : null;
+  const [reach, setReach] = useNodeField(data, "reach");
+  const [ends, setEnds] = useNodeField(data, "ends");
+  const connected = useConnectedInputs(data.id);
+  const hasStart = connected.has("start") || ends !== "open";
+  const groupsUsed = useRowsInUse(data, SEARCH_GROUP_KEYS) || reach !== "across" || ends !== "open";
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} keys={["items", "cost", "penalty"]} cableOnlyKeys={SEARCH_LAMBDA_KEYS} />
+      <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: SEARCH_GROUP_KEYS }}>
+        <InlineInputs node={data} emit={emit} keys={SEARCH_GROUP_KEYS} cableOnlyKeys={SEARCH_LAMBDA_KEYS} />
+        {groupsUsed && <ArgSelect value={reach} options={SEARCH_REACH_OPTIONS} onChange={setReach} />}
+        {hasStart && <ArgSelect value={ends} options={SEARCH_ENDS_OPTIONS} onChange={setEnds} />}
+      </CardSection>
+      <InlineInputs node={data} emit={emit} keys={["passes"]} />
+      <MeasuredSocketRow side="output" socketKey="plan" nodeId={data.id} emit={emit} payload={data.outputs.plan!.socket} hero>
+        <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="total" nodeId={data.id} emit={emit} payload={data.outputs.total!.socket}>
+        <span className="solenoid-node__io-label">Total</span>
+        <ValueDisplay value={data.cachedTotal} />
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="history" nodeId={data.id} emit={emit} payload={data.outputs.history!.socket}>
+        <span className="solenoid-node__io-label">Changes</span>
+        {moves !== null && <span className="solenoid-node__io-wired">{moves}</span>}
+      </MeasuredSocketRow>
+    </NodeShell>
+  );
+}
+const SEARCH_LAMBDA_KEYS = new Set(["cost", "penalty", "allowed"]);
+const SEARCH_GROUP_KEYS = ["group", "start", "allowed"];
 
 export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
   const [agg, setAgg] = useNodeField(data, "agg");
