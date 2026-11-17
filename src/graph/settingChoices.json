@@ -889,6 +889,10 @@
    "skip",
    "stop"
   ],
+  "orderDir": [
+   "asc",
+   "desc"
+  ],
   "stepStart": [
    "continue",
    "start"

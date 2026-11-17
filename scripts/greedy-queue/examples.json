@@ -292,30 +292,11 @@
    ]
   },
   {
-   "id": "edd",
-   "type": "LambdaNode",
+   "id": "day",
+   "type": "ValueInputNode",
    "init": {
-    "label": "Earliest due first",
-    "params": "Due",
-    "expr": "Due"
-   }
-  },
-  {
-   "id": "spt",
-   "type": "LambdaNode",
-   "init": {
-    "label": "Shortest first",
-    "params": "Hours",
-    "expr": "Hours"
-   }
-  },
-  {
-   "id": "work",
-   "type": "LambdaNode",
-   "init": {
-    "label": "Hours of work",
-    "params": "Hours",
-    "expr": "Hours"
+    "label": "Hours a machine works a day",
+    "value": "8"
    }
   },
   {
@@ -327,10 +308,9 @@
    },
    "stringLiterals": {
     "group": "Machine",
-    "step": "Arrives"
-   },
-   "literals": {
-    "budget": 8
+    "step": "Arrives",
+    "orderColumn": "Due",
+    "costColumn": "Hours"
    }
   },
   {
@@ -371,10 +351,9 @@
    },
    "stringLiterals": {
     "group": "Machine",
-    "step": "Arrives"
-   },
-   "literals": {
-    "budget": 8
+    "step": "Arrives",
+    "orderColumn": "Hours",
+    "costColumn": "Hours"
    }
   },
   {
@@ -407,12 +386,12 @@
    }
   },
   {
-   "id": "job_time",
+   "id": "job_wait",
    "type": "LambdaNode",
    "init": {
-    "label": "Wait, then the work",
-    "params": "Arrives, Hours, before",
-    "expr": "MAX(0, (Arrives - 1) * 8 - before) + Hours"
+    "label": "Wait for the job to arrive",
+    "params": "Arrives, before",
+    "expr": "MAX(0, (Arrives - 1) * day - before)"
    }
   },
   {
@@ -421,17 +400,7 @@
    "init": {
     "label": "Hours late",
     "params": "Due, at",
-    "expr": "MAX(0, at - Due * 8)"
-   }
-  },
-  {
-   "id": "jobs_better",
-   "type": "LocalSearchNode",
-   "init": {
-    "label": "Earliest due, improved"
-   },
-   "stringLiterals": {
-    "group": "Machine"
+    "expr": "MAX(0, at - Due * day)"
    }
   },
   {
@@ -441,7 +410,8 @@
     "label": "Earliest due, as it came"
    },
    "stringLiterals": {
-    "group": "Machine"
+    "group": "Machine",
+    "costColumn": "Hours"
    },
    "literals": {
     "passes": 0
@@ -462,7 +432,18 @@
    "type": "ExpressionNode",
    "init": {
     "label": "Before: days late",
-    "expr": "ROUND(SUM(late) / 8, 1)"
+    "expr": "ROUND(SUM(late) / day, 1)"
+   }
+  },
+  {
+   "id": "jobs_better",
+   "type": "LocalSearchNode",
+   "init": {
+    "label": "Earliest due, improved"
+   },
+   "stringLiterals": {
+    "group": "Machine",
+    "costColumn": "Hours"
    }
   },
   {
@@ -480,7 +461,7 @@
    "type": "ExpressionNode",
    "init": {
     "label": "After: days late",
-    "expr": "ROUND(SUM(late) / 8, 1)"
+    "expr": "ROUND(SUM(late) / day, 1)"
    }
   },
   {
@@ -588,21 +569,11 @@
    ]
   },
   {
-   "id": "heaviest",
-   "type": "LambdaNode",
+   "id": "capacity",
+   "type": "ValueInputNode",
    "init": {
-    "label": "Heaviest first",
-    "params": "Kg",
-    "expr": "-Kg"
-   }
-  },
-  {
-   "id": "weight",
-   "type": "LambdaNode",
-   "init": {
-    "label": "Weight",
-    "params": "Kg",
-    "expr": "Kg"
+    "label": "Truck capacity (kg)",
+    "value": "1000"
    }
   },
   {
@@ -610,11 +581,12 @@
    "type": "GreedyQueueNode",
    "init": {
     "label": "Load trucks",
-    "mode": "skip"
+    "mode": "skip",
+    "orderDir": "desc"
    },
-   "stringLiterals": {},
-   "literals": {
-    "budget": 1000
+   "stringLiterals": {
+    "orderColumn": "Kg",
+    "costColumn": "Kg"
    }
   },
   {
@@ -645,11 +617,12 @@
    "type": "GreedyQueueNode",
    "init": {
     "label": "Load trucks, no skipping",
-    "mode": "stop"
+    "mode": "stop",
+    "orderDir": "desc"
    },
-   "stringLiterals": {},
-   "literals": {
-    "budget": 1000
+   "stringLiterals": {
+    "orderColumn": "Kg",
+    "costColumn": "Kg"
    }
   },
   {
@@ -870,11 +843,21 @@
    }
   },
   {
+   "id": "note_read",
+   "type": "NoteNode",
+   "init": {
+    "label": "How to read this page",
+    "body": "Each problem is three groups: gray is the setup both plans share, amber a simple plan, green a better one.",
+    "width": 320,
+    "height": 150
+   }
+  },
+  {
    "id": "note_jobs",
    "type": "NoteNode",
    "init": {
-    "label": "Three machines, 8-hour days",
-    "body": "Jobs arrive over the first days, each with hours of work and a **due day**. Both plans hand jobs to the machines with the same Greedy Queue; only the **Order by** formula differs.",
+    "label": "The setup",
+    "body": "Jobs open on their **Arrives** day, and any machine can do any job.",
     "width": 320,
     "height": 150
    }
@@ -888,19 +871,9 @@
      "note_jobs",
      "jobs",
      "machines",
-     "work"
+     "day"
     ],
     "color": "gray"
-   }
-  },
-  {
-   "id": "note_jobs_weak",
-   "type": "NoteNode",
-   "init": {
-    "label": "Shortest first",
-    "body": "Quick jobs go first, so long jobs keep getting pushed back and finish days late.",
-    "width": 320,
-    "height": 150
    }
   },
   {
@@ -909,8 +882,6 @@
    "init": {
     "label": "Job shop, not optimized: shortest job first",
     "members": [
-     "note_jobs_weak",
-     "spt",
      "by_short",
      "by_short_late",
      "by_short_col",
@@ -920,28 +891,16 @@
    }
   },
   {
-   "id": "note_jobs_good",
-   "type": "NoteNode",
-   "init": {
-    "label": "Earliest due first",
-    "body": "The job due soonest goes next. **Local Search** then tries moving and swapping jobs between machines, counting by the hour, and keeps each change that cuts the hours late. The chart shows the total falling with each change.",
-    "width": 320,
-    "height": 150
-   }
-  },
-  {
    "id": "grp_jobs_good",
    "type": "GroupNode",
    "init": {
     "label": "Job shop, optimized: earliest due first, then improved",
     "members": [
-     "note_jobs_good",
-     "edd",
      "by_due",
      "by_due_late",
      "by_due_col",
      "by_due_sum",
-     "job_time",
+     "job_wait",
      "job_late",
      "jobs_scored",
      "jobs_scored_pen",
@@ -958,8 +917,8 @@
    "id": "note_trucks",
    "type": "NoteNode",
    "init": {
-    "label": "1,000 kg a truck",
-    "body": "Boxes go heaviest first. A truck is one step, and the **Budget** is what it can carry.",
+    "label": "The setup",
+    "body": "A truck is one step: it loads until its capacity is used, then the next truck pulls up.",
     "width": 320,
     "height": 150
    }
@@ -972,20 +931,9 @@
     "members": [
      "note_trucks",
      "boxes",
-     "heaviest",
-     "weight"
+     "capacity"
     ],
     "color": "gray"
-   }
-  },
-  {
-   "id": "note_trucks_weak",
-   "type": "NoteNode",
-   "init": {
-    "label": "Stop at the first misfit",
-    "body": "A truck leaves as soon as the next box is too heavy, even with room for a smaller one.",
-    "width": 320,
-    "height": 150
    }
   },
   {
@@ -994,7 +942,6 @@
    "init": {
     "label": "Loading trucks, not optimized: stop at the first box that won't fit",
     "members": [
-     "note_trucks_weak",
      "nofit",
      "nofit_kg",
      "nofit_chart"
@@ -1003,22 +950,11 @@
    }
   },
   {
-   "id": "note_trucks_good",
-   "type": "NoteNode",
-   "init": {
-    "label": "Skip what won't fit",
-    "body": "A truck keeps filling with smaller boxes that still fit. This is first-fit decreasing, a packing rule known to come close to the fewest trucks.",
-    "width": 320,
-    "height": 150
-   }
-  },
-  {
    "id": "grp_trucks_good",
    "type": "GroupNode",
    "init": {
     "label": "Loading trucks, optimized: skip boxes that won't fit",
     "members": [
-     "note_trucks_good",
      "fit",
      "fit_kg",
      "fit_chart"
@@ -1030,8 +966,8 @@
    "id": "note_route",
    "type": "NoteNode",
    "init": {
-    "label": "16 stops around Knoxville",
-    "body": "One driver leaves the depot. **Km from the last stop** is the great-circle distance, and it is the Cost in both plans.",
+    "label": "The setup",
+    "body": "One driver leaves the depot and visits each stop once.",
     "width": 320,
     "height": 150
    }
@@ -1051,22 +987,11 @@
    }
   },
   {
-   "id": "note_route_weak",
-   "type": "NoteNode",
-   "init": {
-    "label": "In listed order",
-    "body": "No Order by formula, so the stops go in the order they were typed in, crossing back and forth.",
-    "width": 320,
-    "height": 150
-   }
-  },
-  {
    "id": "grp_route_weak",
    "type": "GroupNode",
    "init": {
     "label": "Delivery route, not optimized: the stops in listed order",
     "members": [
-     "note_route_weak",
      "listed",
      "listed_sum",
      "listed_chart"
@@ -1075,22 +1000,11 @@
    }
   },
   {
-   "id": "note_route_good",
-   "type": "NoteNode",
-   "init": {
-    "label": "Nearest next",
-    "body": "The same km formula as the Order by sends the driver to the closest stop each time. **Local Search** then untangles the route by moving stops and flipping stretches of it.",
-    "width": 320,
-    "height": 150
-   }
-  },
-  {
    "id": "grp_route_good",
    "type": "GroupNode",
    "init": {
     "label": "Delivery route, optimized: nearest stop next, then improved",
     "members": [
-     "note_route_good",
      "nearest",
      "nearest_sum",
      "nearest_chart",
@@ -1105,39 +1019,39 @@
  "cables": [
   "jobs.frame -> by_due.items",
   "machines.frame -> by_due.start",
-  "edd.result -> by_due.order",
-  "work.result -> by_due.cost",
+  "day.value -> by_due.budget",
   "by_due.picks -> by_due_late.frame",
   "by_due_late.frame -> by_due_col.frame",
   "by_due_col.values -> by_due_sum.late",
   "jobs.frame -> by_short.items",
   "machines.frame -> by_short.start",
-  "spt.result -> by_short.order",
-  "work.result -> by_short.cost",
+  "day.value -> by_short.budget",
   "by_short.picks -> by_short_late.frame",
   "by_short_late.frame -> by_short_col.frame",
   "by_short_col.values -> by_short_sum.late",
-  "by_due.picks -> jobs_better.items",
-  "machines.frame -> jobs_better.start",
-  "job_time.result -> jobs_better.cost",
-  "job_late.result -> jobs_better.penalty",
+  "day.value -> job_wait.day",
+  "day.value -> job_late.day",
   "by_due.picks -> jobs_scored.items",
   "machines.frame -> jobs_scored.start",
-  "job_time.result -> jobs_scored.cost",
+  "job_wait.result -> jobs_scored.cost",
   "job_late.result -> jobs_scored.penalty",
   "jobs_scored.plan -> jobs_scored_pen.frame",
   "jobs_scored_pen.values -> jobs_scored_sum.late",
+  "day.value -> jobs_scored_sum.day",
+  "by_due.picks -> jobs_better.items",
+  "machines.frame -> jobs_better.start",
+  "job_wait.result -> jobs_better.cost",
+  "job_late.result -> jobs_better.penalty",
   "jobs_better.plan -> jobs_better_pen.frame",
   "jobs_better_pen.values -> jobs_better_sum.late",
+  "day.value -> jobs_better_sum.day",
   "jobs_better.history -> jobs_better_chart.values",
   "boxes.frame -> fit.items",
-  "heaviest.result -> fit.order",
-  "weight.result -> fit.cost",
+  "capacity.value -> fit.budget",
   "fit.picks -> fit_kg.frame",
   "fit_kg.frame -> fit_chart.values",
   "boxes.frame -> nofit.items",
-  "heaviest.result -> nofit.order",
-  "weight.result -> nofit.cost",
+  "capacity.value -> nofit.budget",
   "nofit.picks -> nofit_kg.frame",
   "nofit_kg.frame -> nofit_chart.values",
   "stops.frame -> nearest.items",

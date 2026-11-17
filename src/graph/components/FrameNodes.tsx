@@ -51,7 +51,8 @@ import type {
   HeaderOp,
   BlankRowMode,
 } from "../nodeClasses";
-import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS, SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS } from "../nodeClasses";
+import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS, SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS,
+  QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_ORDER_DIR_OPTIONS, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK } from "../nodeClasses";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType, LocalSearchNode as LocalSearchNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
@@ -94,7 +95,7 @@ import { ResultDisplay } from "./ResultDisplay";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ArrayChip } from "./ArrayChip";
 import { readChipPopupStyle } from "./chipStyle";
-import { NodeShell, ValueDisplay, OpSelect, ArgSelect, useNodeField, MarkdownDiv, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, ValueDisplay, OpSelect, ArgSelect, AskSelect, useNodeField, MarkdownDiv, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
 import { CardSection, useRowsInUse } from "./CardSection";
@@ -1312,7 +1313,10 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
   const [stepStart, setStepStart] = useNodeField(data, "stepStart");
   const [fit, setFit] = useNodeField(data, "mode");
   const [turns, setTurns] = useNodeField(data, "turns");
+  const [dir, setDir] = useNodeField(data, "orderDir");
   const connected = useConnectedInputs(data.id);
+  // Which way the order runs says something only once a column orders the items.
+  const hasOrderColumn = connected.has("orderColumn") || !!data.stringLiterals.orderColumn || dir !== "asc";
   // Each pick says something only where it can change the run: the step start with a Start wired, the fit with a budget.
   const hasStart = connected.has("start") || stepStart !== "continue";
   const hasBudget = connected.has("budget") || data.literals.budget != null || fit !== "stop";
@@ -1322,18 +1326,20 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
   const budgetUsed = useRowsInUse(data, QUEUE_BUDGET_KEYS) || fit !== "stop";
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["items", "order", "cost"]} cableOnlyKeys={QUEUE_LAMBDA_KEYS} />
+      <InlineInputs node={data} emit={emit} keys={["items", "orderColumn"]} fullWiredKeys={QUEUE_WHOLE} />
+      {hasOrderColumn && <SegToggle value={dir} options={QUEUE_ORDER_DIR_OPTIONS} onChange={setDir} />}
+      <InlineInputs node={data} emit={emit} keys={["order", "costColumn", "cost"]} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
       <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: QUEUE_GROUP_KEYS }}>
-        <InlineInputs node={data} emit={emit} keys={QUEUE_GROUP_KEYS} cableOnlyKeys={QUEUE_LAMBDA_KEYS} />
-        {hasStart && <ArgSelect value={stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={setStepStart} />}
-        {groupsUsed && <ArgSelect value={turns} options={QUEUE_TURNS_OPTIONS} onChange={setTurns} />}
+        <InlineInputs node={data} emit={emit} keys={QUEUE_GROUP_KEYS} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
+        {hasStart && <AskSelect label={QUEUE_STEP_START_ASK} value={stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={setStepStart} />}
+        {groupsUsed && <AskSelect label={QUEUE_TURNS_ASK} value={turns} options={QUEUE_TURNS_OPTIONS} onChange={setTurns} />}
       </CardSection>
       <CardSection label="Steps" collapsible defaultOpen={stepsUsed} sockets={{ node: data, emit, keys: QUEUE_STEP_KEYS }}>
-        <InlineInputs node={data} emit={emit} keys={QUEUE_STEP_KEYS} />
+        <InlineInputs node={data} emit={emit} keys={QUEUE_STEP_KEYS} fullWiredKeys={QUEUE_WHOLE} />
       </CardSection>
       <CardSection label="Budget" collapsible defaultOpen={budgetUsed} sockets={{ node: data, emit, keys: QUEUE_BUDGET_KEYS }}>
-        <InlineInputs node={data} emit={emit} keys={QUEUE_BUDGET_KEYS} />
-        {hasBudget && <ArgSelect value={fit} options={QUEUE_FIT_OPTIONS} onChange={setFit} />}
+        <InlineInputs node={data} emit={emit} keys={QUEUE_BUDGET_KEYS} fullWiredKeys={QUEUE_WHOLE} />
+        {hasBudget && <AskSelect label={QUEUE_FIT_ASK} value={fit} options={QUEUE_FIT_OPTIONS} onChange={setFit} />}
       </CardSection>
       <MeasuredSocketRow side="output" socketKey="picks" nodeId={data.id} emit={emit} payload={data.outputs.picks!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
@@ -1353,6 +1359,8 @@ const QUEUE_LAMBDA_KEYS = new Set(["order", "cost", "allowed"]);
 const QUEUE_GROUP_KEYS = ["group", "start", "allowed"];
 const QUEUE_STEP_KEYS = ["step", "steps"];
 const QUEUE_BUDGET_KEYS = ["budget", "perStep"];
+// Every input shows the wired card's whole name: a card named "Hours a machine works a day" says what the Budget means.
+const QUEUE_WHOLE = new Set(["items", "orderColumn", "order", "costColumn", "cost", "start", "allowed", "group", "step", "steps", "budget", "perStep"]);
 
 // The improved plan is the card's table; the total and the moves made ride below it. Cost, Penalty and Allowed are
 // LAMBDA cards on the canvas, as on Greedy Queue, so the plan it feeds in and the rule both stay in view.
@@ -1366,13 +1374,13 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
   const groupsUsed = useRowsInUse(data, SEARCH_GROUP_KEYS) || reach !== "across" || ends !== "open";
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["items", "cost", "penalty"]} cableOnlyKeys={SEARCH_LAMBDA_KEYS} />
+      <InlineInputs node={data} emit={emit} keys={["items", "costColumn", "cost", "penalty"]} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
       <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: SEARCH_GROUP_KEYS }}>
-        <InlineInputs node={data} emit={emit} keys={SEARCH_GROUP_KEYS} cableOnlyKeys={SEARCH_LAMBDA_KEYS} />
-        {groupsUsed && <ArgSelect value={reach} options={SEARCH_REACH_OPTIONS} onChange={setReach} />}
-        {hasStart && <ArgSelect value={ends} options={SEARCH_ENDS_OPTIONS} onChange={setEnds} />}
+        <InlineInputs node={data} emit={emit} keys={SEARCH_GROUP_KEYS} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
+        {groupsUsed && <AskSelect label={SEARCH_REACH_ASK} value={reach} options={SEARCH_REACH_OPTIONS} onChange={setReach} />}
+        {hasStart && <AskSelect label={SEARCH_ENDS_ASK} value={ends} options={SEARCH_ENDS_OPTIONS} onChange={setEnds} />}
       </CardSection>
-      <InlineInputs node={data} emit={emit} keys={["passes"]} />
+      <InlineInputs node={data} emit={emit} keys={["passes"]} fullWiredKeys={SEARCH_WHOLE} />
       <MeasuredSocketRow side="output" socketKey="plan" nodeId={data.id} emit={emit} payload={data.outputs.plan!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
@@ -1389,6 +1397,7 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
 }
 const SEARCH_LAMBDA_KEYS = new Set(["cost", "penalty", "allowed"]);
 const SEARCH_GROUP_KEYS = ["group", "start", "allowed"];
+const SEARCH_WHOLE = new Set(["items", "costColumn", "cost", "penalty", "group", "start", "allowed", "passes"]);
 
 export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
   const [agg, setAgg] = useNodeField(data, "agg");

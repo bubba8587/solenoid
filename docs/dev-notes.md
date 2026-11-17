@@ -24,6 +24,12 @@ specific item.
   the hour. Both cards' copy is plain English (dropdowns included). A value-axis bound set alone now keeps the other
   at the axis' default (floor 0), so `ymax` alone no longer lifts a Column chart's floor to its smallest bar.
   `validate-graph` flags a group inside a group (groups don't nest; the tidy scatters one).
+- **Rules that are only a column are picked, not written** (author: a formula card that names a column is a UI gap).
+  Greedy Queue's Order by is a column with Smallest first / Largest first, Then by a LAMBDA after it; Cost (both
+  cards) is a column plus an optional Cost formula. Conditions are named value cards ("Hours a machine works a day")
+  wired into Budget and the rest, and both cards show a wired card's whole name. Picks lead with their question
+  (`AskSelect`: "If an item won't fit" Stop / Skip it). Typed-in-place formulas were tried and refused (author).
+  Notes are the last resort: the seed keeps one per problem for what no card shows.
 - **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
   per run (sites × days, a draw each, then the Greedy Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
   a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common

@@ -7,7 +7,7 @@
 
 use super::frames::{frame_in, frame_v, num_column, str_input, trimmed};
 use super::matrix::{wired_lambda, Body};
-use super::queue::{allowed, key, keys, position, setting, taken, text};
+use super::queue::{allowed, cell_number, key, keys, position, setting, taken, text};
 use super::{err, Answer, Call, Column, Cv, Frame};
 use crate::error_value::ErrorCode;
 use crate::eval::Eval;
@@ -79,6 +79,8 @@ struct Model<'a> {
     /// Whether each formula reads before, at or position, so its answer for an item and its last can't be kept.
     moving: [bool; 3],
     back: bool,
+    /// The Cost column, its number added to the Cost formula's.
+    cost_col: Option<(usize, String)>,
     ev: Eval<'a>,
     memo: [HashMap<(usize, usize, Spot), f64>; 3],
     work: u64,
@@ -135,6 +137,13 @@ impl Model<'_> {
         Ok(v)
     }
 
+    fn own(&self, row: usize) -> Result<f64, V> {
+        match &self.cost_col {
+            Some((i, name)) => Ok(cell_number(self.items, *i, row, name)?.unwrap_or(0.0)),
+            None => Ok(0.0),
+        }
+    }
+
     fn begin(&self, k: usize) -> Spot {
         self.start_row[k].map_or(Spot::None, Spot::Start)
     }
@@ -146,7 +155,7 @@ impl Model<'_> {
         match to {
             Some(r) => {
                 let this = Spot::Item(r);
-                let cost = self.ask(0, k, this, from, (0.0, 0.0, 0))?;
+                let cost = self.own(r)? + self.ask(0, k, this, from, (0.0, 0.0, 0))?;
                 let pen = if self.penalty.is_some() { self.ask(1, k, this, from, (0.0, 0.0, 0))? } else { 0.0 };
                 let ok = self.allow.is_none() || self.ask(2, k, this, from, (0.0, 0.0, 0))? != 0.0;
                 Ok((i64::from(!ok), cost + pen))
@@ -289,7 +298,7 @@ impl Model<'_> {
     fn leg(&mut self, k: usize, seq: &[usize], p: usize, before: f64) -> Result<Leg, V> {
         let last = if p == 0 { self.begin(k) } else { Spot::Item(seq[p - 1]) };
         let this = Spot::Item(seq[p]);
-        let cost = self.ask(0, k, this, last, (before, 0.0, p + 1))?;
+        let cost = self.own(seq[p])? + self.ask(0, k, this, last, (before, 0.0, p + 1))?;
         let at = before + cost;
         let penalty = if self.penalty.is_some() { self.ask(1, k, this, last, (before, at, p + 1))? } else { 0.0 };
         let ok = self.allow.is_none() || self.ask(2, k, this, last, (before, at, p + 1))? != 0.0;
@@ -411,6 +420,14 @@ fn local_search(c: &mut Call) -> Answer {
         Ok(g) => g,
         Err(e) => return fail(c, e),
     };
+    let cost_col = match trimmed(&str_input(c, "costColumn", ""), "The cost column") {
+        Ok(n) if n.is_empty() => None,
+        Ok(n) => match position(&f, &n) {
+            Some(i) => Some((i, n)),
+            None => return fail(c, err(ErrorCode::Ref, format!("The items have no cost column \"{n}\""))),
+        },
+        Err(e) => return fail(c, e),
+    };
     let across = c.field_str("reach", "across") == "across";
     let back = c.field_str("ends", "open") == "return";
     let passes = match setting(c, "passes", 0.0) {
@@ -514,6 +531,7 @@ fn local_search(c: &mut Call) -> Answer {
         penalty,
         allow,
         back,
+        cost_col,
         ev: Eval::default(),
         memo: Default::default(),
         work: 0,

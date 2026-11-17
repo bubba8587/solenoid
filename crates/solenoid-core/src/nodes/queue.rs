@@ -176,6 +176,19 @@ pub(super) fn keys(body: Option<&Body>, ev: &Eval, args: &[V], what: &str, row: 
     Ok(out)
 }
 
+/// A column's number in a row, for an order or a cost: a blank is None, and text is `#VALUE!` naming the row.
+pub(super) fn cell_number(f: &Frame, col: usize, row: usize, name: &str) -> Result<Option<f64>, V> {
+    match f.columns[col].values.get(row) {
+        None | Some(V::Null | V::Undef) => Ok(None),
+        Some(V::Num(n) | V::Date(n)) if n.is_finite() => Ok(Some(*n)),
+        Some(V::Bool(b)) => Ok(Some(f64::from(u8::from(*b)))),
+        Some(V::Err(e)) => Err(V::Err(e.clone())),
+        Some(v) => {
+            Err(err(ErrorCode::Value, format!("{name} in item row {} is {}, not a number", row + 1, value_text(v))))
+        }
+    }
+}
+
 /// Two keys compared in turn, a shorter one first where one runs out.
 fn by_keys(a: &[f64], b: &[f64]) -> std::cmp::Ordering {
     a.iter().zip(b).map(|(x, y)| x.total_cmp(y)).find(|o| o.is_ne()).unwrap_or_else(|| a.len().cmp(&b.len()))
@@ -209,19 +222,22 @@ fn greedy_queue(c: &mut Call) -> Answer {
     let fail = |c: &mut Call, e: V| out(c, Cv::V(e.clone()), Cv::V(e.clone()), e);
     let Some(f) = frame_in(c, "items") else { return out(c, Cv::NULL, Cv::NULL, V::Null) };
     let start = frame_in(c, "start");
-    let names = (|| -> Result<[String; 2], V> {
+    let names = (|| -> Result<[String; 4], V> {
         Ok([
             trimmed(&str_input(c, "group", ""), "The group column")?,
             trimmed(&str_input(c, "step", ""), "The step column")?,
+            trimmed(&str_input(c, "orderColumn", ""), "The order column")?,
+            trimmed(&str_input(c, "costColumn", ""), "The cost column")?,
         ])
     })();
-    let [group_name, step_name] = match names {
+    let [group_name, step_name, order_name, cost_name] = match names {
         Ok(n) => n,
         Err(e) => return fail(c, e),
     };
     let restart = c.field_str("stepStart", "continue") == "start";
     let skip = c.field_str("mode", "stop") == "skip";
     let best_pair = c.field_str("turns", "rotate") == "best";
+    let largest = c.field_str("orderDir", "asc") == "desc";
     let settings = (|| -> Result<_, V> {
         Ok((setting(c, "perStep", 1.0)?, setting(c, "budget", 0.0)?, setting(c, "steps", 1.0)?))
     })();
@@ -250,6 +266,10 @@ fn greedy_queue(c: &mut Call) -> Answer {
     let group_col = if pooled { Ok(None) } else { col(&group_name, "group") };
     let (gi, si) = match (group_col, col(&step_name, "step")) {
         (Ok(g), Ok(s)) => (g, s),
+        (Err(e), _) | (_, Err(e)) => return fail(c, e),
+    };
+    let (oi, ci) = match (col(&order_name, "order"), col(&cost_name, "cost")) {
+        (Ok(o), Ok(k)) => (o, k),
         (Err(e), _) | (_, Err(e)) => return fail(c, e),
     };
     let start_group = match (&start, gi.is_some() || pooled) {
@@ -388,7 +408,16 @@ fn greedy_queue(c: &mut Call) -> Answer {
                 for (j, it) in open[q].iter().enumerate() {
                     let args = scope.args(it.row, &crew.last, home, step - it.opens, step, crew.used);
                     if allowed(allow.as_ref(), &ev, &args, it.row)? {
-                        ranked.push((keys(order.as_ref(), &ev, &args, "order", it.row)?, q, j));
+                        let mut key = Vec::new();
+                        if let Some(i) = oi {
+                            // A blank goes last whichever way the column runs.
+                            let n = cell_number(&f, i, it.row, &order_name)?;
+                            key.push(n.map_or(f64::INFINITY, |n| if largest { -n } else { n }));
+                        }
+                        if order.is_some() || key.is_empty() {
+                            key.extend(keys(order.as_ref(), &ev, &args, "order", it.row)?);
+                        }
+                        ranked.push((key, q, j));
                     }
                 }
             }
@@ -399,7 +428,16 @@ fn greedy_queue(c: &mut Call) -> Answer {
             for (key, q, j) in ranked {
                 let it = &open[q][j];
                 let args = scope.args(it.row, &crew.last, home, step - it.opens, step, crew.used);
-                let spend = keys(cost.as_ref(), &ev, &args, "cost", it.row)?.first().copied().unwrap_or(0.0);
+                let own = match ci {
+                    Some(i) => cell_number(&f, i, it.row, &cost_name)?.unwrap_or(0.0),
+                    None => 0.0,
+                };
+                let extra = if cost.is_some() {
+                    keys(cost.as_ref(), &ev, &args, "cost", it.row)?.first().copied().unwrap_or(0.0)
+                } else {
+                    0.0
+                };
+                let spend = own + extra;
                 // A group's first pick of the step always fits, so an item costing more than a step can't wait forever.
                 if budget.is_none_or(|b| crew.picks == 0 || crew.used + spend <= b) {
                     return Ok(Some((key, q, j, spend)));

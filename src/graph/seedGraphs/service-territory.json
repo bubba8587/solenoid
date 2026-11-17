@@ -12,7 +12,7 @@
         "frameText": "[{\"name\":\"Site\",\"type\":\"string\",\"cells\":[\"S-001\",\"S-002\",\"S-003\",\"S-004\",\"S-005\",\"S-006\",\"S-007\",\"S-008\",\"S-009\",\"S-010\",\"S-011\",\"S-012\",\"S-013\",\"S-014\",\"S-015\",\"S-016\",\"S-017\",\"S-018\",\"S-019\",\"S-020\",\"S-021\",\"S-022\",\"S-023\",\"S-024\",\"S-025\",\"S-026\",\"S-027\",\"S-028\",\"S-029\",\"S-030\",\"S-031\",\"S-032\",\"S-033\",\"S-034\",\"S-035\",\"S-036\",\"S-037\",\"S-038\",\"S-039\",\"S-040\",\"S-041\",\"S-042\",\"S-043\",\"S-044\",\"S-045\",\"S-046\",\"S-047\",\"S-048\",\"S-049\",\"S-050\",\"S-051\",\"S-052\",\"S-053\",\"S-054\",\"S-055\",\"S-056\",\"S-057\",\"S-058\",\"S-059\",\"S-060\",\"S-061\",\"S-062\",\"S-063\",\"S-064\",\"S-065\",\"S-066\",\"S-067\",\"S-068\",\"S-069\",\"S-070\",\"S-071\",\"S-072\",\"S-073\",\"S-074\",\"S-075\",\"S-076\",\"S-077\",\"S-078\",\"S-079\",\"S-080\",\"S-081\",\"S-082\",\"S-083\",\"S-084\",\"S-085\",\"S-086\",\"S-087\",\"S-088\",\"S-089\",\"S-090\",\"S-091\",\"S-092\",\"S-093\",\"S-094\",\"S-095\",\"S-096\",\"S-097\",\"S-098\",\"S-099\",\"S-100\",\"S-101\",\"S-102\",\"S-103\",\"S-104\",\"S-105\",\"S-106\",\"S-107\",\"S-108\",\"S-109\",\"S-110\",\"S-111\",\"S-112\",\"S-113\",\"S-114\",\"S-115\",\"S-116\",\"S-117\",\"S-118\",\"S-119\",\"S-120\",\"S-121\",\"S-122\",\"S-123\",\"S-124\",\"S-125\",\"S-126\",\"S-127\",\"S-128\",\"S-129\",\"S-130\",\"S-131\",\"S-132\",\"S-133\",\"S-134\",\"S-135\",\"S-136\",\"S-137\",\"S-138\",\"S-139\",\"S-140\",\"S-141\",\"S-142\",\"S-143\",\"S-144\",\"S-145\",\"S-146\",\"S-147\",\"S-148\",\"S-149\",\"S-150\",\"S-151\",\"S-152\",\"S-153\",\"S-154\",\"S-155\",\"S-156\",\"S-157\",\"S-158\",\"S-159\",\"S-160\",\"S-161\",\"S-162\",\"S-163\",\"S-164\",\"S-165\",\"S-166\",\"S-167\",\"S-168\",\"S-169\",\"S-170\",\"S-171\",\"S-172\",\"S-173\",\"S-174\",\"S-175\",\"S-176\",\"S-177\",\"S-178\",\"S-179\",\"S-180\",\"S-181\",\"S-182\",\"S-183\",\"S-184\",\"S-185\",\"S-186\",\"S-187\",\"S-188\",\"S-189\",\"S-190\",\"S-191\",\"S-192\",\"S-193\",\"S-194\",\"S-195\",\"S-196\",\"S-197\",\"S-198\",\"S-199\",\"S-200\",\"S-201\",\"S-202\",\"S-203\",\"S-204\",\"S-205\",\"S-206\",\"S-207\",\"S-208\",\"S-209\",\"S-210\",\"S-211\",\"S-212\",\"S-213\",\"S-214\",\"S-215\",\"S-216\",\"S-217\",\"S-218\",\"S-219\",\"S-220\",\"S-221\",\"S-222\",\"S-223\",\"S-224\",\"S-225\",\"S-226\",\"S-227\",\"S-228\",\"S-229\",\"S-230\",\"S-231\",\"S-232\",\"S-233\",\"S-234\",\"S-235\",\"S-236\",\"S-237\",\"S-238\",\"S-239\",\"S-240\",\"S-241\",\"S-242\",\"S-243\",\"S-244\",\"S-245\",\"S-246\",\"S-247\",\"S-248\",\"S-249\",\"S-250\"]},{\"name\":\"Area\",\"type\":\"string\",\"cells\":[\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Austin\",\"Round Rock\",\"Round Rock\",\"Round Rock\",\"Round Rock\",\"Round Rock\",\"Round Rock\",\"Round Rock\",\"San Marcos\",\"San Marcos\",\"San Marcos\",\"San Marcos\",\"San Marcos\",\"San Marcos\",\"San Marcos\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Houston\",\"Bryan\",\"Bryan\",\"Bryan\",\"Bryan\",\"Bryan\",\"Bryan\",\"Beaumont\",\"Beaumont\",\"Beaumont\",\"Beaumont\",\"Beaumont\",\"Beaumont\",\"Victoria\",\"Victoria\",\"Victoria\",\"Victoria\",\"Victoria\",\"Victoria\",\"East Texas\",\"East Texas\",\"East Texas\",\"East Texas\",\"East Texas\",\"East Texas\",\"East Texas\",\"East Texas\",\"East Texas\",\"East Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Southeast Texas\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Little Rock\",\"Hot Springs\",\"Hot Springs\",\"Hot Springs\",\"Hot Springs\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Birmingham\",\"Tuscaloosa\",\"Tuscaloosa\",\"Tuscaloosa\",\"Tuscaloosa\",\"Tuscaloosa\",\"Tuscaloosa\",\"Tuscaloosa\",\"Tuscaloosa\",\"Tuscaloosa\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Huntsville\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Montgomery\",\"Mobile\",\"Mobile\",\"Mobile\",\"Mobile\",\"Mobile\",\"Mobile\",\"Mobile\",\"Mobile\",\"Mobile\",\"Mobile\",\"Mobile\",\"Dothan\",\"Dothan\",\"Dothan\",\"Dothan\",\"Dothan\",\"Dothan\",\"Dothan\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Albany\",\"Valdosta\",\"Valdosta\",\"Valdosta\",\"Valdosta\",\"Valdosta\",\"Valdosta\",\"Valdosta\",\"Waycross\",\"Waycross\",\"Waycross\",\"Waycross\",\"Waycross\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Chattanooga\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Knoxville\",\"Laredo\",\"Corpus Christi\",\"Texarkana\",\"Jonesboro\",\"Nashville\",\"Panama City\",\"Tallahassee\",\"Atlanta\",\"Asheville\"]},{\"name\":\"Latitude\",\"type\":\"number\",\"cells\":[\"30.0767\",\"29.7933\",\"30.3247\",\"30.4791\",\"30.6864\",\"30.1197\",\"30.6439\",\"30.1053\",\"30.7168\",\"30.8692\",\"30.2113\",\"30.9432\",\"30.3436\",\"30.2066\",\"30.1529\",\"30.6264\",\"30.6515\",\"30.4886\",\"30.3375\",\"30.2256\",\"30.3658\",\"30.3157\",\"30.7222\",\"30.8621\",\"30.5394\",\"30.7992\",\"29.3871\",\"29.91\",\"29.4141\",\"29.9504\",\"29.3992\",\"30.3162\",\"30.203\",\"30.1722\",\"30.6105\",\"30.0238\",\"29.3362\",\"30.2922\",\"30.6704\",\"29.2236\",\"29.9323\",\"29.2129\",\"29.9531\",\"30.6379\",\"30.6139\",\"30.631\",\"29.2679\",\"29.8512\",\"30.5322\",\"30.0789\",\"29.5787\",\"30.3242\",\"30.5354\",\"31.0095\",\"30.4398\",\"31.2716\",\"30.9997\",\"30.262\",\"29.8828\",\"29.7939\",\"29.8546\",\"30.0364\",\"30.4169\",\"30.3057\",\"28.4399\",\"28.4885\",\"29.1033\",\"29.0128\",\"28.9064\",\"29.3114\",\"31.4221\",\"31.7214\",\"31.193\",\"31.0791\",\"32.0206\",\"30.6411\",\"30.8701\",\"30.3019\",\"30.8882\",\"31.8344\",\"29.0815\",\"30.6407\",\"29.5307\",\"29.4989\",\"30.4152\",\"29.8356\",\"29.4342\",\"30.5968\",\"30.4169\",\"31.0652\",\"30.5501\",\"29.2241\",\"34.0808\",\"35.1418\",\"34.2894\",\"34.8691\",\"35.1733\",\"34.6254\",\"34.9141\",\"34.7206\",\"34.7144\",\"35.1891\",\"35.2668\",\"35.1392\",\"34.509\",\"34.2639\",\"34.6967\",\"34.2455\",\"34.4971\",\"34.6415\",\"33.3136\",\"33.4712\",\"33.4596\",\"32.9764\",\"33.7494\",\"33.0563\",\"33.1202\",\"34.0433\",\"33.2146\",\"33.9377\",\"33.5994\",\"33.7528\",\"33.8527\",\"33.7713\",\"34.1012\",\"33.4787\",\"33.3854\",\"33.3805\",\"32.8419\",\"32.9807\",\"33.1193\",\"32.9665\",\"33.1166\",\"33.2796\",\"32.9576\",\"33.5551\",\"32.9479\",\"35.2534\",\"34.1823\",\"35.2633\",\"35.2816\",\"34.5184\",\"34.9397\",\"35.0092\",\"35.0614\",\"34.25\",\"34.4281\",\"34.8683\",\"34.2836\",\"32.6261\",\"32.0388\",\"32.2509\",\"32.0755\",\"32.5347\",\"32.0456\",\"32.5118\",\"31.8918\",\"32.3516\",\"31.9969\",\"32.9226\",\"32.0688\",\"32.5887\",\"32.7152\",\"31.825\",\"30.7239\",\"30.7153\",\"30.7561\",\"31.1277\",\"30.9153\",\"30.7789\",\"31.1564\",\"30.9777\",\"31.0204\",\"31.1045\",\"30.9563\",\"31.2372\",\"30.8974\",\"31.4479\",\"31.3989\",\"30.7814\",\"31.4311\",\"30.9655\",\"31.0652\",\"31.5029\",\"31.5984\",\"31.3225\",\"31.1266\",\"31.4133\",\"31.3586\",\"31.844\",\"31.4206\",\"31.9225\",\"31.2231\",\"31.2092\",\"32.0518\",\"31.5699\",\"30.7329\",\"31.125\",\"30.8579\",\"30.8144\",\"31.1843\",\"31.2901\",\"30.7305\",\"31.2595\",\"31.1305\",\"31.5299\",\"31.0996\",\"31.1459\",\"35.5993\",\"34.566\",\"34.5277\",\"34.5543\",\"34.5007\",\"35.3967\",\"35.4477\",\"34.645\",\"34.6073\",\"35.1471\",\"35.3245\",\"34.9827\",\"35.0357\",\"35.2747\",\"35.5841\",\"34.8624\",\"35.0222\",\"36.0899\",\"36.3084\",\"36.0826\",\"35.8198\",\"36.5566\",\"35.8317\",\"36.1423\",\"35.7814\",\"36.0924\",\"35.504\",\"35.642\",\"35.9804\",\"35.3718\",\"35.6869\",\"35.7625\",\"35.494\",\"27.5279\",\"27.824\",\"33.4427\",\"35.8597\",\"36.174\",\"30.1846\",\"30.4681\",\"33.7731\",\"35.6193\"]},{\"name\":\"Longitude\",\"type\":\"number\",\"cells\":[\"-97.1588\",\"-98.2485\",\"-97.3855\",\"-98.4632\",\"-97.6076\",\"-97.9026\",\"-97.3608\",\"-97.3986\",\"-98.0207\",\"-97.7325\",\"-97.3289\",\"-97.975\",\"-98.6318\",\"-97.2585\",\"-97.1618\",\"-98.3686\",\"-97.9878\",\"-97.6736\",\"-98.2687\",\"-97.2641\",\"-98.2131\",\"-97.2194\",\"-97.6253\",\"-97.6799\",\"-97.0131\",\"-97.1955\",\"-98.4089\",\"-98.6395\",\"-97.8969\",\"-98.4791\",\"-98.2898\",\"-98.1291\",\"-97.9864\",\"-95.2461\",\"-95.8834\",\"-95.0834\",\"-95.8195\",\"-95.6225\",\"-95.3552\",\"-96.1222\",\"-94.5117\",\"-95.6984\",\"-95.5243\",\"-95.662\",\"-95.3072\",\"-95.8337\",\"-95.2835\",\"-95.4192\",\"-95.9124\",\"-94.7499\",\"-95.4436\",\"-96.2861\",\"-96.0465\",\"-96.873\",\"-96.5702\",\"-96.1476\",\"-95.9573\",\"-96.7384\",\"-94.3284\",\"-94.3158\",\"-94.7101\",\"-94.2838\",\"-94.2391\",\"-94.6847\",\"-96.5136\",\"-96.9424\",\"-96.8792\",\"-97.0617\",\"-97.2541\",\"-96.5333\",\"-94.459\",\"-95.2737\",\"-94.5544\",\"-95.0277\",\"-94.9433\",\"-94.9621\",\"-95.6877\",\"-94.9532\",\"-95.5255\",\"-94.1354\",\"-95.8041\",\"-95.4595\",\"-95.6766\",\"-96.1445\",\"-95.203\",\"-95.4435\",\"-97.7166\",\"-95.6538\",\"-96.9186\",\"-97.4653\",\"-94.9449\",\"-95.6914\",\"-92.6177\",\"-92.406\",\"-92.0303\",\"-92.9094\",\"-91.5887\",\"-92.0582\",\"-92.0771\",\"-92.1967\",\"-92.3774\",\"-92.0824\",\"-92.039\",\"-92.0243\",\"-91.8085\",\"-92.4703\",\"-93.3714\",\"-92.9405\",\"-93.254\",\"-93.4985\",\"-86.2259\",\"-87.4703\",\"-87.0708\",\"-86.8159\",\"-86.8254\",\"-86.8274\",\"-87.0993\",\"-87.0044\",\"-86.4748\",\"-87.2515\",\"-86.8003\",\"-86.2927\",\"-86.9793\",\"-87.3146\",\"-87.0406\",\"-86.0523\",\"-87.234\",\"-86.5681\",\"-87.3401\",\"-87.0858\",\"-87.8048\",\"-87.5998\",\"-87.5704\",\"-87.7736\",\"-87.8976\",\"-87.6988\",\"-87.3916\",\"-86.8633\",\"-86.6116\",\"-86.6827\",\"-86.4525\",\"-86.6916\",\"-86.3778\",\"-86.2717\",\"-86.2555\",\"-86.8615\",\"-86.8263\",\"-86.3408\",\"-86.599\",\"-86.961\",\"-86.0256\",\"-85.5713\",\"-85.9812\",\"-85.7959\",\"-85.8252\",\"-86.1966\",\"-86.337\",\"-85.8898\",\"-86.9144\",\"-86.1066\",\"-86.7953\",\"-86.0901\",\"-86.6169\",\"-86.2495\",\"-87.8753\",\"-87.53\",\"-87.5414\",\"-88.0099\",\"-87.9907\",\"-87.833\",\"-87.8789\",\"-87.7298\",\"-88.0993\",\"-87.7666\",\"-87.8288\",\"-85.0235\",\"-85.1707\",\"-84.9981\",\"-85.7172\",\"-85.117\",\"-85.4468\",\"-84.92\",\"-84.1106\",\"-84.1133\",\"-84.8078\",\"-83.5816\",\"-83.6114\",\"-83.7529\",\"-84.2988\",\"-84.5878\",\"-84.7969\",\"-84.021\",\"-83.917\",\"-84.2049\",\"-83.7835\",\"-83.6213\",\"-82.7463\",\"-83.1843\",\"-83.1159\",\"-83.4598\",\"-82.9191\",\"-83.4861\",\"-83.1835\",\"-82.2437\",\"-82.7756\",\"-82.1215\",\"-81.8586\",\"-82.3326\",\"-85.4816\",\"-85.1654\",\"-84.9452\",\"-84.9775\",\"-85.6512\",\"-85.064\",\"-85.7244\",\"-85.376\",\"-84.7863\",\"-85.4935\",\"-84.9507\",\"-85.2576\",\"-85.3857\",\"-85.5555\",\"-85.6327\",\"-84.6678\",\"-85.7989\",\"-84.5134\",\"-84.0876\",\"-83.1417\",\"-83.4508\",\"-84.1458\",\"-83.5049\",\"-84.0171\",\"-83.2137\",\"-83.5296\",\"-83.8471\",\"-83.648\",\"-83.3956\",\"-83.967\",\"-83.5361\",\"-84.1664\",\"-84.2965\",\"-99.4649\",\"-97.4062\",\"-94.0485\",\"-90.7052\",\"-86.7899\",\"-85.615\",\"-84.2866\",\"-84.3689\",\"-82.5987\"]},{\"name\":\"Class\",\"type\":\"string\",\"cells\":[\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class I\",\"Class I\",\"Class II\",\"Class I\",\"Class I\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class I\",\"Class I\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class II\",\"Class I\",\"Class II\",\"Class I\"]},{\"name\":\"Operator\",\"type\":\"string\",\"cells\":[\"OP-01\",\"OP-02\",\"OP-01\",\"OP-01\",\"OP-01\",\"OP-02\",\"OP-01\",\"OP-02\",\"OP-01\",\"OP-01\",\"OP-02\",\"OP-01\",\"OP-01\",\"OP-02\",\"OP-02\",\"OP-01\",\"OP-01\",\"OP-01\",\"OP-01\",\"OP-01\",\"OP-02\",\"OP-01\",\"OP-01\",\"OP-01\",\"OP-01\",\"OP-01\",\"OP-02\",\"OP-02\",\"OP-02\",\"OP-02\",\"OP-02\",\"OP-01\",\"OP-02\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-01\",\"OP-01\",\"OP-01\",\"OP-01\",\"OP-02\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-02\",\"OP-02\",\"OP-04\",\"OP-02\",\"OP-01\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-04\",\"OP-02\",\"OP-04\",\"OP-02\",\"OP-01\",\"OP-04\",\"OP-04\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-03\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-06\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-06\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-05\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-05\",\"OP-05\",\"OP-09\",\"OP-05\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-05\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-06\",\"OP-07\",\"OP-07\",\"OP-07\",\"OP-07\",\"OP-07\",\"OP-07\",\"OP-07\",\"OP-07\",\"OP-07\",\"OP-07\",\"OP-07\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-08\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-09\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-10\",\"OP-02\",\"OP-02\",\"OP-03\",\"OP-03\",\"OP-09\",\"OP-08\",\"OP-08\",\"OP-09\",\"OP-10\"]},{\"name\":\"Assignment\",\"type\":\"string\",\"cells\":[\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Crossover\",\"Crossover\",\"Crossover\",\"Nearest\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Crossover\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Crossover\",\"Crossover\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Crossover\",\"Nearest\",\"Crossover\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Crossover\",\"Nearest\",\"Crossover\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Crossover\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Nearest\",\"Outlier\",\"Outlier\",\"Outlier\",\"Outlier\",\"Outlier\",\"Outlier\",\"Outlier\",\"Outlier\",\"Outlier\"]},{\"name\":\"Rel Freq\",\"type\":\"number\",\"cells\":[\"0.79\",\"0.77\",\"0.78\",\"1.3\",\"0.45\",\"0.75\",\"1.96\",\"1.72\",\"0.79\",\"3.39\",\"1.41\",\"1.39\",\"1.51\",\"0.25\",\"1.35\",\"1.63\",\"1.38\",\"1.37\",\"1.25\",\"0.74\",\"1.07\",\"2.6\",\"0.51\",\"1.15\",\"1.06\",\"1.38\",\"1.03\",\"0.79\",\"2.1\",\"0.88\",\"0.75\",\"1.42\",\"2.37\",\"2.26\",\"1.03\",\"2.93\",\"0.65\",\"0.87\",\"2.36\",\"0.72\",\"1.31\",\"0.34\",\"2.25\",\"0.74\",\"0.79\",\"0.91\",\"0.84\",\"0.82\",\"1.04\",\"0.79\",\"1.57\",\"1.32\",\"1.42\",\"1.05\",\"1.97\",\"0.68\",\"0.59\",\"1.23\",\"2.58\",\"3.81\",\"0.61\",\"3\",\"0.75\",\"0.42\",\"1.16\",\"1.92\",\"1.33\",\"1.62\",\"1.47\",\"1.36\",\"0.91\",\"0.71\",\"1.85\",\"0.94\",\"1.15\",\"0.76\",\"0.19\",\"0.67\",\"0.95\",\"1.43\",\"0.55\",\"0.38\",\"0.49\",\"1.04\",\"0.21\",\"2.73\",\"0.97\",\"1.69\",\"0.65\",\"0.29\",\"0.55\",\"1.72\",\"1.09\",\"0.52\",\"0.91\",\"3.34\",\"0.39\",\"0.53\",\"0.95\",\"2.04\",\"0.46\",\"0.52\",\"1.39\",\"1.79\",\"1.05\",\"1.06\",\"1.6\",\"0.43\",\"0.58\",\"0.9\",\"0.55\",\"1.91\",\"0.57\",\"0.36\",\"1.65\",\"0.83\",\"0.69\",\"1.69\",\"0.73\",\"1.49\",\"0.71\",\"1.09\",\"0.97\",\"0.22\",\"0.89\",\"1.29\",\"0.77\",\"0.57\",\"0.76\",\"1.4\",\"2.61\",\"0.84\",\"0.85\",\"0.96\",\"1.23\",\"0.64\",\"0.46\",\"0.5\",\"1.83\",\"1.11\",\"1.9\",\"1.3\",\"1.42\",\"1.52\",\"0.69\",\"1.15\",\"1.55\",\"0.63\",\"0.59\",\"2.07\",\"0.68\",\"2.7\",\"1.24\",\"2.15\",\"0.66\",\"0.83\",\"2.14\",\"0.7\",\"0.87\",\"1.37\",\"1.21\",\"0.87\",\"0.91\",\"1.02\",\"0.52\",\"0.74\",\"0.5\",\"1.8\",\"1.1\",\"1.46\",\"1.48\",\"2.19\",\"0.98\",\"1.39\",\"2.35\",\"1.27\",\"0.68\",\"1.19\",\"0.33\",\"0.67\",\"0.79\",\"0.74\",\"0.45\",\"1.27\",\"1.33\",\"0.79\",\"1.39\",\"1\",\"1.32\",\"0.98\",\"0.83\",\"0.46\",\"0.42\",\"1.29\",\"1.13\",\"0.44\",\"1.27\",\"0.57\",\"3.62\",\"0.83\",\"0.43\",\"1.12\",\"1.12\",\"0.85\",\"0.74\",\"2.12\",\"1.27\",\"1.04\",\"0.67\",\"0.87\",\"1.14\",\"1.89\",\"0.38\",\"0.99\",\"2.05\",\"1.31\",\"1.2\",\"0.9\",\"1.16\",\"0.54\",\"1.01\",\"1.43\",\"1.08\",\"0.53\",\"0.45\",\"1.16\",\"0.76\",\"0.96\",\"0.89\",\"3.02\",\"0.69\",\"1.88\",\"0.71\",\"2.1\",\"0.91\",\"0.56\",\"0.83\",\"0.83\",\"1.06\",\"0.83\",\"1.05\",\"0.13\",\"0.85\",\"1.85\",\"1.09\",\"1.7\",\"0.86\",\"0.94\",\"1.9\",\"1.34\"]}]"
       },
       "x": 0,
-      "y": 0
+      "y": 209
     },
     {
       "id": "annual",
@@ -21,8 +21,8 @@
         "label": "Incidents per year",
         "value": "1500"
       },
-      "x": 0,
-      "y": 300
+      "x": 60,
+      "y": 22
     },
     {
       "id": "expected",
@@ -37,8 +37,8 @@
       "stringLiterals": {
         "name": "Incidents per Yr"
       },
-      "x": 340,
-      "y": 0
+      "x": 334,
+      "y": 101
     },
     {
       "id": "load",
@@ -144,8 +144,8 @@
           ]
         }
       },
-      "x": 700,
-      "y": 0
+      "x": 721,
+      "y": 709
     },
     {
       "id": "map_ops",
@@ -157,8 +157,8 @@
       "stringLiterals": {
         "options": "c=Operator; s=Rel Freq; annotate=Site; title=Baseline assignment"
       },
-      "x": 700,
-      "y": 300
+      "x": 721,
+      "y": 279
     },
     {
       "id": "map_how",
@@ -170,8 +170,8 @@
       "stringLiterals": {
         "options": "c=Assignment; annotate=Site; title=How each site was assigned"
       },
-      "x": 1360,
-      "y": 300
+      "x": 721,
+      "y": -135
     },
     {
       "id": "days",
@@ -180,14 +180,14 @@
         "label": "Days to simulate",
         "value": "365"
       },
-      "x": 340,
-      "y": 520
+      "x": 394,
+      "y": 1148
     },
     {
       "id": "runs",
       "type": "CompositeNode",
-      "x": 340,
-      "y": 700,
+      "x": 754,
+      "y": 1031,
       "init": {
         "label": "Monte Carlo runs",
         "runMode": "data-table",
@@ -438,9 +438,9 @@
               "id": "m_score",
               "type": "LambdaNode",
               "init": {
-                "label": "Order by: severity, then age, then distance",
-                "params": "Severity, Day, Latitude, Longitude, last_Latitude, last_Longitude",
-                "expr": "HSTACK(-Severity, Day, IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))))"
+                "label": "Then the oldest, then the nearest",
+                "params": "Day, Latitude, Longitude, last_Latitude, last_Longitude",
+                "expr": "HSTACK(Day, IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))))"
               },
               "x": 1860,
               "y": 300
@@ -449,7 +449,7 @@
               "id": "m_cost",
               "type": "LambdaNode",
               "init": {
-                "label": "Cost: drive minutes",
+                "label": "Drive minutes from the last site",
                 "params": "Latitude, Longitude, last_Latitude, last_Longitude",
                 "expr": "IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2)) * road / 1.609344 / mph * 60)"
               },
@@ -460,17 +460,26 @@
               "id": "m_queue",
               "type": "GreedyQueueNode",
               "init": {
-                "label": "Each operator, a day at a time"
-              },
-              "literals": {
-                "perStep": 1
+                "label": "Each operator, a day at a time",
+                "orderDir": "desc"
               },
               "stringLiterals": {
                 "group": "Operator",
-                "step": "Day"
+                "step": "Day",
+                "orderColumn": "Severity"
               },
               "x": 2180,
               "y": 0
+            },
+            {
+              "id": "m_jobs_day",
+              "type": "ValueInputNode",
+              "init": {
+                "label": "Jobs an operator does a day",
+                "value": "1"
+              },
+              "x": 1860,
+              "y": 820
             },
             {
               "id": "m_dmin",
@@ -641,6 +650,12 @@
               "targetInput": "steps"
             },
             {
+              "source": "m_jobs_day",
+              "sourceOutput": "value",
+              "target": "m_queue",
+              "targetInput": "perStep"
+            },
+            {
               "source": "m_score",
               "sourceOutput": "result",
               "target": "m_queue",
@@ -741,8 +756,8 @@
         "label": "Mean drive hours a run",
         "expr": "ROUND(AVERAGE(h), 1)"
       },
-      "x": 700,
-      "y": 960
+      "x": 1193,
+      "y": 1112
     },
     {
       "id": "mc_ci",
@@ -751,8 +766,8 @@
         "label": "95% interval ± hours",
         "expr": "ROUND(1.96 * STDEV.S(h) / SQRT(COUNT(h)), 1)"
       },
-      "x": 700,
-      "y": 1100
+      "x": 1193,
+      "y": 627
     },
     {
       "id": "mc_run",
@@ -761,8 +776,8 @@
         "label": "Run",
         "expr": "SEQUENCE(COUNT(h))"
       },
-      "x": 700,
-      "y": 1240
+      "x": 1193,
+      "y": 883
     },
     {
       "id": "mc_running",
@@ -771,8 +786,8 @@
         "label": "Running mean",
         "expr": "SCAN(0, h, LAMBDA(a, v, a + v)) / SEQUENCE(COUNT(h))"
       },
-      "x": 700,
-      "y": 1380
+      "x": 1193,
+      "y": 1362
     },
     {
       "id": "mc_frame",
@@ -790,8 +805,8 @@
         "name1": "Drive hours",
         "name2": "Running mean"
       },
-      "x": 1000,
-      "y": 960
+      "x": 1536,
+      "y": 1060
     },
     {
       "id": "mc_opts",
@@ -800,8 +815,8 @@
         "label": "Chart options",
         "expr": "\"title=Drive hours per run and the running mean; xlabel=Run; ylabel=Hours; ymin=\" & ROUND(MIN(h) * 0.97, -1)"
       },
-      "x": 1000,
-      "y": 1400
+      "x": 1536,
+      "y": 1535
     },
     {
       "id": "mc_chart",
@@ -811,8 +826,8 @@
         "op": "line",
         "width": 620
       },
-      "x": 1360,
-      "y": 960
+      "x": 1878,
+      "y": 1281
     }
   ],
   "connections": [

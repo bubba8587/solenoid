@@ -44,18 +44,19 @@ describe("Local Search", () => {
     expect(round.total).toBe(40);
   });
 
-  it("moves jobs between machines when a Penalty on lateness says to, and reads before for a release time", () => {
+  it("moves jobs between machines when a Penalty on lateness says to, its Cost the Hours column plus a wait read from before", () => {
     // Every job queued on M1 by a poor first plan; M2 sits empty in Start.
     const jobs = [1, 2, 3, 4].map((i) => ({ Machine: "M1", Job: `J${i}`, Ready: 0, Hours: 4, Due: 4 }));
     const items = frame(jobs);
     const start = frame([{ Machine: "M1" }, { Machine: "M2" }]);
-    const cost = lambda("Ready, Hours, before", "MAX(0, Ready - before) + Hours");
+    const cost = lambda("Ready, before", "MAX(0, Ready - before)");
     const penalty = lambda("Due, at", "MAX(0, at - Due)");
-    const out = run(new LocalSearchNode(), { items, start, cost, penalty, group: "Machine" });
+    const node = () => Object.assign(new LocalSearchNode(), { stringLiterals: { group: "", costColumn: "Hours" } });
+    const out = run(node(), { items, start, cost, penalty, group: "Machine" });
     const plan = rows(out.plan);
     expect(plan.filter((r) => r.Machine === "M2")).toHaveLength(2);
     expect(out.total).toBe(16 + 8);
-    const within = run(new LocalSearchNode({ reach: "within" }), { items, start, cost, penalty, group: "Machine" });
+    const within = run(Object.assign(node(), { reach: "within" }), { items, start, cost, penalty, group: "Machine" });
     expect(within.total).toBe(16 + 0 + 4 + 8 + 12);
     expect(rows(within.history)).toHaveLength(1);
   });

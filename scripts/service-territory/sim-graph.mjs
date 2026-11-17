@@ -1,8 +1,8 @@
 // The dispatch Monte Carlo: a Composite in Data Table mode, a pass per run. Each pass draws a year of incidents (each
 // site, each day, an incident with its daily share of the site's yearly rate, a severity of 1 to 5) and runs them
 // through the Greedy Queue card, a queue per operator a day at a time. The dispatch rule is the two LAMBDA cards beside
-// it: Order by (highest severity, then the longest waiting, then the nearest to the last stop, by the Earth & Sky pack's
-// great-circle formula) and Cost (the drive in minutes). An operator starts at their first job.
+// it: Order by the Severity column, largest first, then a LAMBDA for the longest waiting and the nearest to the last stop
+// (the Earth & Sky pack's great-circle formula), and a Cost formula for the drive in minutes. An operator starts at their first job.
 
 // The Earth & Sky pack's Great-Circle Distance in km, from the last stop to this incident.
 const KM = "2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))";
@@ -33,15 +33,16 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     at(cc("m_sev", "Severity", "Severity", "RANDBETWEEN(1, 5)"), 1860, 0),
     // ── the year dispatched ──
     // ── the rule ──
-    at({ id: "m_score", type: "LambdaNode", init: { label: "Order by: severity, then age, then distance",
-      params: "Severity, Day, Latitude, Longitude, last_Latitude, last_Longitude",
-      expr: `HSTACK(-Severity, Day, IF(ISBLANK(last_Latitude), 0, ${KM}))` } }, 1860, 300),
-    at({ id: "m_cost", type: "LambdaNode", init: { label: "Cost: drive minutes",
+    at({ id: "m_score", type: "LambdaNode", init: { label: "Then the oldest, then the nearest",
+      params: "Day, Latitude, Longitude, last_Latitude, last_Longitude",
+      expr: `HSTACK(Day, IF(ISBLANK(last_Latitude), 0, ${KM}))` } }, 1860, 300),
+    at({ id: "m_cost", type: "LambdaNode", init: { label: "Drive minutes from the last site",
       params: "Latitude, Longitude, last_Latitude, last_Longitude",
       expr: `IF(ISBLANK(last_Latitude), 0, ${KM} * road / 1.609344 / mph * 60)` } }, 1860, 560),
     // ── the year dispatched ──
-    at({ id: "m_queue", type: "GreedyQueueNode", init: { label: "Each operator, a day at a time" }, literals: { perStep: 1 },
-      stringLiterals: { group: "Operator", step: "Day" } }, 2180, 0),
+    at({ id: "m_queue", type: "GreedyQueueNode", init: { label: "Each operator, a day at a time", orderDir: "desc" },
+      stringLiterals: { group: "Operator", step: "Day", orderColumn: "Severity" } }, 2180, 0),
+    at(value("m_jobs_day", "Jobs an operator does a day", 1), 1860, 820),
     at(getCol("m_dmin", "Cost"), 2820, 0),
     at(getCol("m_wait", "Wait"), 2820, 160),
     at(getCol("m_left", "Site"), 2820, 320),
@@ -64,6 +65,7 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     wire("m_new", "frame", "m_sev", "frame"),
     wire("m_sev", "frame", "m_queue", "items"),
     wire("m_days", "value", "m_queue", "steps"),
+    wire("m_jobs_day", "value", "m_queue", "perStep"),
     wire("m_score", "result", "m_queue", "order"),
     wire("m_cost", "result", "m_queue", "cost"),
     wire("m_road", "value", "m_cost", "road"),

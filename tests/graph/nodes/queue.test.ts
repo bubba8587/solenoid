@@ -36,6 +36,21 @@ describe("Greedy Queue", () => {
     expect(rows(fifo.picks).filter((r) => r.Group === "A").map((r) => r.X)).toEqual([0, 9, 1]);
   });
 
+  it("orders by a column either way, blanks last, Then by breaking its ties, and adds the Cost column to the Cost formula", () => {
+    const items = frame([{ Job: "a", Due: 3, Hours: 2, X: 9 }, { Job: "b", Due: 1, Hours: 1, X: 5 }, { Job: "c", Due: 3, Hours: 4, X: 1 }, { Job: "d", Due: null, Hours: 1, X: 0 }]);
+    const pick = (n: GreedyQueueNode, extra: Record<string, unknown> = {}) => rows(run(n, { items, ...extra }).picks).map((r) => r.Job);
+    const by = (dir: "asc" | "desc") => Object.assign(new GreedyQueueNode({ orderDir: dir }), { stringLiterals: { group: "", step: "", orderColumn: "Due", costColumn: "" } });
+    expect(pick(by("asc"))).toEqual(["b", "a", "c", "d"]);
+    expect(pick(by("desc"))).toEqual(["a", "c", "b", "d"]);
+    expect(pick(by("desc"), { order: lambda("X", "X") })).toEqual(["c", "a", "b", "d"]);
+    const costed = Object.assign(new GreedyQueueNode(), { stringLiterals: { group: "", step: "", orderColumn: "", costColumn: "Hours" } });
+    const out = run(costed, { items, cost: lambda("X", "X") }) as { picks: unknown; total: number };
+    expect(rows(out.picks).map((r) => r.Cost)).toEqual([11, 6, 5, 1]);
+    expect(out.total).toBe(23);
+    const missing = Object.assign(new GreedyQueueNode(), { stringLiterals: { group: "", step: "", orderColumn: "Nope", costColumn: "" } });
+    expect(isSolError(run(missing, { items }).picks)).toBe(true);
+  });
+
   it("spends a budget a step by the Cost formula, the step's first pick always", () => {
     const items = frame([job("A", 1, 1, 0, 2), job("A", 1, 1, 1, 2), job("A", 1, 1, 2, 2), job("A", 1, 1, 3, 2)]);
     const cost = lambda("Hours, X, last_X", `Hours + ${DIST}`);

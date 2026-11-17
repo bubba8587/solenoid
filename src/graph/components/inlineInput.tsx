@@ -418,6 +418,8 @@ type Props = {
   titleFor?: (key: string) => string | undefined;
   /** Socket and label only: the value comes from a cable or an editor elsewhere on the card. */
   cableOnlyKeys?: ReadonlySet<string>;
+  /** Inputs whose wired card's name is shown whole, wrapping, not cut short: a rule wired in, whose name says what it is. */
+  fullWiredKeys?: ReadonlySet<string>;
   mathLabelKeys?: ReadonlySet<string>;
   /** Rendered as a native `<datalist>`, so typing offers matches but any value still commits. */
   suggest?: Record<string, readonly string[]>;
@@ -440,7 +442,7 @@ function MathLabel({ text }: { text: string }) {
     : <span className="solenoid-node__io-label" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys, suggest, trailing }: Props) {
+export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, fullWiredKeys, mathLabelKeys, suggest, trailing }: Props) {
   const connected = useConnectedInputs(node.id);
   const incoming = useIncomingSources(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
@@ -519,7 +521,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
               : <span className="solenoid-node__io-label" title={titleFor?.(key)}>{label}</span>}
             {isConn ? (
               <span
-                className="solenoid-node__io-wired"
+                className={fullWiredKeys?.has(key) ? "solenoid-node__io-wired solenoid-node__io-wired--whole" : "solenoid-node__io-wired"}
                 title="Driven by the incoming cable named here"
               >↩ {incoming.get(key)?.label || "wired"}</span>
             ) : field === "keyed" ? (

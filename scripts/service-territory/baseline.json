@@ -2483,9 +2483,9 @@
        "id": "m_score",
        "type": "LambdaNode",
        "init": {
-        "label": "Order by: severity, then age, then distance",
-        "params": "Severity, Day, Latitude, Longitude, last_Latitude, last_Longitude",
-        "expr": "HSTACK(-Severity, Day, IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))))"
+        "label": "Then the oldest, then the nearest",
+        "params": "Day, Latitude, Longitude, last_Latitude, last_Longitude",
+        "expr": "HSTACK(Day, IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))))"
        },
        "x": 1860,
        "y": 300
@@ -2494,7 +2494,7 @@
        "id": "m_cost",
        "type": "LambdaNode",
        "init": {
-        "label": "Cost: drive minutes",
+        "label": "Drive minutes from the last site",
         "params": "Latitude, Longitude, last_Latitude, last_Longitude",
         "expr": "IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2)) * road / 1.609344 / mph * 60)"
        },
@@ -2505,17 +2505,26 @@
        "id": "m_queue",
        "type": "GreedyQueueNode",
        "init": {
-        "label": "Each operator, a day at a time"
-       },
-       "literals": {
-        "perStep": 1
+        "label": "Each operator, a day at a time",
+        "orderDir": "desc"
        },
        "stringLiterals": {
         "group": "Operator",
-        "step": "Day"
+        "step": "Day",
+        "orderColumn": "Severity"
        },
        "x": 2180,
        "y": 0
+      },
+      {
+       "id": "m_jobs_day",
+       "type": "ValueInputNode",
+       "init": {
+        "label": "Jobs an operator does a day",
+        "value": "1"
+       },
+       "x": 1860,
+       "y": 820
       },
       {
        "id": "m_dmin",
@@ -2684,6 +2693,12 @@
        "sourceOutput": "value",
        "target": "m_queue",
        "targetInput": "steps"
+      },
+      {
+       "source": "m_jobs_day",
+       "sourceOutput": "value",
+       "target": "m_queue",
+       "targetInput": "perStep"
       },
       {
        "source": "m_score",
