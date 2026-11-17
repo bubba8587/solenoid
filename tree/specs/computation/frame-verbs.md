@@ -1257,6 +1257,19 @@ The kernels (`allocate_budget`, `allocate_min_target`, `allocate_proportional`, 
 
 Tests: `allocator.test.ts`: the seed's allocation, each mode's worked examples and edges, and range normalization.
 
+### Dispatch Queue
+
+`dispatch` (`nodes/dispatch.rs`) runs a day-by-day service queue per crew: the one sequential step of a field-service or dispatch simulation (the dynamic traveling repairman problem, a crew per territory). The incidents, the totals and the repeats around it are ordinary tables and Composites, so only this step is a card: a day-by-day loop of table cards in a Simulation Composite gives the same answers at about 5 s a simulated year, against well under one here.
+
+- **Columns** are found by trimmed, case-insensitive name. Crew (Fallback `Operator`) and Day (Fallback `Day`) are required; Latitude and Longitude are read as on the US Map (`lat`/`latitude`, `lon`/`lng`/`long`/`longitude`). Priority and Service minutes are optional (Behavior: none), a blank cell reading as 0. A named column the incidents lack is `#REF!`. Every row needs a crew, a day and a finite place, or it is `#VALUE!` naming the row: a row dropped unseen would shrink every total.
+- **Start** (optional): a frame with the crew column and a Latitude and Longitude, the first row per crew counting. A crew without one starts at its first job, which drives nothing (its `Km` is blank).
+- **Days** run from the earliest incident's whole day for Days days (Behavior: through the last incident's day); an incident joins its crew's queue on the whole day it opens. A run of more than 100,000 days is `#DOMAIN!`.
+- **Each day**, per crew in first-seen order, the crew takes its next open incident by the rule (`mode`, a pick on the card): `priority` (highest priority, then the earliest day, then the nearest to where it is), `nearest` (nearest, then priority, then the earliest) or `oldest` (earliest, then priority, then nearest); a full tie goes to the earlier row. It drives there (great-circle km on the 6371.0088 km sphere, the Earth & Sky pack's Great-Circle Distance; Drive Min = km × Road factor ÷ 1.609344 ÷ Speed mph × 60, Fallbacks 1.25 and 50) and works the service minutes. It keeps going while Jobs a day allows and the drive plus the service still fit in Hours a day; the day's first job always goes, so one longer than a day can't wait forever. With neither Jobs a day nor Hours a day set, a crew takes one job a day.
+- **Day start** (`dayStart`, a pick): `continue` takes up from the last stop; `start` begins each day at the crew's Start position and adds Back Km, the drive home, to the day's last job.
+- **Out:** Jobs, the incidents served with their own columns and `Served` (the day), `Wait` (days from opening), `Km`, `Drive Min`, `Start Min` (the minute into the day the work starts) and, under `start`, `Back Km`, ordered by day, then crew, then the order served; an input column of one of those names is replaced. Still open: the incidents never served, in input order.
+
+Tests: `dispatch.test.ts` (the rules, the time budget, the day start, the refusals, the save); `dispatch.rs`'s own test pins the distance.
+
 ### Group Cost Settle
 
 The Group Cost Settle card answers who pays whom in the fewest transfers, with no solver. Its kernels are the core's `planners.rs`, and both modes feed one greedy core, `min_transfers(balances)`:

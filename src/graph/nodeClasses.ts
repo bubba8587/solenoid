@@ -57,3 +57,4 @@ export * from "./nodes/geometryFigures";
 export * from "./nodes/tornado";
 export * from "./nodes/composite";
 export * from "./nodes/probability";
+export * from "./nodes/dispatch";

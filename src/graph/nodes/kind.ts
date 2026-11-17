@@ -43,6 +43,7 @@ import { ConduitNode } from "./conduit";
 import { FrameFromListsNode, CategorizeNode } from "./frame";
 import { ScheduleNode } from "./schedule";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
+import { DispatchNode } from "./dispatch";
 import { CubeInputNode, BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
 import { WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, GeocodeNode, WeatherNode, HolidaysNode, FxNode } from "./connection";
 import { DataFeedNode } from "./dataFeed";
@@ -219,7 +220,7 @@ export function explicitKindOf(node: GraphNode): NodeKind | null {
     node instanceof HeadersNode ||
     node instanceof DropBlankRowsNode ||
     node instanceof EditFrameNode ||
-    node instanceof DescribeNode || node instanceof CorrMatrixNode || node instanceof KMeansNode || node instanceof PcaNode || node instanceof LogisticNode || node instanceof WindowNode ||
+    node instanceof DescribeNode || node instanceof CorrMatrixNode || node instanceof KMeansNode || node instanceof PcaNode || node instanceof LogisticNode || node instanceof WindowNode || node instanceof DispatchNode ||
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
     node instanceof ChoiceLadderNode ||

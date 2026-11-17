@@ -14,6 +14,7 @@ mod complex;
 mod control;
 mod cube_source;
 mod date;
+mod dispatch;
 mod docs;
 mod edit_frame;
 pub(crate) mod elements;
@@ -410,6 +411,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| backend_verbs::run(kind, c))
         .or_else(|| lambda::run(kind, c))
         .or_else(|| qr::run(kind, c))
+        .or_else(|| dispatch::run(kind, c))
 }
 
 /// The classes whose `data()` is their body here and nothing else (for `OFF_CORE`, that and handing on what the core
@@ -500,6 +502,7 @@ pub const DIRECT: &[&str] = &[
     "DescribeNode",
     "DiffNode",
     "DiscountSecurityNode",
+    "DispatchNode",
     "DisplayNode",
     "DistinctNode",
     "DistributionsNode",

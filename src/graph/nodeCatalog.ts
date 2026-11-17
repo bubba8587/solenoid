@@ -4,7 +4,7 @@ import {
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, UsMapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
-  FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, WindowNode,
+  FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, WindowNode, DispatchNode,
   ArithmeticNode, DisplayNode, MathFXNode,
   FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupListsNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ComparisonNode, ConduitNode, CastNode, ConstantNode, PhysicsConstantNode, MRoundNode,
@@ -697,6 +697,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "group-by-frame", label: "GROUPBY", description: "Groups rows by key columns and aggregates one column, with optional total and subtotal rows. Excel: `GROUPBY`.", create: () => new GroupByFrameNode(), parity: false },
       { type: "sumifs", label: "SUMIFS", description: "Aggregates one Frame column over the rows that meet criteria on other columns, matching all or any. Excel: `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame all any or" },
       { type: "window", label: "Window", description: "Adds a column calculated per group while keeping every row: running totals, ranks, lag and lead, rolling windows, shares. SQL `OVER`, pandas `transform`, dplyr `mutate`.", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
+      { type: "dispatch-queue", added: NEXT_RELEASE, label: "Dispatch Queue", description: "Runs a day-by-day service queue per crew: each day a crew takes its next open incident by the rule picked (highest priority, nearest or oldest first), drives there and works, while its jobs a day or its hours a day allow; the rest wait. Answers the jobs served, with the day, the wait, the great-circle km and the drive and start minutes, and the incidents still open. The sequential step of a field-service or dispatch simulation; run it inside a Composite to repeat it.", create: () => new DispatchNode(), parity: false, keywords: "dispatch queue crew technician operator field service route simulation monte carlo incidents tickets jobs priority severity travel drive distance traveling repairman discrete event" },
       {
         type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
         children: [

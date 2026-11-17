@@ -2217,6 +2217,613 @@
    },
    "x": 1360,
    "y": 300
+  },
+  {
+   "id": "days",
+   "type": "ValueInputNode",
+   "init": {
+    "label": "Days to simulate",
+    "value": "365"
+   },
+   "x": 340,
+   "y": 520
+  },
+  {
+   "id": "runs",
+   "type": "CompositeNode",
+   "x": 340,
+   "y": 700,
+   "init": {
+    "label": "Monte Carlo runs",
+    "runMode": "data-table",
+    "inputPorts": [
+     {
+      "id": "in_sites",
+      "label": "Sites",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_sites"
+     },
+     {
+      "id": "in_days",
+      "label": "Days",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_days"
+     },
+     {
+      "id": "in_run",
+      "label": "Run",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_run"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "o_hours",
+      "label": "Drive hours",
+      "tier": "basic",
+      "internalNodeId": "o_hours"
+     },
+     {
+      "id": "o_jobs",
+      "label": "Jobs served",
+      "tier": "basic",
+      "internalNodeId": "o_jobs"
+     },
+     {
+      "id": "o_wait",
+      "label": "Mean wait",
+      "tier": "basic",
+      "internalNodeId": "o_wait"
+     },
+     {
+      "id": "o_open",
+      "label": "Still open",
+      "tier": "basic",
+      "internalNodeId": "o_open"
+     }
+    ],
+    "scenarios": [],
+    "dataTableValues": {
+     "in_run": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50
+     ]
+    },
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_sites",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Sites"
+       },
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "m_days",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Days"
+       },
+       "x": 0,
+       "y": 260
+      },
+      {
+       "id": "m_run",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Run"
+       },
+       "x": 0,
+       "y": 400
+      },
+      {
+       "id": "m_mph",
+       "type": "ValueInputNode",
+       "init": {
+        "label": "Average speed (mph)",
+        "value": "50"
+       },
+       "x": 0,
+       "y": 520
+      },
+      {
+       "id": "m_road",
+       "type": "ValueInputNode",
+       "init": {
+        "label": "Road factor",
+        "value": "1.25"
+       },
+       "x": 0,
+       "y": 660
+      },
+      {
+       "id": "m_series",
+       "type": "SeriesNode",
+       "init": {
+        "label": "Each day",
+        "op": "range"
+       },
+       "literals": {
+        "start": 1,
+        "step": 1
+       },
+       "x": 300,
+       "y": 260
+      },
+      {
+       "id": "m_dayf",
+       "type": "FrameFromListsNode",
+       "init": {
+        "label": "Days",
+        "valueKeys": [
+         "name0"
+        ]
+       },
+       "stringLiterals": {
+        "name0": "Day"
+       },
+       "x": 600,
+       "y": 260
+      },
+      {
+       "id": "m_cross",
+       "type": "JoinNode",
+       "init": {
+        "label": "Every site, every day",
+        "how": "cross"
+       },
+       "x": 900,
+       "y": 0
+      },
+      {
+       "id": "m_hit",
+       "type": "ComputedColumnNode",
+       "init": {
+        "label": "Incident that day?",
+        "expr": "RAND() < @[Incidents per Yr] / 365",
+        "addAs": "logical"
+       },
+       "stringLiterals": {
+        "name": "Hit"
+       },
+       "x": 1220,
+       "y": 0
+      },
+      {
+       "id": "m_new",
+       "type": "FilterFrameNode",
+       "init": {
+        "label": "Incidents",
+        "condConfig": {
+         "0": {
+          "op": "eq"
+         }
+        },
+        "valueKeys": [
+         "frame",
+         "column0",
+         "value0"
+        ]
+       },
+       "stringLiterals": {
+        "column0": "Hit",
+        "value0": "TRUE"
+       },
+       "x": 1540,
+       "y": 0
+      },
+      {
+       "id": "m_sev",
+       "type": "ComputedColumnNode",
+       "init": {
+        "label": "Severity",
+        "expr": "RANDBETWEEN(1, 5)",
+        "addAs": "number"
+       },
+       "stringLiterals": {
+        "name": "Severity"
+       },
+       "x": 1860,
+       "y": 0
+      },
+      {
+       "id": "m_disp",
+       "type": "DispatchNode",
+       "init": {
+        "label": "Dispatch Queue",
+        "mode": "priority"
+       },
+       "literals": {
+        "perDay": 1
+       },
+       "stringLiterals": {
+        "priority": "Severity"
+       },
+       "x": 2180,
+       "y": 0
+      },
+      {
+       "id": "m_dmin",
+       "type": "GetColumnNode",
+       "init": {
+        "label": "Drive Min"
+       },
+       "stringLiterals": {
+        "name": "Drive Min"
+       },
+       "x": 2820,
+       "y": 0
+      },
+      {
+       "id": "m_wait",
+       "type": "GetColumnNode",
+       "init": {
+        "label": "Wait"
+       },
+       "stringLiterals": {
+        "name": "Wait"
+       },
+       "x": 2820,
+       "y": 160
+      },
+      {
+       "id": "m_left",
+       "type": "GetColumnNode",
+       "init": {
+        "label": "Site"
+       },
+       "stringLiterals": {
+        "name": "Site"
+       },
+       "x": 2820,
+       "y": 320
+      },
+      {
+       "id": "m_hours",
+       "type": "ExpressionNode",
+       "init": {
+        "label": "Drive hours",
+        "expr": "ROUND(SUM(m) / 60, 1)"
+       },
+       "x": 3140,
+       "y": 0
+      },
+      {
+       "id": "m_jobs",
+       "type": "ExpressionNode",
+       "init": {
+        "label": "Jobs served",
+        "expr": "COUNT(m)"
+       },
+       "x": 3140,
+       "y": 160
+      },
+      {
+       "id": "m_meanwait",
+       "type": "ExpressionNode",
+       "init": {
+        "label": "Mean wait (days)",
+        "expr": "ROUND(AVERAGE(w), 2)"
+       },
+       "x": 3140,
+       "y": 320
+      },
+      {
+       "id": "m_open",
+       "type": "ExpressionNode",
+       "init": {
+        "label": "Still open",
+        "expr": "COUNTA(s)"
+       },
+       "x": 3140,
+       "y": 480
+      },
+      {
+       "id": "o_hours",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Drive hours"
+       },
+       "x": 3460,
+       "y": 0
+      },
+      {
+       "id": "o_jobs",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Jobs served"
+       },
+       "x": 3460,
+       "y": 160
+      },
+      {
+       "id": "o_wait",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Mean wait"
+       },
+       "x": 3460,
+       "y": 320
+      },
+      {
+       "id": "o_open",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Still open"
+       },
+       "x": 3460,
+       "y": 480
+      }
+     ],
+     "connections": [
+      {
+       "source": "m_days",
+       "sourceOutput": "value",
+       "target": "m_series",
+       "targetInput": "stop"
+      },
+      {
+       "source": "m_series",
+       "sourceOutput": "list",
+       "target": "m_dayf",
+       "targetInput": "vals0"
+      },
+      {
+       "source": "m_sites",
+       "sourceOutput": "value",
+       "target": "m_cross",
+       "targetInput": "left"
+      },
+      {
+       "source": "m_dayf",
+       "sourceOutput": "frame",
+       "target": "m_cross",
+       "targetInput": "right"
+      },
+      {
+       "source": "m_cross",
+       "sourceOutput": "frame",
+       "target": "m_hit",
+       "targetInput": "frame"
+      },
+      {
+       "source": "m_hit",
+       "sourceOutput": "frame",
+       "target": "m_new",
+       "targetInput": "frame"
+      },
+      {
+       "source": "m_new",
+       "sourceOutput": "frame",
+       "target": "m_sev",
+       "targetInput": "frame"
+      },
+      {
+       "source": "m_sev",
+       "sourceOutput": "frame",
+       "target": "m_disp",
+       "targetInput": "incidents"
+      },
+      {
+       "source": "m_days",
+       "sourceOutput": "value",
+       "target": "m_disp",
+       "targetInput": "days"
+      },
+      {
+       "source": "m_road",
+       "sourceOutput": "value",
+       "target": "m_disp",
+       "targetInput": "road"
+      },
+      {
+       "source": "m_mph",
+       "sourceOutput": "value",
+       "target": "m_disp",
+       "targetInput": "mph"
+      },
+      {
+       "source": "m_disp",
+       "sourceOutput": "jobs",
+       "target": "m_dmin",
+       "targetInput": "frame"
+      },
+      {
+       "source": "m_disp",
+       "sourceOutput": "jobs",
+       "target": "m_wait",
+       "targetInput": "frame"
+      },
+      {
+       "source": "m_disp",
+       "sourceOutput": "open",
+       "target": "m_left",
+       "targetInput": "frame"
+      },
+      {
+       "source": "m_dmin",
+       "sourceOutput": "values",
+       "target": "m_hours",
+       "targetInput": "m"
+      },
+      {
+       "source": "m_dmin",
+       "sourceOutput": "values",
+       "target": "m_jobs",
+       "targetInput": "m"
+      },
+      {
+       "source": "m_wait",
+       "sourceOutput": "values",
+       "target": "m_meanwait",
+       "targetInput": "w"
+      },
+      {
+       "source": "m_left",
+       "sourceOutput": "values",
+       "target": "m_open",
+       "targetInput": "s"
+      },
+      {
+       "source": "m_hours",
+       "sourceOutput": "result",
+       "target": "o_hours",
+       "targetInput": "value"
+      },
+      {
+       "source": "m_jobs",
+       "sourceOutput": "result",
+       "target": "o_jobs",
+       "targetInput": "value"
+      },
+      {
+       "source": "m_meanwait",
+       "sourceOutput": "result",
+       "target": "o_wait",
+       "targetInput": "value"
+      },
+      {
+       "source": "m_open",
+       "sourceOutput": "result",
+       "target": "o_open",
+       "targetInput": "value"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "mc_mean",
+   "type": "ExpressionNode",
+   "init": {
+    "label": "Mean drive hours a run",
+    "expr": "ROUND(AVERAGE(h), 1)"
+   },
+   "x": 700,
+   "y": 960
+  },
+  {
+   "id": "mc_ci",
+   "type": "ExpressionNode",
+   "init": {
+    "label": "95% interval ± hours",
+    "expr": "ROUND(1.96 * STDEV.S(h) / SQRT(COUNT(h)), 1)"
+   },
+   "x": 700,
+   "y": 1100
+  },
+  {
+   "id": "mc_run",
+   "type": "ExpressionNode",
+   "init": {
+    "label": "Run",
+    "expr": "SEQUENCE(COUNT(h))"
+   },
+   "x": 700,
+   "y": 1240
+  },
+  {
+   "id": "mc_running",
+   "type": "ExpressionNode",
+   "init": {
+    "label": "Running mean",
+    "expr": "SCAN(0, h, LAMBDA(a, v, a + v)) / SEQUENCE(COUNT(h))"
+   },
+   "x": 700,
+   "y": 1380
+  },
+  {
+   "id": "mc_frame",
+   "type": "FrameFromListsNode",
+   "init": {
+    "label": "Convergence",
+    "valueKeys": [
+     "name0",
+     "name1",
+     "name2"
+    ]
+   },
+   "stringLiterals": {
+    "name0": "Run",
+    "name1": "Drive hours",
+    "name2": "Running mean"
+   },
+   "x": 1000,
+   "y": 960
+  },
+  {
+   "id": "mc_opts",
+   "type": "ExpressionNode",
+   "init": {
+    "label": "Chart options",
+    "expr": "\"title=Drive hours per run and the running mean; xlabel=Run; ylabel=Hours; ymin=\" & ROUND(MIN(h) * 0.97, -1)"
+   },
+   "x": 1000,
+   "y": 1400
+  },
+  {
+   "id": "mc_chart",
+   "type": "ChartNode",
+   "init": {
+    "label": "Does it converge?",
+    "op": "line",
+    "width": 620
+   },
+   "x": 1360,
+   "y": 960
   }
  ],
  "cables": [
@@ -2224,6 +2831,18 @@
   "annual.value -> expected.annual",
   "expected.frame -> load.in_sites",
   "expected.frame -> map_ops.frame",
-  "expected.frame -> map_how.frame"
+  "expected.frame -> map_how.frame",
+  "expected.frame -> runs.in_sites",
+  "days.value -> runs.in_days",
+  "runs.o_hours -> mc_mean.h",
+  "runs.o_hours -> mc_ci.h",
+  "runs.o_hours -> mc_run.h",
+  "runs.o_hours -> mc_running.h",
+  "mc_run.result -> mc_frame.vals0",
+  "runs.o_hours -> mc_frame.vals1",
+  "mc_running.result -> mc_frame.vals2",
+  "mc_frame.frame -> mc_chart.values",
+  "runs.o_hours -> mc_opts.h",
+  "mc_opts.result -> mc_chart.options"
  ]
 }

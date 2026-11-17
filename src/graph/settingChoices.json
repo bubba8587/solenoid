@@ -615,6 +615,17 @@
    "yieldmat"
   ]
  },
+ "DispatchNode": {
+  "dayStart": [
+   "continue",
+   "start"
+  ],
+  "mode": [
+   "nearest",
+   "oldest",
+   "priority"
+  ]
+ },
  "DisplayNode": {
   "unitSuffix": [
    "deg",

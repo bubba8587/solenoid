@@ -7,6 +7,7 @@
 // `npm run -s validate-graph -- scripts/service-territory/baseline.json --json`, then label, order and group. A stand-in
 // until the simulation is built; remove both together.
 import { writeFileSync } from "node:fs";
+import { runsComposite } from "./sim-graph.mjs";
 
 
 const seedArg = process.argv.indexOf("--seed");
@@ -177,6 +178,19 @@ const graph = {
     },
     { id: "map_ops", type: "UsMapNode", init: { label: "Sites by operator" }, stringLiterals: { options: "c=Operator; s=Rel Freq; annotate=Site; title=Baseline assignment" } },
     { id: "map_how", type: "UsMapNode", init: { label: "Crossovers and outliers" }, stringLiterals: { options: "c=Assignment; annotate=Site; title=How each site was assigned" } },
+    // ── step 2: the dispatch Monte Carlo (Solve on the runs card runs it) ──
+    { id: "days", type: "ValueInputNode", init: { label: "Days to simulate", value: "365" } },
+    runsComposite({ runs: 50 }),
+    { id: "mc_mean", type: "ExpressionNode", init: { label: "Mean drive hours a run", expr: "ROUND(AVERAGE(h), 1)" } },
+    { id: "mc_ci", type: "ExpressionNode", init: { label: "95% interval ± hours", expr: "ROUND(1.96 * STDEV.S(h) / SQRT(COUNT(h)), 1)" } },
+    { id: "mc_run", type: "ExpressionNode", init: { label: "Run", expr: "SEQUENCE(COUNT(h))" } },
+    { id: "mc_running", type: "ExpressionNode", init: { label: "Running mean", expr: "SCAN(0, h, LAMBDA(a, v, a + v)) / SEQUENCE(COUNT(h))" } },
+    { id: "mc_frame", type: "FrameFromListsNode", init: { label: "Convergence", valueKeys: ["name0", "name1", "name2"] },
+      stringLiterals: { name0: "Run", name1: "Drive hours", name2: "Running mean" } },
+    // The axis starts just under the lowest run, so the spread between runs shows.
+    { id: "mc_opts", type: "ExpressionNode", init: { label: "Chart options",
+      expr: '"title=Drive hours per run and the running mean; xlabel=Run; ylabel=Hours; ymin=" & ROUND(MIN(h) * 0.97, -1)' } },
+    { id: "mc_chart", type: "ChartNode", init: { label: "Does it converge?", op: "line" } },
   ],
   cables: [
     "sites.frame -> expected.frame",
@@ -184,13 +198,27 @@ const graph = {
     "expected.frame -> load.in_sites",
     "expected.frame -> map_ops.frame",
     "expected.frame -> map_how.frame",
+    "expected.frame -> runs.in_sites",
+    "days.value -> runs.in_days",
+    "runs.o_hours -> mc_mean.h",
+    "runs.o_hours -> mc_ci.h",
+    "runs.o_hours -> mc_run.h",
+    "runs.o_hours -> mc_running.h",
+    "mc_run.result -> mc_frame.vals0",
+    "runs.o_hours -> mc_frame.vals1",
+    "mc_running.result -> mc_frame.vals2",
+    "mc_frame.frame -> mc_chart.values",
+    "runs.o_hours -> mc_opts.h",
+    "mc_opts.result -> mc_chart.options",
   ],
 };
 const AT = {
   sites: [0, 0], annual: [0, 300], expected: [340, 0], load: [700, 0], map_ops: [700, 300], map_how: [1360, 300],
+  days: [340, 520], runs: [340, 700], mc_mean: [700, 960], mc_ci: [700, 1100], mc_run: [700, 1240], mc_running: [700, 1380],
+  mc_frame: [1000, 960], mc_opts: [1000, 1400], mc_chart: [1360, 960],
 };
 for (const n of graph.nodes) [n.x, n.y] = AT[n.id];
-for (const id of ["map_ops", "map_how"]) graph.nodes.find((n) => n.id === id).init.width = 620;
+for (const id of ["map_ops", "map_how", "mc_chart"]) graph.nodes.find((n) => n.id === id).init.width = 620;
 writeFileSync(new URL("./baseline.json", import.meta.url), JSON.stringify(graph, null, 1) + "\n");
 const count = (k, v) => rows.filter((r) => r[k] === v).length;
 const west = sites.filter((x) => x.lon < -91).length;

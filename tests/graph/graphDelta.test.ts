@@ -59,7 +59,8 @@ function answers(): Record<string, string> {
     for (const key of Object.keys(n.outputs)) {
       let v: unknown;
       try { v = engine.landed(n.id, key); } catch { v = "<unreadable>"; }
-      out[`${name}.${key}`] = JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? String(x) : x)) ?? "undefined";
+      // A card is known by its name here, so an error's origin is too: its node id is the load's, not the card's.
+      out[`${name}.${key}`] = JSON.stringify(v, (k, x) => (k === "nodeId" ? undefined : typeof x === "bigint" ? String(x) : x)) ?? "undefined";
     }
   }
   return out;

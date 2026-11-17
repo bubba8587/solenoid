@@ -7,6 +7,18 @@ first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
 ### SESSION DIGEST (2026-11-17b: the US Map card, a service-territory baseline; cloud session)
+- **Dispatch Queue** (`DispatchNode`, `nodes/dispatch.rs`, [[frame-verbs#Dispatch Queue]]): a day-by-day service queue per
+  crew, the one sequential step of a dispatch simulation; jobs a day or hours a day (drive + service minutes), a pick
+  rule (priority, nearest, oldest), day start (last stop or start). A year of the service-territory seed runs in well
+  under a second against ~5 s for the same loop as a Simulation Composite of table cards, which stays in git history.
+- **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
+  per run (sites × days, a draw each, then the Dispatch Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
+  a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common
+  random numbers (a seeded draw) to compare assignments on the same incidents, and pooled dispatch.
+- **Pivot inside Markdown**: `.sol-md`'s table rules out-ranked the Pivot view's in Dashboard boxes and Reports
+  (collapsed borders, so a seam beside the frozen column); its grid rules now sit under `.pivot-view`.
+- Tooling: `run-graph --solve`; `shot-graph --eval`, `--hscroll`, `--wheel`; the grounding names every card of a
+  class of up to four (Keep Columns was invisible to `--list`).
 
 - **US Map** (`UsMapNode`, `us_map` in `nodes/visual.rs`, op `usmap`): a pin per frame row on the states, Lower 48 or All 50 on a
   `scope` toggle, `c`/`s`/`annotate` plus new `lat`/`lon` option keys. The projection is d3's `geoAlbersUsa` written out
