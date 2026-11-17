@@ -1,4 +1,4 @@
-// Writes baseline.json beside this file: the service-territory Monte Carlo's step 1, a graph of 400 sites across
+// Writes baseline.json beside this file: the service-territory Monte Carlo's step 1, a graph of 250 sites across
 // Austin, Little Rock, Alabama, lower Georgia, Chattanooga and Knoxville (none in Mississippi or west Tennessee), 10 operators, each site's class, its assigned
 // operator and a random relative frequency of incidents. Seeded, so the baseline is the same on every run and a later
 // simulation compares against one fixed world.
@@ -35,7 +35,7 @@ const OPERATORS = [
   ["OP-10", "Knoxville, TN", 35.9606, -83.9207],
 ];
 
-// Area, center, radius in miles, sites, and the bearings (degrees clockwise from north) land lies on. The radii are wide
+// Area, center, radius in miles, relative share of sites, and the bearings (degrees clockwise from north) land lies on. The radii are wide
 // enough that neighboring clusters touch, so the sites between two territories are close calls.
 const AREAS = [
   ["Austin", 30.27, -97.74, 55, 30],
@@ -75,7 +75,18 @@ const OUTLIERS = [
   ["Asheville", 35.60, -82.55, "OP-10"],
 ];
 
-const CROSSOVERS = 30;
+const SITES = 250;
+const CROSSOVERS = 20;
+
+// The clusters' counts above are proportions: scaled so they and the outliers make SITES, by largest remainder.
+{
+  const want = SITES - OUTLIERS.length;
+  const total = AREAS.reduce((t, a) => t + a[4], 0);
+  const exact = AREAS.map((a) => (a[4] * want) / total);
+  AREAS.forEach((a, i) => { a[4] = Math.floor(exact[i]); });
+  const order = exact.map((x, i) => [x - Math.floor(x), i]).sort((a, b) => b[0] - a[0]);
+  for (let k = 0, left = want - AREAS.reduce((t, a) => t + a[4], 0); k < left; k++) AREAS[order[k][1]][4]++;
+}
 
 // Mississippi and west Tennessee stay empty, and so does the Gulf off Texas (south of a line along the coast from Corpus
 // Christi to Sabine Pass): a random point that lands in any of them is drawn again.
