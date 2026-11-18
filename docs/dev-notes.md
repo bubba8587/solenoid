@@ -63,8 +63,11 @@ plain-language asks from an agent with no Solenoid context were built end to end
 **HTML Page** ([[reports-and-notes#HTML pages]], `nodes/htmlPage.ts`, the author's idea): a page from an `.html` and a
 `.css` in the data folder, each `{{ name }}` an input, shown full screen like a Dashboard, a figure wired in drawn as a
 Dashboard box. The CSS is scoped to the page and can't fetch; each tag's print is escaped after its filters
-(`renderKnapHtml`; escaping the inputs first broke `upper` and `length`); scripts never run. A page sets the app's color
-variables to dress its boxes and charts. The HTML Showcase example renders two pages from `demo-vault/Data/pages/`, which
+(`renderKnapHtml`; escaping the inputs first broke `upper` and `length`); scripts never run. A page sets the app's color and
+font variables, plus `--chart-1`… and `--chart-font-scale`, and figures read them from their own slot (`FigureScope`), so a
+page's charts take its palette and type; `.sol-box`, `.sol-box__label`, `.sol-box__title` are the names a page styles; an
+in-page `#id` link scrolls the page. The HTML Showcase example renders six pages from `demo-vault/Data/pages/` (a one-pager, a project brief, a team
+directory, a shop catalog, an invoice and a money letter, the last four over the demo vault's CSVs), which
 the web build now bundles (`.html` and `.css` joined the demo vault's text files).
 
 **Open, the author's call:** the Monte Carlo composite mode varies only inputs marked uncertain, so the seed's RAND-inside

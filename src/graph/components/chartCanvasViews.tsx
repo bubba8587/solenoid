@@ -48,10 +48,10 @@ function themeInk(canvas: HTMLCanvasElement) {
   };
 }
 
-const tickFont = (fs: number) => canvasFont(500, 8.5 * fs);
+const tickFont = (fs: number, within?: unknown) => canvasFont(500, 8.5 * fs, "sans", within);
 
 function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: number, sy: (v: number) => number, x0: number, x1: number, fs: number) {
-  ctx.font = tickFont(fs);
+  ctx.font = tickFont(fs, ctx.canvas);
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
   const ticks = 3;
@@ -132,7 +132,7 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
       ctx.globalAlpha = 1;
     }
     if (bw >= 20) {
-      ctx.font = tickFont(fs);
+      ctx.font = tickFont(fs, ctx.canvas);
       ctx.fillStyle = ink.dim;
       ctx.fillText(fitLabel(ctx, b.name, bw - 2), padL + i * bw + bw / 2, H - padB + 3);
     }
@@ -181,7 +181,7 @@ function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: n
     ctx.fillStyle = col;
     ctx.fillRect(cx - bodyW / 2, Math.min(yO, yC), bodyW, Math.max(1, Math.abs(yC - yO)));
   }
-  ctx.font = tickFont(fs);
+  ctx.font = tickFont(fs, ctx.canvas);
   ctx.fillStyle = ink.dim;
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
@@ -234,7 +234,7 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
       ctx.beginPath(); ctx.arc(cx, sy(v), 1.6, 0, Math.PI * 2); ctx.fill();
     }
     if (b.name && bw >= 20) {
-      ctx.font = tickFont(fs);
+      ctx.font = tickFont(fs, ctx.canvas);
       ctx.fillStyle = ink.dim;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
@@ -251,7 +251,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   const ink = themeInk(canvas);
   if (p.days.length === 0) return null;
   const showCbar = o.cbar !== false;
-  ctx.font = tickFont(fs);
+  ctx.font = tickFont(fs, ctx.canvas);
   let tickW = 0;
   if (showCbar) {
     const est = heatScale(iterMin(p.values), iterMax(p.values), o);
@@ -374,7 +374,7 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
   const color = heatColorFn(o);
   const cbarTicks = scaleTicks(scale);
 
-  ctx.font = tickFont(fs);
+  ctx.font = tickFont(fs, ctx.canvas);
   const widest = (xs: Iterable<string>) => { let m = 0; for (const x of xs) m = Math.max(m, ctx.measureText(x).width); return m; };
   const showCbar = o.cbar !== false;
   const note = p.totalRows !== undefined || p.totalCols !== undefined;
@@ -401,7 +401,7 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
 
   if (o.annot !== false) {
     const size = Math.min(12 * fs, Math.max(8.5 * fs, Math.min(cw, ch) * 0.3));
-    ctx.font = canvasFont(500, size, "mono");
+    ctx.font = canvasFont(500, size, "mono", ctx.canvas);
     let fits = ch >= size + 3;
     if (fits && o.annot === undefined) {
       for (const row of p.z) { for (const v of row) if (v != null && ctx.measureText(annotText(v, o.fmt)).width > cw - 4) { fits = false; break; } if (!fits) break; }
@@ -419,16 +419,16 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
           const w = ctx.measureText(text).width;
           if (w > cw - 3) f = size * (cw - 3) / w;
           if (f < 6 || ch < f + 2) continue;
-          ctx.font = canvasFont(500, f, "mono");
+          ctx.font = canvasFont(500, f, "mono", ctx.canvas);
           ctx.fillStyle = inkOn(color(scale.t(v)));
           ctx.fillText(text, gx + c * cw + cw / 2, cy);
-          if (f !== size) ctx.font = canvasFont(500, size, "mono");
+          if (f !== size) ctx.font = canvasFont(500, size, "mono", ctx.canvas);
         }
       }
     }
   }
 
-  ctx.font = tickFont(fs);
+  ctx.font = tickFont(fs, ctx.canvas);
   ctx.fillStyle = ink.dim;
   if (L.rowLabels) {
     const { x, w, step } = L.rowLabels;
@@ -459,7 +459,7 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
   if (L.cbar) drawColorbar(ctx, ink, L.cbar, scale, (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }, cbarTicks, L.lineH);
 
   ctx.fillStyle = ink.dim;
-  ctx.font = canvasFont(600, 9 * fs);
+  ctx.font = canvasFont(600, 9 * fs, "sans", ctx.canvas);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   if (L.xlabel && o.xlabel) ctx.fillText(fitLabel(ctx, o.xlabel, cw * nC), L.xlabel.x, L.xlabel.y);
@@ -474,7 +474,7 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
     const parts: string[] = [];
     if (p.totalRows !== undefined) parts.push(`${nR} of ${p.totalRows} rows`);
     if (p.totalCols !== undefined) parts.push(`${nC} of ${p.totalCols} columns`);
-    ctx.font = tickFont(fs);
+    ctx.font = tickFont(fs, ctx.canvas);
     ctx.textAlign = "right";
     ctx.fillText(parts.join(", "), L.note.x, L.note.y);
   }
@@ -526,7 +526,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
     ctx.fillRect(ox + col * cell, oy + row * cell, cell - gap, cell - gap);
   }
   if (legend) {
-    ctx.font = tickFont(fs);
+    ctx.font = tickFont(fs, ctx.canvas);
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     let x = ox;
@@ -650,7 +650,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, o: ChartOptio
   const ymin = iterMin(ys), ymax = iterMax(ys);
 
   // Gutters: y ticks and label left, x ticks and label below, the colorbar right, half a tick's text above.
-  ctx.font = tickFont(fs);
+  ctx.font = tickFont(fs, ctx.canvas);
   const lineH = Math.ceil(10.5 * fs);
   const xTicks = (w: number) => niceTicks(xmin, xmax, Math.max(3, Math.floor(w / (45 * fs))));
   const yTicks = (h: number) => niceTicks(ymin, ymax, Math.max(3, Math.floor(h / (30 * fs))));
@@ -721,7 +721,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, o: ChartOptio
   ctx.strokeStyle = ink.border;
   ctx.lineWidth = 0.5;
   ctx.strokeRect(L.x0, L.y0, L.x1 - L.x0, L.y1 - L.y0);
-  ctx.font = tickFont(fs);
+  ctx.font = tickFont(fs, ctx.canvas);
   ctx.fillStyle = ink.dim;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
@@ -742,7 +742,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, o: ChartOptio
       (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }, cbarTicks, lineH);
   }
   ctx.fillStyle = ink.dim;
-  ctx.font = canvasFont(600, 9 * fs);
+  ctx.font = canvasFont(600, 9 * fs, "sans", ctx.canvas);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   if (o.xlabel) ctx.fillText(fitLabel(ctx, o.xlabel, L.x1 - L.x0), (L.x0 + L.x1) / 2, H - (lineH + 2) / 2);

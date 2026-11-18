@@ -1,0 +1,53 @@
+:root {
+  --surface: #ffffff;
+  --border: #ece7f6;
+  --border-strong: #ece7f6;
+  --text: #241f35;
+  --text-bright: #241f35;
+  --text-dim: #6e6787;
+  --text-muted: #8e88a6;
+  --font-sans: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --chart-font-scale: 1.2;
+  --chart-1: #7c3aed;
+}
+body {
+  background: linear-gradient(180deg, #f4f0ff 0, #fbfaff 320px);
+  color: #241f35;
+  font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.hero { padding: 12px 0 26px; }
+.kicker { text-transform: uppercase; letter-spacing: 0.18em; font-size: 12px; color: #7c3aed; margin: 0; font-weight: 700; }
+h1 { font-size: 48px; margin: 4px 0 10px; letter-spacing: -0.03em; }
+.stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 10px; }
+.stats span { background: #fff; border: 1px solid #ece7f6; border-radius: 999px; padding: 6px 14px; font-size: 14px; color: #6e6787; }
+.stats b { color: #241f35; }
+.lead { color: #6e6787; margin: 0; }
+.people { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.person {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  border-top: 5px solid var(--c);
+  box-shadow: 0 1px 2px rgba(36, 31, 53, 0.06), 0 8px 24px -12px rgba(36, 31, 53, 0.18);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.person:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(36, 31, 53, 0.08), 0 16px 32px -12px rgba(36, 31, 53, 0.28); }
+.top { display: flex; align-items: center; gap: 12px; }
+.avatar { width: 46px; height: 46px; border-radius: 12px; }
+h2 { font-size: 16px; margin: 0; }
+.where { font-size: 13px; color: #8e88a6; margin: 2px 0 0; white-space: nowrap; }
+.top > div { min-width: 0; flex: 1 1 auto; }
+.remote { color: #059669; font-weight: 600; margin-left: 6px; }
+.remote::before { content: "· "; color: #8e88a6; font-weight: 400; }
+.team { margin-left: auto; align-self: flex-start; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c); background: color-mix(in srgb, var(--c) 12%, white); padding: 4px 8px; border-radius: 6px; }
+.stars { color: #f59e0b; letter-spacing: 2px; margin: 12px 0 8px; font-size: 15px; }
+.goal { height: 8px; background: #f1eef8; border-radius: 99px; overflow: hidden; }
+.fill { height: 100%; background: var(--c); border-radius: 99px; }
+.goal-label { font-size: 12px; color: #8e88a6; margin: 6px 0 0; }
+.bio { font-size: 13px; color: #4b4562; margin: 10px 0 0; line-height: 1.45; }
+.chart { margin-top: 30px; }
+.chart h3 { font-size: 15px; margin: 0 0 10px; }
+.sol-box__label, .sol-box__title { display: none; }
+.sol-box { border-radius: 16px; }

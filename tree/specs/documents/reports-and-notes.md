@@ -445,7 +445,7 @@ Every placed name is one `trueany` input named exactly as the layout spells it, 
 
 ### The board
 
-`DashboardOverlay.tsx`, with its open state in `dashboardStore.ts`. It covers the canvas between `--chrome-top` and `--chrome-bottom` (on mobile, everything under the accent bar, measured into `--dash-top` since the bar holds the notch inset; the bar keeps its logo and hides its document switcher, which would open under the board), and the canvas under it stops painting while it is open (`html.sol-dashboard-open`, [[html-in-canvas#The GPU texture budget]]), a drill-in's included. In dark mode its ground sits 65% of the way from the canvas color to the box surface, so boxes do not stand out as hard as cards on the canvas. The header carries the board's title (and the expanded box's name after it), Refresh All Connections (`refreshAllConnections`, the top bar's command), Edit Layout, and Close. Esc closes, after first closing an open menu, rename, expanded box or edit.
+`DashboardOverlay.tsx`, with its open state in `dashboardStore.ts`. It covers the canvas between `--chrome-top` and `--chrome-bottom` (on mobile, everything under the accent bar, measured into `--dash-top` since the bar holds the notch inset; the bar keeps its logo and hides its document switcher, which would open under the board), and the canvas under it stops painting while it is open (`useCoversCanvas`, `html.sol-canvas-covered`, [[html-in-canvas#The GPU texture budget]]), a drill-in's included. In dark mode its ground sits 65% of the way from the canvas color to the box surface, so boxes do not stand out as hard as cards on the canvas. The header carries the board's title (and the expanded box's name after it), Refresh All Connections (`refreshAllConnections`, the top bar's command), Edit Layout, and Close. Esc closes, after first closing an open menu, rename, expanded box or edit.
 
 Rows share the board's height with a 160 px floor, and the grid scrolls past that. At 640 px wide or less the boxes stack in reading order, one per row, sized to their content, except that two compact neighbors (a number, a blank, short text of 24 characters or less, or a widget figure: a KPI card or a gauge) share a row, sized to their content, each value scaled by its length to fill the box's width; a lone compact box keeps its row; the gaps and the box padding tighten; a box holding a chart other than a KPI card is at least 300 px high. A document, table or cards box grows with its content up to 480 px (or 65% of the screen), so one that still scrolls inside has room for a thumb, and a diagram stops at 360 px high. Edit Layout is hidden. A box scrolled to its end hands the rest of the scroll to the board: a new wheel turn or swipe does so by itself, and a swipe already under way does through `installTouchScrollChain` (`touchScrollChain.ts`), since the browser keeps a swipe on the scroller it began in.
 
@@ -558,7 +558,7 @@ goes, and so does every `url()` that isn't an inline image (it reads `none`).
 
 **On screen** (`HtmlPageOverlay.tsx`, open state in `htmlPageStore.ts`): the Dashboard board's chrome (the header with
 the card's title, a Refresh that reads the files again and Close; Esc closes; the canvas under it stops painting) over
-the page on the surface color, sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
+the page on the surface color (the canvas under it stops painting, `useCoversCanvas`, as under a Dashboard), sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
 Report's preview is, with each slot's value portalled in. A number, text, a date, a list or an error draws inline in
 the page's text. A **figure** (a chart, a Frame, a Cube, a diagram, a picture, an SVG or a document) draws as a Dashboard
 box (`dashboard-box`): its name as the label, its value `rich` and `fill`. A chart, diagram or picture's box is 320 px
@@ -566,9 +566,21 @@ high and fills it; a table, cube or document keeps its own height up to 480 px a
 by its slot (`[data-sol-ref="sales"] .dashboard-box { height: 200px }`), its rule scoped like the rest. A value in the
 page's text takes the page's font and ink, an error keeping its red.
 
-**The page's palette.** The app's colors are CSS variables, so a page that sets them (`:root { --surface: #fff;
---text: #1f2430; --border: #e7e1d6 }`, scoped to the page like every rule) dresses its boxes, tables and charts in its
-own palette; a page that doesn't gets the app's, light or dark. On a phone the page opens under the app's accent bar, as
+**The page's palette and type.** The app's colors and faces are CSS variables, so a page that sets them (`:root {
+--surface: #fff; --text: #1f2430; --border: #e7e1d6; --font-sans: Georgia, serif }`, scoped to the page like every rule)
+dresses its boxes, tables and charts in its own palette and type; a page that doesn't gets the app's, light or dark. A
+figure reads its styling from where it draws, not from the app's root: each slot is the figure's scope (`FigureScope`,
+`chartCore.ts`), so an SVG chart's axis, grid and series colors (`--text-dim`, `--border-strong`, `--chart-1` to
+`--chart-12` over the palette's series colors) and a canvas chart's face (read from its own canvas) follow the page, or one
+box's own rule (`[data-sol-ref="trend"] { --chart-1: #c2410c }`). `--chart-font-scale` multiplies a chart's text over its
+Format Controller's scale. Outside a page nothing sets a scope, so every other surface reads the app's as before.
+
+**Names a page styles.** A figure's box is `.sol-box`, its name bar `.sol-box__label`, its value `.sol-box__value` and a
+figure's own title `.sol-box__title`, so a page that heads a figure itself hides the label and title
+(`.sol-box__label, .sol-box__title { display: none }`). These names stay; the app's own classes beside them may change.
+
+**Links inside a page.** A link to an id in the page (`<a href="#chairs">`) scrolls the page to it, smoothly; the app's
+own address never changes. A section a link names carries the `id` (`<section id="{{ c | lower }}">`, Knap fills it). On a phone the page opens under the app's accent bar, as
 a Dashboard does, and a page's own `@media` rules answer the screen's width.
 
 Tests: `tests/graph/nodes/htmlPage.test.ts`: the CSS scoped (page selectors, lists, `@media`, `@keyframes` left alone) and

@@ -30,6 +30,7 @@ import { specialFrameView } from "./SpecialFrameView";
 import { filterFrameRows, filterGantt } from "./boxFilter";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
+import { useFigureFontScale } from "./chartCore";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { getOwningEditor } from "../activeGraph";
@@ -163,6 +164,7 @@ function ChartBody({ value: given, fontScale, fill, sourceId, query = "" }: { va
   }, []);
   const width = fill ? w : Math.min(w, 640);
   const cardOp = value.op === "kpi" || value.op === "scale";
+  const scaled = (fontScale ?? 1) * useFigureFontScale();
   return (
     <span className={`solenoid-ref-chartbody${stacksRecords(value) ? " solenoid-ref-chartbody--stack" : ""}`} ref={ref}>
       {cardOp || width > 0
@@ -170,7 +172,7 @@ function ChartBody({ value: given, fontScale, fill, sourceId, query = "" }: { va
             value={{ ...value, title: undefined, options: value.options ? { ...value.options, title: undefined } : value.options }}
             width={width || 320}
             height={fill && h > 0 ? h : 200}
-            fontScale={fontScale}
+            fontScale={scaled}
             recordNav={recordId ? (delta: number) => { void stepRecordRow(recordId, delta); } : undefined}
             valueFormat={sourceId && value.op === "kpi" ? resolveRefAnnotation(sourceId, "value") : undefined}
             ladderAction={ladderId ? (a: LadderAction) => { void applyLadderAction(ladderId, a); } : undefined}
@@ -230,21 +232,21 @@ function figureFor(
     const repeats = fill && value.title?.trim().toLowerCase() === refKey.trim().toLowerCase();
     return {
       title: value.title || refKey,
-      caption: value.title && !repeats ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
+      caption: value.title && !repeats ? <span className="solenoid-ref-figure__title sol-box__title">{value.title}</span> : null,
       body: <ChartBody value={value} fontScale={ann?.chartFontScale} fill={fill} sourceId={frameNodeId} query={query} />,
     };
   }
   if (isMermaidValue(value)) {
     return {
       title: value.title || refKey,
-      caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
+      caption: value.title ? <span className="solenoid-ref-figure__title sol-box__title">{value.title}</span> : null,
       body: <MermaidView source={value.source} />,
     };
   }
   if (isImageValue(value)) {
     return {
       title: value.title || refKey,
-      caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
+      caption: value.title ? <span className="solenoid-ref-figure__title sol-box__title">{value.title}</span> : null,
       body: value.src
         ? (
           <WebImage
@@ -261,7 +263,7 @@ function figureFor(
   if (isSvgValue(value)) {
     return {
       title: value.title || refKey,
-      caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
+      caption: value.title ? <span className="solenoid-ref-figure__title sol-box__title">{value.title}</span> : null,
       body: value.source
         ? <SvgFigure value={value} className="solenoid-ref-svg" />
         : <span className="report-embed-missing">no SVG loaded</span>,

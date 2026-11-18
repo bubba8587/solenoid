@@ -250,6 +250,591 @@
       },
       "x": 1760,
       "y": 1050
+    },
+    {
+      "id": "t_crew",
+      "type": "LocalFileNode",
+      "init": {
+        "label": "Crew",
+        "fileName": "crew.csv"
+      },
+      "x": 0,
+      "y": 2250
+    },
+    {
+      "id": "t_prog",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Goal progress",
+        "expr": "ROUND(@[Goal Progress] * 100, 0)"
+      },
+      "stringLiterals": {
+        "name": "Progress"
+      },
+      "x": 360,
+      "y": 2250
+    },
+    {
+      "id": "t_stars",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Rating as stars",
+        "expr": "REPT(\"\u2605\", ROUND(@Rating, 0)) & REPT(\"\u2606\", 5 - ROUND(@Rating, 0))",
+        "addAs": "text"
+      },
+      "stringLiterals": {
+        "name": "Stars"
+      },
+      "x": 720,
+      "y": 2250
+    },
+    {
+      "id": "t_sorted",
+      "type": "SortFrameNode",
+      "init": {
+        "label": "Best sellers first",
+        "dir": "desc"
+      },
+      "stringLiterals": {
+        "column": "Sales YTD"
+      },
+      "x": 1060,
+      "y": 2250
+    },
+    {
+      "id": "t_byteam",
+      "type": "GroupByFrameNode",
+      "init": {
+        "label": "Sales by team",
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "keys": "Team",
+        "column": "Sales YTD"
+      },
+      "x": 360,
+      "y": 2630
+    },
+    {
+      "id": "t_chart",
+      "type": "ChartNode",
+      "init": {
+        "label": "Sales by team",
+        "op": "bar"
+      },
+      "x": 720,
+      "y": 2630
+    },
+    {
+      "id": "t_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Team directory",
+        "fileName": "pages/team.html",
+        "styleFile": "pages/team.css",
+        "sideVars": [
+          "crew",
+          "by_team"
+        ]
+      },
+      "x": 1760,
+      "y": 2250
+    },
+    {
+      "id": "s_products",
+      "type": "LocalFileNode",
+      "init": {
+        "label": "Products",
+        "fileName": "products.csv"
+      },
+      "x": 0,
+      "y": 3050
+    },
+    {
+      "id": "s_stars",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Rating as stars",
+        "expr": "REPT(\"\u2605\", ROUND(@Rating, 0)) & REPT(\"\u2606\", 5 - ROUND(@Rating, 0))",
+        "addAs": "text"
+      },
+      "stringLiterals": {
+        "name": "Stars"
+      },
+      "x": 360,
+      "y": 3050
+    },
+    {
+      "id": "s_pick",
+      "type": "PickColumnsNode",
+      "init": {
+        "label": "Price and rating"
+      },
+      "stringLiterals": {
+        "columns": "Price, Rating"
+      },
+      "x": 360,
+      "y": 3430
+    },
+    {
+      "id": "s_chart",
+      "type": "ChartNode",
+      "init": {
+        "label": "Price against rating",
+        "op": "scatter"
+      },
+      "x": 720,
+      "y": 3430
+    },
+    {
+      "id": "s_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Shop catalog",
+        "fileName": "pages/shop.html",
+        "styleFile": "pages/shop.css",
+        "sideVars": [
+          "products",
+          "value_map"
+        ]
+      },
+      "x": 1760,
+      "y": 3050
+    },
+    {
+      "id": "i_orders",
+      "type": "LocalFileNode",
+      "init": {
+        "label": "Orders",
+        "fileName": "orders.csv"
+      },
+      "x": 0,
+      "y": 3850
+    },
+    {
+      "id": "i_customer",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Customer",
+        "value": "Tyrell",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 4130
+    },
+    {
+      "id": "i_number",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Invoice number",
+        "value": "KC-2026-0412",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 4300
+    },
+    {
+      "id": "i_issued",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Issued",
+        "value": "2026-11-18",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 4470
+    },
+    {
+      "id": "i_mine",
+      "type": "FilterFrameNode",
+      "init": {
+        "label": "This customer's orders",
+        "condConfig": {
+          "0": {
+            "op": "eq"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "Customer"
+      },
+      "x": 360,
+      "y": 3850
+    },
+    {
+      "id": "i_products",
+      "type": "LocalFileNode",
+      "init": {
+        "label": "Products",
+        "fileName": "products.csv"
+      },
+      "x": 360,
+      "y": 4230
+    },
+    {
+      "id": "i_lines",
+      "type": "JoinNode",
+      "init": {
+        "label": "With product names",
+        "how": "left"
+      },
+      "stringLiterals": {
+        "leftKey": "SKU"
+      },
+      "x": 720,
+      "y": 3850
+    },
+    {
+      "id": "i_total",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Total",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Total"
+      },
+      "x": 720,
+      "y": 4230
+    },
+    {
+      "id": "i_sub",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Subtotal",
+        "op": "sum"
+      },
+      "x": 1060,
+      "y": 4230
+    },
+    {
+      "id": "i_tax",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Sales tax",
+        "expr": "ROUND(subtotal * 0.0825, 2)"
+      },
+      "x": 1400,
+      "y": 4230
+    },
+    {
+      "id": "i_due",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Total due",
+        "expr": "subtotal + tax"
+      },
+      "x": 1400,
+      "y": 4470
+    },
+    {
+      "id": "i_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Invoice",
+        "fileName": "pages/invoice.html",
+        "styleFile": "pages/invoice.css",
+        "sideVars": [
+          "lines",
+          "number",
+          "issued",
+          "customer",
+          "subtotal",
+          "tax",
+          "due"
+        ]
+      },
+      "x": 1760,
+      "y": 3850
+    },
+    {
+      "id": "m_tx",
+      "type": "LocalFileNode",
+      "init": {
+        "label": "Transactions",
+        "fileName": "transactions.csv"
+      },
+      "x": 0,
+      "y": 4800
+    },
+    {
+      "id": "m_budgets",
+      "type": "LocalFileNode",
+      "init": {
+        "label": "Budgets",
+        "fileName": "budgets.csv"
+      },
+      "x": 0,
+      "y": 5130
+    },
+    {
+      "id": "m_bycat",
+      "type": "GroupByFrameNode",
+      "init": {
+        "label": "Spend by category",
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "keys": "Category",
+        "column": "Amount"
+      },
+      "x": 360,
+      "y": 4800
+    },
+    {
+      "id": "m_join",
+      "type": "JoinNode",
+      "init": {
+        "label": "Against budget",
+        "how": "inner"
+      },
+      "stringLiterals": {
+        "leftKey": "Category"
+      },
+      "x": 720,
+      "y": 4800
+    },
+    {
+      "id": "m_spent",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Spent a month",
+        "expr": "ROUND(-@Amount / 3, 0)"
+      },
+      "stringLiterals": {
+        "name": "Spent"
+      },
+      "x": 1060,
+      "y": 4800
+    },
+    {
+      "id": "m_used",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Share of budget",
+        "expr": "ROUND(@Spent / @MonthlyBudget * 100, 0)"
+      },
+      "stringLiterals": {
+        "name": "Used"
+      },
+      "x": 1060,
+      "y": 5130
+    },
+    {
+      "id": "m_over",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Over budget",
+        "expr": "@Spent > @MonthlyBudget",
+        "addAs": "logical"
+      },
+      "stringLiterals": {
+        "name": "Over"
+      },
+      "x": 1400,
+      "y": 4800
+    },
+    {
+      "id": "m_bar",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Bar width",
+        "expr": "MIN(@Used, 100)"
+      },
+      "stringLiterals": {
+        "name": "Bar"
+      },
+      "x": 1400,
+      "y": 5130
+    },
+    {
+      "id": "m_pick",
+      "type": "PickColumnsNode",
+      "init": {
+        "label": "Category and spend"
+      },
+      "stringLiterals": {
+        "columns": "Category, Spent"
+      },
+      "x": 720,
+      "y": 5180
+    },
+    {
+      "id": "m_pie",
+      "type": "ChartNode",
+      "init": {
+        "label": "Where it went",
+        "op": "pie"
+      },
+      "x": 720,
+      "y": 5460
+    },
+    {
+      "id": "m_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Money letter",
+        "fileName": "pages/money.html",
+        "styleFile": "pages/money.css",
+        "sideVars": [
+          "tx",
+          "categories",
+          "split"
+        ]
+      },
+      "x": 1760,
+      "y": 4800
+    },
+    {
+      "id": "g_q",
+      "type": "GroupNode",
+      "init": {
+        "label": "Quarterly one-pager",
+        "members": [
+          "q_company",
+          "q_quarter",
+          "q_ledger",
+          "q_col",
+          "q_total",
+          "q_growth",
+          "q_chart",
+          "q_regions",
+          "q_best",
+          "q_page"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 2120,
+        "height": 900
+      },
+      "x": -30,
+      "y": -60
+    },
+    {
+      "id": "g_p",
+      "type": "GroupNode",
+      "init": {
+        "label": "Project brief",
+        "members": [
+          "p_project",
+          "p_status",
+          "p_summary",
+          "p_budget",
+          "p_spend",
+          "p_actual",
+          "p_spent",
+          "p_left",
+          "p_burn",
+          "p_milestones",
+          "p_page"
+        ],
+        "color": "sky",
+        "collapsed": false,
+        "width": 2120,
+        "height": 1140
+      },
+      "x": -30,
+      "y": 990
+    },
+    {
+      "id": "g_t",
+      "type": "GroupNode",
+      "init": {
+        "label": "Team directory",
+        "members": [
+          "t_crew",
+          "t_prog",
+          "t_stars",
+          "t_sorted",
+          "t_byteam",
+          "t_chart",
+          "t_page"
+        ],
+        "color": "violet",
+        "collapsed": false,
+        "width": 2120,
+        "height": 770
+      },
+      "x": -30,
+      "y": 2190
+    },
+    {
+      "id": "g_s",
+      "type": "GroupNode",
+      "init": {
+        "label": "Shop catalog",
+        "members": [
+          "s_products",
+          "s_stars",
+          "s_pick",
+          "s_chart",
+          "s_page"
+        ],
+        "color": "amber",
+        "collapsed": false,
+        "width": 2120,
+        "height": 770
+      },
+      "x": -30,
+      "y": 2990
+    },
+    {
+      "id": "g_i",
+      "type": "GroupNode",
+      "init": {
+        "label": "Invoice",
+        "members": [
+          "i_orders",
+          "i_customer",
+          "i_number",
+          "i_issued",
+          "i_mine",
+          "i_products",
+          "i_lines",
+          "i_total",
+          "i_sub",
+          "i_tax",
+          "i_due",
+          "i_page"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 2120,
+        "height": 1010
+      },
+      "x": -30,
+      "y": 3790
+    },
+    {
+      "id": "g_m",
+      "type": "GroupNode",
+      "init": {
+        "label": "Money letter",
+        "members": [
+          "m_tx",
+          "m_budgets",
+          "m_bycat",
+          "m_join",
+          "m_spent",
+          "m_used",
+          "m_over",
+          "m_bar",
+          "m_pick",
+          "m_pie",
+          "m_page"
+        ],
+        "color": "teal",
+        "collapsed": false,
+        "width": 2120,
+        "height": 1050
+      },
+      "x": -30,
+      "y": 4740
     }
   ],
   "connections": [
@@ -266,8 +851,8 @@
       "targetInput": "list"
     },
     {
-      "source": "q_ledger",
-      "sourceOutput": "frame",
+      "source": "q_col",
+      "sourceOutput": "values",
       "target": "q_chart",
       "targetInput": "values"
     },
@@ -402,6 +987,246 @@
       "sourceOutput": "chart",
       "target": "p_page",
       "targetInput": "burn"
+    },
+    {
+      "source": "t_crew",
+      "sourceOutput": "frame",
+      "target": "t_prog",
+      "targetInput": "frame"
+    },
+    {
+      "source": "t_prog",
+      "sourceOutput": "frame",
+      "target": "t_stars",
+      "targetInput": "frame"
+    },
+    {
+      "source": "t_stars",
+      "sourceOutput": "frame",
+      "target": "t_sorted",
+      "targetInput": "frame"
+    },
+    {
+      "source": "t_crew",
+      "sourceOutput": "frame",
+      "target": "t_byteam",
+      "targetInput": "frame"
+    },
+    {
+      "source": "t_byteam",
+      "sourceOutput": "frame",
+      "target": "t_chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "t_sorted",
+      "sourceOutput": "frame",
+      "target": "t_page",
+      "targetInput": "crew"
+    },
+    {
+      "source": "t_chart",
+      "sourceOutput": "chart",
+      "target": "t_page",
+      "targetInput": "by_team"
+    },
+    {
+      "source": "s_products",
+      "sourceOutput": "frame",
+      "target": "s_stars",
+      "targetInput": "frame"
+    },
+    {
+      "source": "s_products",
+      "sourceOutput": "frame",
+      "target": "s_pick",
+      "targetInput": "frame"
+    },
+    {
+      "source": "s_pick",
+      "sourceOutput": "frame",
+      "target": "s_chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "s_stars",
+      "sourceOutput": "frame",
+      "target": "s_page",
+      "targetInput": "products"
+    },
+    {
+      "source": "s_chart",
+      "sourceOutput": "chart",
+      "target": "s_page",
+      "targetInput": "value_map"
+    },
+    {
+      "source": "i_orders",
+      "sourceOutput": "frame",
+      "target": "i_mine",
+      "targetInput": "frame"
+    },
+    {
+      "source": "i_customer",
+      "sourceOutput": "value",
+      "target": "i_mine",
+      "targetInput": "value0"
+    },
+    {
+      "source": "i_mine",
+      "sourceOutput": "frame",
+      "target": "i_lines",
+      "targetInput": "left"
+    },
+    {
+      "source": "i_products",
+      "sourceOutput": "frame",
+      "target": "i_lines",
+      "targetInput": "right"
+    },
+    {
+      "source": "i_mine",
+      "sourceOutput": "frame",
+      "target": "i_total",
+      "targetInput": "frame"
+    },
+    {
+      "source": "i_total",
+      "sourceOutput": "values",
+      "target": "i_sub",
+      "targetInput": "list"
+    },
+    {
+      "source": "i_sub",
+      "sourceOutput": "result",
+      "target": "i_tax",
+      "targetInput": "subtotal"
+    },
+    {
+      "source": "i_sub",
+      "sourceOutput": "result",
+      "target": "i_due",
+      "targetInput": "subtotal"
+    },
+    {
+      "source": "i_tax",
+      "sourceOutput": "result",
+      "target": "i_due",
+      "targetInput": "tax"
+    },
+    {
+      "source": "i_lines",
+      "sourceOutput": "frame",
+      "target": "i_page",
+      "targetInput": "lines"
+    },
+    {
+      "source": "i_number",
+      "sourceOutput": "value",
+      "target": "i_page",
+      "targetInput": "number"
+    },
+    {
+      "source": "i_issued",
+      "sourceOutput": "value",
+      "target": "i_page",
+      "targetInput": "issued"
+    },
+    {
+      "source": "i_customer",
+      "sourceOutput": "value",
+      "target": "i_page",
+      "targetInput": "customer"
+    },
+    {
+      "source": "i_sub",
+      "sourceOutput": "result",
+      "target": "i_page",
+      "targetInput": "subtotal"
+    },
+    {
+      "source": "i_tax",
+      "sourceOutput": "result",
+      "target": "i_page",
+      "targetInput": "tax"
+    },
+    {
+      "source": "i_due",
+      "sourceOutput": "result",
+      "target": "i_page",
+      "targetInput": "due"
+    },
+    {
+      "source": "m_tx",
+      "sourceOutput": "frame",
+      "target": "m_bycat",
+      "targetInput": "frame"
+    },
+    {
+      "source": "m_budgets",
+      "sourceOutput": "frame",
+      "target": "m_join",
+      "targetInput": "left"
+    },
+    {
+      "source": "m_bycat",
+      "sourceOutput": "frame",
+      "target": "m_join",
+      "targetInput": "right"
+    },
+    {
+      "source": "m_join",
+      "sourceOutput": "frame",
+      "target": "m_spent",
+      "targetInput": "frame"
+    },
+    {
+      "source": "m_spent",
+      "sourceOutput": "frame",
+      "target": "m_used",
+      "targetInput": "frame"
+    },
+    {
+      "source": "m_used",
+      "sourceOutput": "frame",
+      "target": "m_over",
+      "targetInput": "frame"
+    },
+    {
+      "source": "m_over",
+      "sourceOutput": "frame",
+      "target": "m_bar",
+      "targetInput": "frame"
+    },
+    {
+      "source": "m_bar",
+      "sourceOutput": "frame",
+      "target": "m_pick",
+      "targetInput": "frame"
+    },
+    {
+      "source": "m_pick",
+      "sourceOutput": "frame",
+      "target": "m_pie",
+      "targetInput": "values"
+    },
+    {
+      "source": "m_tx",
+      "sourceOutput": "frame",
+      "target": "m_page",
+      "targetInput": "tx"
+    },
+    {
+      "source": "m_bar",
+      "sourceOutput": "frame",
+      "target": "m_page",
+      "targetInput": "categories"
+    },
+    {
+      "source": "m_pie",
+      "sourceOutput": "chart",
+      "target": "m_page",
+      "targetInput": "split"
     }
   ]
 }

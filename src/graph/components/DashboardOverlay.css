@@ -10,14 +10,14 @@
   flex-direction: column;
   background: var(--canvas-bg);
 }
-html.sol-dashboard-open .sol-rf-appcanvas { visibility: hidden; }
+html.sol-canvas-covered .sol-rf-appcanvas { visibility: hidden; }
 /* The canvas color is a shade under every card so cards lift off it; on a board of boxes that step reads as too
    much contrast in dark mode, so the ground sits most of the way up to the boxes' surface. */
 html[data-theme="dark"] .dashboard-overlay { background: color-mix(in srgb, var(--surface) 65%, var(--canvas-bg)); }
 html.is-mobile .dashboard-overlay { top: var(--dash-top, 0px); bottom: 0; }
 html.is-mobile .dashboard-overlay .report-header { padding: 8px 12px; }
 /* The accent bar shows over a phone's board; its document switcher would open under the board, so it goes. */
-html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden; }
+html.is-mobile.sol-canvas-covered .solenoid-menubar__center { visibility: hidden; }
 
 .dashboard-grid {
   flex: 1 1 auto;

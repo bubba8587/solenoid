@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><title>Money letter</title></head>
+<body>
+  {% set income = tx | where: "Category", "Income" | map: "Amount" | sum %}
+  {% set net = tx | map: "Amount" | sum %}
+  <div class="letter">
+    <p class="date">First quarter, 2026</p>
+    <h1>Your money, <em>quarterly</em></h1>
+    <p class="intro">You brought in <b>${{ income | number_format }}</b> and kept <b class="good">${{ net | number_format }}</b> of it. Here's where the rest went, against the budget you set for each month.</p>
+
+    <section class="cats">
+      {% for c in categories | sort: "Used" | reverse %}
+      <div class="cat {% if c.Over %}over{% endif %}">
+        <div class="row">
+          <span class="name">{{ c.Category }}</span>
+          <span class="amt">${{ c.Spent | number_format }} <small>of ${{ c.MonthlyBudget | number_format }} a month</small></span>
+        </div>
+        <div class="track"><div class="bar" style="width: {{ c.Bar }}%"></div>{% if c.Over %}<span class="flag">{{ c.Used }}%</span>{% endif %}</div>
+      </div>
+      {% endfor %}
+    </section>
+
+    <div class="pair">
+      <section>
+        <h2>Where it went</h2>
+        {{ split }}
+      </section>
+      <section class="note">
+        <h2>Worth a look</h2>
+        {% set overs = categories | where: "Over", true %}
+        <ul>
+          {% if overs %}{% for c in overs %}<li><b>{{ c.Category }}</b> ran {{ c.Used }}% of budget.</li>{% endfor %}
+          {% else %}<li>Nothing ran over budget this quarter.</li>{% endif %}
+          {% for c in categories | sort: "Used" %}{% if loop.index <= 2 %}<li><b>{{ c.Category }}</b> used only {{ c.Used }}% of what you set aside.</li>{% endif %}{% endfor %}
+        </ul>
+        <p class="sign">See you next quarter.</p>
+      </section>
+    </div>
+  </div>
+</body></html>

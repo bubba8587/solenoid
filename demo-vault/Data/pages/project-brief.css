@@ -32,3 +32,10 @@ h2 { font-size: 15px; color: #cbd5e1; margin: 26px 0 10px; }
   --text-bright: #f8fafc;
   --text-muted: #94a3b8;
 }
+:root {
+  --chart-font-scale: 1.2;
+  --chart-1: #38bdf8;
+  --chart-2: #f59e0b;
+  --border-strong: #334155;
+}
+[data-sol-ref="burn"] .sol-box__label { display: none; }

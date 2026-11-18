@@ -40,3 +40,13 @@ footer { margin-top: 32px; padding-top: 14px; border-top: 1px solid #e7e1d6; fon
   --text-muted: #6b7280;
 }
 .dashboard-box { border-radius: 10px; }
+/* The figures in the page's type: charts read --font-sans, tables --font-mono, and chart text scales up a little. */
+:root {
+  --font-sans: Georgia, "Times New Roman", serif;
+  --chart-font-scale: 1.3;
+  --chart-1: #c2410c;
+  --text-dim: #6b7280;
+  --border-strong: #e7e1d6;
+}
+/* Each panel has its own heading, so the boxes drop their labels and the chart its title. */
+.sol-box__label, .sol-box__title { display: none; }

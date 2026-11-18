@@ -32,6 +32,7 @@ import { SwatchGrid } from "./SwatchGrid";
 import { CloseIcon } from "./CloseIcon";
 import { FocusIcon, TableIcon, GripIcon, Maximize2Icon, Minimize2Icon, PencilIcon } from "./Icons";
 import { useEscapeToClose } from "./useEscapeToClose";
+import { useCoversCanvas } from "./useCoversCanvas";
 import { useEscapeLayer } from "./escapeLayers";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import "./Markdown.css";
@@ -311,12 +312,8 @@ export function DashboardOverlay() {
   useEscapeLayer(!!focus, () => setFocus(null));
   useEscapeLayer(!!edit, () => setEdit(null));
   useEscapeToClose(() => dashboardStore.close(), !!node);
-  // A covered canvas stops painting ([[html-in-canvas#The GPU texture budget]]), a drill-in's included.
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("sol-dashboard-open", !!node);
-    return () => root.classList.remove("sol-dashboard-open");
-  }, [node]);
+  // A covered canvas stops painting, a drill-in's included.
+  useCoversCanvas(!!node);
   const hasGrid = !!node && !edit && !!node.layout.trim();
   useEffect(() => (hasGrid && gridRef.current ? installTouchScrollChain(gridRef.current) : undefined), [hasGrid, node]);
   // On a phone the board opens under the app's accent bar, which stays: its height holds the notch inset, so it is measured.

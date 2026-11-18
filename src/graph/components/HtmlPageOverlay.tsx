@@ -18,10 +18,12 @@ import { isImageValue } from "../imageValue";
 import { isSvgValue } from "../svgValue";
 import { isDocumentValue } from "../documentValue";
 import { InlineRefValue } from "./inlineRefDisplay";
+import { FigureScope } from "./chartCore";
 import { RefreshIcon } from "./RefreshIcon";
 import { CloseIcon } from "./CloseIcon";
 import { errorTip } from "./ErrorChip";
 import { useEscapeToClose } from "./useEscapeToClose";
+import { useCoversCanvas } from "./useCoversCanvas";
 import "./Markdown.css";
 import "./ReportOverlay.css";
 import "./DashboardOverlay.css";
@@ -37,9 +39,9 @@ function Slot({ node, name, highlight }: { node: HtmlPageNode; name: string; hig
   if (!isPageFigure(value)) return <InlineRefValue nodeId={node.id} refKey={name} highlight={highlight} />;
   return (
     // A table, cube or document keeps its own height, up to a scroll; a chart, diagram or picture fills the box.
-    <section className={`dashboard-box sol-htmlpage__box${isFrameValue(value) || isCubeValue(value) || isDocumentValue(value) ? " sol-htmlpage__box--flow" : ""}`}>
-      <div className="dashboard-box__label"><span className="dashboard-box__name">{name}</span></div>
-      <div className="dashboard-box__value sol-md"><InlineRefValue nodeId={node.id} refKey={name} rich fill /></div>
+    <section className={`dashboard-box sol-box sol-htmlpage__box${isFrameValue(value) || isCubeValue(value) || isDocumentValue(value) ? " sol-htmlpage__box--flow" : ""}`}>
+      <div className="dashboard-box__label sol-box__label"><span className="dashboard-box__name">{name}</span></div>
+      <div className="dashboard-box__value sol-box__value sol-md"><InlineRefValue nodeId={node.id} refKey={name} rich fill /></div>
     </section>
   );
 }
@@ -59,10 +61,23 @@ function PageBody({ node, body }: { node: HtmlPageNode; body: string }) {
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   // A figure's slot is a block, so its box takes the page's width.
   for (const s of slots) s.el.classList.toggle("sol-htmlpage__slot--box", isPageFigure(node.refValue(s.name)));
+  // An in-page link (`href="#aisle"`) scrolls the page to that id; it never moves the app's own address.
+  const onClick = (e: React.MouseEvent) => {
+    const a = (e.target as Element).closest?.("a[href^='#']");
+    if (!a || !ref.current) return;
+    e.preventDefault();
+    const id = decodeURIComponent((a.getAttribute("href") ?? "").slice(1));
+    const to = id ? [...ref.current.querySelectorAll<HTMLElement>("[id]")].find((el) => el.id === id) : ref.current;
+    to?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   return (
     <>
-      <div ref={ref} className={PAGE_SCOPE} />
-      {slots.map((s, i) => createPortal(<Slot key={`${s.name}:${i}`} node={node} name={s.name} highlight={s.highlight} />, s.el))}
+      <div ref={ref} className={PAGE_SCOPE} onClick={onClick} />
+      {/* Each value reads its styling from its own slot: the page's variables, or a rule for that one box. */}
+      {slots.map((s, i) => createPortal(
+        <FigureScope.Provider key={`${s.name}:${i}`} value={s.el}><Slot node={node} name={s.name} highlight={s.highlight} /></FigureScope.Provider>,
+        s.el,
+      ))}
     </>
   );
 }
@@ -74,12 +89,7 @@ export function HtmlPageOverlay() {
   const found = nodeId ? getOwningEditor(nodeId)?.getNode(nodeId) : undefined;
   const node = found instanceof HtmlPageNode ? found : undefined;
   useEscapeToClose(() => htmlPageStore.close(), !!node);
-  // A covered canvas stops painting ([[html-in-canvas#The GPU texture budget]]), as under a Dashboard.
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("sol-dashboard-open", !!node);
-    return () => root.classList.remove("sol-dashboard-open");
-  }, [node]);
+  useCoversCanvas(!!node);
   // On a phone the page opens under the app's accent bar, which holds the notch inset, as a Dashboard does.
   useEffect(() => {
     if (!node) return;

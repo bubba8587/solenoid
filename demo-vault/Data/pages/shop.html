@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><title>The shop</title></head>
+<body>
+  <header class="bar">
+    <span class="logo">Kiln &amp; Co.</span>
+    <nav>{% for c in products | map: "Category" | unique %}<a href="#{{ c | lower }}">{{ c }}</a>{% endfor %}<a href="#insight">Insight</a></nav>
+  </header>
+  <section class="banner">
+    <h1>Things for the desk, the shelf and the morning.</h1>
+    <p>{{ products | length }} pieces, {{ products | where: "In Stock", true | length }} ready to ship.</p>
+  </section>
+
+  {% for c in products | map: "Category" | unique %}
+  <section class="aisle" id="{{ c | lower }}">
+    <h2>{{ c }}</h2>
+    <div class="grid">
+      {% for p in products | where: "Category", c %}
+      <article class="item {% if not p['In Stock'] %}gone{% endif %}">
+        {% if not p["In Stock"] %}<span class="ribbon">Sold out</span>{% endif %}
+        <div class="photo" style="--c: {{ p.Color }}"><img src="{{ p.Image }}" alt=""></div>
+        <h3>{{ p.Product }}</h3>
+        <p class="desc">{{ p.Description | truncate: 70 }}</p>
+        <div class="foot">
+          <span class="price">${{ p.Price | number_format: 2 }}</span>
+          <span class="stars">{{ p.Stars }}</span>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+
+  <section class="insight" id="insight">
+    <div>
+      <h2>Price against rating</h2>
+      <p>Each dot is a product. The dear ones aren't the best loved.</p>
+    </div>
+    {{ value_map }}
+  </section>
+</body></html>

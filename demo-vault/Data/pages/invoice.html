@@ -1,0 +1,48 @@
+<!doctype html>
+<html><head><title>Invoice</title></head>
+<body>
+  <div class="sheet">
+    {% set unpaid = lines | where: "Paid", false | length %}
+    {% if unpaid == 0 %}<div class="stamp">Paid</div>{% else %}<div class="stamp due">Balance due</div>{% endif %}
+    <header>
+      <div>
+        <div class="brand">Kiln &amp; Co.</div>
+        <p class="addr">14 Potter's Row<br>Asheville, NC 28801</p>
+      </div>
+      <div class="meta">
+        <h1>Invoice</h1>
+        <p>No. {{ number }}<br>Issued {{ issued | date: "MMMM D, YYYY" }}</p>
+      </div>
+    </header>
+
+    <section class="to">
+      <p class="label">Billed to</p>
+      <p class="client">{{ customer }} Corporation</p>
+      <p class="muted">{{ lines | length }} orders · {{ unpaid }} awaiting payment</p>
+    </section>
+
+    <table>
+      <thead><tr><th>Order</th><th>Placed</th><th>Item</th><th class="n">Qty</th><th class="n">Amount</th><th></th></tr></thead>
+      <tbody>
+        {% for l in lines | sort: "Placed" %}
+        <tr>
+          <td class="mono">{{ l.Order }}</td>
+          <td>{{ l.Placed | date: "MMM D" }}</td>
+          <td>{{ l.Product ?? l.SKU }}</td>
+          <td class="n">{{ l.Qty }}</td>
+          <td class="n">${{ l.Total | number_format: 2 }}</td>
+          <td>{% if l.Paid %}<span class="pill ok">paid</span>{% else %}<span class="pill due">due</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <section class="totals">
+      <div><span>Subtotal</span><span>${{ subtotal | number_format: 2 }}</span></div>
+      <div><span>Sales tax (8.25%)</span><span>${{ tax | number_format: 2 }}</span></div>
+      <div class="grand"><span>Total</span><span>${{ due | number_format: 2 }}</span></div>
+    </section>
+
+    <footer>Thank you for your business. Payment is due within 30 days; make checks out to Kiln &amp; Co.</footer>
+  </div>
+</body></html>

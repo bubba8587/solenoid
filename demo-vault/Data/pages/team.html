@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head><title>The crew</title></head>
+<body>
+  <header class="hero">
+    <p class="kicker">People</p>
+    <h1>The crew</h1>
+    {% set top = crew | first %}
+    <p class="stats">
+      <span><b>{{ crew | length }}</b> people</span>
+      <span><b>{{ crew | where: "Remote", true | length }}</b> remote</span>
+      <span><b>${{ crew | map: "Sales YTD" | sum | number_format }}</b> sold this year</span>
+    </p>
+    <p class="lead">Top seller so far: <strong>{{ top["First Name"] }} {{ top["Last Name"] }}</strong> of {{ top.Team }}, at ${{ top["Sales YTD"] | number_format }}.</p>
+  </header>
+
+  <section class="people">
+    {% for p in crew %}
+    <article class="person" style="--c: {{ p['Favorite Color'] }}">
+      <div class="top">
+        <img class="avatar" src="{{ p.Photo }}" alt="">
+        <div>
+          <h2>{{ p["First Name"] }} {{ p["Last Name"] }}</h2>
+          <p class="where">{{ p.City }}{% if p.Remote %}<span class="remote">remote</span>{% endif %}</p>
+        </div>
+        <span class="team">{{ p.Team }}</span>
+      </div>
+      <p class="stars" title="Rating {{ p.Rating }}">{{ p.Stars }}</p>
+      <div class="goal"><div class="fill" style="width: {{ p.Progress }}%"></div></div>
+      <p class="goal-label">{{ p.Progress }}% of goal · ${{ p["Sales YTD"] | number_format }}</p>
+      {% if p.Bio %}<p class="bio">{{ p.Bio }}</p>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+
+  <section class="chart">
+    <h3>Sales by team</h3>
+    {{ by_team }}
+  </section>
+</body></html>

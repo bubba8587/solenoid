@@ -125,7 +125,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, o: ChartOptio
   const ends: Array<[[number, number], string]> = [[proj(1, 0, 0), "X"], [proj(0, 1, 0), "Y"], [proj(0, 0, 1), "Z"]];
   ctx.globalAlpha = 0.9;
   ctx.fillStyle = frameCol;
-  ctx.font = canvasFont(600, 10);
+  ctx.font = canvasFont(600, 10, "sans", ctx.canvas);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const [end, lab] of ends) {
