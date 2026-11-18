@@ -44,17 +44,6 @@ const frame: FrameValue = {
 };
 
 describe("Computed Column over a Cube", () => {
-  const formulas = [
-    "SUM(@legs)", "@legs * 2", "COUNTA(@tags)", "@n + 1", "SUM(legs)", "@grid", "SUM(grid)", "@kids", "COUNTA(kids)", "UPPER(@tags)",
-    "@name & @n", "ROW()", "INDEX(legs, ROW(), 1)", "MAKEARRAY(2, 2, LAMBDA(r, c, MAKEARRAY(1, 1, LAMBDA(x, y, 1))))", "@legs + @n", "TODAY() + @n",
-  ];
-  for (const expr of formulas) {
-    it(`computes ${expr} row by row`, () => {
-      const out = run(card(expr), cube);
-      expect(isCubeValue(out) || isSolError(out)).toBe(true);
-    });
-  }
-
   it("a list answer is that row's cell, its unit on each item", () => {
     const out = run(card("@legs * 2"), cube) as CubeValue;
     const col = out.columns.find((c) => c.name === "out")!;
@@ -75,7 +64,6 @@ describe("Computed Column over a Cube", () => {
   it("a pinned type and a `Name (unit)` name", () => {
     expect((run(card("@n", { addAs: "text" }), cube) as CubeValue).columns.slice(-1)[0]!.type).toBe("string");
     expect((run(card("@n * 1000", { name: "len (m)" }), cube) as CubeValue).columns.slice(-1)[0]!.name).toBe("len");
-    expect(run(card("SUM(@legs)", { name: "len (hr)" }), cube)).toBeTruthy();
   });
 
   it("a wired λ over a Cube binds its parameters to this row's cells", () => {
@@ -94,21 +82,6 @@ describe("Computed Column over widened values", () => {
 });
 
 describe("Computed Column units, bindings and λ captures", () => {
-  const formulas = [
-    "@a / @t", "@a + 1", "@a * @a", "@a + @t", "POWER(@a, 2)", "@d + @a", "SUM(a) / @t", "IF(@a > 1, @a, @t)", "@a * k", "@a + k", "@a * ks",
-    "@d - @d", "@d + 1", "@b & @a", "ROUND(@a / @t, 1)",
-  ];
-  const km = qty("km", 5);
-  for (const expr of formulas) {
-    for (const name of ["out", "out (mi/hr)", "out (km)", "out (usd)"]) {
-      it(`${expr} named ${name}`, () => {
-        const n = card(expr, { name, sideVars: ["k", "ks"] });
-        const out = run(n, frame, { k: [km], ks: [[qty("km", 1), qty("m", 2), qty("km", 3)]] });
-        expect(isFrameValue(out) || isSolError(out)).toBe(true);
-      });
-    }
-  }
-
   it("bindings point a variable at a picked column, and a gone column is #REF!", () => {
     const bound = run(card("@x * 2 + SUM(y)", { bindings: { x: "a", y: "t" } }), frame) as FrameValue;
     expect(bound.columns.slice(-1)[0]!.values).toHaveLength(3);
@@ -116,14 +89,6 @@ describe("Computed Column units, bindings and λ captures", () => {
     expect(isSolError(gone) && gone.code).toBe("#REF!");
     const lam = run(card("", { bindings: { p: "a" } }), frame, { fn: [lambda("p * 2", "p")] }) as FrameValue;
     expect(lam.columns.slice(-1)[0]!.values).toHaveLength(3);
-  });
-
-  it("a λ's united captures count in the unit pass", () => {
-    for (const [expr, params] of [["a / speed", "a"], ["a + gap", "a"], ["@t * speed", ""], ["a * factor + @t", "a"], ["@b & a", "a"], ["@nope + a", "a"]]) {
-      const fn = lambda(expr, params, { speed: qty("km", 2), gap: qty("m", 300), factor: 3 });
-      const out = run(card("", { name: "v" }), frame, { fn: [fn] });
-      expect(isFrameValue(out) || isSolError(out)).toBe(true);
-    }
   });
 
   it("a λ parameter bound to an error cell answers that row with the error", () => {

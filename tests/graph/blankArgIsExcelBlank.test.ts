@@ -6,19 +6,11 @@ import { isSolError } from "../../src/graph/errorValue";
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 
 describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, an omitted argument the default", () => {
-
   it("TEXTJOIN: an empty ignore_empty slot is TRUE, as Excel reads it; a blank value is FALSE and keeps the empties", () => {
     expect(ev('TEXTJOIN(",", , "a", "", "b")')).toBe("a,b");
     expect(ev('TEXTJOIN(",", b, "a", "", "b")', { b: null })).toBe("a,,b");
     expect(ev('TEXTJOIN(",", TRUE, "a", "", "b")')).toBe("a,b");
     expect(ev('TEXTJOIN(",", FALSE, "a", "", "b")')).toBe("a,,b");
-  });
-
-  it("the Formula.js lookup candidates (MATCH / VLOOKUP / HLOOKUP) are blocked spellings, so no row is needed", () => {
-    for (const expr of ["MATCH(30, x, )", "VLOOKUP(2, x, 1, )", "HLOOKUP(2, x, 1, )"]) {
-      const r = ev(expr, { x: [10, 20, 30] });
-      expect(isSolError(r) && r.code, expr).toBe("#NAME?");
-    }
   });
 
   it("XMATCH / XLOOKUP: a blank match_mode is 0 (exact, the default); a blank search_mode is 0, which Excel rejects", () => {

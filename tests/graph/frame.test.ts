@@ -198,12 +198,6 @@ describe("frameFromCells", () => {
     expect(f.columns[2].type).toBe("date");
   });
 
-  it("date column values are serials", () => {
-    const f = frameFromCells(["D"], [["2026-01-03"], ["2026-06-15"]]);
-    expect(f.columns[0].values[0]).toBe(parseDateToSerial("2026-01-03"));
-    expect(f.columns[0].values[1]).toBe(parseDateToSerial("2026-06-15"));
-  });
-
   it("handles empty rows (zero-row frame)", () => {
     const f = frameFromCells(["A", "B"], []);
     expect(f.columns).toHaveLength(2);
@@ -226,15 +220,6 @@ describe("makeHeaders", () => {
   it("de-dupes duplicate names left to right", () => {
     expect(makeHeaders(["Date", "Name", "Date"], 3)).toEqual(["Date", "Name", "Date2"]);
     expect(makeHeaders(["X", "X", "X"], 3)).toEqual(["X", "X2", "X3"]);
-  });
-});
-
-// ─── frameRowCount ────────────────────────────────────────────────────────────
-
-describe("frameRowCount", () => {
-  it("returns 0 for a frame with no rows", () => {
-    const f = buildFrame([], ["A"]);
-    expect(frameRowCount(f)).toBe(0);
   });
 });
 
@@ -321,7 +306,6 @@ describe("logical columns", () => {
     node.stringLiterals.name = "Flag";
     expect(node.data({ frame: [f] }).values).toEqual(["TRUE", "FALSE"]);
   });
-
 
   it("Split Frame's Matrix output socket type tracks the colType", async () => {
     const { splitMatrixOutput } = await import("../../src/graph/nodes/frame");

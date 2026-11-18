@@ -31,37 +31,10 @@ describe("blocked spellings redirect to a LIVE replacement", () => {
     expect(isSolError(r) && r.code).toBe("#NAME?");
     expect(isSolError(r) && r.message).toBe("Use XLOOKUP");
   });
-
-  it("blocks the superseded statistics spellings", () => {
-    for (const [name, use] of [["NORMDIST", "NORM.DIST"], ["TDIST", "T.DIST.RT"], ["CRITBINOM", "BINOM.INV"]]) {
-      const r = ev(`${name}(1, 2, 3, TRUE)`);
-      expect(isSolError(r) && r.code, name).toBe("#NAME?");
-      expect(isSolError(r) && r.message, name).toBe(`Use ${use}`);
-    }
-  });
-
-  it("blocks the fn-code aggregators and the PRECISE/ISO rounding variants (retired Composable tier)", () => {
-    for (const [expr, use] of [
-      ["SUBTOTAL(9, 4)", "SUM"], ["AGGREGATE(9, 4, 5)", "SUM"],
-      ["CEILING.PRECISE(4.2)", "CEILING.MATH"], ["FLOOR.PRECISE(-4.2)", "FLOOR.MATH"],
-      ["ISO.CEILING(4.2)", "CEILING.MATH"],
-    ]) {
-      const r = ev(expr);
-      expect(isSolError(r) && r.code, expr).toBe("#NAME?");
-      expect(isSolError(r) && r.message, expr).toBe(`Use ${use}`);
-    }
-  });
 });
 
-describe("current-Excel names the fxLookup walk used to advertise but not dispatch", () => {
-  // FX hangs these off a CALLABLE parent (FX.CEILING is the function AND the home
-  // of CEILING.MATH); the old object-only walk couldn't reach them.
-  it.each(["GAMMALN.PRECISE", "SKEW.P", "NETWORKDAYS.INTL", "WORKDAY.INTL",
-           "BINOM.DIST.RANGE"])("%s dispatches", (name) => {
-    expect(isFunctionName(name)).toBe(true);
-  });
-
-  it("computes, not just resolves", () => {
+describe("CEILING.MATH and FLOOR.MATH", () => {
+  it("round up and down to the next integer", () => {
     expect(ev("CEILING.MATH(4.2)")).toBe(5);
     expect(ev("FLOOR.MATH(-4.2)")).toBe(-5);
   });
@@ -214,11 +187,6 @@ describe("FORECAST.LINEAR", () => {
     const r = ev("FORECAST.LINEAR(4, ys, xs)", { ys: [2, 4, 6], xs: [1, 1, 1] });
     expect(isSolError(r) && r.code).toBe("#DIV/0!");
   });
-
-  it("the superseded FORECAST spelling redirects here", () => {
-    const r = ev("FORECAST(4, ys, xs)", { ys: [2, 4, 6], xs: [1, 2, 3] });
-    expect(isSolError(r) && r.message).toBe("Use FORECAST.LINEAR");
-  });
 });
 
 describe("the [[B16]] oneFormulaSurface gate covers the WHOLE blocklist, on every surface", () => {
@@ -285,19 +253,5 @@ describe("one-function Excel parity, each checked against Excel", () => {
     expect(ev('VALUE("-$1,234.50")')).toBe(-1234.5);
     expect(ev('VALUE("(5)")')).toBe(-5);
     expect(err('VALUE("1.234,5")')).toBe("#VALUE!");
-  });
-  it("GCD and LCM truncate, hex is upper case", () => {
-    expect(ev("GCD(5.9,10.2)")).toBe(5);
-    expect(ev("LCM(2.5,3)")).toBe(6);
-    expect(ev("DEC2HEX(255)")).toBe("FF");
-  });
-  it("VDB with no_switch stays on the declining balance", () => {
-    expect(ev("VDB(10000,1000,5,3,5,1.5,TRUE())")).toBeCloseTo(1749.3, 9);
-    expect(ev("VDB(10000,1000,5,3,5,1.5,FALSE())")).toBeCloseTo(2430, 9);
-  });
-  it("TREND and GROWTH with const FALSE fit through the origin and through 1", () => {
-    expect((ev("TREND(y,x,4,FALSE())", { y: [1, 3, 4], x: [1, 2, 3] }) as number[])[0]).toBeCloseTo(76 / 14, 12);
-    const m = Math.exp((Math.log(3) + 2 * Math.log(4) + 3 * Math.log(8)) / 14);
-    expect((ev("GROWTH(g,x,4,FALSE())", { g: [3, 4, 8], x: [1, 2, 3] }) as number[])[0]).toBeCloseTo(m ** 4, 9);
   });
 });

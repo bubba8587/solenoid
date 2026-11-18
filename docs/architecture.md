@@ -187,7 +187,7 @@ mindmap
 | `nodes/kind.ts` | node → `NodeKind` CLASSIFIER (`nodeKindOf`) + per-kind weights/resizable/wide flags; the kind → accent map (`NODE_KIND_ACCENTS`) lives in `nodes/shared.ts` |
 | `dimension.ts` | The unit value shape, graph-free: `Dim` vectors, `Unit`, the compare and format helpers, `fcUnitToUnit` over the core's catalog (`unit_catalog.rs`) |
 | `unitValue.ts` | The unit-on-the-VALUE layer (FC A4): `UnitCell` (base-SI magnitude + display id), mirrors `valueKinds.ts`'s shape; the unit catalog and labels are the core's, read through `dimension.ts` (`fcUnitToUnit`, `formatDim`) |
-| `unitBridge.ts` | The unit-blind boundary (`stripUnitCells` for the app's own reads; at arrival the input boundary strips per input; `unitAware = true` opts a node into the algebra — perInputUnitBlind) + `applyFcUnit`, the FC card's tagging rule on the core (`tag_fc_unit`) |
+| `unitBridge.ts` | The unit-blind boundary (at arrival the input boundary strips per input, `strip_unit_cells` in the core; `unitAware = true` opts a node into the algebra — perInputUnitBlind) + `applyFcUnit`, the FC card's tagging rule on the core (`tag_fc_unit`) |
 | `unitColumn.ts` | Per-column frame units: `ColumnUnit`, `columnUnitFromSpec`, `parseColumnUnitFromHeader` — the unitGranularity frame granularity, incl. computed columns |
 | `unitFlow.ts`, `annotationFacts.ts` | Format-annotation resolver over the core's annotation walk (`annotate.rs`, facts from `annotationFacts.ts`): `makeAnnotationResolver` (+ the microtask-shared `sharedAnnotationResolver`) answers `outAnnotation`, `inAnnotation` (upstream), `downstreamAnnotation` (an FC ahead through pure passthroughs) and `valueOrigin` (the popup Go-to-source walk) |
 | `unitFormat.ts` | Unit + number-format rendering helpers |
@@ -259,7 +259,6 @@ idle is always the real DOM. There is no third renderer; do not build one.
 | `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (the transform `htmlCanvasRenderer` drives; the Pixi-era pan/zoom/pinch/fit helpers are deleted) |
 | `hicVectors.ts` (+`.test.ts`) | every SVG the viewport draws outside the cards (cables, ribbons, standoffs, drawn cables) copied onto the HTML-in-Canvas layer as world-space vectors |
 | `rasterAtlas.ts` (+`.test.ts`) | the capture atlas (`packAtlas`) — one canvas read-back per paint |
-| `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB mixing — a canvas can't evaluate `color-mix`/`var()` |
 | `zoomSettle.ts` (+`.test.ts`) | The gesture-exit settle window (default 420 ms; `window.__zoomSettle` override) |
 | `canvasCapture.ts` | Static-export capture, deliberately separate from the live HTML-in-Canvas capture |
 | `devHarness.ts` | DEV-only screenshot-comparison hooks (tree-shaken from production) |

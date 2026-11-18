@@ -95,33 +95,4 @@ describe("docked FC survives a reload of the computed-column → INDEX chain", (
     reconcileFcTypes(editor as never, null);
     expect(fc.socketDataType).toBe("numlist");
   });
-
-  it("on reload the docked FC adopts the cell's family", async () => {
-    const editor = new GraphEditor() as unknown as AnyEditor;
-    // "Reload": nodes constructed from persisted state, cables restored, no
-    // per-cable settle (the rebuild gate suppresses it).
-    const fi = new FrameInputNode({
-      frameText: frameSourceToText([
-        { name: "price", type: "number", cells: ["10", "20"] },
-        { name: "rev", type: "number", cells: [], expr: "@price * 2", unit: "usd" },
-      ]),
-    });
-    const idx = new ListIndexNode();
-    idx.literals.index = 2;
-    idx.literals.column = 2;
-    const fc = new FormatControllerNode({ unit: "usd" });
-    for (const n of [fi, idx, fc]) await editor.addNode(n as never);
-    fc.hostNodeId = idx.id;
-    fc.socketKey = "result";
-    fc.side = "output";
-    await editor.addConnection(new GraphConnection(idx as never, "result", fc as never, "in") as never);
-    await editor.addConnection(new GraphConnection(fi as never, "frame", idx as never, "list") as never);
-
-    fc.dockSelf(editor as never);
-    reconcileFcTypes(editor as never, null);
-
-    // The docked FC adopted the CELL's family (numlist — number's combo rung),
-    // never the raw upstream "frame".
-    expect(fc.socketDataType).toBe("numlist");
-  });
 });

@@ -4,15 +4,9 @@ import {
   buildModel,
   canConnect,
   connect,
-  moveNode,
-  type FlowModel,
   type SavedGraphLite,
 } from "../../../src/graph/flow/flowModel";
-import { FLAT_CATALOG } from "../../../src/graph/catalogUtils";
-import type { SolenoidNode } from "../../../src/graph/schemes";
 import { computeAll } from "../../../src/graph/graphCompute";
-import { isSolError } from "../../../src/graph/errorValue";
-
 
 const FIXTURE: SavedGraphLite = {
   v: 2,
@@ -28,13 +22,6 @@ const FIXTURE: SavedGraphLite = {
   ],
 };
 
-async function addNode(m: FlowModel, catalogType: string, position: { x: number; y: number }): Promise<SolenoidNode> {
-  const node = FLAT_CATALOG.get(catalogType)!.create() as SolenoidNode;
-  node.position = position;
-  await m.editor.addNode(node);
-  return node;
-}
-
 /** Live ids in fixture order (editor preserves insertion order). */
 async function build() {
   const m = await buildModel(FIXTURE);
@@ -43,12 +30,6 @@ async function build() {
 }
 
 describe("flow controller (React Flow port C1)", () => {
-  it("computes through wired inputs", async () => {
-    const { m, sum } = await build();
-    const values = await computeAll(m.editor, m.engine);
-    expect(values.get(sum)).toMatchObject({ result: 5 });
-  });
-
   it("refuses lattice-invalid and self connections, accepts valid ones", async () => {
     const { m, a, sum, txt } = await build();
     // string output → number-list input: the lattice refuses.
@@ -83,25 +64,5 @@ describe("flow controller (React Flow port C1)", () => {
     const values = await computeAll(m.editor, m.engine, sum);
     expect(values.get(sum)).toMatchObject({ result: 3 });
 
-  });
-
-  it("addNode places a catalog entry and it computes", async () => {
-    const { m } = await build();
-    const node = await addNode(m, "value-input", { x: 500, y: 500 });
-    expect(m.editor.getNode(node!.id)?.position).toEqual({ x: 500, y: 500 });
-    moveNode(m, node!.id, { x: 10, y: 20 });
-    expect(m.editor.getNode(node!.id)?.position).toEqual({ x: 10, y: 20 });
-    const values = await computeAll(m.editor, m.engine, node!.id);
-    expect(values.get(node!.id)).toMatchObject({ value: 0 });
-  });
-
-  it("a cycle seeds #CIRC! instead of overflowing", async () => {
-    const { m, sum } = await build();
-    const other = await addNode(m, "arith-add", { x: 480, y: 60 });
-    expect(await connect(m, sum, "result", other!.id, "a")).toBe(true);
-    expect(await connect(m, other!.id, "result", sum, "a")).toBe(true);
-    const values = await computeAll(m.editor, m.engine);
-    const out = (values.get(sum) ?? {}).result;
-    expect(isSolError(out) && (out as { code?: string }).code === "#CIRC!").toBe(true);
   });
 });

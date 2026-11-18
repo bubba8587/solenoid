@@ -223,11 +223,6 @@ describe("the one Distribution node is reachable by search without growing the m
   it("the Add-menu TREE keeps exactly ONE distribution leaf — no leaf per distribution or form", () => {
     expect(treeTypes.filter((x) => x === "distributions").length).toBe(1);
     expect(treeTypes.some((x) => x.startsWith("distributions__op-")), "grew per-op leaves").toBe(false);
-    for (const gone of ["normdist", "norminv", "tdist", "tinv", "chisqdist", "fdist",
-      "betadist", "gammadist", "lognormdist", "weibulldist", "expodist", "binomdist",
-      "poissondist", "hypgeomdist", "negbinomdist"]) {
-      expect(treeTypes.includes(gone), `${gone} still has its own leaf`).toBe(false);
-    }
   });
 
   it("every distribution has a search row carrying its Excel names", () => {

@@ -6,6 +6,24 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-18: a cut of tests with no lasting value; cloud session)
+- About 95 test blocks went (plus ~85 loop-generated cases), none of them the only pin of live behavior: duplicates (the `LEGACY_ALIASES` loop in
+  `formulaTier1.test.ts` already holds every blocked spelling; `searchSamples` holds the search queries; the frozen node
+  fixtures hold 18 `widgetBodies` cases, confirmed by `scripts/answer-tests.mjs --list`), Formula.js-era and rete-era
+  pins, tombstones for one retired name each (the picker `arg` prop, `INPUT_ROW_TOP`, the RUNNING* and per-distribution
+  ids), answer-free recorder feeds in `computedColumnPaths`, a source-text pin in `touchActions`, a frozen 1.6 release
+  checklist, and two benches of paths the app no longer runs (`perfScaling`, `cardBatchBench`; `passBench` is the bench).
+- Dead code that only its test kept alive went with it: `cssColor.ts`, `stripUnitCells` (the core's `strip_unit_cells`
+  does the strip), `logicalOrTypeError` (the core's `logical_or_type_error`), and the old whole-library key cleanup in
+  `documentStore.restore()` (a migration, [[B7]]).
+- Looked at and kept: the lazy-vs-eager parity in `frameNodeBackend`, the 200k-row window/aggregate guards in
+  `frameVerbsEdge`, `pfSeedCheck`'s demo-data sums, `coreTextForm`'s seed round-trip (it reaches pack seeds
+  `textForm.test.ts` does not), and `distributions.test.ts` (answer-tests finds calls not frozen). Not yet frozen and so
+  TS-only pins: the Optimize cards (Solver, Assignment, Shortest Path, Pareto, Staffing, Greedy Queue, Local Search).
+- `answer-tests.mjs` is conservative by file: one JS card in a file (`SvgPickerNode`) skips the whole file, and a helper
+  calling `magnitudeOf`/`dimOf`/`parseDateToSerial`/`formatDim` or assigning `.mode =` keeps a test. Running it per test
+  on `convert`, `colorBlend` and `distributionInvariants` is the next pass.
+
 ### SESSION DIGEST (2026-11-17b: the US Map card, a service-territory baseline; cloud session)
 - **Greedy Queue** (`GreedyQueueNode`, `nodes/queue.rs`, [[frame-verbs#Greedy Queue]]): the sequential loop of a
   run-optimization model, generic; the rule is LAMBDA cards (Order by, a number or a list sorted in turn; Cost; Allowed)

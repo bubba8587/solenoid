@@ -4,13 +4,11 @@ import { summarizeColumn as summarize } from "./coreVerbs";
 import { formatScalar } from "../../src/graph/components/format";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, parseDateToSerial } from "../../src/graph/nodes/date";
 import {
-  STATS_BY_TYPE,
   defaultFooterStat,
   footerStatFor,
   footerStatValue,
   formatFooterStat,
   statReadsAsCell,
-  FOOTER_STAT_LABEL,
 } from "../../src/graph/components/tableFooterStats";
 
 describe("footer stat choices", () => {
@@ -19,11 +17,6 @@ describe("footer stat choices", () => {
     expect(defaultFooterStat("date")).toBe("count");
     expect(defaultFooterStat("logical")).toBe("count");
     expect(defaultFooterStat("string")).toBe("count");
-  });
-
-  it("every stat has a label", () => {
-    const all = new Set(Object.values(STATS_BY_TYPE).flat());
-    for (const k of all) expect(FOOTER_STAT_LABEL[k]).toBeTruthy();
   });
 });
 

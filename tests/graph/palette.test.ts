@@ -575,15 +575,6 @@ describe("reportPaletteStore (report/export-only, parallel to the canvas palette
 });
 
 describe("contrast ink is baked, not recomputed", () => {
-  it("gives a readable ink for every palette slot in both themes", () => {
-    for (const slot of COLOR_PALETTE) {
-      for (const mode of ["dark", "light"] as const) {
-        const accent = themeAccent(PALETTE[slot], mode);
-        const ink = contrastInk(accent);
-        expect(["#fff", "#1a1a1a"], `${slot}/${mode}`).toContain(ink);
-      }
-    }
-  });
 
   // Android Chrome picks its toolbar icons from the theme-color (the accent) by WCAG contrast against white
   // (ColorUtils.shouldUseLightForegroundOnBackground, threshold 3); the accent's ink must agree with it.
@@ -598,14 +589,6 @@ describe("contrast ink is baked, not recomputed", () => {
     for (const name of PALETTE_NAMES) for (const slot of COLOR_PALETTE) for (const mode of ["dark", "light"] as const) {
       const hex = themeAccent(BUILTIN_PALETTES[name][slot], mode);
       expect(contrastInk(hex), `${name}/${slot}/${mode}`).toBe(chrome(hex));
-    }
-  });
-
-  it("is stable across calls (the cache can't drift from a fresh computation)", () => {
-    for (const slot of COLOR_PALETTE) {
-      const a = contrastInk(PALETTE[slot]);
-      const b = contrastInk(PALETTE[slot]);
-      expect(b).toBe(a);
     }
   });
 });

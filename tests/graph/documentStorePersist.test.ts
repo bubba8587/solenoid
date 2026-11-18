@@ -95,14 +95,6 @@ describe("per-doc autosave keys", () => {
     expect(documentStore.list().filter((m) => m.id === eta.id || m.id === theta.id).map((m) => m.folder)).toEqual(["New", "New"]);
   });
 
-  it("restore() deletes the abandoned whole-library keys", async () => {
-    _mem.set("solenoid.docs.lib.a", '{"seq":1,"lib":{}}');
-    _mem.set("solenoid.docs.lib.b", '{"seq":2,"lib":{}}');
-    await documentStore.restore();
-    expect(_mem.has("solenoid.docs.lib.a")).toBe(false);
-    expect(_mem.has("solenoid.docs.lib.b")).toBe(false);
-  });
-
   it("a corrupt doc slot is skipped on restore, not fatal", async () => {
     documentStore.saveAs("Zeta");
     const zeta = documentStore.list().find((m) => m.name === "Zeta")!;
@@ -201,7 +193,6 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     expect(documentStore.currentId()).toBe(keeper.id);
   });
 });
-
 
 describe("[[save-format#A save loses nothing quietly]] — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
   const slotKeys = () => [..._mem.keys()].filter((k) => /^solenoid\.docs\.(index|doc\.[^.]+)\.(a|b)$/.test(k));

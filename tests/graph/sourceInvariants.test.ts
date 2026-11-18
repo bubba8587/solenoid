@@ -161,7 +161,7 @@ describe("[[C25]] firstClassUnits — a node file that runs the dimension algebr
   // Deliberately EXCLUDED from the consuming set: the matrix-unit family
   // (matrixUnitOf / withMatrixUnit / carryMatrixUnit / sharedMatrixUnit). A unitGranularity
   // matrix unit tags the OUTER array of a bare-number grid, so it survives the
-  // unit-blind strip (stripUnitCells returns the same reference when no CELL is
+  // unit-blind strip (the core's strip_unit_cells returns the same reference when no CELL is
   // tagged) — a unit-blind node carrying it through a reshape is correct, not a
   // violation (stats.ts's grid interpolation is the live example).
   const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|arithmeticCell)\s*\(/;
@@ -288,14 +288,6 @@ describe("[[C26]] opArgDistinct — OP pickers bind `op`, ARG pickers never do",
       `OpSelect / OpToggle and declare the family in NODE_OPS) or the field is misnamed ` +
       `(rename it — side, order, agg, view):\n  ` + offenders.join("\n  "),
     ).toEqual([]);
-  });
-
-  it("no picker carries the retired `arg` prop", () => {
-    const offenders: string[] = [];
-    eachTag([...OP_PICKERS, ...ARG_PICKERS], (where, tag) => {
-      if (/\sarg(?=[\s/=])/.test(tag.replace(/\{[^}]*\}/g, ""))) offenders.push(where);
-    });
-    expect(offenders, "op-vs-arg is the component, not a flag").toEqual([]);
   });
 });
 
@@ -814,17 +806,9 @@ describe("[[A1]] visualGraphCalculator — the socket box's greppable half", () 
     expect(/line-height: 0/.test(css), "line-height: 0 (the measured offset box)").toBe(true);
   });
 
-  it("no fixed row constant, no transform positioning in the socket component", () => {
-    for (const file of ["components/NodeSocket.tsx"]) {
-      const src = codeLines(path.join(SRC, file)).join("\n");
-      expect(/INPUT_ROW_TOP/.test(src), `${file} reintroduced a fixed row constant`).toBe(false);
-      expect(/transform:\s*[`'"]?translate/.test(src), `${file} positions the dot with a transform (offsetTop ignores it)`).toBe(false);
-    }
-    const hits: string[] = [];
-    for (const file of walk(SRC)) {
-      if (/INPUT_ROW_TOP/.test(codeLines(file).join("\n"))) hits.push(rel(file));
-    }
-    expect(hits, "INPUT_ROW_TOP-style constants came back").toEqual([]);
+  it("no transform positioning in the socket component", () => {
+    const src = codeLines(path.join(SRC, "components/NodeSocket.tsx")).join("\n");
+    expect(/transform:\s*[`'"]?translate/.test(src), "NodeSocket positions the dot with a transform (offsetTop ignores it)").toBe(false);
   });
 });
 

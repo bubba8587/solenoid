@@ -320,11 +320,6 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
     expect(ev('(1 = 1) & "!"')).toBe("TRUE!");
   });
 
-  it("dispatches scalar functions through Formula.js", () => {
-    expect(ev("SQRT(a)", { a: 16 })).toBe(4);
-    expect(ev("MAX(a, b, c)", { a: 1, b: 9, c: 4 })).toBe(9);
-  });
-
   it("broadcasts an operator element-wise over a list × scalar", () => {
     expect(ev("a * b", { a: [1, 2, 3], b: 10 })).toEqual([10, 20, 30]);
   });
@@ -405,17 +400,6 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   it("leaves a div-by-zero INSIDE a list as an element, not a scalar error", () => {
     const r = ev("1 / x", { x: [1, 0, 2] });
     expect(Array.isArray(r)).toBe(true);
-  });
-
-  it("maps a top-level Formula.js error return to a tagged SolError", () => {
-    const na = ev("NA()");
-    expect(isSolError(na) && na.code).toBe("#N/A");
-    const dom = ev("ASIN(2)");
-    expect(isSolError(dom) && dom.code).toBe("#DOMAIN!");
-  });
-
-  it("still lets IFERROR catch an in-formula Formula.js-style error (only the final result is mapped)", () => {
-    expect(ev("IFERROR(NA(), 42)")).toBe(42);
   });
 });
 
@@ -538,18 +522,7 @@ describe("classic lookups redirect to their current-Excel replacements ([[B16]] 
     return fn(env);
   };
 
-  it("VLOOKUP / HLOOKUP / LOOKUP → #NAME? 'Use XLOOKUP'", () => {
-    for (const expr of ["VLOOKUP(2, x, 1)", "HLOOKUP(2, x, 1)", "LOOKUP(2, x)"]) {
-      const r = ev(expr, { x: [1, 2, 3] });
-      expect(isSolError(r) && r.code).toBe("#NAME?");
-      expect(isSolError(r) && r.message).toBe("Use XLOOKUP");
-    }
-  });
-
-  it("SUMIF → #NAME? 'Use SUMIFS'", () => {
-    const r = ev('SUMIF(k, "a", v)', { k: ["a", "b"], v: [1, 2] });
-    expect(isSolError(r) && r.code).toBe("#NAME?");
-    expect(isSolError(r) && r.message).toBe("Use SUMIFS");
+  it("SUMIFS, COUNTIF and AVERAGEIF match on a criterion", () => {
     expect(ev('SUMIFS(v, k, "a")', { k: ["a", "b"], v: [1, 2] })).toBe(1);
     expect(ev('COUNTIF(k, "a")', { k: ["a", "b"] })).toBe(1);
     expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "b"], v: [1, 2] })).toBe(1);
@@ -558,12 +531,6 @@ describe("classic lookups redirect to their current-Excel replacements ([[B16]] 
   it("COUNTIF / AVERAGEIF never read a numeric-STRING range as numbers ([[B17]] typedValueModel)", () => {
     expect((ev('COUNTIF(v, ">15")', { v: ["10", "9", "20"] }) as { code: string }).code).toBe("#TYPE!");
     expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] })).toBeNull();
-  });
-
-  it("MATCH → #NAME? 'Use XMATCH'", () => {
-    const r = ev("MATCH(30, x, 0)", { x: [10, 20, 30] });
-    expect(isSolError(r) && r.code).toBe("#NAME?");
-    expect(isSolError(r) && r.message).toBe("Use XMATCH");
   });
 
   it("INDEX stays (current Excel, never superseded)", () => {
@@ -682,7 +649,7 @@ describe("TEXT formats date serials", () => {
     // serial for 2026-03-15
     expect(ev('TEXT(a, "yyyy-mm-dd")', { a: 46096 })).toBe("2026-03-15");
   });
-  it("numeric codes pass through to Formula.js untouched", () => {
+  it("a numeric format code formats the number", () => {
     expect(ev('TEXT(a, "0.00")', { a: 1234.5 })).toBe("1234.50");
   });
 });

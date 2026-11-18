@@ -2,7 +2,6 @@
 import { isSolError } from "../../src/graph/errorValue";
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { isFunctionName } from "../../src/graph/excelFunctions";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 
 // The declarations are checked with pack formulas registered, as the app runs.
@@ -76,13 +75,6 @@ describe("every Tier 3 name computes what its node computes", () => {
     expect(ev('RUNNING("sum", x, w)', { x: LIST, w: null })).toEqual(ev('RUNNING("sum", x)', { x: LIST }));
     const bad = ev('RUNNING("mode", x)', { x: LIST }) as { code?: string };
     expect(bad?.code).toBe("#VALUE!");
-  });
-
-  it("RUNNING* per-op names are NOT functions — the op is an argument, not seven names", () => {
-    for (const name of ["RUNNINGSUM", "RUNNINGAVERAGE", "RUNNINGMIN", "RUNNINGMAX",
-      "RUNNINGMEDIAN", "RUNNINGPRODUCT", "RUNNINGSTDEV"]) {
-      expect(isFunctionName(name), `${name} is dispatchable`).toBe(false);
-    }
   });
 
   it("LENGTH — counts the missing slot, which is why it takes the list RAW", () => {

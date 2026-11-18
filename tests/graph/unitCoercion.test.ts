@@ -6,7 +6,7 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode, AggregateNode, ListInputNode, ValueInputNode } from "../../src/graph/nodeClasses";
 import { isUnitCell, type UnitCell } from "../../src/graph/unitValue";
-import { stripUnitCells, displayMagnitudeOf } from "../../src/graph/unitBridge";
+import { displayMagnitudeOf } from "../../src/graph/unitBridge";
 import { reconcileFcs } from "../../src/graph/fcReconcile";
 
 type AnyNode = GraphNode;
@@ -21,20 +21,10 @@ function makeGraph() {
   return { editor, engine, conn, fetch };
 }
 
-describe("stripUnitCells (pure)", () => {
-  const km5: UnitCell = { __unitCell: true, value: 5000, dim: { length: 1 }, display: "km" };
-  it("unwraps to the display magnitude, not base SI", () => {
-    expect(displayMagnitudeOf(km5)).toBe(5);
-    expect(stripUnitCells(km5)).toBe(5);
-  });
-  it("a display-less algebra cell reads as its base magnitude", () => {
-    expect(stripUnitCells({ __unitCell: true, value: 12, dim: { length: 1, time: -1 } })).toBe(12);
-  });
-  it("recurses lists and matrices, same ref when clean", () => {
-    expect(stripUnitCells([km5, 3, null])).toEqual([5, 3, null]);
-    expect(stripUnitCells([[km5], [2]])).toEqual([[5], [2]]);
-    const clean = [1, 2, 3];
-    expect(stripUnitCells(clean)).toBe(clean);
+describe("displayMagnitudeOf", () => {
+  it("reads a cell in its display unit, not base SI; a display-less cell as its base magnitude", () => {
+    expect(displayMagnitudeOf({ __unitCell: true, value: 5000, dim: { length: 1 }, display: "km" })).toBe(5);
+    expect(displayMagnitudeOf({ __unitCell: true, value: 12, dim: { length: 1, time: -1 } })).toBe(12);
   });
 });
 

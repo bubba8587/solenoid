@@ -25,11 +25,6 @@ describe("a number as text — 15 significant digits, trailing zeros stripped", 
 describe("first wave of native impls (registered through the seam)", () => {
   const fn = (name: string) => coreFunction(name)!;
 
-  it("ROUND rounds half AWAY from zero (Excel), unlike JS Math.round", () => {
-    expect(fn("ROUND")(2.5, 0)).toBe(3);
-    expect(fn("ROUND")(-2.5, 0)).toBe(-3); // Math.round(-2.5) would be -2
-    expect(fn("ROUND")(3.14159, 2)).toBe(3.14);
-  });
   it("SQRT mints a tagged #DOMAIN! on a negative (vs Formula.js's Error object)", () => {
     expect(fn("SQRT")(9)).toBe(3);
     const neg = fn("SQRT")(-1);
@@ -86,32 +81,9 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
   });
 });
 
-describe("the typed-formula path now resolves the registry, not Formula.js", () => {
-  it("SQRT(-1) in a formula surfaces our tagged #DOMAIN!", () => {
-    const r = compileEvaluator("SQRT(x)")!({ x: -1 });
-    expect(isSolError(r)).toBe(true);
-    expect((r as SolError).code).toBe("#DOMAIN!");
-  });
-  it("ROUND through a formula uses our Excel rounding", () => {
-    expect(compileEvaluator("ROUND(x, 0)")!({ x: -2.5 })).toBe(-3);
-  });
-  it("an owned scalar fn still broadcasts element-wise over a list", () => {
-    expect(compileEvaluator("LEN(s)")!({ s: ["a", "bcd"] })).toEqual([1, 3]);
-  });
-  it("a Solenoid-only function is now callable in a formula (Formula.js alone would throw)", () => {
-    expect(compileEvaluator("CLAMP(x, 0, 10)")!({ x: 42 })).toBe(10);
-    expect(compileEvaluator("BETWEEN(x, 1, 5)")!({ x: 3 })).toBe(true);
-    expect(compileEvaluator("ORDINAL(n)")!({ n: 2 })).toBe("2nd");
-  });
-});
-
 describe("statistics flat names — registered so a formula can call them at all", () => {
   const ev = (expr: string, env: Record<string, unknown>) => compileEvaluator(expr)!(env);
   const X = { x: [2, 4, 4, 4, 5, 5, 7, 9] };
-
-  it("STDEV / VAR / MODE / PERCENTILE / QUARTILE / COVAR resolve", () => {
-    expect(coreFunction("COVAR")).toBeTypeOf("function");
-  });
 
   it("STDEV defaults to sample, VAR to sample, MODE to single", () => {
     expect(ev("STDEV(x)", X)).toBeCloseTo(2.13809, 4);   // sample stdev (sum sq dev 32 / 7)
@@ -119,21 +91,6 @@ describe("statistics flat names — registered so a formula can call them at all
     expect(ev("MODE(x)", X)).toBe(4);                      // MODE.SNGL
     expect(ev("PERCENTILE(x, 0.5)", X)).toBe(4.5);         // .INC, = median
     expect(ev("QUARTILE(x, 2)", X)).toBe(4.5);
-  });
-
-  it("RANK uses OUR Excel-correct impl: #N/A for a value not in the list (FX returns 0)", () => {
-    expect(ev("RANK(7, x)", X)).toBe(2);                   // 9 is rank 1, 7 is rank 2 (descending)
-    const miss = ev("RANK(6, x)", X);
-    expect(isSolError(miss) && (miss as SolError).code).toBe("#N/A");
-  });
-
-  it("TRIMMEAN uses OUR Excel-correct impl: 0.2 trims nothing here (FX over-trims to 4.83)", () => {
-    expect(ev("TRIMMEAN(x, 0.2)", X)).toBe(5);             // floor(8*0.2/2)=0 → mean of all = 40/8
-  });
-
-  it("PERCENTRANK interpolates + truncates (formula path == RankPercentileNode)", () => {
-    expect(ev("PERCENTRANK(x, 4)", { x: [1.5, 2.5, 3.5, 10.25] })).toBe(0.691);
-    expect(ev("PERCENTRANK(x, 4)", X)).toBe(0.142);        // duplicates → first occurrence, truncated
   });
 });
 
@@ -143,9 +100,6 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(ev("MOD(10, -3)")).toBe(-2);   // FX gives -1
     expect(ev("MOD(-10, -3)")).toBe(-1);  // FX gives 4
     expect(ev("MOD(10, 3)")).toBe(1);
-  });
-  it("ATAN2 follows Excel's (x, y) order = atan2(y, x); Formula.js does not", () => {
-    expect(ev("ATAN2(3, 2)")).toBeCloseTo(Math.atan2(2, 3), 9); // FX gives atan2(3,2)
   });
   it("a domain miss tags #DOMAIN! instead of going blank (LN/LOG10/SQRTPI/ASIN/ACOS/ATANH)", () => {
     for (const expr of ["LN(-1)", "LOG10(0)", "SQRTPI(-1)", "ASIN(2)", "ACOS(2)", "ATANH(1)"]) {

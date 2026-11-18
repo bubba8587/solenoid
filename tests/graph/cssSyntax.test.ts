@@ -19,7 +19,6 @@ function cssFiles(dir: string, out: string[] = []): string[] {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) {
-      if (e.name === "pixi") continue; // deprecated renderer — not built
       cssFiles(p, out);
     } else if (e.name.endsWith(".css")) {
       out.push(p);

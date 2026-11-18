@@ -55,8 +55,4 @@ describe("card tags", () => {
     const first = searchLeaves(leaves, tag)[0];
     expect(first && cardOf(first), `first: ${first?.label}`).toBe(type);
   });
-
-  it("outrank a hidden op that shares the word (the backlog's first case)", () => {
-    expect(cardOf(searchLeaves(leaves, "mean")[0])).toBe("reduce-avg");
-  });
 });
