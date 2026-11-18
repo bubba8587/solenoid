@@ -1410,7 +1410,7 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
   const groupsUsed = useRowsInUse(data, SEARCH_GROUP_KEYS) || reach !== "across" || ends !== "open";
   // Under "Cost of an item" each row names what it adds; the penalty counts toward the total, not the running cost.
   const label = (key: string): string =>
-    ({ costColumn: "Column", cost: "Formula", penalty: "Plus penalty", passes: "Most rounds" } as Record<string, string>)[key]
+    ({ costColumn: "Column", cost: "Formula", penalty: "Penalty", passes: "Most rounds" } as Record<string, string>)[key]
       ?? data.inputs[key]?.label ?? key;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
