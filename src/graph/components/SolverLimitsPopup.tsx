@@ -16,11 +16,21 @@ import "./SolverLimitsPopup.css";
 
 const stop = (e: { stopPropagation(): void }) => e.stopPropagation();
 
-/** A short line per limit for the card: "Total Wood at most 300", "Total Amount at least 10 where Kind is Desk". */
+/** What a limit totals, for the card's step: "Wood", "Amount · Blend is Espresso". */
+export function limitSubject(l: SolverLimit): string {
+  const where = l.where?.trim() ? ` · ${l.where.trim()} is ${l.is?.trim() || "blank"}` : "";
+  return `${l.of.trim() || "Amount"}${where}`;
+}
+
+/** Its rule: "at most 300". */
+export function limitRule(l: SolverLimit): string {
+  return `${SOLVER_SIGN_OPTIONS.find((o) => o.value === l.sign)?.label ?? "at most"} ${l.limit ?? "?"}`;
+}
+
+/** The whole limit as a sentence: "Total Wood at most 300", "Total Amount at least 10 where Kind is Desk". */
 export function limitSummary(l: SolverLimit): string {
-  const sign = SOLVER_SIGN_OPTIONS.find((o) => o.value === l.sign)?.label ?? "at most";
   const where = l.where?.trim() ? ` where ${l.where.trim()} is ${l.is?.trim() || "blank"}` : "";
-  return `Total ${l.of.trim() || "Amount"} ${sign} ${l.limit ?? "?"}${where}`;
+  return `Total ${l.of.trim() || "Amount"} ${limitRule(l)}${where}`;
 }
 
 /** The number field: commits on Enter or blur; a blank commits no number, anything else that isn't one is refused. */
