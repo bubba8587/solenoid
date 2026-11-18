@@ -57,6 +57,9 @@ specific item.
   cards): every cost, total, Best, Used, path and wait carries its column's unit, a plain number takes the other's unit
   as arithmetic does, two dimensions refuse with `#UNIT!`. Found by reading the tree: the cards had dropped units
   everywhere (a kg budget beside hour costs passed). The seeds now key units in their tables ("Hours (h)").
+- **Engine checks**: `lp.rs` runs 300 random whole-number programs against every integer point, 300 random programs
+  against their duals (feasible, equal to the best total: the shadow prices hold), 200 assignments against every
+  permutation. The Solver's size cap is the tableau's (25 million cells): a 40 × 40 transport plan solves in < 1 s.
 - **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
   per run (sites × days, a draw each, then the Greedy Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
   a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common
