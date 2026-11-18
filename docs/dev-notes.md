@@ -68,7 +68,9 @@ font variables, plus `--chart-1`… and `--chart-font-scale`, and figures read t
 page's charts take its palette and type; `.sol-box`, `.sol-box__label`, `.sol-box__title` are the names a page styles; an
 in-page `#id` link scrolls the page. Pictures and fonts a page names (`src`, CSS `url()`, `@font-face`) are read from
 the data folder and inlined as `data:` URIs, from tags only (a `src` shown as text stays text); Print prints the page
-alone. The HTML Showcase example renders seven pages from `demo-vault/Data/pages/` (a one-pager, a project brief, a team
+alone. A bare tag inside an attribute prints as text; `prefers-color-scheme` follows the app's theme; an open page
+re-reads its files on window focus; on the desktop, New page writes a starter pair under `pages/` (not yet eyeballed in
+the desktop build). The HTML Showcase example renders seven pages from `demo-vault/Data/pages/` (a one-pager, a project brief, a team
 directory, a shop catalog, an invoice, a money letter and "Writing a page", a guide that is itself a page), with
 OFL fonts and pictures in `pages/fonts` and `pages/images`, which the web build bundles (`DEMO_VAULT_BINARY`).
 
