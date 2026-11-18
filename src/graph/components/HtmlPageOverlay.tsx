@@ -108,6 +108,14 @@ export function HtmlPageOverlay() {
     window.addEventListener("resize", place);
     return () => { window.removeEventListener("resize", place); root.style.removeProperty("--dash-top"); };
   }, [node]);
+  // Back from editing the files elsewhere, the page reads them again; unchanged text redraws nothing.
+  const openId = node?.id;
+  useEffect(() => {
+    if (!openId) return;
+    const reread = () => void refreshConnection(openId);
+    window.addEventListener("focus", reread);
+    return () => window.removeEventListener("focus", reread);
+  }, [openId]);
   if (!node) return null;
   const render = node.render;
   return (

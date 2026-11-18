@@ -544,7 +544,8 @@ so an error reaches its slot as a value.
 
 **The render.** A bare `{{ name }}` on a wired input becomes a slot (`embedBareVariables`, then `slotsFor`: a
 `<span data-sol-ref="name">`), drawn on screen by the shared renderer (`InlineRefValue`) in the input's format, so a
-Format Controller formats it here as in a Report. Every other tag prints through Knap, with what it prints escaped as
+Format Controller formats it here as in a Report. One inside a tag's attributes (`style="width: {{ pct }}%"`), where no
+value can draw, prints as text instead (`attributeSlotsAsText`), escaped. Every other tag prints through Knap, with what it prints escaped as
 HTML after its own filters (`renderKnapHtml` appends an escape filter to each tag's chain), so `{{ title | upper }}` of
 `Q<3` reads `Q<3`, never markup, and `{% for r in sales %}{{ r.Region }}{% endfor %}` loops over a Frame's rows. A tag
 naming an input left unwired stays as written, so the page shows what it still needs. A Knap error is `#SYNTAX!` with its
@@ -570,7 +571,8 @@ draws. The demo vault's pictures and fonts ship in the web build beside its work
 examples show on the web.
 
 **On screen** (`HtmlPageOverlay.tsx`, open state in `htmlPageStore.ts`): the Dashboard board's chrome (the header with
-the card's title, Print, a Refresh that reads the files again and Close; Esc closes) over the page on the surface color
+the card's title, Print, a Refresh that reads the files again and Close; Esc closes; the files are read again too when
+the app's window comes back into focus, so an edit made in another editor shows on return) over the page on the surface color
 (the canvas under it stops painting, `useCoversCanvas`, as under a Dashboard), sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
 Report's preview is, with each slot's value portalled in. A number, text, a date, a list or an error draws inline in
 the page's text. A **figure** (a chart, a Frame, a Cube, a diagram, a picture, an SVG or a document) draws as a Dashboard

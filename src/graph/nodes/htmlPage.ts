@@ -10,7 +10,7 @@ import { hasFs, readFileBytes, readFileText } from "../fileBridge";
 import { getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { connectionStore } from "../connectionStore";
 import { solError, type SolError } from "../errorValue";
-import { ASSET_TYPES, assetDataUri, assetRefs, dirOf, pageParts, scopeCss, slotsFor, withAssets } from "../htmlPageText";
+import { ASSET_TYPES, assetDataUri, assetRefs, attributeSlots, attributeSlotsAsText, dirOf, pageParts, scopeCss, slotsFor, withAssets } from "../htmlPageText";
 
 /** The page as the last compute left it: its body with a slot per bare tag (unsanitized: the overlay sanitizes it as it
  *  draws), its CSS scoped, or what kept it from rendering. */
@@ -148,9 +148,12 @@ export class HtmlPageNode extends GraphNode {
       return {};
     }
     this.error = null;
+    const asText = new Map<string, string>();
+    for (const name of attributeSlots(r.output)) asText.set(name, (await renderKnapHtml(`{{ ${name} }}`, vars)).output);
+    const output = attributeSlotsAsText(r.output, (name) => asText.get(name) ?? "");
     const folder = getCsvFolder();
     const pageDir = dirOf(this.fileName.trim());
-    const body = await this.inlined(folder, r.output, pageDir, true);
+    const body = await this.inlined(folder, output, pageDir, true);
     const styles = await this.inlined(folder, parts.styles.join("\n"), pageDir);
     this.missingAssets = [...this._assets.values()].flatMap((a) => (typeof a === "string" ? [] : [a.missing]));
     this.render = { body: slotsFor(body), css: scopeCss([styles, files.css].join("\n")) };

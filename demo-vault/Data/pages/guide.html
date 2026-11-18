@@ -21,6 +21,9 @@
     <pre><code>&lt;p&gt;<i class="t">&#123;&#123; greeting &#125;&#125;</i>&lt;/p&gt;</code></pre>
     <p>A tag on its own draws the value the way the canvas does, in its Format Controller's format: <span class="demo">{{ price }}</span>. A tag with a filter prints text you shape yourself: <span class="demo">${{ price | number_format: 2 }}</span>, <span class="demo">{{ greeting | upper }}</span>.</p>
     <pre><code><i class="t">&#123;&#123; price &#125;&#125;</i>   <i class="t">&#123;&#123; price | number_format: 2 &#125;&#125;</i>   <i class="t">&#123;&#123; greeting | upper &#125;&#125;</i></code></pre>
+    <p>Inside an attribute a tag always prints as text, so a value can size or color the markup itself. This bar is {{ progress }}% across:</p>
+    <div class="meter"><i style="width: {{ progress }}%"></i></div>
+    <pre><code>&lt;div class="meter"&gt;&lt;i style="width: <i class="t">&#123;&#123; progress &#125;&#125;</i>%"&gt;&lt;/i&gt;&lt;/div&gt;</code></pre>
   </section>
 
   <section id="loops">

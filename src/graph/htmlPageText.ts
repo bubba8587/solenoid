@@ -7,6 +7,9 @@ export const PAGE_SCOPE = "sol-htmlpage__doc";
 /** A bare tag after the render: the slot a value draws in. */
 export const SLOT_ATTR = "data-sol-ref";
 
+/** A tag's text in HTML (its name and attributes); the text between tags only reads like markup. */
+const TAG_RE = /<[a-z][^>]*>/gi;
+
 /** A whole document's body and its `<style>` blocks; a fragment is its own body. Scripts and links never survive the
  *  sanitizer, so they aren't looked for here. */
 export function pageParts(html: string): { body: string; styles: string[] } {
@@ -29,6 +32,19 @@ export function escapeHtmlText(s: string): string {
 export function slotsFor(rendered: string): string {
   return rendered.replace(/`=([A-Za-z_][A-Za-z0-9_]*)(!?)`/g, (_m, name: string, hl: string) =>
     `<span ${SLOT_ATTR}="${name}"${hl ? ` data-sol-hl="1"` : ""}></span>`);
+}
+
+/** The render with a bare tag that landed inside a tag's attributes (`style="width: {{ pct }}%"`), where no value can
+ *  draw, printed as `text` gives it instead: a slot belongs between tags. */
+export function attributeSlotsAsText(rendered: string, text: (name: string) => string): string {
+  return rendered.replace(TAG_RE, (tag) => tag.replace(/`=([A-Za-z_][A-Za-z0-9_]*)!?`/g, (_m, name: string) => text(name)));
+}
+
+/** The names of the bare tags that landed inside a tag's attributes. */
+export function attributeSlots(rendered: string): string[] {
+  const out = new Set<string>();
+  for (const [tag] of rendered.matchAll(TAG_RE)) for (const m of tag.matchAll(/`=([A-Za-z_][A-Za-z0-9_]*)!?`/g)) out.add(m[1]);
+  return [...out];
 }
 
 /** A selector list under the page's scope: `html`, `body` and `:root` name the page itself. */
@@ -133,9 +149,6 @@ export function dirOf(path: string): string {
 
 const SRC_RE = /(\b(?:src|poster)\s*=\s*)(["'])([^"']*)\2/gi;
 const URL_RE = /url\(\s*(["']?)([^"')]+)\1\s*\)/gi;
-
-/** A tag's text in HTML, where a `src` or a `style`'s `url()` names a file; the text between tags only reads like one. */
-const TAG_RE = /<[a-z][^>]*>/gi;
 
 /** Every local file a page's text names, in a `src` or a CSS `url()`, as data-folder paths. In `html` only a tag names
  *  one: `&lt;img src="a.png"&gt;` shown as text on the page names nothing. */

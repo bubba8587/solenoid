@@ -712,6 +712,16 @@
       "y": 5920
     },
     {
+      "id": "w_progress",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Progress",
+        "value": "62"
+      },
+      "x": 0,
+      "y": 6090
+    },
+    {
       "id": "w_planets",
       "type": "FrameInputNode",
       "init": {
@@ -753,6 +763,7 @@
         "sideVars": [
           "greeting",
           "price",
+          "progress",
           "planets",
           "moons"
         ]
@@ -914,6 +925,7 @@
         "members": [
           "w_greeting",
           "w_price",
+          "w_progress",
           "w_planets",
           "w_pick",
           "w_chart",
@@ -922,7 +934,7 @@
         "color": "sky",
         "collapsed": false,
         "width": 2120,
-        "height": 560
+        "height": 730
       },
       "x": -30,
       "y": 5690
@@ -1354,6 +1366,12 @@
       "sourceOutput": "chart",
       "target": "w_page",
       "targetInput": "moons"
+    },
+    {
+      "source": "w_progress",
+      "sourceOutput": "value",
+      "target": "w_page",
+      "targetInput": "progress"
     }
   ]
 }

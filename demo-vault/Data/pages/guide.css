@@ -46,3 +46,5 @@ i.k { font-style: normal; color: #00b862; }
 .specimen { font-family: "Fraunces", serif; font-size: 40px; font-weight: 300; font-style: normal; color: #f5b914; margin: 6px 0; letter-spacing: -0.01em; }
 ul { padding-left: 20px; }
 li { margin: 4px 0; }
+.meter { height: 10px; background: #141414; border: 1px solid #2d2d2d; border-radius: 5px; overflow: hidden; margin: 8px 0 12px; }
+.meter i { display: block; height: 100%; background: #00b862; }

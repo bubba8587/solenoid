@@ -98,6 +98,13 @@ describe("the HTML Page card", () => {
     expect(node.refValue("sales")).toBe(sales);
   });
 
+  it("prints a bare tag inside an attribute as text, since no value draws there", async () => {
+    FILES["pages/attr.html"] = '<div class="bar" style="width: {{ total }}%" title="{{ title }}">{{ total }}</div>';
+    const node = await page({ title: ['A "quoted" <b>'], total: [40] }, { fileName: "pages/attr.html", styleFile: "" });
+    expect(node.render!.body).toBe(`<div class="bar" style="width: 40%" title="A &quot;quoted&quot; &lt;b&gt;"><span ${SLOT_ATTR}="total"></span></div>`);
+    delete FILES["pages/attr.html"];
+  });
+
   it("leaves an unwired variable's tag as written, so the page shows what it still needs", async () => {
     const node = await page({ title: ["Q3"] });
     expect(node.render!.body).toContain("{{ note }}");
