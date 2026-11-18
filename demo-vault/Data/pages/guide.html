@@ -1,0 +1,77 @@
+<!doctype html>
+<html><head><title>Writing a page</title></head>
+<body>
+<article class="guide">
+  <header>
+    <img src="images/kiln-mark.svg" alt="" class="mark">
+    <div>
+      <p class="kind">HTML Page</p>
+      <h1>Writing a page</h1>
+      <p class="sub">This page is one. It reads <code>pages/guide.html</code> and <code>pages/guide.css</code> from the data folder, and every value on it comes from the graph.</p>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#tags">Tags</a><a href="#loops">Loops</a><a href="#figures">Figures</a><a href="#style">Style</a><a href="#files">Files</a><a href="#rules">Rules</a>
+  </nav>
+
+  <section id="tags">
+    <h2><span class="n">1</span> A tag is an input</h2>
+    <p>Every name in a tag becomes a socket on the card, in the order the page first uses them. This page reads <b>{{ greeting }}</b> from a Value card.</p>
+    <pre><code>&lt;p&gt;<i class="t">&#123;&#123; greeting &#125;&#125;</i>&lt;/p&gt;</code></pre>
+    <p>A tag on its own draws the value the way the canvas does, in its Format Controller's format: <span class="demo">{{ price }}</span>. A tag with a filter prints text you shape yourself: <span class="demo">${{ price | number_format: 2 }}</span>, <span class="demo">{{ greeting | upper }}</span>.</p>
+    <pre><code><i class="t">&#123;&#123; price &#125;&#125;</i>   <i class="t">&#123;&#123; price | number_format: 2 &#125;&#125;</i>   <i class="t">&#123;&#123; greeting | upper &#125;&#125;</i></code></pre>
+  </section>
+
+  <section id="loops">
+    <h2><span class="n">2</span> Loops and ifs build the markup</h2>
+    <p>A Frame wired in is rows to loop over; each column is a field. Knap's <code>where</code>, <code>sort</code>, <code>map</code>, <code>sum</code> and <code>length</code> work on it too: these {{ planets | length }} planets have {{ planets | map: "Moons" | sum }} moons between them.</p>
+    <div class="planets">
+      {% for p in planets | sort: "Moons" | reverse %}
+      <div class="planet {% if p.Moons > 20 %}many{% endif %}" style="--d: {{ p.AU }}">
+        <b>{{ p.Planet }}</b><span>{{ p.Moons }} moons</span>
+      </div>
+      {% endfor %}
+    </div>
+    <pre><code><i class="k">&#123;% for p in planets | sort: "Moons" | reverse %&#125;</i>
+  &lt;div class="planet <i class="k">&#123;% if p.Moons &gt; 20 %&#125;</i>many<i class="k">&#123;% endif %&#125;</i>"&gt;<i class="t">&#123;&#123; p.Planet &#125;&#125;</i>&lt;/div&gt;
+<i class="k">&#123;% endfor %&#125;</i></code></pre>
+    <p class="note">Knap drops the space just before a tag, so put it outside: <code>class="planet &#123;% if … %&#125;many"</code>, not <code>class="planet&#123;% if … %&#125; many"</code>.</p>
+  </section>
+
+  <section id="figures">
+    <h2><span class="n">3</span> Figures draw as boxes</h2>
+    <p>A chart, table, diagram, picture or document on its own tag draws as a Dashboard box, at the page's width, live as the graph changes.</p>
+    {{ moons }}
+  </section>
+
+  <section id="style">
+    <h2><span class="n">4</span> Style it like any page</h2>
+    <p>The stylesheet only reaches this page. The app's own variables are yours to set, and figures read them from where they draw:</p>
+    <table class="vars">
+      <tr><td><code>--surface</code> <code>--text</code> <code>--border</code></td><td>a box's ground, ink and edges</td></tr>
+      <tr><td><code>--font-sans</code> <code>--font-mono</code></td><td>a chart's and a table's type</td></tr>
+      <tr><td><code>--chart-1</code> … <code>--chart-12</code></td><td>the series colors</td></tr>
+      <tr><td><code>--chart-font-scale</code></td><td>a chart's text size</td></tr>
+      <tr><td><code>.sol-box</code> <code>.sol-box__label</code> <code>.sol-box__title</code></td><td>a box, its name bar, a figure's own title</td></tr>
+      <tr><td><code>[data-sol-ref="moons"]</code></td><td>one value's slot, to style one box</td></tr>
+    </table>
+  </section>
+
+  <section id="files">
+    <h2><span class="n">5</span> Your own pictures and fonts</h2>
+    <p>Name them as a web page would, relative to the file that names them: <code>&lt;img src="images/kiln-mark.svg"&gt;</code>, <code>url(fonts/Fraunces.woff2)</code>. The card reads each from the data folder and puts it inline, so nothing is fetched. This heading is set in Fraunces, read from <code>pages/fonts</code>:</p>
+    <p class="specimen">Fraunces, from the vault</p>
+  </section>
+
+  <section id="rules">
+    <h2><span class="n">6</span> The rules</h2>
+    <ul>
+      <li>Scripts never run: a page is a document, not an app.</li>
+      <li>Nothing reaches the web. Pictures and fonts come from the data folder, up to 8 MB each.</li>
+      <li>A link to <code>#id</code> scrolls the page. Print saves it as a PDF.</li>
+      <li>Refresh reads the files again after you edit them.</li>
+    </ul>
+  </section>
+</article>
+</body></html>

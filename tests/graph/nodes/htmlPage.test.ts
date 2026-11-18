@@ -148,6 +148,13 @@ describe("an HTML Page's pictures and fonts", () => {
     expect(out).toContain('src="https://x.test/c.png"');
   });
 
+  it("reads HTML's only from its tags: a src shown as text on the page names nothing", () => {
+    const html = '<p>Write <code>&lt;img src="img/a.png"&gt;</code> or url(img/b.png)</p><img src="img/a.png">';
+    expect(assetRefs(html, "pages", true)).toEqual(["pages/img/a.png"]);
+    const out = withAssets(html, "pages", new Map([["pages/img/a.png", "D"], ["pages/img/b.png", "E"]]), true);
+    expect(out).toBe('<p>Write <code>&lt;img src="img/a.png"&gt;</code> or url(img/b.png)</p><img src="D">');
+  });
+
   it("draws them inline on the page, a path from the data too, and names one it can't find", async () => {
     const ROOT = "/data";
     const TEXT: Record<string, string> = {

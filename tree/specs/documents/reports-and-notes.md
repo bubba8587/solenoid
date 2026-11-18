@@ -563,14 +563,15 @@ inline as a `data:` URI (`assetRefs`, `withAssets`), so the page still fetches n
 The stylesheet's files resolve when it is read; the page's after its Knap render, so a path that comes from the data
 (`<img src="{{ p.Photo }}">` over a Photo column of `photos/ada.png`) draws too. Only pictures (png, jpg, gif, webp,
 avif, svg) and fonts (woff2, woff, ttf, otf) are read (`ASSET_TYPES`), only inside the data folder (a `..` that climbs out
-names nothing), at most 8 MB each (`MAX_ASSET_BYTES`). Each file is read once a Refresh, with the page. A file the card
+names nothing), at most 8 MB each (`MAX_ASSET_BYTES`). In the page's HTML only a tag names a file: a `src` or `url()`
+shown as text (`<code>&lt;img src="a.png"&gt;</code>`) stays as written. Each file is read once a Refresh, with the page. A file the card
 can't read stays as written and is named on the card ("pages/img/gone.png isn't in the data folder"); the page still
 draws. The demo vault's pictures and fonts ship in the web build beside its workbooks (`DEMO_VAULT_BINARY`), so the
 examples show on the web.
 
 **On screen** (`HtmlPageOverlay.tsx`, open state in `htmlPageStore.ts`): the Dashboard board's chrome (the header with
-the card's title, a Refresh that reads the files again and Close; Esc closes; the canvas under it stops painting) over
-the page on the surface color (the canvas under it stops painting, `useCoversCanvas`, as under a Dashboard), sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
+the card's title, Print, a Refresh that reads the files again and Close; Esc closes) over the page on the surface color
+(the canvas under it stops painting, `useCoversCanvas`, as under a Dashboard), sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
 Report's preview is, with each slot's value portalled in. A number, text, a date, a list or an error draws inline in
 the page's text. A **figure** (a chart, a Frame, a Cube, a diagram, a picture, an SVG or a document) draws as a Dashboard
 box (`dashboard-box`): its name as the label, its value `rich` and `fill`. A chart, diagram or picture's box is 320 px
@@ -583,13 +584,18 @@ page's text takes the page's font and ink, an error keeping its red.
 dresses its boxes, tables and charts in its own palette and type; a page that doesn't gets the app's, light or dark. A
 figure reads its styling from where it draws, not from the app's root: each slot is the figure's scope (`FigureScope`,
 `chartCore.ts`), so an SVG chart's axis, grid and series colors (`--text-dim`, `--border-strong`, `--chart-1` to
-`--chart-12` over the palette's series colors) and a canvas chart's face (read from its own canvas) follow the page, or one
+`--chart-12` over the palette's series colors; a one-series chart takes `--chart-1`) and a canvas chart's face (read from its own canvas) follow the page, or one
 box's own rule (`[data-sol-ref="trend"] { --chart-1: #c2410c }`). `--chart-font-scale` multiplies a chart's text over its
 Format Controller's scale. Outside a page nothing sets a scope, so every other surface reads the app's as before.
 
 **Names a page styles.** A figure's box is `.sol-box`, its name bar `.sol-box__label`, its value `.sol-box__value` and a
 figure's own title `.sol-box__title`, so a page that heads a figure itself hides the label and title
 (`.sol-box__label, .sol-box__title { display: none }`). These names stay; the app's own classes beside them may change.
+
+**Print.** The header's Print prints the page alone (`sol-printing-page` on the root for the print, an `@media print`
+block in `HtmlPageOverlay.css`): the app and the header hidden, the page across as many sheets as it needs with its
+backgrounds kept (`print-color-adjust: exact`), and a box never split between sheets. A page's own `@media print` rules
+apply too. Saving as PDF is the browser's or the system's print dialog.
 
 **Links inside a page.** A link to an id in the page (`<a href="#chairs">`) scrolls the page to it, smoothly; the app's
 own address never changes. A section a link names carries the `id` (`<section id="{{ c | lower }}">`, Knap fills it). On a phone the page opens under the app's accent bar, as

@@ -33,3 +33,17 @@
   font-size: 13px;
 }
 .sol-htmlpage__code { color: var(--sol-error); font-weight: 600; }
+
+/* Printing a page: only the page, at its full length (no inner scroll), its backgrounds kept. The class is set only
+   while the Print button's dialog is up, so the app's own printing is untouched. */
+@media print {
+  html.sol-printing-page body { background: none; }
+  html.sol-printing-page body * { visibility: hidden; }
+  html.sol-printing-page .sol-htmlpage__scroll,
+  html.sol-printing-page .sol-htmlpage__scroll * { visibility: visible; }
+  html.sol-printing-page .sol-htmlpage { position: absolute; inset: 0 auto auto 0; width: 100%; height: auto; background: none; }
+  html.sol-printing-page .sol-htmlpage .report-header { display: none; }
+  html.sol-printing-page .sol-htmlpage__scroll { overflow: visible; height: auto; }
+  html.sol-printing-page .sol-htmlpage__doc { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html.sol-printing-page .sol-box { break-inside: avoid; }
+}

@@ -29,6 +29,15 @@ import "./ReportOverlay.css";
 import "./DashboardOverlay.css";
 import "./HtmlPageOverlay.css";
 
+/** Prints the page alone, every sheet of it with its own backgrounds; the print stylesheet hides the rest of the app. */
+function printPage(): void {
+  const root = document.documentElement;
+  root.classList.add("sol-printing-page");
+  const done = () => { root.classList.remove("sol-printing-page"); window.removeEventListener("afterprint", done); };
+  window.addEventListener("afterprint", done);
+  window.print();
+}
+
 /** A value drawn as a box rather than in the page's text. */
 export function isPageFigure(v: unknown): boolean {
   return isChartValue(v) || isFrameValue(v) || isCubeValue(v) || isMermaidValue(v) || isImageValue(v) || isSvgValue(v) || isDocumentValue(v);
@@ -106,6 +115,9 @@ export function HtmlPageOverlay() {
       <div className="report-header">
         <span className="report-title">{node.label?.trim() || "HTML Page"}</span>
         <div className="report-header-actions">
+          {render && (
+            <button type="button" className="report-embed-btn" onClick={() => printPage()} title="Print the page, or save it as a PDF">Print</button>
+          )}
           <button type="button" className="report-close" onClick={() => void refreshConnection(node.id)} title="Read the files again" aria-label="Read the files again">
             <RefreshIcon size={14} />
           </button>

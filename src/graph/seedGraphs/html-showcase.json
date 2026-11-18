@@ -691,6 +691,76 @@
       "y": 4800
     },
     {
+      "id": "w_greeting",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Greeting",
+        "value": "Hello from the graph",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 5750
+    },
+    {
+      "id": "w_price",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Price",
+        "value": "1249.5"
+      },
+      "x": 0,
+      "y": 5920
+    },
+    {
+      "id": "w_planets",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Planets",
+        "frameText": "[{\"name\":\"Planet\",\"type\":\"string\",\"cells\":[\"Mercury\",\"Venus\",\"Earth\",\"Mars\",\"Jupiter\",\"Saturn\",\"Uranus\",\"Neptune\"]},{\"name\":\"Moons\",\"type\":\"number\",\"cells\":[\"0\",\"0\",\"1\",\"2\",\"95\",\"146\",\"28\",\"16\"]},{\"name\":\"AU\",\"type\":\"number\",\"cells\":[\"0.39\",\"0.72\",\"1\",\"1.52\",\"5.2\",\"9.54\",\"19.2\",\"30.1\"]}]"
+      },
+      "x": 360,
+      "y": 5750
+    },
+    {
+      "id": "w_pick",
+      "type": "PickColumnsNode",
+      "init": {
+        "label": "Planet and moons"
+      },
+      "stringLiterals": {
+        "columns": "Planet, Moons"
+      },
+      "x": 720,
+      "y": 5750
+    },
+    {
+      "id": "w_chart",
+      "type": "ChartNode",
+      "init": {
+        "label": "Moons by planet",
+        "op": "column"
+      },
+      "x": 1060,
+      "y": 5750
+    },
+    {
+      "id": "w_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Writing a page",
+        "fileName": "pages/guide.html",
+        "styleFile": "pages/guide.css",
+        "sideVars": [
+          "greeting",
+          "price",
+          "planets",
+          "moons"
+        ]
+      },
+      "x": 1760,
+      "y": 5750
+    },
+    {
       "id": "g_q",
       "type": "GroupNode",
       "init": {
@@ -835,6 +905,27 @@
       },
       "x": -30,
       "y": 4740
+    },
+    {
+      "id": "g_w",
+      "type": "GroupNode",
+      "init": {
+        "label": "Writing a page",
+        "members": [
+          "w_greeting",
+          "w_price",
+          "w_planets",
+          "w_pick",
+          "w_chart",
+          "w_page"
+        ],
+        "color": "sky",
+        "collapsed": false,
+        "width": 2120,
+        "height": 560
+      },
+      "x": -30,
+      "y": 5690
     }
   ],
   "connections": [
@@ -1227,6 +1318,42 @@
       "sourceOutput": "chart",
       "target": "m_page",
       "targetInput": "split"
+    },
+    {
+      "source": "w_planets",
+      "sourceOutput": "frame",
+      "target": "w_pick",
+      "targetInput": "frame"
+    },
+    {
+      "source": "w_pick",
+      "sourceOutput": "frame",
+      "target": "w_chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "w_greeting",
+      "sourceOutput": "value",
+      "target": "w_page",
+      "targetInput": "greeting"
+    },
+    {
+      "source": "w_price",
+      "sourceOutput": "value",
+      "target": "w_page",
+      "targetInput": "price"
+    },
+    {
+      "source": "w_planets",
+      "sourceOutput": "frame",
+      "target": "w_page",
+      "targetInput": "planets"
+    },
+    {
+      "source": "w_chart",
+      "sourceOutput": "chart",
+      "target": "w_page",
+      "targetInput": "moons"
     }
   ]
 }

@@ -44,6 +44,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
   else if (a === "--eval") opt.steps.push({ evaluate: argv[++i] });
+  else if (a === "--media") opt.steps.push({ media: argv[++i] });
   else if (a === "--hscroll") opt.steps.push({ hscroll: argv[++i], px: Number(argv[++i]) });
   else if (a === "--wheel") opt.steps.push({ wheel: argv[++i], dy: Number(argv[++i]) });
   else if (a === "--drag" || a === "--drag-hold") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]), hold: a === "--drag-hold" });
@@ -160,6 +161,7 @@ try {
       await page.keyboard.press(last);
       for (const k of keys.reverse()) await page.keyboard.up(k);
     }
+    else if (step.media) await page.emulateMediaType(step.media === "screen" ? null : step.media);
     else if (step.evaluate) {
       console.log("eval:", JSON.stringify(await page.evaluate(step.evaluate)));
     }

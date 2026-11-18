@@ -108,9 +108,9 @@ export class HtmlPageNode extends GraphNode {
     }
   }
 
-  /** `text` with the pictures and fonts it names, relative to `dir`, inline from the data folder. */
-  private async inlined(folder: string, text: string, dir: string): Promise<string> {
-    const refs = assetRefs(text, dir);
+  /** `text` (CSS, or `html`) with the pictures and fonts it names, relative to `dir`, inline from the data folder. */
+  private async inlined(folder: string, text: string, dir: string, html = false): Promise<string> {
+    const refs = assetRefs(text, dir, html);
     await Promise.all(refs.filter((p) => !this._assets.has(p)).map(async (p) => {
       try {
         const bytes = await readFileBytes(folder, p);
@@ -123,7 +123,7 @@ export class HtmlPageNode extends GraphNode {
     }));
     const inline = new Map<string, string>();
     for (const p of refs) { const a = this._assets.get(p); if (typeof a === "string") inline.set(p, a); }
-    return withAssets(text, dir, inline);
+    return withAssets(text, dir, inline, html);
   }
 
   async data(inputs?: Record<string, unknown[]>): Promise<Record<string, never>> {
@@ -150,7 +150,7 @@ export class HtmlPageNode extends GraphNode {
     this.error = null;
     const folder = getCsvFolder();
     const pageDir = dirOf(this.fileName.trim());
-    const body = await this.inlined(folder, r.output, pageDir);
+    const body = await this.inlined(folder, r.output, pageDir, true);
     const styles = await this.inlined(folder, parts.styles.join("\n"), pageDir);
     this.missingAssets = [...this._assets.values()].flatMap((a) => (typeof a === "string" ? [] : [a.missing]));
     this.render = { body: slotsFor(body), css: scopeCss([styles, files.css].join("\n")) };

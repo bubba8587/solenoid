@@ -1,0 +1,48 @@
+/* Solenoid's own look: Atkinson Hyperlegible (the app's faces, already loaded), its dark surfaces, flat, and the typed
+   socket colors for the syntax: gold a value, lime text, green a function (a loop is code). */
+@font-face { font-family: "Fraunces"; src: url(fonts/Fraunces.woff2) format("woff2"); font-weight: 100 900; }
+
+:root {
+  --surface: #1e1e1e;
+  --surface-sunken: #141414;
+  --border: #2d2d2d;
+  --border-strong: #3a3a3a;
+  --text: #e8e8e8;
+  --text-dim: #9aa0a6;
+  --chart-1: #7b64ed;
+  --chart-font-scale: 1.15;
+}
+body { background: #0b0b0b; color: #e8e8e8; font-family: var(--font-sans); font-size: 15px; line-height: 1.55; }
+.guide { max-width: 760px; margin: 0 auto; }
+header { display: flex; gap: 18px; align-items: flex-start; padding-bottom: 18px; border-bottom: 1px solid #2d2d2d; }
+.mark { width: 52px; height: 52px; background: #1e1e1e; border-radius: 8px; padding: 6px; }
+.kind { margin: 0; font-size: 11px; color: #00b862; font-family: var(--font-mono); }
+h1 { margin: 2px 0 6px; font-size: 30px; font-weight: 600; text-wrap-style: balance; }
+.sub { margin: 0; color: #9aa0a6; text-wrap-style: pretty; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 8px; }
+.toc a { font-size: 12px; color: #e8e8e8; text-decoration: none; background: #141414; border: 1px solid #2d2d2d; border-radius: 5px; padding: 3px 9px; }
+.toc a:hover { border-color: #3a3a3a; }
+section { padding: 22px 0 6px; scroll-margin-top: 8px; }
+h2 { font-size: 17px; font-weight: 600; margin: 0 0 8px; display: flex; align-items: center; gap: 10px; }
+.n { font-family: var(--font-mono); font-size: 12px; color: #0b0b0b; background: #f5b914; border-radius: 4px; width: 20px; height: 20px; display: inline-grid; place-items: center; }
+p { text-wrap-style: pretty; }
+code { font-family: var(--font-mono); font-size: 13px; background: #141414; border: 1px solid #2d2d2d; border-radius: 4px; padding: 0 4px; }
+pre { background: #141414; border: 1px solid #2d2d2d; border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+pre code { background: none; border: none; padding: 0; white-space: pre; color: #9aa0a6; }
+i.t { font-style: normal; color: #f5b914; }
+i.k { font-style: normal; color: #00b862; }
+.demo { font-family: var(--font-mono); color: #f5b914; background: #141414; border: 1px solid #2d2d2d; border-radius: 4px; padding: 0 5px; }
+.demo .solenoid-ref-inline { color: #f5b914; }
+.note { font-size: 13px; color: #9aa0a6; border-left: 2px solid #d9a93b; padding-left: 10px; }
+.planets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 12px 0; }
+.planet { border: 1px solid #2d2d2d; border-radius: 8px; overflow: hidden; }
+.planet b { display: block; padding: 5px 10px; font-weight: 600; background: color-mix(in srgb, #7b64ed 22%, #1e1e1e); border-bottom: 1px solid #3a3a3a; }
+.planet span { display: block; padding: 6px 10px; font-family: var(--font-mono); font-size: 13px; color: #9aa0a6; background: #1e1e1e; }
+.planet.many b { background: color-mix(in srgb, #f5b914 22%, #1e1e1e); }
+[data-sol-ref="moons"] .sol-box { height: 260px; }
+.vars { width: 100%; border-collapse: collapse; font-size: 13px; }
+.vars td { padding: 7px 8px; border-bottom: 1px solid #2d2d2d; vertical-align: top; }
+.vars td:last-child { color: #9aa0a6; }
+.specimen { font-family: "Fraunces", serif; font-size: 40px; font-weight: 300; font-style: normal; color: #f5b914; margin: 6px 0; letter-spacing: -0.01em; }
+ul { padding-left: 20px; }
+li { margin: 4px 0; }

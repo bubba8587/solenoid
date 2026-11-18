@@ -134,21 +134,28 @@ export function dirOf(path: string): string {
 const SRC_RE = /(\b(?:src|poster)\s*=\s*)(["'])([^"']*)\2/gi;
 const URL_RE = /url\(\s*(["']?)([^"')]+)\1\s*\)/gi;
 
-/** Every local file a page's text names, in a `src` or a CSS `url()`, as data-folder paths. */
-export function assetRefs(text: string, baseDir: string): string[] {
+/** A tag's text in HTML, where a `src` or a `style`'s `url()` names a file; the text between tags only reads like one. */
+const TAG_RE = /<[a-z][^>]*>/gi;
+
+/** Every local file a page's text names, in a `src` or a CSS `url()`, as data-folder paths. In `html` only a tag names
+ *  one: `&lt;img src="a.png"&gt;` shown as text on the page names nothing. */
+export function assetRefs(text: string, baseDir: string, html = false): string[] {
   const out = new Set<string>();
-  for (const m of text.matchAll(SRC_RE)) { const p = localAssetPath(m[3], baseDir); if (p) out.add(p); }
-  for (const m of text.matchAll(URL_RE)) { const p = localAssetPath(m[2], baseDir); if (p) out.add(p); }
+  for (const part of html ? [...text.matchAll(TAG_RE)].map((m) => m[0]) : [text]) {
+    for (const m of part.matchAll(SRC_RE)) { const p = localAssetPath(m[3], baseDir); if (p) out.add(p); }
+    for (const m of part.matchAll(URL_RE)) { const p = localAssetPath(m[2], baseDir); if (p) out.add(p); }
+  }
   return [...out];
 }
 
 /** The text with each local file it names replaced by that file inline (`data` holds each path's data: URI); a file
  *  `data` lacks is left as written, so it shows as missing rather than as something else. */
-export function withAssets(text: string, baseDir: string, data: ReadonlyMap<string, string>): string {
+export function withAssets(text: string, baseDir: string, data: ReadonlyMap<string, string>, html = false): string {
   const inline = (ref: string) => { const p = localAssetPath(ref, baseDir); return p ? data.get(p) : undefined; };
-  return text
+  const swap = (part: string) => part
     .replace(SRC_RE, (m, lead: string, q: string, ref: string) => { const d = inline(ref); return d ? `${lead}${q}${d}${q}` : m; })
     .replace(URL_RE, (m, _q: string, ref: string) => { const d = inline(ref); return d ? `url("${d}")` : m; });
+  return html ? text.replace(TAG_RE, swap) : swap(text);
 }
 
 /** A file's bytes as a data: URI of its type. */

@@ -33,13 +33,15 @@ export function useFigureFontScale(): number {
 
 export function useChartColors() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const scope = useContext(FigureScope) ?? document.documentElement;
+  const figure = useContext(FigureScope);
+  const scope = figure ?? document.documentElement;
   const get = (name: string, fallback: string) => themeColor(name, fallback, scope);
   return {
     grid: get("--border-strong", "#3a3a3a"),
     axis: get("--text-dim", "#888"),
     track: get("--gauge-track", "#4d5157"),
-    viz: resolveColor("gold"),
+    // One series is the first series: a scope's `--chart-1` colors it too.
+    viz: (figure ? themeColor("--chart-1", "", figure) : "") || resolveColor("gold"),
   };
 }
 
