@@ -6,6 +6,28 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-18b: the optimization cards' UI and strings, the Solver in depth; cloud session)
+- **Reading top to bottom** ([[frame-verbs#Greedy Queue]] § The card): every optimization card heads its choices with a
+  section that asks its question (Next item, Cost of an item, Goal, Each link, Better when…), plain catalog
+  descriptions and socket help, human card titles in the seeds, no "Plus formula" anywhere (author: it didn't read).
+  Greedy Queue's Cheapest first ranks by the item's own cost, so a nearest-next route wires its distance formula once.
+- **Sockets off their cables** on cards whose rows measure late: `flow/remeasure.ts` re-measures React Flow's handle
+  bounds when a socket moves ([[react-flow-surface-contract#Socket anchors]]). A step list no longer scrolls sideways
+  (`.solenoid-pipeline__step` was content-box at width 100%).
+- **Solver** ([[frame-verbs#Solver]]): limits left the frame input for a saved `limitList` edited in a PIVOTBY-style
+  popup, a sentence each, listed on the card in the pipeline stepper (author's two asks). A limit measures a Total,
+  weighted Average, Share, Number used or Each option's, once or **for each** group, its number typed or read from a
+  column ("at most its Supply"); Balance across (minimax), Min If Used (semi-continuous). The goal can be a formula of
+  each option's amount (separable pieces, refined around the answer: exact where concave, switches where not) or of the
+  plan's totals (trust-region sequential LP from six starts, a local best each, said so in the status). Every new
+  piece is pinned in `solver.test.ts` against an exact answer. A Share bug (no For each: its whole was its own counted
+  options, so always 100%) was found by building the feed-blend example, not by the tests: build the example.
+- The optimize seed gained an ad budget (diminishing returns, within $3 of the closed form), a shipping plan (For each,
+  pivoted to a From × To grid) and a feed blend (averages and a share). Short-form tables keep blank cells blank.
+- **Pick Columns** is Keep/Drop Columns' family name; Columns stays the menu category holding Rename, Split and the rest.
+- Not done: a limit that is itself a formula (nonlinear constraints); a Solve button for the heavy cards (measured: the
+  seed's problems solve at once, so composites keep the only hold); shadow prices for averages, shares and counts.
+
 ### SESSION DIGEST (2026-11-18: a cut of tests with no lasting value; cloud session)
 - About 95 test blocks went (plus ~85 loop-generated cases), none of them the only pin of live behavior: duplicates (the `LEGACY_ALIASES` loop in
   `formulaTier1.test.ts` already holds every blocked spelling; `searchSamples` holds the search queries; the frozen node
@@ -74,8 +96,8 @@ specific item.
   walk stops where it rejoins the old one, and don't-look bits skip settled items: 1.4 s. **Search: Quick /
   Thorough** (guided local search, bounded at 10x the Quick work) is never worse; a choice because it costs time.
 - **An Optimize category** (Frames): Greedy Queue, Local Search, and four new cards. **Solver** (`nodes/solver.rs`,
-  engine `crate::lp`): Excel's Simplex LP from an Options table (Min, Max, Whole by name) and a Limits table read as
-  SUMIFS (Sum of, Where, Is, Sign, Limit), with Used, Slack and Shadow Price; branch and bound for Whole.
+  engine `crate::lp`): Excel's Simplex LP from an Options table (Min, Max, Whole by name) and limits (since 18b, the
+  card's own, edited in a popup), with Used, Slack and Shadow Price; branch and bound for Whole.
   **Assignment** (Hungarian), **Shortest Path** (Dijkstra; From/To columns by name), **Pareto Front**. A csv field
   reads through `Call::csv_text`, not `unwired` (which answers Undef for it).
 - **Staffing (Erlang C)** joins Optimize: arrivals, minutes a job, target wait and share in; a row per server count
