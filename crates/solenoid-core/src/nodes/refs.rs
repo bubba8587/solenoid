@@ -91,15 +91,27 @@ pub fn preview(r: &Rc<FrameRef>, n: usize) -> Result<Cv, V> {
         return Ok(collect(r));
     }
     let make = || {
-        Cv::Frame(Rc::new(Frame {
+        Rc::new(Frame {
             columns: f.finish(f.head(n)).iter().map(card_column).collect(),
             total_rows: Some(total as f64),
             approx: approx(&f),
             source: Some(r.clone()),
             layout: None,
-        }))
+        })
     };
-    Ok(if n == PREVIEW_ROWS { r.kept("preview", || Rc::new(make())).as_ref().clone() } else { make() })
+    if n != PREVIEW_ROWS {
+        return Ok(Cv::Frame(make()));
+    }
+    // The preview names this ref as its source, so the ref keeps it weakly: held, it would hold the ref, and a ref with
+    // its frame would outlive every recalculation (a new one each pass, never freed). The same preview comes back while
+    // anything holds it.
+    let slot = r.kept("preview", || Rc::new(RefCell::new(Weak::<Frame>::new())));
+    if let Some(p) = slot.borrow().upgrade() {
+        return Ok(Cv::Frame(p));
+    }
+    let p = make();
+    *slot.borrow_mut() = Rc::downgrade(&p);
+    Ok(Cv::Frame(p))
 }
 
 /// One column by `getColumn`'s rules, read as a collect reads it; none where the frame has no such column.
@@ -142,4 +154,27 @@ pub(crate) fn unwire(j: &Json) -> Option<Rc<FrameRef>> {
     let Cv::Frame(base) = super::decode_card(j.get("base")?) else { return None };
     let plan = j.get("plan").and_then(Json::as_array).cloned().unwrap_or_default();
     Some(plan.into_iter().fold(FrameRef::source(Rc::new(to_core(&base))), |r, op| r.then(op)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::frame::{FrameCell, FrameColType};
+
+    // A preview names its ref as its source; kept by the ref, it held the ref and its frame for good, one more each
+    // recalculation (a Monte Carlo of 60 passes grew to 1.2 GB).
+    #[test]
+    fn a_ref_goes_once_nothing_holds_it_or_its_preview() {
+        let cells = (0..20).map(|n| FrameCell::Num(f64::from(n))).collect();
+        let base = Rc::new(FrameValue { columns: vec![FrameColumn::new("a", FrameColType::Number, cells)] });
+        let r = FrameRef::source(base);
+        let gone = Rc::downgrade(&r);
+        let Ok(Cv::Frame(p)) = preview(&r, PREVIEW_ROWS) else { panic!("a preview") };
+        assert!(p.source.as_ref().is_some_and(|s| Rc::ptr_eq(s, &r)), "the preview names its ref");
+        let Ok(Cv::Frame(again)) = preview(&r, PREVIEW_ROWS) else { panic!("a preview") };
+        assert!(Rc::ptr_eq(&p, &again), "the same preview while it is held");
+        drop((p, again));
+        drop(r);
+        assert!(gone.upgrade().is_none(), "the ref is freed");
+    }
 }

@@ -53,6 +53,13 @@ specific item.
   Lower-is-better and Higher-is-better columns, Staffing's On-time share, Arrival rate (/h) and Job time (min) (a
   unit in parentheses is what a plain number is read in; a wired value with any time or rate unit converts). Greedy Queue's rules list a budget only once
   the engine ran with one (`cachedOver` is blank with none in force, a wired blank Budget included).
+- **Memory leak, every recalculation** (`nodes/refs.rs` `preview`): a lazy frame kept its card-face preview, and the
+  preview names the frame as its source, so the two held each other and every recalc left its frame behind (+19 MB a
+  pass on the service-territory Monte Carlo, 1.2 GB by pass 60; the main canvas leaked the same per edit). The ref now
+  keeps its preview weakly. Pinned by `refs.rs` `a_ref_goes_once_nothing_holds_it_or_its_preview`. Found with a
+  counting global allocator and a FrameRef live count (temporary, not committed): live bytes, not wasm size, tell a
+  held value from fragmentation. `computeAll` never sends JS's collected ids (`forgetCollected`), only `pass` does, so
+  a harness that loops `computeAll` sees the kept map grow on its own.
 - Not done: a limit that is itself a formula (nonlinear constraints); a Solve button for the heavy cards (measured: the
   seed's problems solve at once, so composites keep the only hold); shadow prices for averages, shares and counts.
 
