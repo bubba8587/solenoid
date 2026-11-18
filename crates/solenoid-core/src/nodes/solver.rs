@@ -917,7 +917,7 @@ fn build_limits(
             )
         };
         if s.measure == Measured::Share && s.filter.is_empty() && s.by.is_empty() {
-            return Err(err(ErrorCode::Value, format!("{what}: a share needs Count only where or For each")));
+            return Err(err(ErrorCode::Value, format!("{what}: a share needs a condition, Only where or For each")));
         }
         // An average or a share is held as a sum against 0, which keeps its sense only while what it divides by can't
         // go below 0: amounts from 0 up, and for a share a column that isn't negative.
@@ -1019,7 +1019,7 @@ fn build_limits(
                     ),
                     false,
                 ),
-                // The share counted of the whole: within its group when Count only where narrows it, else of all.
+                // The share counted of the whole: within its group when Only where narrows it, else of all.
                 Measured::Share => (
                     "Share of",
                     Report::Ratio(

@@ -92,12 +92,13 @@ export function SolverLimitsPopup() {
           const grouped = l.by !== undefined && m !== "each";
           // A group's own number can come from a column; so can each option's.
           const perGroup = grouped || m === "each";
-          const more = [
-            ...(!grouped && m !== "each" ? [{ label: "+ For each", onClick: () => patch(i, { by: "" }) }] : []),
-            ...(l.where === undefined ? [{ label: "+ Count only where", onClick: () => patch(i, { where: "", is: "" }) }] : []),
+          // The conditions not yet on this limit, each opening its line.
+          const conditions = [
+            ...(l.where === undefined ? [{ label: "Only where a column is a value", onPick: () => patch(i, { where: "", is: "" }) }] : []),
+            ...(!grouped && m !== "each" ? [{ label: "Once for each value of a column", onPick: () => patch(i, { by: "" }) }] : []),
           ];
           return (
-            <RulesItem key={i} index={i + 1} onRemove={() => remove(i)} removeLabel="Remove limit" more={more}>
+            <RulesItem key={i} index={i + 1} onRemove={() => remove(i)} removeLabel="Remove limit" add={{ label: "+ Add condition", options: conditions }}>
               <RulesLine>
                 <RulesChoice label="Measure" value={m} options={SOLVER_MEASURE_OPTIONS} onChange={(v) => pickMeasure(i, v)} />
                 {m !== "used" && (
@@ -111,14 +112,14 @@ export function SolverLimitsPopup() {
                 )}
               </RulesLine>
               {grouped && (
-                <RulesLine onRemove={() => patch(i, { by: undefined, limitColumn: undefined })} removeLabel="Once for all options">
+                <RulesLine onRemove={() => patch(i, { by: undefined, limitColumn: undefined })} removeLabel="Remove condition: once for all options">
                   <RulesWord>for each</RulesWord>
                   <RulesColumn label="For each" value={l.by ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { by: v })} />
                 </RulesLine>
               )}
               {l.where !== undefined && (
-                <RulesLine onRemove={() => patch(i, { where: undefined, is: undefined })} removeLabel="Count every option">
-                  <RulesWord>counting only where</RulesWord>
+                <RulesLine onRemove={() => patch(i, { where: undefined, is: undefined })} removeLabel="Remove condition: count every option">
+                  <RulesWord>only where</RulesWord>
                   <RulesColumn label="Where" value={l.where ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { where: v })} />
                   <RulesWord>is</RulesWord>
                   <RulesText label="Is" value={l.is ?? ""} placeholder="value" onChange={(v) => patch(i, { is: v })} />

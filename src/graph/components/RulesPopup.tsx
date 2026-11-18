@@ -139,12 +139,13 @@ export function RulesText({ value, onChange, placeholder, label }: { value: stri
   );
 }
 
-/** One numbered item of a list (a limit): its lines of fields, a remove button, and links that open more lines. */
-export function RulesItem({ index, onRemove, removeLabel, more, children }: {
+/** One numbered item of a list (a limit): its lines of fields, a remove button, and an "Add condition" menu (the Pivot
+ *  editor's "add field" select, styled as a button) whose choices each open a line. */
+export function RulesItem({ index, onRemove, removeLabel, add, children }: {
   index: number;
   onRemove: () => void;
   removeLabel: string;
-  more?: { label: string; onClick: () => void }[];
+  add?: { label: string; options: { label: string; onPick: () => void }[] };
   children: ReactNode;
 }) {
   return (
@@ -154,9 +155,13 @@ export function RulesItem({ index, onRemove, removeLabel, more, children }: {
       <button type="button" className="sol-rules__remove" style={{ gridRow: 1 }} onClick={onRemove} aria-label={removeLabel} title={removeLabel}>
         <CloseIcon size={10} />
       </button>
-      {more && more.length > 0 && (
+      {add && add.options.length > 0 && (
         <div className="sol-rules__more">
-          {more.map((m) => <button key={m.label} type="button" className="sol-rules__link" onClick={m.onClick}>{m.label}</button>)}
+          <select className="sol-rules__add" aria-label={add.label} value="" onPointerDown={stop}
+            onChange={(e) => { add.options[Number(e.target.value)]?.onPick(); e.currentTarget.value = ""; }}>
+            <option value="" disabled hidden>{add.label}</option>
+            {add.options.map((o, k) => <option key={o.label} value={k}>{o.label}</option>)}
+          </select>
         </div>
       )}
     </div>
