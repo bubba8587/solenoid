@@ -66,9 +66,11 @@ Dashboard box. The CSS is scoped to the page and can't fetch; each tag's print i
 (`renderKnapHtml`; escaping the inputs first broke `upper` and `length`); scripts never run. A page sets the app's color and
 font variables, plus `--chart-1`… and `--chart-font-scale`, and figures read them from their own slot (`FigureScope`), so a
 page's charts take its palette and type; `.sol-box`, `.sol-box__label`, `.sol-box__title` are the names a page styles; an
-in-page `#id` link scrolls the page. The HTML Showcase example renders six pages from `demo-vault/Data/pages/` (a one-pager, a project brief, a team
-directory, a shop catalog, an invoice and a money letter, the last four over the demo vault's CSVs), which
-the web build now bundles (`.html` and `.css` joined the demo vault's text files).
+in-page `#id` link scrolls the page. Pictures and fonts a page names (`src`, CSS `url()`, `@font-face`) are read from
+the data folder and inlined as `data:` URIs, from tags only (a `src` shown as text stays text); Print prints the page
+alone. The HTML Showcase example renders seven pages from `demo-vault/Data/pages/` (a one-pager, a project brief, a team
+directory, a shop catalog, an invoice, a money letter and "Writing a page", a guide that is itself a page), with
+OFL fonts and pictures in `pages/fonts` and `pages/images`, which the web build bundles (`DEMO_VAULT_BINARY`).
 
 **Open, the author's call:** the Monte Carlo composite mode varies only inputs marked uncertain, so the seed's RAND-inside
 simulation can't use it (Data Table over a Run index stands in); Staffing's In Time column could read On Time; the
