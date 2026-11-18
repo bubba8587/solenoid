@@ -30,6 +30,12 @@ specific item.
   `parseWrittenTaskPath` was deleted. Sweeps that found nothing more: whole-test copy-paste, tests with no assertion,
   opt-in suites nothing sets, and the core's inline `#[cfg(test)]` modules. `buildModel` (`flow/flowModel.ts`) has no
   caller in `src`: a test-only loader beside `persistence.loadGraph`.
+- Every vitest run now ends with a per-area summary (`tests/setup/bucketReporter.ts`, wired in `vitest.config.ts`):
+  each of the 11 domains in `tests/buckets.mjs` as ✓, ✗ with its failing tests named, or `not run`, and no counts.
+  A `--reporter=` flag on the command line replaces it, as it replaces the default.
+- Cargo too: `scripts/cargo-test.mjs` wraps `cargo test` (CI's core and graph steps, `check-rust.sh --test`) and
+  ends with each test binary's plain name, ✓ or ✗ with the failed tests, also on the job's summary page on GitHub.
+  `cargoLabels.test.ts` fails a core or graph test file with no name in its `LABELS`.
 
 ### SESSION DIGEST (2026-11-17b: the US Map card, a service-territory baseline; cloud session)
 - **Greedy Queue** (`GreedyQueueNode`, `nodes/queue.rs`, [[frame-verbs#Greedy Queue]]): the sequential loop of a

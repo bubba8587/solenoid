@@ -41,6 +41,8 @@ export default defineConfig({
   esbuild: { keepNames: true },
   test: {
     environment: "node",
+    // The run's own summary, then a tally of its tests by bucket (tests/buckets.mjs).
+    reporters: ["default", "./tests/setup/bucketReporter.ts"],
     maxWorkers: 4,
     // A dozen tests take 1 to 3 s alone and pass 5 s on a loaded machine (a Rust build beside the run, a busy CI
     // runner); 20 s still fails a real hang.
