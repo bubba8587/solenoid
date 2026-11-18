@@ -58,7 +58,8 @@ push and fix what it finds.
 - **TypeScript:** `npx tsrs`, the test files you touched, then their bucket(s): `node scripts/test-bucket.mjs <domain>`
   (`--list` shows them; `tests/buckets.mjs` files every test). The full `npx vitest run` only for a change that crosses
   tiers, once per push, not after every follow-up fix.
-- **Rust:** `bash scripts/check-rust.sh <crate>` before any push. Then the binaries for what changed:
+- **Rust:** `bash scripts/check-rust.sh <crate>` before any push. `node scripts/cargo-test.mjs <cargo test's arguments>` runs
+  `cargo test` and ends with what each test binary checks and which tests failed. Then the binaries for what changed:
   `cargo test --release --lib` for inline tests, `--test nodes` for card bodies, `--test conformance` for anything a
   formula reads or answers (empty slots, function bodies). Those run natively; `npm run build:wasm` once, when the Rust
   is done and before the TypeScript tests and the push (the TS tests run through it, the stamp test hashes the source),
