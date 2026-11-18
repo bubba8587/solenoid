@@ -234,8 +234,8 @@ export class ParetoNode extends GraphNode {
     super("Pareto");
     this.label = init?.label ?? "Pareto Front";
     this.addInput("options", frameIn("Options"));
-    this.addInput("lower", strListIn("Lower is better"));
-    this.addInput("higher", strListIn("Higher is better"));
+    this.addInput("lower", strListIn("Lower-is-better columns"));
+    this.addInput("higher", strListIn("Higher-is-better columns"));
     this.addOutput("front", frameOut("Front"));
     this.addOutput("all", frameOut("All"));
   }
@@ -274,7 +274,7 @@ export class StaffingNode extends GraphNode {
     this.addInput("arrivals", numIn("Arrivals per hour"));
     this.addInput("minutes", numIn("Minutes per job"));
     this.addInput("target", numIn("Target wait (min)"));
-    this.addInput("share", numIn("Share in time"));
+    this.addInput("share", numIn("On-time share"));
     this.addOutput("options", frameOut("Staff levels"));
     this.addOutput("needed", numOut("Staff needed"));
   }

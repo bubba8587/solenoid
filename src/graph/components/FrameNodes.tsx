@@ -1489,7 +1489,7 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
 const SOLVER_WHOLE = new Set(["options", "objective", "goalFormula", "balance"]);
 const SOLVER_LAMBDA = new Set(["goalFormula"]);
 const solverGoalLabel = (k: string) =>
-  ({ objective: "Total of column", goalFormula: "Total of formula", balance: "Balancing column" } as Record<string, string>)[k] ?? k;
+  ({ objective: "Column total", goalFormula: "Formula total", balance: "Balancing column" } as Record<string, string>)[k] ?? k;
 
 export function AssignmentComponent({ data, emit }: NodeProps<AssignmentNodeType>) {
   const [goal, setGoal] = useNodeField(data, "goal");
@@ -1539,8 +1539,8 @@ export function ParetoComponent({ data, emit }: NodeProps<ParetoNodeType>) {
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} keys={["options"]} fullWiredKeys={OPT_WHOLE} />
-      <CardSection label="Better when">
-        <InlineInputs node={data} emit={emit} keys={["lower", "higher"]} labelFor={(k) => (k === "lower" ? "Lower" : "Higher")} fullWiredKeys={OPT_WHOLE} />
+      <CardSection label="Columns">
+        <InlineInputs node={data} emit={emit} keys={["lower", "higher"]} labelFor={(k) => (k === "lower" ? "Lower-is-better" : "Higher-is-better")} fullWiredKeys={OPT_WHOLE} />
       </CardSection>
       <MeasuredSocketRow side="output" socketKey="front" nodeId={data.id} emit={emit} payload={data.outputs.front!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />

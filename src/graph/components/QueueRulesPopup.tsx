@@ -37,7 +37,8 @@ export function queueRuleSteps(node: QueueCard, wired: Set<string>): { name: str
     const opens = columnOf(node, "step", wired);
     const fresh = node.stepStart === "start" && wired.has("start") ? ", each from its start" : "";
     steps.push({ name: "Steps", value: opens ? `by ${opens}${fresh}` : `all at once${fresh}` });
-    const budget = wired.has("budget") || node.literals.budget != null;
+    // A wired Budget counts once the engine ran with it: a blank one sets no budget, and cachedOver is blank then.
+    const budget = wired.has("budget") ? node.cachedOver != null : node.literals.budget != null;
     if (budget) steps.push({ name: "Per step", value: `within Budget, ${node.mode === "skip" ? "skip" : "stop at"} what won't fit` });
   } else {
     steps.push({ name: "Cost", value: cost.length ? cost.join(" + ") : "none" });
@@ -99,7 +100,7 @@ export function QueueRulesPopup() {
   if (node instanceof GreedyQueueNode) {
     const order = node.orderBy === "cost" ? "cost" : node.orderDir;
     const hasGroups = wired.has("group") || !!node.stringLiterals.group || wired.has("start");
-    const hasBudget = wired.has("budget") || node.literals.budget != null;
+    const hasBudget = wired.has("budget") ? node.cachedOver != null : node.literals.budget != null;
     return (
       <RulesPopup title={state.title} accent={state.accent} onClose={close} note="Formulas and numbers are wired on the card.">
         <RulesSection title="Next item">
@@ -138,7 +139,7 @@ export function QueueRulesPopup() {
           </RulesRow>
         </RulesSection>
         <RulesSection title="Budget per step">
-          <RulesRow label="Oversize items" idle={!hasBudget} help={hasBudget ? undefined : "Needs a Budget on the card."}>
+          <RulesRow label="Oversize items" idle={!hasBudget} help={hasBudget ? undefined : wired.has("budget") ? "The wired Budget is blank." : "Needs a Budget on the card."}>
             <RulesSeg label="Oversize items" value={node.mode} options={QUEUE_FIT_OPTIONS} onChange={(v) => set(() => { node.mode = v; })} />
           </RulesRow>
         </RulesSection>

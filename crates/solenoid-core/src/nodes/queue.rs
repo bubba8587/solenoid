@@ -788,8 +788,9 @@ fn greedy_queue(c: &mut Call) -> Answer {
     cols.push(cost_m.column("Used Before", picks.iter().map(|p| Some(cost_m.base(p.used)))));
     let left: Vec<usize> = (0..rows).filter(|&r| !picked[r]).collect();
     let total = cost_m.value(cost_m.base(picks.iter().map(|p| p.cost).sum()));
-    // A step's first pick goes even when it alone is over the budget; the card says how many did.
-    let over = budget.map_or(0, |b| picks.iter().filter(|p| p.used == 0.0 && p.cost > b).count());
-    c.show("cachedOver", V::Num(over as f64));
+    // A step's first pick goes even when it alone is over the budget; the card says how many did. No budget in force (none
+    // set, or a wired one blank) is blank, so the card's rules list a budget only when one ran.
+    let over = budget.map_or(V::Null, |b| V::Num(picks.iter().filter(|p| p.used == 0.0 && p.cost > b).count() as f64));
+    c.show("cachedOver", over);
     out(c, frame_v(cols), frame_v(taken(&f, &left)), total)
 }

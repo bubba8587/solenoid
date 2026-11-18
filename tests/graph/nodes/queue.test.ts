@@ -1,5 +1,6 @@
 // [[A1]] visualGraphCalculator: the Greedy Queue card's loop, its rule written as LAMBDA cards.
 import { describe, it, expect } from "vitest";
+import { queueRuleSteps } from "../../../src/graph/components/QueueRulesPopup";
 import { GreedyQueueNode } from "../../../src/graph/nodes/queue";
 import { LambdaNode } from "../../../src/graph/nodes/lambda";
 import { extractInit } from "../../../src/graph/nodeInit";
@@ -71,6 +72,19 @@ describe("Greedy Queue", () => {
     expect(bigNode.cachedOver).toBe(1);
     const noCost = run(new GreedyQueueNode(), { items, budget: 6, steps: 1 });
     expect(isSolError(noCost.picks)).toBe(true);
+  });
+
+  it("reports no budget in force when none is set or a wired one is blank, so the card's rules don't claim one", () => {
+    const items = frame([job("A", 1, 1, 0, 2), job("A", 1, 1, 1, 2)]);
+    const cost = lambda("Hours", "Hours");
+    const blank = new GreedyQueueNode();
+    run(blank, { items, cost, budget: null, steps: 1 });
+    expect(blank.cachedOver).toBeNull();
+    expect(queueRuleSteps(blank, new Set(["budget", "cost"])).some((s) => s.name === "Per step")).toBe(false);
+    const set = new GreedyQueueNode();
+    run(set, { items, cost, budget: 6, steps: 1 });
+    expect(set.cachedOver).toBe(0);
+    expect(queueRuleSteps(set, new Set(["budget", "cost"])).find((s) => s.name === "Per step")?.value).toBe("within Budget, stop at what won't fit");
   });
 
   it("reads last_ from the Start row each step when set to", () => {

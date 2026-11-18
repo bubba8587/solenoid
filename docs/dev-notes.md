@@ -8,7 +8,7 @@ specific item.
 
 ### SESSION DIGEST (2026-11-18b: the optimization cards' UI and strings, the Solver in depth; cloud session)
 - **Reading top to bottom** ([[frame-verbs#Greedy Queue]] § The card): every optimization card heads its choices with a
-  section that asks its question (Next item, Cost of an item, Goal, Each link, Better when…), plain catalog
+  section that asks its question (Next item, Cost of an item, Goal, Each link, Columns…), plain catalog
   descriptions and socket help, human card titles in the seeds, no "Plus formula" anywhere (author: it didn't read).
   Greedy Queue's Cheapest first ranks by the item's own cost, so a nearest-next route wires its distance formula once.
 - **Sockets off their cables** on cards whose rows measure late: `flow/remeasure.ts` re-measures React Flow's handle
@@ -47,7 +47,11 @@ specific item.
   network routes) or Not allowed (a changeover table), since a chain could quietly stand in for an unlisted changeover.
 - Staffing's shares read as percents (display formats); the seed's Answered in time card reads 80%. Charts don't take a
   column's format for their axes, so the staffing chart's axis still runs 0 to 1: a chart-wide change, not made here.
-- **Pick Columns** is Keep/Drop Columns' family name; Columns stays the menu category holding Rename, Split and the rest.
+- **Pick Columns** is Keep/Drop Columns' family name and class (`PickColumnsNode`, so the header's hover names it);
+  Columns stays the menu category holding Rename, Split and the rest.
+- Labels moved to noun phrases on the card faces too: Solver's Column total and Formula total, Pareto's
+  Lower-is-better and Higher-is-better columns, Staffing's On-time share. Greedy Queue's rules list a budget only once
+  the engine ran with one (`cachedOver` is blank with none in force, a wired blank Budget included).
 - Not done: a limit that is itself a formula (nonlinear constraints); a Solve button for the heavy cards (measured: the
   seed's problems solve at once, so composites keep the only hold); shadow prices for averages, shares and counts.
 

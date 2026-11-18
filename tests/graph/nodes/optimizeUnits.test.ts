@@ -20,7 +20,7 @@ const colOf = (f: unknown, name: string) => (f as { columns: Col[] }).columns.fi
 const unitDisplay = (c: Col) => (c.unit as { display?: string } | undefined)?.display;
 
 describe("units through the optimization cards", () => {
-  it("Solver: Best in the goal's unit, a typed limit read in its Total of column's", () => {
+  it("Solver: Best in the goal's unit, a typed limit read in its Column total's", () => {
     const options = frame(col("Blend", ["A", "B"]), col("Profit", [6, 9], "usd"), col("Beans", [1, 1], "kg"));
     const n = new SolverNode({ limitList: [{ of: "Beans", sign: "le", limit: 100 }] });
     n.stringLiterals.objective = "Profit";
