@@ -11,8 +11,8 @@
         "label": "Blends (per kg)",
         "frameText": "[{\"name\":\"Blend\",\"type\":\"string\",\"cells\":[\"House\",\"Espresso\",\"Breakfast\",\"Ethiopia single origin\"]},{\"name\":\"Profit\",\"type\":\"number\",\"cells\":[\"6\",\"9\",\"7\",\"12\"],\"unit\":\"usd\"},{\"name\":\"Brazil\",\"type\":\"number\",\"cells\":[\"0.6\",\"0.5\",\"0.3\",\"0\"],\"unit\":\"kg\"},{\"name\":\"Colombia\",\"type\":\"number\",\"cells\":[\"0.4\",\"0.2\",\"0.5\",\"0\"],\"unit\":\"kg\"},{\"name\":\"Ethiopia\",\"type\":\"number\",\"cells\":[\"0\",\"0.3\",\"0.2\",\"1\"],\"unit\":\"kg\"},{\"name\":\"Roaster\",\"type\":\"number\",\"cells\":[\"0.02\",\"0.03\",\"0.02\",\"0.025\"],\"unit\":\"h\"},{\"name\":\"Max\",\"type\":\"number\",\"cells\":[\"600\",\"400\",\"350\",\"200\"]}]"
       },
-      "x": 24,
-      "y": 10658
+      "x": 2457,
+      "y": 9752
     },
     {
       "id": "mix",
@@ -52,8 +52,8 @@
       "stringLiterals": {
         "objective": "Profit"
       },
-      "x": 353,
-      "y": 10630
+      "x": 2786,
+      "y": 9724
     },
     {
       "id": "mix_units",
@@ -64,8 +64,8 @@
       "stringLiterals": {
         "columns": "Blend, Amount"
       },
-      "x": 690,
-      "y": 10785
+      "x": 3123,
+      "y": 9879
     },
     {
       "id": "mix_chart",
@@ -77,8 +77,8 @@
       "stringLiterals": {
         "options": "xlabel=Blend; ylabel=Kg"
       },
-      "x": 1019,
-      "y": 10793
+      "x": 3452,
+      "y": 9887
     },
     {
       "id": "mix_room",
@@ -89,8 +89,8 @@
       "stringLiterals": {
         "columns": "Limit, Bound, Used, Slack, Shadow Price"
       },
-      "x": 690,
-      "y": 11077
+      "x": 3123,
+      "y": 10171
     },
     {
       "id": "projects",
@@ -100,7 +100,7 @@
         "frameText": "[{\"name\":\"Project\",\"type\":\"string\",\"cells\":[\"CRM upgrade\",\"New warehouse\",\"Solar roof\",\"Fleet telematics\",\"Training program\",\"Web store\",\"Robot cell\",\"Data warehouse\"]},{\"name\":\"Area\",\"type\":\"string\",\"cells\":[\"IT\",\"Ops\",\"Facilities\",\"Ops\",\"People\",\"IT\",\"Ops\",\"IT\"]},{\"name\":\"Value\",\"type\":\"number\",\"cells\":[\"120\",\"260\",\"90\",\"110\",\"60\",\"150\",\"210\",\"130\"]},{\"name\":\"Cost\",\"type\":\"number\",\"cells\":[\"80\",\"220\",\"70\",\"60\",\"25\",\"90\",\"180\",\"100\"]},{\"name\":\"Staff\",\"type\":\"number\",\"cells\":[\"3\",\"5\",\"1\",\"2\",\"2\",\"4\",\"4\",\"3\"]},{\"name\":\"Max\",\"type\":\"number\",\"cells\":[\"1\",\"1\",\"1\",\"1\",\"1\",\"1\",\"1\",\"1\"]},{\"name\":\"Whole\",\"type\":\"logical\",\"cells\":[\"true\",\"true\",\"true\",\"true\",\"true\",\"true\",\"true\",\"true\"]}]"
       },
       "x": 1735,
-      "y": 8875
+      "y": 8954
     },
     {
       "id": "portfolio",
@@ -132,7 +132,7 @@
         "objective": "Value"
       },
       "x": 2064,
-      "y": 8859
+      "y": 8938
     },
     {
       "id": "portfolio_pick",
@@ -144,7 +144,7 @@
         "columns": "Project, Area, Value, Amount"
       },
       "x": 2393,
-      "y": 9089
+      "y": 9168
     },
     {
       "id": "channels",
@@ -154,7 +154,7 @@
         "frameText": "[{\"name\":\"Channel\",\"type\":\"string\",\"cells\":[\"Search\",\"Social\",\"Radio\",\"Billboards\"]},{\"name\":\"Reach\",\"type\":\"number\",\"cells\":[\"40000\",\"65000\",\"30000\",\"22000\"]},{\"name\":\"Scale\",\"type\":\"number\",\"cells\":[\"3000\",\"6000\",\"2500\",\"4000\"]}]"
       },
       "x": 24,
-      "y": 9645
+      "y": 9724
     },
     {
       "id": "ad_reach",
@@ -165,7 +165,7 @@
         "expr": "Reach * (1 - EXP(-amount / Scale))"
       },
       "x": 24,
-      "y": 9908
+      "y": 9987
     },
     {
       "id": "ads",
@@ -181,7 +181,7 @@
         ]
       },
       "x": 359,
-      "y": 9718
+      "y": 9797
     },
     {
       "id": "ads_spend",
@@ -193,7 +193,7 @@
         "columns": "Channel, Amount"
       },
       "x": 688,
-      "y": 9932
+      "y": 10011
     },
     {
       "id": "ads_chart",
@@ -206,7 +206,7 @@
         "options": "xlabel=Dollars"
       },
       "x": 1017,
-      "y": 9940
+      "y": 10019
     },
     {
       "id": "lanes",
@@ -216,7 +216,7 @@
         "frameText": "[{\"name\":\"From\",\"type\":\"string\",\"cells\":[\"Memphis\",\"Memphis\",\"Memphis\",\"Atlanta\",\"Atlanta\",\"Atlanta\"]},{\"name\":\"To\",\"type\":\"string\",\"cells\":[\"Nashville\",\"Knoxville\",\"Chattanooga\",\"Nashville\",\"Knoxville\",\"Chattanooga\"]},{\"name\":\"Cost\",\"type\":\"number\",\"cells\":[\"4.1\",\"6.3\",\"5.2\",\"5.6\",\"4.4\",\"2.9\"],\"unit\":\"usd\"},{\"name\":\"Supply\",\"type\":\"number\",\"cells\":[\"500\",\"500\",\"500\",\"400\",\"400\",\"400\"]},{\"name\":\"Demand\",\"type\":\"number\",\"cells\":[\"300\",\"250\",\"280\",\"300\",\"250\",\"280\"]}]"
       },
       "x": 2705,
-      "y": 8870
+      "y": 8949
     },
     {
       "id": "ship",
@@ -245,7 +245,7 @@
         "objective": "Cost"
       },
       "x": 3034,
-      "y": 8859
+      "y": 8938
     },
     {
       "id": "ship_grid",
@@ -260,7 +260,7 @@
         "values": "Amount"
       },
       "x": 3363,
-      "y": 9072
+      "y": 9151
     },
     {
       "id": "feeds",
@@ -270,7 +270,7 @@
         "frameText": "[{\"name\":\"Ingredient\",\"type\":\"string\",\"cells\":[\"Corn\",\"Soybean meal\",\"Wheat midds\",\"Fish meal\",\"Oats\"]},{\"name\":\"Cost\",\"type\":\"number\",\"cells\":[\"0.19\",\"0.44\",\"0.24\",\"1.1\",\"0.26\"],\"unit\":\"usd\"},{\"name\":\"Protein\",\"type\":\"number\",\"cells\":[\"0.09\",\"0.47\",\"0.15\",\"0.62\",\"0.12\"]},{\"name\":\"Fat\",\"type\":\"number\",\"cells\":[\"0.04\",\"0.015\",\"0.045\",\"0.09\",\"0.05\"]}]"
       },
       "x": 3675,
-      "y": 8881
+      "y": 8960
     },
     {
       "id": "feed",
@@ -310,7 +310,7 @@
         "objective": "Cost"
       },
       "x": 4004,
-      "y": 8859
+      "y": 8938
     },
     {
       "id": "feed_kg",
@@ -322,7 +322,7 @@
         "columns": "Ingredient, Amount"
       },
       "x": 4341,
-      "y": 8997
+      "y": 9076
     },
     {
       "id": "feed_check",
@@ -334,7 +334,7 @@
         "columns": "Limit, Bound, Used"
       },
       "x": 4341,
-      "y": 9289
+      "y": 9368
     },
     {
       "id": "paint_jobs",
@@ -344,7 +344,7 @@
         "frameText": "[{\"name\":\"Job\",\"type\":\"string\",\"cells\":[\"Fence posts\",\"Mailboxes\",\"Gates\",\"Railings\",\"Planters\",\"Benches\"]},{\"name\":\"Color\",\"type\":\"string\",\"cells\":[\"Black\",\"White\",\"Red\",\"Yellow\",\"White\",\"Red\"]}]"
       },
       "x": 1429,
-      "y": 9654
+      "y": 9733
     },
     {
       "id": "changeovers",
@@ -354,7 +354,7 @@
         "frameText": "[{\"name\":\"From\",\"type\":\"string\",\"cells\":[\"White\",\"White\",\"White\",\"Yellow\",\"Yellow\",\"Yellow\",\"Red\",\"Red\",\"Red\",\"Black\",\"Black\",\"Black\"]},{\"name\":\"To\",\"type\":\"string\",\"cells\":[\"Yellow\",\"Red\",\"Black\",\"White\",\"Red\",\"Black\",\"White\",\"Yellow\",\"Black\",\"White\",\"Yellow\",\"Red\"]},{\"name\":\"Minutes\",\"type\":\"number\",\"cells\":[\"10\",\"20\",\"30\",\"45\",\"10\",\"20\",\"90\",\"45\",\"10\",\"135\",\"90\",\"45\"],\"unit\":\"min\"}]"
       },
       "x": 1429,
-      "y": 10272
+      "y": 10351
     },
     {
       "id": "paint_start",
@@ -364,7 +364,7 @@
         "frameText": "[{\"name\":\"Job\",\"type\":\"string\",\"cells\":[\"Clean line\"]},{\"name\":\"Color\",\"type\":\"string\",\"cells\":[\"White\"]}]"
       },
       "x": 1429,
-      "y": 9993
+      "y": 10072
     },
     {
       "id": "paint_first",
@@ -378,7 +378,7 @@
       },
       "stringLiterals": {},
       "x": 1800,
-      "y": 9645
+      "y": 9724
     },
     {
       "id": "paint",
@@ -392,7 +392,7 @@
       },
       "stringLiterals": {},
       "x": 2145,
-      "y": 9992
+      "y": 10071
     },
     {
       "id": "hours",
@@ -402,7 +402,7 @@
         "frameText": "[{\"name\":\"Crew\",\"type\":\"string\",\"cells\":[\"North\",\"South\",\"East\",\"West\",\"Central\"]},{\"name\":\"Substation A\",\"type\":\"number\",\"cells\":[\"6\",\"8\",\"5\",\"9\",\"7\"],\"unit\":\"h\"},{\"name\":\"Line repair B\",\"type\":\"number\",\"cells\":[\"4\",null,\"6\",\"5\",\"6\"],\"unit\":\"h\"},{\"name\":\"Meter swap C\",\"type\":\"number\",\"cells\":[\"3\",\"4\",\"3\",\"5\",\"2\"],\"unit\":\"h\"},{\"name\":\"Transformer D\",\"type\":\"number\",\"cells\":[\"9\",\"7\",null,\"8\",\"10\"],\"unit\":\"h\"},{\"name\":\"Inspection E\",\"type\":\"number\",\"cells\":[\"2\",\"3\",\"4\",\"2\",\"3\"],\"unit\":\"h\"}]"
       },
       "x": 24,
-      "y": 8859
+      "y": 8938
     },
     {
       "id": "crews",
@@ -411,7 +411,7 @@
         "label": "Crew assignment"
       },
       "x": 353,
-      "y": 8894
+      "y": 8973
     },
     {
       "id": "roads",
@@ -420,8 +420,8 @@
         "label": "Roads",
         "frameText": "[{\"name\":\"From\",\"type\":\"string\",\"cells\":[\"Depot\",\"Depot\",\"Depot\",\"Halls\",\"Halls\",\"Powell\",\"Powell\",\"Bearden\",\"Bearden\",\"Downtown\",\"Downtown\",\"Sequoyah\",\"Farragut\",\"Maryville\"]},{\"name\":\"To\",\"type\":\"string\",\"cells\":[\"Halls\",\"Powell\",\"Downtown\",\"Powell\",\"Fountain City\",\"Bearden\",\"Fountain City\",\"Farragut\",\"Sequoyah\",\"Sequoyah\",\"Fountain City\",\"Maryville\",\"Maryville\",\"Downtown\"]},{\"name\":\"Minutes\",\"type\":\"number\",\"cells\":[\"12\",\"15\",\"9\",\"8\",\"7\",\"14\",\"10\",\"11\",\"6\",\"8\",\"9\",\"22\",\"18\",\"25\"],\"unit\":\"min\"}]"
       },
-      "x": 1431,
-      "y": 11314
+      "x": 1388,
+      "y": 11393
     },
     {
       "id": "route",
@@ -434,8 +434,8 @@
         "from": "Depot",
         "to": "Maryville"
       },
-      "x": 1806,
-      "y": 11243
+      "x": 1763,
+      "y": 11322
     },
     {
       "id": "reach",
@@ -448,8 +448,8 @@
         "from": "Depot",
         "to": ""
       },
-      "x": 1806,
-      "y": 11647
+      "x": 1763,
+      "y": 11726
     },
     {
       "id": "reach_chart",
@@ -461,8 +461,8 @@
       "stringLiterals": {
         "options": "xlabel=Minutes"
       },
-      "x": 2491,
-      "y": 11794
+      "x": 2448,
+      "y": 11873
     },
     {
       "id": "reach_cols",
@@ -473,8 +473,8 @@
       "stringLiterals": {
         "columns": "Place, Distance"
       },
-      "x": 2162,
-      "y": 11786
+      "x": 2119,
+      "y": 11865
     },
     {
       "id": "visits",
@@ -483,8 +483,8 @@
         "label": "Places to visit",
         "frameText": "[{\"name\":\"Place\",\"type\":\"string\",\"cells\":[\"Halls\",\"Powell\",\"Bearden\",\"Downtown\",\"Fountain City\",\"Sequoyah\",\"Farragut\",\"Maryville\"]}]"
       },
-      "x": 1431,
-      "y": 10639
+      "x": 1388,
+      "y": 10718
     },
     {
       "id": "home",
@@ -493,8 +493,8 @@
         "label": "Start",
         "frameText": "[{\"name\":\"Place\",\"type\":\"string\",\"cells\":[\"Depot\"]}]"
       },
-      "x": 1431,
-      "y": 10978
+      "x": 1388,
+      "y": 11057
     },
     {
       "id": "tour_first",
@@ -504,8 +504,8 @@
         "orderBy": "cost"
       },
       "stringLiterals": {},
-      "x": 1806,
-      "y": 10630
+      "x": 1763,
+      "y": 10709
     },
     {
       "id": "tour",
@@ -516,8 +516,8 @@
         "stuck": "look"
       },
       "stringLiterals": {},
-      "x": 2162,
-      "y": 11073
+      "x": 2119,
+      "y": 11152
     },
     {
       "id": "plans",
@@ -527,7 +527,7 @@
         "frameText": "[{\"name\":\"Plan\",\"type\":\"string\",\"cells\":[\"Baseline\",\"Plan B\",\"Pooled\",\"Ten crews\",\"Weekend shift\",\"Split Houston\"]},{\"name\":\"Drive hours\",\"type\":\"number\",\"cells\":[\"2344\",\"2234\",\"3500\",\"2290\",\"2410\",\"2180\"]},{\"name\":\"Mean wait\",\"type\":\"number\",\"cells\":[\"1.6\",\"1.6\",\"0.4\",\"1.9\",\"1.1\",\"1.7\"],\"unit\":\"day\"},{\"name\":\"Overtime hours\",\"type\":\"number\",\"cells\":[\"120\",\"110\",\"40\",\"160\",\"300\",\"130\"]}]"
       },
       "x": 665,
-      "y": 8859
+      "y": 8938
     },
     {
       "id": "front",
@@ -540,7 +540,7 @@
         "higher": ""
       },
       "x": 994,
-      "y": 8899
+      "y": 8978
     },
     {
       "id": "front_chart",
@@ -553,7 +553,7 @@
         "options": "x=Drive hours; y=Mean wait; annotate=Plan"
       },
       "x": 1323,
-      "y": 8971
+      "y": 9050
     },
     {
       "id": "calls",
@@ -562,8 +562,8 @@
         "label": "Calls per hour",
         "value": "42"
       },
-      "x": 2457,
-      "y": 9645
+      "x": 24,
+      "y": 10709
     },
     {
       "id": "call_min",
@@ -572,8 +572,8 @@
         "label": "Minutes per call",
         "value": "6"
       },
-      "x": 2457,
-      "y": 9820
+      "x": 24,
+      "y": 10884
     },
     {
       "id": "answer_min",
@@ -582,18 +582,20 @@
         "label": "Answer within (min)",
         "value": "1"
       },
-      "x": 2457,
-      "y": 9995
+      "x": 24,
+      "y": 11059
     },
     {
       "id": "answer_share",
       "type": "ValueInputNode",
       "init": {
         "label": "Answered in time",
-        "value": "0.8"
+        "value": "0.8",
+        "format": "percent",
+        "decimalDigits": 0
       },
-      "x": 2457,
-      "y": 10183
+      "x": 24,
+      "y": 11247
     },
     {
       "id": "desk",
@@ -601,8 +603,8 @@
       "init": {
         "label": "Dispatch staffing"
       },
-      "x": 2743,
-      "y": 9840
+      "x": 318,
+      "y": 10904
     },
     {
       "id": "desk_cols",
@@ -613,8 +615,8 @@
       "stringLiterals": {
         "columns": "Staff, In Time"
       },
-      "x": 3072,
-      "y": 9961
+      "x": 647,
+      "y": 11025
     },
     {
       "id": "desk_chart",
@@ -626,8 +628,8 @@
       "stringLiterals": {
         "options": "xlabel=Dispatchers; ylabel=Answered in time; ymax=1"
       },
-      "x": 3401,
-      "y": 9969
+      "x": 976,
+      "y": 11033
     },
     {
       "id": "grp_mix",
@@ -645,8 +647,8 @@
         "width": 1387,
         "height": 783
       },
-      "x": 0,
-      "y": 10572
+      "x": 2433,
+      "y": 9666
     },
     {
       "id": "grp_portfolio",
@@ -663,7 +665,7 @@
         "height": 626
       },
       "x": 1711,
-      "y": 8801
+      "y": 8880
     },
     {
       "id": "grp_ads",
@@ -682,7 +684,7 @@
         "height": 691
       },
       "x": 0,
-      "y": 9587
+      "y": 9666
     },
     {
       "id": "grp_ship",
@@ -699,7 +701,7 @@
         "height": 657
       },
       "x": 2681,
-      "y": 8801
+      "y": 8880
     },
     {
       "id": "grp_feed",
@@ -717,7 +719,7 @@
         "height": 766
       },
       "x": 3651,
-      "y": 8801
+      "y": 8880
     },
     {
       "id": "grp_paint",
@@ -736,7 +738,7 @@
         "height": 965
       },
       "x": 1405,
-      "y": 9587
+      "y": 9666
     },
     {
       "id": "grp_crews",
@@ -752,7 +754,7 @@
         "height": 407
       },
       "x": 0,
-      "y": 8801
+      "y": 8880
     },
     {
       "id": "grp_route",
@@ -774,8 +776,8 @@
         "width": 1452,
         "height": 1560
       },
-      "x": 1407,
-      "y": 10572
+      "x": 1364,
+      "y": 10651
     },
     {
       "id": "grp_front",
@@ -792,7 +794,7 @@
         "height": 508
       },
       "x": 641,
-      "y": 8801
+      "y": 8880
     },
     {
       "id": "grp_desk",
@@ -809,11 +811,11 @@
           "desk_chart"
         ],
         "color": "sky",
-        "width": 1336,
-        "height": 757
+        "width": 1344,
+        "height": 915
       },
-      "x": 2433,
-      "y": 9587
+      "x": 0,
+      "y": 10651
     }
   ],
   "connections": [

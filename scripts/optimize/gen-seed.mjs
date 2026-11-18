@@ -173,7 +173,7 @@ wire("plans.frame -> front.options", "front.all -> front_chart.values");
 add("calls", "ValueInputNode", { label: "Calls per hour", value: "42" });
 add("call_min", "ValueInputNode", { label: "Minutes per call", value: "6" });
 add("answer_min", "ValueInputNode", { label: "Answer within (min)", value: "1" });
-add("answer_share", "ValueInputNode", { label: "Answered in time", value: "0.8" });
+add("answer_share", "ValueInputNode", { label: "Answered in time", value: "0.8", format: "percent", decimalDigits: 0 });
 add("desk", "StaffingNode", { label: "Dispatch staffing" });
 keep("desk_cols", "In time by staff level", "Staff, In Time");
 chart("desk_chart", "In time by staff level", "column", "xlabel=Dispatchers; ylabel=Answered in time; ymax=1");

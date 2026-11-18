@@ -1119,7 +1119,9 @@
    "type": "ValueInputNode",
    "init": {
     "label": "Answered in time",
-    "value": "0.8"
+    "value": "0.8",
+    "format": "percent",
+    "decimalDigits": 0
    }
   },
   {
