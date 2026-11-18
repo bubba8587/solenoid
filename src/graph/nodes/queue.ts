@@ -178,7 +178,6 @@ export const SEARCH_STUCK_OPTIONS: { value: SearchStuck; label: string; title?: 
   { value: "stop", label: "Quick" },
   { value: "look", label: "Thorough", title: "Searches past dead ends, up to 10× longer. Never worse." },
 ];
-export const SEARCH_STUCK_ASK = "Search";
 
 export class LocalSearchNode extends GraphNode {
   static inputRoles = {

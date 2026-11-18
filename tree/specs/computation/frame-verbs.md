@@ -1270,6 +1270,8 @@ Tests: `allocator.test.ts`: the seed's allocation, each mode's worked examples a
 
 The rules the examples use are textbook heuristics: earliest due date (Jackson's rule, optimal for maximum lateness on one machine), shortest processing time (total completion time), first-fit decreasing (at most 11/9 of the optimum plus 6/9 bins, Dósa 2007) and the nearest-neighbor route. "Each group in turn" is a round-robin, not Graham's list scheduling (which gives each job to the earliest-free machine); that rule is Best match, any group, with an Order by on the group's `used`.
 
+**The card** reads as the questions a plan answers, each a section whose heading asks it, so its rows name only what they hold: Items; **Next item** (the order toggle, **Of column**, and the Order formula as **Ties by** where a column or Cheapest first decides, else **By formula**); **Cost of an item** (**Column**, and the Cost formula as **Plus formula**, or **Formula** with no column); then **Groups**, **Steps** and **Budget per step** (**Budget**, **Most picks**, the fit), each folded until used. Local Search's card follows it: Plan; **Cost of an item** (Column, Plus formula, **Plus penalty**); Groups; **Search** (Quick | Thorough, **Most rounds**).
+
 Tests: `queue.test.ts` (ordering by a list, the budget and both fits, the Start row, Allowed with `group_`, shared items and both kinds of turn, the refusals, the save).
 
 A pick on either card is led by the question it answers (`AskSelect`, `nodeKit.tsx`), so its options stay short: **If an item won't fit** Stop, Skip it.

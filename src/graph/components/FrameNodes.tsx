@@ -52,7 +52,7 @@ import type {
   BlankRowMode,
 } from "../nodeClasses";
 import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS, SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS,
-  SOLVER_GOAL_OPTIONS, ASSIGN_GOAL_OPTIONS, QUEUE_ORDER_OPTIONS, PATH_DIRECTION_OPTIONS, QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK, SEARCH_STUCK_OPTIONS, SEARCH_STUCK_ASK } from "../nodeClasses";
+  SOLVER_GOAL_OPTIONS, ASSIGN_GOAL_OPTIONS, QUEUE_ORDER_OPTIONS, PATH_DIRECTION_OPTIONS, QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK, SEARCH_STUCK_OPTIONS } from "../nodeClasses";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType, LocalSearchNode as LocalSearchNodeType, SolverNode as SolverNodeType,
   AssignmentNode as AssignmentNodeType, ShortestPathNode as ShortestPathNodeType, ParetoNode as ParetoNodeType, StaffingNode as StaffingNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
@@ -1332,12 +1332,31 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
   const groupsUsed = useRowsInUse(data, QUEUE_GROUP_KEYS) || stepStart !== "continue" || turns !== "rotate";
   const stepsUsed = useRowsInUse(data, QUEUE_STEP_KEYS);
   const budgetUsed = useRowsInUse(data, QUEUE_BUDGET_KEYS) || fit !== "stop";
+  // The card reads as the questions a plan answers, top to bottom: which item next, what it costs, who takes it, when,
+  // and how much fits a step. A section's heading asks the question, so its rows name only what they hold, and a
+  // formula's row says what it adds: the whole order where nothing else decides, a tie-break where something does.
+  const decided = orderBy === "cost" || connected.has("orderColumn") || !!data.stringLiterals.orderColumn;
+  const hasCostColumn = connected.has("costColumn") || !!data.stringLiterals.costColumn;
+  const label = (key: string): string =>
+    ({
+      orderColumn: "Of column",
+      order: decided ? "Ties by" : "By formula",
+      costColumn: "Column",
+      cost: hasCostColumn ? "Plus formula" : "Formula",
+      budget: "Budget",
+      perStep: "Most picks",
+    } as Record<string, string>)[key] ?? data.inputs[key]?.label ?? key;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} keys={["items"]} fullWiredKeys={QUEUE_WHOLE} />
-      {byColumn && <InlineInputs node={data} emit={emit} keys={["orderColumn"]} fullWiredKeys={QUEUE_WHOLE} />}
-      <SegToggle value={order} options={QUEUE_ORDER_OPTIONS} onChange={setOrder} />
-      <InlineInputs node={data} emit={emit} keys={["order", "costColumn", "cost"]} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
+      <CardSection label="Next item">
+        <SegToggle value={order} options={QUEUE_ORDER_OPTIONS} onChange={setOrder} />
+        {byColumn && <InlineInputs node={data} emit={emit} keys={["orderColumn"]} labelFor={label} fullWiredKeys={QUEUE_WHOLE} />}
+        <InlineInputs node={data} emit={emit} keys={["order"]} labelFor={label} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
+      </CardSection>
+      <CardSection label="Cost of an item">
+        <InlineInputs node={data} emit={emit} keys={["costColumn", "cost"]} labelFor={label} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
+      </CardSection>
       <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: QUEUE_GROUP_KEYS }}>
         <InlineInputs node={data} emit={emit} keys={QUEUE_GROUP_KEYS} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
         {hasStart && <AskSelect label={QUEUE_STEP_START_ASK} value={stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={setStepStart} />}
@@ -1346,8 +1365,8 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
       <CardSection label="Steps" collapsible defaultOpen={stepsUsed} sockets={{ node: data, emit, keys: QUEUE_STEP_KEYS }}>
         <InlineInputs node={data} emit={emit} keys={QUEUE_STEP_KEYS} fullWiredKeys={QUEUE_WHOLE} />
       </CardSection>
-      <CardSection label="Budget" collapsible defaultOpen={budgetUsed} sockets={{ node: data, emit, keys: QUEUE_BUDGET_KEYS }}>
-        <InlineInputs node={data} emit={emit} keys={QUEUE_BUDGET_KEYS} fullWiredKeys={QUEUE_WHOLE} />
+      <CardSection label="Budget per step" collapsible defaultOpen={budgetUsed} sockets={{ node: data, emit, keys: QUEUE_BUDGET_KEYS }}>
+        <InlineInputs node={data} emit={emit} keys={QUEUE_BUDGET_KEYS} labelFor={label} fullWiredKeys={QUEUE_WHOLE} />
         {hasBudget && <AskSelect label={QUEUE_FIT_ASK} value={fit} options={QUEUE_FIT_OPTIONS} onChange={setFit} />}
       </CardSection>
       <MeasuredSocketRow side="output" socketKey="picks" nodeId={data.id} emit={emit} payload={data.outputs.picks!.socket} hero>
@@ -1388,16 +1407,26 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
   const connected = useConnectedInputs(data.id);
   const hasStart = connected.has("start") || ends !== "open";
   const groupsUsed = useRowsInUse(data, SEARCH_GROUP_KEYS) || reach !== "across" || ends !== "open";
+  // Under "Cost of an item" each row names what it adds; the penalty counts toward the total, not the running cost.
+  const hasCostColumn = connected.has("costColumn") || !!data.stringLiterals.costColumn;
+  const label = (key: string): string =>
+    ({ costColumn: "Column", cost: hasCostColumn ? "Plus formula" : "Formula", penalty: "Plus penalty", passes: "Most rounds" } as Record<string, string>)[key]
+      ?? data.inputs[key]?.label ?? key;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["items", "costColumn", "cost", "penalty"]} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
+      <InlineInputs node={data} emit={emit} keys={["items"]} fullWiredKeys={SEARCH_WHOLE} />
+      <CardSection label="Cost of an item">
+        <InlineInputs node={data} emit={emit} keys={["costColumn", "cost", "penalty"]} labelFor={label} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
+      </CardSection>
       <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: SEARCH_GROUP_KEYS }}>
         <InlineInputs node={data} emit={emit} keys={SEARCH_GROUP_KEYS} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
         {groupsUsed && <AskSelect label={SEARCH_REACH_ASK} value={reach} options={SEARCH_REACH_OPTIONS} onChange={setReach} />}
         {hasStart && <AskSelect label={SEARCH_ENDS_ASK} value={ends} options={SEARCH_ENDS_OPTIONS} onChange={setEnds} />}
       </CardSection>
-      <AskSelect label={SEARCH_STUCK_ASK} value={stuck} options={SEARCH_STUCK_OPTIONS} onChange={setStuck} />
-      <InlineInputs node={data} emit={emit} keys={["passes"]} fullWiredKeys={SEARCH_WHOLE} />
+      <CardSection label="Search">
+        <SegToggle value={stuck} options={SEARCH_STUCK_OPTIONS} onChange={setStuck} />
+        <InlineInputs node={data} emit={emit} keys={["passes"]} labelFor={label} fullWiredKeys={SEARCH_WHOLE} />
+      </CardSection>
       <MeasuredSocketRow side="output" socketKey="plan" nodeId={data.id} emit={emit} payload={data.outputs.plan!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
