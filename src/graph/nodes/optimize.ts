@@ -56,7 +56,7 @@ export const SOLVER_SIGN_OPTIONS: { value: SolverSign; label: string }[] = [
 export class SolverNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     options: "One row per decision. Optional Min, Max and Whole columns bound each amount.",
-    goalFormula: "A LAMBDA run for each option at its amount, reading its columns by name and amount, such as a price that drops past 100 units. The goal adds up its answers.",
+    goalFormula: "A LAMBDA run for each option at its amount, reading its columns by name and amount, such as a price that drops past 100 units. The goal adds up its answers. It can also read the whole plan's total_amount and total_ of any column, which turns on the nonlinear search.",
     balance: "Evens the goal out across this column's groups: minimizing makes the largest group's total as small as it can be, maximizing the smallest as large.",
   };
   static frameHints: Record<string, FrameHint> = {

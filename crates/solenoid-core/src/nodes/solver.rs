@@ -327,6 +327,119 @@ fn curved(
     Ok(last.expect("one round"))
 }
 
+/// Starting plans the nonlinear search runs from, and its steps from each.
+const SEARCH_STARTS: usize = 6;
+const SEARCH_STEPS: usize = 200;
+
+/// The Solver with a goal formula that reads the plan's totals, so an option's worth depends on the others: sequential
+/// linear programming in a trust region (Griffith & Stewart 1961; Fletcher's box). From a plan meeting every limit,
+/// the goal's slope in each amount (central differences) is maximized by the LP within a box around the plan; a step
+/// that improves the goal is taken and the box doubles, one that doesn't quarters it, until the box is too small to
+/// matter. It runs from the LP's own best plan and from corners the limits allow in fixed pseudo-random directions,
+/// keeping the best: a local best each, not proven best overall. Returns the plan, its goal, the starts run, and
+/// whether branch and bound stopped short in some step.
+fn search(
+    program: &Program,
+    n_opt: usize,
+    goal: &dyn Fn(&[f64]) -> Result<f64, V>,
+    sense: f64,
+) -> Result<(Vec<f64>, f64, usize, bool), V> {
+    let n = program.c.len();
+    // Each option's range, for the box's size: Min to Max, or to the most the limits let it reach.
+    let mut span = vec![1.0; n];
+    for i in 0..n {
+        let top = if program.hi[i].is_finite() {
+            program.hi[i]
+        } else {
+            let mut c = vec![0.0; n];
+            c[i] = 1.0;
+            match solve(&Program { c, whole: vec![false; n], ..program.clone() }) {
+                Outcome::Best { x, .. } => x[i],
+                Outcome::Infeasible => return Err(err(ErrorCode::Solve, "No plan meets every limit")),
+                Outcome::Unbounded if i < n_opt => {
+                    return Err(err(
+                        ErrorCode::Solve,
+                        format!(
+                            "Nothing limits option row {}: give it a Max or a limit, so the search has a range",
+                            i + 1
+                        ),
+                    ))
+                }
+                Outcome::Unbounded => program.lo[i] + 1.0,
+            }
+        };
+        span[i] = (top - program.lo[i]).max(1e-9);
+    }
+    // Starting plans: the LP's best for the goal column, then corners in fixed directions (a xorshift, seeded).
+    let mut seed: u64 = 0x9E37_79B9_7F4A_7C15;
+    let mut rand = move || {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        (seed >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let mut starts = Vec::new();
+    for k in 0..SEARCH_STARTS {
+        let c: Vec<f64> = if k == 0 { program.c.clone() } else { (0..n).map(|_| rand() * 2.0 - 1.0).collect() };
+        if let Outcome::Best { x, .. } = solve(&Program { c, ..program.clone() }) {
+            starts.push(x);
+        }
+    }
+    if starts.is_empty() {
+        return Err(err(ErrorCode::Solve, "No plan meets every limit"));
+    }
+    let ran = starts.len();
+    let mut best: Option<(Vec<f64>, f64)> = None;
+    let mut stopped = false;
+    for mut x in starts {
+        let mut fx = goal(&x)? * sense;
+        let mut radius = 0.25;
+        for _ in 0..SEARCH_STEPS {
+            if radius < 1e-7 {
+                break;
+            }
+            // The slope in each option's amount, by central differences inside its range.
+            let mut grad = vec![0.0; n];
+            for i in 0..n_opt {
+                let h = 1e-6 * span[i];
+                let mut up = x.clone();
+                let mut down = x.clone();
+                up[i] += h;
+                down[i] -= h;
+                grad[i] = (goal(&up)? - goal(&down)?) / (2.0 * h) * sense;
+            }
+            let lo: Vec<f64> = (0..n)
+                .map(|i| if i < n_opt { (x[i] - radius * span[i]).max(program.lo[i]) } else { program.lo[i] })
+                .collect();
+            let hi: Vec<f64> = (0..n)
+                .map(|i| if i < n_opt { (x[i] + radius * span[i]).min(program.hi[i]) } else { program.hi[i] })
+                .collect();
+            let (lo, hi): (Vec<f64>, Vec<f64>) =
+                (0..n).map(|i| if program.whole[i] { (lo[i].ceil(), hi[i].floor()) } else { (lo[i], hi[i]) }).unzip();
+            let step = Program { c: grad, rows: program.rows.clone(), lo, hi, whole: program.whole.clone() };
+            match solve(&step) {
+                Outcome::Best { x: next, stopped: s, .. } => {
+                    stopped |= s;
+                    let fnext = goal(&next)? * sense;
+                    if fnext > fx + 1e-12 * (1.0 + fx.abs()) {
+                        x = next;
+                        fx = fnext;
+                        radius = (radius * 2.0).min(1.0);
+                    } else {
+                        radius /= 4.0;
+                    }
+                }
+                _ => radius /= 4.0,
+            }
+        }
+        if best.as_ref().is_none_or(|(_, b)| fx > *b) {
+            best = Some((x, fx));
+        }
+    }
+    let (x, fx) = best.expect("a start");
+    Ok((x, fx * sense, ran, stopped))
+}
+
 fn solver(c: &mut Call) -> Answer {
     let out = |c: &mut Call, plan: Cv, best: V, limits: Cv, status: V| {
         c.show("cachedResult", plan.clone());
@@ -373,8 +486,12 @@ fn solver(c: &mut Call) -> Answer {
         None => format!("option row {}", r + 1),
     };
     // The goal's formula, run per option over its columns by name and its `amount`.
+    // With the plan's totals, `total_amount` and `total_<column>` (Σ column × amount), it can price an option by the
+    // whole plan, which the nonlinear search handles.
     let mut vars: Vec<String> = f.columns.iter().map(|c| c.name.clone()).collect();
     vars.push("amount".into());
+    vars.push("total_amount".into());
+    vars.extend(f.columns.iter().map(|c| format!("total_{}", c.name)));
     let var_refs: Vec<&str> = vars.iter().map(String::as_str).collect();
     let formula = match wired_lambda(c, "goalFormula", &var_refs) {
         Ok(b) => b,
@@ -561,6 +678,7 @@ fn solver(c: &mut Call) -> Answer {
     }
     let program = Program { c: cvec, rows: prog_rows, lo: plo, hi: phi, whole: pwhole };
     let mut sampled = false;
+    let mut searched: Option<usize> = None;
     let (x, total, duals, stopped) = match &formula {
         None => match solve(&program) {
             Outcome::Best { x, total, duals, stopped } => (x, total * sense, duals, stopped),
@@ -572,24 +690,58 @@ fn solver(c: &mut Call) -> Answer {
         Some(body) => {
             let ev = Eval::default();
             let ncols = f.columns.len();
-            let value = |i: usize, t: f64| -> Result<f64, V> {
-                let args = |j: usize| if j < ncols { cell(&f, j, i).cloned().unwrap_or(V::Null) } else { V::Num(t) };
+            // Each column's number per option, text and blanks 0, for the plan's totals.
+            let col_nums: Vec<Vec<f64>> =
+                (0..ncols).map(|j| (0..rows).map(|r| num(cell(&f, j, r)).unwrap_or(0.0)).collect()).collect();
+            let totals_of = |x: &[f64]| -> Vec<f64> {
+                let mut t = vec![x[..rows].iter().sum()];
+                t.extend(col_nums.iter().map(|cn| cn.iter().zip(x).map(|(a, b)| a * b).sum::<f64>()));
+                t
+            };
+            let at = |i: usize, t: f64, totals: &[f64]| -> Result<f64, V> {
+                let args = |j: usize| match j {
+                    _ if j < ncols => cell(&f, j, i).cloned().unwrap_or(V::Null),
+                    _ if j == ncols => V::Num(t),
+                    _ => V::Num(totals[j - ncols - 1]),
+                };
                 let k = keys(Some(body), &ev, &args, "goal formula", i)?;
                 Ok(k.iter().sum())
             };
-            match curved(&program, rows, &value, sense) {
-                Ok(Curved { x, duals, stopped, bumpy }) => {
-                    sampled = bumpy;
-                    let mut total: f64 = obj.iter().zip(&x).map(|(o, v)| o * v).sum();
+            let reads_totals = (ncols + 1..vars.len()).any(|j| body.reads(j));
+            if reads_totals {
+                // The goal of a whole plan: the goal column's total plus the formula for every option.
+                let whole_goal = |x: &[f64]| -> Result<f64, V> {
+                    let totals = totals_of(x);
+                    let mut g: f64 = obj.iter().zip(x).map(|(o, v)| o * v).sum();
                     for (i, &xi) in x.iter().take(rows).enumerate() {
-                        match value(i, xi) {
-                            Ok(v) => total += v,
-                            Err(e) => return fail(c, e),
-                        }
+                        g += at(i, xi, &totals)?;
                     }
-                    (x, total, duals, stopped)
+                    Ok(g)
+                };
+                match search(&program, rows, &whole_goal, sense) {
+                    Ok((x, total, starts, stopped)) => {
+                        searched = Some(starts);
+                        (x, total, None, stopped)
+                    }
+                    Err(e) => return fail(c, e),
                 }
-                Err(e) => return fail(c, e),
+            } else {
+                let zero = vec![0.0; ncols + 1];
+                let value = |i: usize, t: f64| at(i, t, &zero);
+                match curved(&program, rows, &value, sense) {
+                    Ok(Curved { x, duals, stopped, bumpy }) => {
+                        sampled = bumpy;
+                        let mut total: f64 = obj.iter().zip(&x).map(|(o, v)| o * v).sum();
+                        for (i, &xi) in x.iter().take(rows).enumerate() {
+                            match value(i, xi) {
+                                Ok(v) => total += v,
+                                Err(e) => return fail(c, e),
+                            }
+                        }
+                        (x, total, duals, stopped)
+                    }
+                    Err(e) => return fail(c, e),
+                }
             }
         }
     };
@@ -662,6 +814,8 @@ fn solver(c: &mut Call) -> Answer {
     };
     let status = if stopped {
         format!("Best found: stopped after {MAX_NODES} branches")
+    } else if let Some(n) = searched {
+        format!("Best found: the best of {n} searches from different starting plans, each to a plan no small change improves")
     } else if sampled {
         "Best found: the goal formula rises and falls, so it was searched in steps".into()
     } else {

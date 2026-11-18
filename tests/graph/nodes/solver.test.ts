@@ -99,6 +99,18 @@ describe("Solver", () => {
     expect(JSON.stringify(out.best)).toMatch(/give it a Max/);
   });
 
+  it("searches when the formula reads the plan's totals: a price that falls as total output rises", () => {
+    // Each unit sells at its Price less 0.01 for every unit made in all: the best is 500 of the dearer one, 2500.
+    const goods = frame([{ Good: "A", Price: 10 }, { Good: "B", Price: 8 }]);
+    const market = lambda("Price, amount, total_amount", "Price * amount - 0.01 * amount * total_amount");
+    const { n, out } = solve(goods, [{ of: "", sign: "le", limit: 1000 }], "", "max", market);
+    const [a, b] = rows(out.plan).map((r) => r.Amount as number);
+    expect(a).toBeCloseTo(500, 2);
+    expect(b).toBeCloseTo(0, 4);
+    expect(out.best as number).toBeCloseTo(2500, 4);
+    expect(n.cachedStatus).toMatch(/starting plans/);
+  });
+
   it("holds a blend's weighted average and a share of it", () => {
     // Two beans, 12% and 4% fat, 3 and 5 a kg: the cheapest 100 kg averaging at most 6% fat is 25 kg and 75 kg.
     const beans = frame([{ Bean: "Rich", Fat: 0.12, Cost: 3 }, { Bean: "Lean", Fat: 0.04, Cost: 5 }]);
