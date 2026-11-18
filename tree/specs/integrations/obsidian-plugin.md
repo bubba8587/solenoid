@@ -51,6 +51,8 @@ mindmap
 
 **Knap notes.** A note with `knap: true` in its properties renders its body as a Knap template from its own properties, and a bare `{{ name }}` on an object property is that property's chip, in the body ([[#Knap notes]]).
 
+**A guide for agents** ([[#The guide for agents]]): what an agent needs to write these values into a vault, kept in the plugin's folder.
+
 **The Solenoid look.** One more setting, a toggle, off until the user turns it on, dresses Obsidian itself in Solenoid's palette and the accent chosen above. [[#The look]] is how it works.
 
 **Bases.** A Bases table draws a typed property through the same widget, so a cell shows the chip and a press opens the same editor (as of Obsidian 1.13.7; a narrow column clips the chip until it is widened).
@@ -254,6 +256,18 @@ flowchart TD
     that --> cross
 ```
 
+## The guide for agents
+
+An agent working in a vault (an assistant with the vault's files, a script, another plugin) needs the shapes this plugin types to write Solenoid data objects that open as chips and read back in Solenoid as the same type. Obsidian installs only `main.js`, `manifest.json` and `styles.css` from a release, so the guide ships inside the bundle (`agentGuide.ts`) and the plugin writes it out:
+
+- **In its own folder:** `.obsidian/plugins/solenoid-properties/AGENTS.md`, beside `data.json`, once the layout is ready, and only when its text changed (a new version). A vault that refuses the write goes without the file; nothing else reads it.
+- **As a note, on request:** the command "Add the guide for agents to this vault" writes `Solenoid data objects (guide for agents).md` at the vault's root, replacing an earlier copy, and opens it. It is for an agent that only sees notes (most vault tools skip hidden folders), and it names the folder copy as the one kept current. The plugin never writes a note unasked.
+- **Through the api:** `agentGuide()` (below).
+
+What it holds: making one (the YAML, then the property's type in `.obsidian/types.json`, without which Obsidian draws no chip), the thirteen types from `PROPERTY_KINDS`, an example of each list and matrix family and of a frame, a cube and a complex value, the rules a value must follow ([[#What Solenoid reads back]]: unquoted ISO dates, `a+bi`, every frame row every key with `null` for a missing cell, one family a list), where column types live and how another plugin records them, and Knap notes. It is reference prose for a reader that writes YAML, DESIGN.md § 7's voice.
+
+Tests: `tests/obsidian-plugin/agentGuide.test.ts`: every type id appears; every example passes `validateYaml` for its type and `parseNoteFrontmatter` reads it back as that type; the note copy names the folder copy.
+
 ## The API for other plugins
 
 The plugin object carries `api`, a small, versioned API through which another plugin that keeps its data in Solenoid Frame properties shows and edits such a property with its real chip and editor, and reads its column types. The Decision Matrix Bases View is the first such plugin. A caller gets it with `app.plugins.getPlugin("solenoid-properties")?.api` and checks `api.version`. Within a version the shape only grows; a breaking change is version 2.
@@ -266,6 +280,7 @@ The plugin object carries `api`, a small, versioned API through which another pl
 | `columnTypes(key)` | A copy of the column types recorded for Frame property `key`, `{ column: "number" \| "string" \| "date" \| "logical" }`; `{}` when none are. |
 | `setColumnTypes(key, types, replace?)` | Records column types for `key`, as the editor does on save: merged into what is there, or the whole map with `replace`. Awaits the write to `data.json`. |
 | `columnNames()` | The names [[#Column name suggestions]] offers, `{ name, type, types, properties }[]` (`types`: every type the name is typed as, the most used first, and `type` the first of them; `properties`: the Frame and Cube properties that type the name), the most used first; `[]` when the user has turned Suggest column names off. A caller filters it (by type, or out of its own bookkeeping properties) to suit its own name field. |
+| `agentGuide()` | The guide for agents ([[#The guide for agents]]) as Markdown, for this version. |
 | `COLUMN_TYPES_EVENT` | `"solenoid-properties:column-types"`, triggered on `app.workspace` with the property key whenever its column types change, from the editor or through `setColumnTypes`. A caller listens with `registerEvent(app.workspace.on(api.COLUMN_TYPES_EVENT, (key) => ...))`: a type picked in the editor changes no YAML, so no metadata event says so. |
 
 A caller writes the Frame's YAML itself (`processFrontMatter`) and records the types of the columns it creates, so a Frame another plugin writes is typed the way the editor would type it. Release 0.1.5 and earlier have no `api`; a caller that must support them falls back to the plugin's `chip`, `release` and `loadData`.

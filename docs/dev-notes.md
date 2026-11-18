@@ -67,6 +67,13 @@ specific item.
   plan. It moves three Houston-area sites to OP-01 and solves in about 7 s. The Monte Carlo runs it beside the baseline
   and Plan B on the same incidents: Plan B saves about 109 drive hours a year, Plan C about 102; all three leave about 3
   incidents open at year end, within noise, so at one job a day the assignment moves drive time, not resolution.
+- **Solenoid Properties ships a guide for agents** ([[obsidian-plugin#The guide for agents]], `agentGuide.ts`): the
+  YAML of each data object type, `types.json`, the rules a value must follow, column types and Knap notes. Obsidian
+  installs only three files, so the plugin writes it to `AGENTS.md` in its own folder when the text changes, a command
+  adds it as a note, and `api.agentGuide()` returns it. Every example is checked against the plugin's validator and
+  Solenoid's note reader. `plugin:lint` had drifted to 3 errors (assertions in `chartValue.ts`, `TablePopup.tsx`,
+  `pivotLayout.ts`) that would have failed the directory's review; it holds 0 again. Ships with the next plugin
+  release (its version and What's New note are the author's step).
 - Not done: a limit that is itself a formula (nonlinear constraints); a Solve button for the heavy cards (measured: the
   seed's problems solve at once, so composites keep the only hold); shadow prices for averages, shares and counts.
 

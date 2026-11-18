@@ -994,7 +994,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     pivotHost.current?.editFields((f) => { if (f) tablePopup.open({ ...opened, ...framePopupData(f) }); }, opened.accent);
   }
   // The view's places hold the totals the Frame leaves out; the rest read the Frame ([[table-popup#The Pivot view]]).
-  const pivotAt = (r: number, c: number) => pivotAddress(state.pivot!).cell(r, c, (or, oc) => state.data[or]?.[oc] ?? null) as CellValue;
+  const pivotAt = (r: number, c: number) => pivotAddress(state.pivot!).cell<CellValue>(r, c, (or, oc) => state.data[or]?.[oc] ?? null);
   const pivotCellText = (r: number, c: number): string => {
     const raw = pivotAt(r, c);
     if (displayMode === "source") return raw === null ? "" : isSolError(raw) ? raw.code : String(raw);

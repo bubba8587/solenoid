@@ -136,7 +136,7 @@ interface RecordDeck {
 /** A Record or Cards figure other than Detail is a stack of boxes taller than its frame, not a drawing that scales: a
  *  surface scrolls it from its top. Detail scrolls inside its own grid. */
 export function stacksRecords(v: ChartValue | null | undefined): boolean {
-  return v?.op === "record" && v.payload?.kind === "record" && (v.payload as RecordPayload).view !== "detail";
+  return v?.op === "record" && v.payload?.kind === "record" && v.payload.view !== "detail";
 }
 
 export interface RecordPayload {

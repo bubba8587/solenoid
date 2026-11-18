@@ -1,5 +1,5 @@
 // [[obsidian-plugin]], [[obsidian-plugin#The API for other plugins]], [[frame-verbs#The Cube value]]
-import { ItemView, Plugin, PluginSettingTab, Setting, addIcon, type App, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
+import { ItemView, Plugin, PluginSettingTab, Setting, TFile, addIcon, normalizePath, type App, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
 import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
 import "@fontsource-variable/atkinson-hyperlegible-next/wght-italic.css";
@@ -28,6 +28,7 @@ import { WhatsNewPage } from "./WhatsNewPage";
 import { PLUGIN_NOTES } from "./pluginNotes";
 import { readSeenWhatsNew, whatsNewDue, type SeenWhatsNew } from "./whatsNew";
 import { isEnter } from "../../src/graph/enterKey";
+import { agentGuide, AGENT_GUIDE_FILE, AGENT_GUIDE_NOTE } from "./agentGuide";
 
 interface WidgetContext {
   app: App;
@@ -88,6 +89,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     columnTypes: (key: string): ColumnTypes => ({ ...this.data.columnTypes?.[key] }),
     setColumnTypes: (key: string, types: ColumnTypes, replace = false): Promise<void> => this.setColumnTypes(key, types, replace),
     columnNames: (): ColumnNameOption[] => this.columnNames(),
+    agentGuide: (): string => agentGuide(this.manifest.version),
   };
 
   async onload(): Promise<void> {
@@ -127,6 +129,33 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     this.registerView(WHATS_NEW_VIEW, (leaf) => new WhatsNewView(leaf, this));
     this.addCommand({ id: "show-whats-new", name: "Show what's new", callback: () => void this.openWhatsNew() });
     this.app.workspace.onLayoutReady(() => void this.whatsNewOnChange());
+    this.addCommand({ id: "add-agent-guide", name: "Add the guide for agents to this vault", callback: () => void this.addAgentGuideNote() });
+    this.app.workspace.onLayoutReady(() => void this.writeAgentGuide());
+  }
+
+  /** The guide for agents in the plugin's own folder, beside its data.json, rewritten only when its text changed
+   *  ([[obsidian-plugin#The guide for agents]]). */
+  private async writeAgentGuide(): Promise<void> {
+    if (!this.manifest.dir) return;
+    const path = normalizePath(`${this.manifest.dir}/${AGENT_GUIDE_FILE}`);
+    const text = agentGuide(this.manifest.version);
+    const adapter = this.app.vault.adapter;
+    try {
+      if ((await adapter.exists(path)) && (await adapter.read(path)) === text) return;
+      await adapter.write(path, text);
+    } catch {
+      // A read-only vault keeps the guide in the api and the command; nothing else depends on the file.
+    }
+  }
+
+  /** The guide as a note at the vault's root, for an agent that can't see the hidden plugin folder; opened. */
+  private async addAgentGuideNote(): Promise<void> {
+    const path = normalizePath(AGENT_GUIDE_NOTE);
+    const text = agentGuide(this.manifest.version, "note");
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    const file = existing instanceof TFile ? existing : await this.app.vault.create(path, text);
+    if (existing instanceof TFile) await this.app.vault.modify(existing, text);
+    await this.app.workspace.getLeaf("tab").openFile(file);
   }
 
   onunload(): void {

@@ -105,7 +105,7 @@ export function pivotViewFrame(f: FrameValue): FrameValue {
   const columns = Array.from({ length: width }, (_, c) => {
     const total = totalCols.get(c);
     const base = f.columns[addr.styleCol(c)];
-    const values = layout.rows.map((_, r) => addr.cell(r, c, (or, oc) => f.columns[oc]?.values[or] ?? null) as FrameCell);
+    const values = layout.rows.map((_, r) => addr.cell<FrameCell>(r, c, (or, oc) => f.columns[oc]?.values[or] ?? null));
     return total ? { name: total.name, type: total.type, values } : { ...base, values };
   });
   return { __frame: true, columns };
