@@ -40,10 +40,10 @@ specific item.
   Pivot editor's footer). Solver's Limits moved onto it. The author's rules for it, each in the spec: no row hides when
   a cable lands (a not-used row dims and says why), no caret on a button that isn't a dropdown, touch sizes are the
   app's (30px pills), a phone stacks every row the same way and breaks a sentence of fields at one marked place,
-  related settings hang on a guide line. The leaf the author asked for (configPopup) was refused twice by the tree's
+  related settings hang on a guide line, a setting's label is a noun phrase with the noun last (DESIGN.md § Voice). The leaf the author asked for (configPopup) was refused twice by the tree's
   leaf hook as feature design; the rule lives in the spec.
 - **Transitions** (was Legs: the author, "does it have to be roads? certain units of time & distance?"): the cost of
-  taking an item right after another, by name, in any unit; Pairs it doesn't list: Go through others (a chain, as a road
+  taking an item right after another, by name, in any unit; Unlisted pairs: Go through others (a chain, as a road
   network routes) or Not allowed (a changeover table), since a chain could quietly stand in for an unlisted changeover.
 - Staffing's shares read as percents (display formats); the seed's Answered in time card reads 80%. Charts don't take a
   column's format for their axes, so the staffing chart's axis still runs 0 to 1: a chart-wide change, not made here.

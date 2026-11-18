@@ -361,6 +361,12 @@ A card **label's** parenthetical is deliberate and stays (author 2026-11-05): "C
   for a genuine enumeration is fine; the dash as a rhythmic beat is not. _"…with your own API keys —
   refreshes on a timer, charts in a click, and never bakes the data into the file."_ → _"…with your own
   API keys. They refresh on a timer and are never saved into the file."_
+- **A setting's label is a noun phrase, the noun last.** It names what is set, with its modifiers in front of the
+  noun rather than a clause after it: no verb and no pronoun pointing back at the card or its table. The choices carry
+  the verbs. _"Pairs it doesn't list"_ → _"Unlisted pairs"_ (Go through others, Not allowed); _"Who picks next"_ →
+  _"Turn order"_; _"If an item won't fit"_ → _"Oversize items"_ (Stop, Skip it); _"Items may"_ → _"Item moves"_ (Move
+  between groups, Stay in their group). Sentence case, as Settings' rows are. A sentence built of fields (a Solver
+  limit: "Total Wood must be at most 300") is a sentence, not a label, and keeps its words (the author, 2026-11-18).
 - **Representative, not exhaustive.** List a few concrete examples; don't inventory every feature (and never
   list the same one twice for cadence). One definition per noun — no stacked appositives. _"A node-based
   computation graph — an Excel alternative for data tables."_ → _"A node-graph alternative to Excel for data

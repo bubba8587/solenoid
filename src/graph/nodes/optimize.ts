@@ -85,7 +85,7 @@ export class SolverNode extends GraphNode {
     this.addInput("options", frameIn("Options"));
     this.addInput("objective", strIn("Goal"));
     this.addInput("goalFormula", lambdaIn("Goal formula"));
-    this.addInput("balance", strIn("Balance across"));
+    this.addInput("balance", strIn("Balancing column"));
     this.addOutput("plan", frameOut("Plan"));
     this.addOutput("best", numOut("Best"));
     this.addOutput("limits", frameOut("Limits"));

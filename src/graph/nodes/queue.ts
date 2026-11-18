@@ -20,8 +20,6 @@ export const QUEUE_STEP_START_OPTIONS: { value: QueueStepStart; label: string }[
   { value: "continue", label: "Where it left off" },
   { value: "start", label: "Back at its start" },
 ];
-/** The question the step-start pick answers, shown before it. */
-export const QUEUE_STEP_START_ASK = "Each step starts";
 
 /** When the next item in order doesn't fit the budget: the group's step ends, or it tries the next in order. */
 export type QueueFit = "stop" | "skip";
@@ -29,7 +27,6 @@ export const QUEUE_FIT_OPTIONS: { value: QueueFit; label: string }[] = [
   { value: "stop", label: "Stop" },
   { value: "skip", label: "Skip it" },
 ];
-export const QUEUE_FIT_ASK = "If an item won't fit";
 
 /** Which way the Order by column runs: its smallest value first, or its largest. */
 export type QueueOrderDir = "asc" | "desc";
@@ -43,13 +40,12 @@ export const QUEUE_ORDER_OPTIONS: { value: QueueOrderDir | "cost"; label: string
   { value: "cost", label: "Cheapest first" },
 ];
 
-/** Who picks next: the groups in turn, one pick each a round; or the best group and item pair anywhere. */
+/** Turn order: the groups in turn, one pick each a round; or the best group and item pair anywhere. */
 export type QueueTurns = "rotate" | "best";
 export const QUEUE_TURNS_OPTIONS: { value: QueueTurns; label: string }[] = [
   { value: "rotate", label: "Each group in turn" },
   { value: "best", label: "Best match, any group" },
 ];
-export const QUEUE_TURNS_ASK = "Who picks next";
 
 /** How a Transitions table's rows count: either way round, or only From to To (a one-way street, a changeover). */
 export type TransitionDirection = "both" | "one";
@@ -141,7 +137,7 @@ export class GreedyQueueNode extends GraphNode {
     this.addInput("group", strIn("Group column"));
     this.addInput("start", frameIn("Groups"));
     this.addInput("allowed", lambdaIn("Allowed if"));
-    this.addInput("step", strIn("Opens at"));
+    this.addInput("step", strIn("Opening step"));
     this.addInput("steps", numIn("Steps to run"));
     this.addInput("perStep", numIn("Picks per step"));
     this.addInput("budget", numIn("Budget per step"));
@@ -191,7 +187,6 @@ export const SEARCH_REACH_OPTIONS: { value: SearchReach; label: string }[] = [
   { value: "across", label: "Move between groups" },
   { value: "within", label: "Stay in their group" },
 ];
-export const SEARCH_REACH_ASK = "Items may";
 
 /** Whether a group's walk ends at its last item, or comes back to its Start row (a round trip). */
 export type SearchEnds = "open" | "return";
@@ -199,9 +194,8 @@ export const SEARCH_ENDS_OPTIONS: { value: SearchEnds; label: string }[] = [
   { value: "open", label: "At its last item" },
   { value: "return", label: "Back at its start" },
 ];
-export const SEARCH_ENDS_ASK = "Each group ends";
 
-/** How hard the search looks: stop at the first plan no single change improves, or look past it (guided local search),
+/** Search effort: how hard the search looks: stop at the first plan no single change improves, or look past it (guided local search),
  *  for up to ten times as long, keeping the best plan found. Thorough is never worse, only slower. */
 export type SearchStuck = "stop" | "look";
 export const SEARCH_STUCK_OPTIONS: { value: SearchStuck; label: string; title?: string }[] = [

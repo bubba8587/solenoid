@@ -79,16 +79,16 @@ export function QueueRulesPopup() {
   const needs = hasTransitions ? undefined : "Needs a Transitions table wired on the card.";
   const transitions = (
     <RulesGroup title="Transitions">
-      <RulesRow label="Rows count" idle={!hasTransitions} help={needs ?? "Each row either way round, or only From to To (a one-way street, a changeover)."}>
-        <RulesSeg label="Rows count" value={node.transitionsDirection} options={TRANSITION_DIRECTION_OPTIONS} onChange={(v) => set(() => { node.transitionsDirection = v; })} />
+      <RulesRow label="Direction" idle={!hasTransitions} help={needs ?? "Each row either way round, or only From to To (a one-way street, a changeover)."}>
+        <RulesSeg label="Direction" value={node.transitionsDirection} options={TRANSITION_DIRECTION_OPTIONS} onChange={(v) => set(() => { node.transitionsDirection = v; })} />
       </RulesRow>
-      <RulesRow label="Pairs it doesn't list" idle={!hasTransitions} help={needs ?? (node.transitionsUnlisted === "none"
+      <RulesRow label="Unlisted pairs" idle={!hasTransitions} help={needs ?? (node.transitionsUnlisted === "none"
         ? "An error naming the pair: for a table that lists every pair."
         : "The cheapest chain of listed pairs, as a road network routes.")}>
-        <RulesSeg label="Pairs it doesn't list" value={node.transitionsUnlisted} options={TRANSITION_UNLISTED_OPTIONS} onChange={(v) => set(() => { node.transitionsUnlisted = v; })} />
+        <RulesSeg label="Unlisted pairs" value={node.transitionsUnlisted} options={TRANSITION_UNLISTED_OPTIONS} onChange={(v) => set(() => { node.transitionsUnlisted = v; })} />
       </RulesRow>
-      <RulesRow label="Match items by" idle={!hasTransitions} help={needs ?? "The items' column of the names From and To use."}>
-        <RulesColumn label="Match items by" value={node.transitionsMatch} columns={items} blank="first text column" onChange={(v) => set(() => { node.transitionsMatch = v; })} />
+      <RulesRow label="Name column" idle={!hasTransitions} help={needs ?? "The items' column of the names From and To use."}>
+        <RulesColumn label="Name column" value={node.transitionsMatch} columns={items} blank="first text column" onChange={(v) => set(() => { node.transitionsMatch = v; })} />
       </RulesRow>
       <RulesRow label="Value column" idle={!hasTransitions} help={needs ?? "The Transitions column whose number is added, in any unit."}>
         <RulesColumn label="Value column" value={node.transitionsOf} columns={transitionNumbers} blank="first number column" onChange={(v) => set(() => { node.transitionsOf = v; })} />
@@ -109,12 +109,12 @@ export function QueueRulesPopup() {
               else { node.orderBy = "column"; node.orderDir = v; }
             })} />
           </RulesRow>
-          <RulesRow label="Of column" idle={node.orderBy === "cost" && !wired.has("orderColumn")} help={node.orderBy === "cost" ? "Not used by Cheapest first." : undefined}>
-            {column("orderColumn", "Of column", "listed order")}
+          <RulesRow label="Order column" idle={node.orderBy === "cost" && !wired.has("orderColumn")} help={node.orderBy === "cost" ? "Not used by Cheapest first." : undefined}>
+            {column("orderColumn", "Order column", "listed order")}
           </RulesRow>
         </RulesSection>
         <RulesSection title="Cost of an item">
-          <RulesRow label="Column" help="Its number counts, plus a Cost formula and transitions where wired.">
+          <RulesRow label="Cost column" help="Its number counts, plus a Cost formula and transitions where wired.">
             {column("costColumn", "Cost column", "none")}
           </RulesRow>
           {transitions}
@@ -124,22 +124,22 @@ export function QueueRulesPopup() {
             {column("group", "Group column", "one group")}
           </RulesRow>
           <RulesGroup>
-            <RulesRow label="Who picks next" idle={!hasGroups} help={hasGroups ? undefined : "Needs a group column or Groups wired."}>
-              <RulesSeg label="Who picks next" value={node.turns} options={QUEUE_TURNS_OPTIONS} onChange={(v) => set(() => { node.turns = v; })} />
+            <RulesRow label="Turn order" idle={!hasGroups} help={hasGroups ? undefined : "Needs a group column or Groups wired."}>
+              <RulesSeg label="Turn order" value={node.turns} options={QUEUE_TURNS_OPTIONS} onChange={(v) => set(() => { node.turns = v; })} />
             </RulesRow>
           </RulesGroup>
         </RulesSection>
         <RulesSection title="Steps">
-          <RulesRow label="Opens at" help="The step each item becomes available.">
-            {column("step", "Opens at", "all at step 1")}
+          <RulesRow label="Opening step" help="The step each item becomes available.">
+            {column("step", "Opening step", "all at step 1")}
           </RulesRow>
-          <RulesRow label="Each step starts" idle={!wired.has("start")} help={wired.has("start") ? undefined : "Needs Groups wired, each group's start."}>
-            <RulesSeg label="Each step starts" value={node.stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={(v) => set(() => { node.stepStart = v; })} />
+          <RulesRow label="Step start" idle={!wired.has("start")} help={wired.has("start") ? undefined : "Needs Groups wired, each group's start."}>
+            <RulesSeg label="Step start" value={node.stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={(v) => set(() => { node.stepStart = v; })} />
           </RulesRow>
         </RulesSection>
         <RulesSection title="Budget per step">
-          <RulesRow label="If an item won't fit" idle={!hasBudget} help={hasBudget ? undefined : "Needs a Budget on the card."}>
-            <RulesSeg label="If an item won't fit" value={node.mode} options={QUEUE_FIT_OPTIONS} onChange={(v) => set(() => { node.mode = v; })} />
+          <RulesRow label="Oversize items" idle={!hasBudget} help={hasBudget ? undefined : "Needs a Budget on the card."}>
+            <RulesSeg label="Oversize items" value={node.mode} options={QUEUE_FIT_OPTIONS} onChange={(v) => set(() => { node.mode = v; })} />
           </RulesRow>
         </RulesSection>
       </RulesPopup>
@@ -150,7 +150,7 @@ export function QueueRulesPopup() {
   return (
     <RulesPopup title={state.title} accent={state.accent} onClose={close} note="Formulas and numbers are wired on the card.">
       <RulesSection title="Cost of an item">
-        <RulesRow label="Column" help="Its number counts, plus a Cost formula and transitions where wired.">
+        <RulesRow label="Cost column" help="Its number counts, plus a Cost formula and transitions where wired.">
           {column("costColumn", "Cost column", "none")}
         </RulesRow>
         {transitions}
@@ -160,17 +160,17 @@ export function QueueRulesPopup() {
           {column("group", "Group column", "one group")}
         </RulesRow>
         <RulesGroup>
-          <RulesRow label="Items may" idle={!hasGroups} help={hasGroups ? undefined : "Needs a group column or Groups wired."}>
-            <RulesSeg label="Items may" value={node.reach} options={SEARCH_REACH_OPTIONS} onChange={(v) => set(() => { node.reach = v; })} />
+          <RulesRow label="Item moves" idle={!hasGroups} help={hasGroups ? undefined : "Needs a group column or Groups wired."}>
+            <RulesSeg label="Item moves" value={node.reach} options={SEARCH_REACH_OPTIONS} onChange={(v) => set(() => { node.reach = v; })} />
           </RulesRow>
         </RulesGroup>
-        <RulesRow label="Each group ends" idle={!wired.has("start")} help={wired.has("start") ? undefined : "Back at its start needs Groups wired."}>
-          <RulesSeg label="Each group ends" value={node.ends} options={SEARCH_ENDS_OPTIONS} onChange={(v) => set(() => { node.ends = v; })} />
+        <RulesRow label="Group end" idle={!wired.has("start")} help={wired.has("start") ? undefined : "Back at its start needs Groups wired."}>
+          <RulesSeg label="Group end" value={node.ends} options={SEARCH_ENDS_OPTIONS} onChange={(v) => set(() => { node.ends = v; })} />
         </RulesRow>
       </RulesSection>
       <RulesSection title="Search">
-        <RulesRow label="How hard" help="Thorough keeps looking past a dead end, up to 10× longer, never worse.">
-          <RulesSeg label="How hard" value={node.stuck} options={SEARCH_STUCK_OPTIONS} onChange={(v) => set(() => { node.stuck = v; })} />
+        <RulesRow label="Search effort" help="Thorough keeps looking past a dead end, up to 10× longer, never worse.">
+          <RulesSeg label="Search effort" value={node.stuck} options={SEARCH_STUCK_OPTIONS} onChange={(v) => set(() => { node.stuck = v; })} />
         </RulesRow>
       </RulesSection>
     </RulesPopup>

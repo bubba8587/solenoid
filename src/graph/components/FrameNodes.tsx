@@ -1489,7 +1489,7 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
 const SOLVER_WHOLE = new Set(["options", "objective", "goalFormula", "balance"]);
 const SOLVER_LAMBDA = new Set(["goalFormula"]);
 const solverGoalLabel = (k: string) =>
-  ({ objective: "Total of column", goalFormula: "Total of formula", balance: "Balance across" } as Record<string, string>)[k] ?? k;
+  ({ objective: "Total of column", goalFormula: "Total of formula", balance: "Balancing column" } as Record<string, string>)[k] ?? k;
 
 export function AssignmentComponent({ data, emit }: NodeProps<AssignmentNodeType>) {
   const [goal, setGoal] = useNodeField(data, "goal");
