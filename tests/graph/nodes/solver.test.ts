@@ -199,6 +199,21 @@ describe("Solver", () => {
     expect(rows(min.out.plan).map((r) => r.Amount)).toEqual([0, 0]);
   });
 
+  it("a setup fee is paid only where a supplier is used, found exactly and quickly", () => {
+    // 1,000 parts: X $2 + $300 setup up to 700, Y $2.40 up to 800, Z $1.80 + $500 setup, 400 to 600. Best: 700 X, 300 Y.
+    // A switch on every piece once any formula kinked took 20,000 branches and 29 s to stop short at $2,437.50.
+    const suppliers = frame([
+      { Supplier: "X", Price: 2, Setup: 300, Max: 700, "Min If Used": 0 },
+      { Supplier: "Y", Price: 2.4, Setup: 0, Max: 800, "Min If Used": 0 },
+      { Supplier: "Z", Price: 1.8, Setup: 500, Max: 600, "Min If Used": 400 },
+    ]);
+    const fee = lambda("Price, Setup, amount", "IF(amount > 0, Setup, 0) + Price * amount");
+    const { n, out } = solve(suppliers, [{ of: "", sign: "ge", limit: 1000 }], "", "min", fee);
+    expect(rows(out.plan).map((r) => r.Amount)).toEqual([700, 300, 0]);
+    expect(out.best).toBe(2420);
+    expect(n.cachedStatus).not.toMatch(/stopped/);
+  });
+
   it("a Min If Used option's Min is 0 for every other option's reach too", () => {
     const opts = frame([{ Name: "A", Gain: 1, Min: 10, "Min If Used": 10 }, { Name: "B", Gain: 2, "Min If Used": 1 }]);
     const { out } = solve(opts, [{ of: "", sign: "le", limit: 20 }], "Gain");

@@ -165,6 +165,9 @@ fn cell(fr: &Frame, j: usize, r: usize) -> Option<&V> {
 const CURVE_STEPS: usize = 16;
 const CURVE_ROUNDS: usize = 14;
 
+/// An option's pieces of the curve: the option, each piece's variable and width, and the kinks (below).
+type Pieces = (usize, Vec<(usize, f64)>, Vec<usize>);
+
 struct Curved {
     x: Vec<f64>,
     duals: Option<Vec<f64>>,
@@ -241,7 +244,8 @@ fn curved(
         let (mut vlo, mut vhi, mut whole) = (lo.clone(), hi.clone(), program.whole.clone());
         let mut vscale = scale.to_vec();
         let mut rows: Vec<(Vec<f64>, Sign, f64)> = Vec::new();
-        let mut pieces: Vec<(usize, Vec<(usize, f64)>)> = Vec::new();
+        // Each option's pieces (variable, width) and its kinks: the k where piece k+1 is steeper than piece k.
+        let mut pieces: Vec<Pieces> = Vec::new();
         let mut bumpy = false;
         for i in 0..n_opt {
             let p = points(i, &near[i]);
@@ -260,23 +264,28 @@ fn curved(
                 list.push((first + k - 1, w));
                 slopes.push(slope);
             }
-            bumpy |= slopes.windows(2).any(|s| s[1] > s[0] + 1e-9 * (1.0 + s[0].abs()));
-            pieces.push((i, list));
+            let kinks: Vec<usize> = (0..slopes.len().saturating_sub(1))
+                .filter(|&k| slopes[k + 1] > slopes[k] + 1e-9 * (1.0 + slopes[k].abs()))
+                .collect();
+            bumpy |= !kinks.is_empty();
+            pieces.push((i, list, kinks));
         }
-        let fill_in_order = !bumpy;
-        // Switch k says pieces up to k are full: piece k is full when it is on, piece k+1 is empty when it is off.
-        let mut switches: Vec<(usize, usize, usize, f64, f64)> = Vec::new();
-        if !fill_in_order {
-            for (_, list) in &pieces {
-                for k in 0..list.len().saturating_sub(1) {
-                    let z = c.len();
-                    c.push(0.0);
-                    vlo.push(0.0);
-                    vhi.push(1.0);
-                    whole.push(true);
-                    vscale.push(list[k].1.max(list[k + 1].1));
-                    switches.push((z, list[k].0, list[k + 1].0, list[k].1, list[k + 1].1));
-                }
+        // A switch only at a kink (a setup fee, a price break): there piece k must be full before piece k+1 starts,
+        // which the LP won't do by itself since k+1 pays better. Between kinks the slopes fall, so the LP fills those
+        // pieces in order unprompted. Switch k on: piece k full; off: every piece after k empty (any of them may pay
+        // better than k, so gating only k+1 would let the plan skip past the kink).
+        let mut switches: Vec<(usize, usize, f64, Vec<usize>, f64)> = Vec::new();
+        for (_, list, kinks) in &pieces {
+            for &k in kinks {
+                let z = c.len();
+                c.push(0.0);
+                vlo.push(0.0);
+                vhi.push(1.0);
+                whole.push(true);
+                let later: Vec<usize> = list[k + 1..].iter().map(|&(v, _)| v).collect();
+                let room: f64 = list[k + 1..].iter().map(|&(_, w)| w).sum();
+                vscale.push(list[k].1.max(room));
+                switches.push((z, list[k].0, list[k].1, later, room));
             }
         }
         let width = c.len();
@@ -288,7 +297,7 @@ fn curved(
             rows.push((pad(a.clone()), *s, *b));
         }
         let limits = rows.len();
-        for (i, list) in &pieces {
+        for (i, list, _) in &pieces {
             let mut r = vec![0.0; width];
             r[*i] = 1.0;
             for (j, _) in list {
@@ -296,14 +305,16 @@ fn curved(
             }
             rows.push((r, Sign::Eq, lo[*i]));
         }
-        for &(z, this, next, w, w_next) in &switches {
+        for (z, this, w, later, room) in &switches {
             let mut r = vec![0.0; width];
-            r[this] = -1.0;
-            r[z] = w;
+            r[*this] = -1.0;
+            r[*z] = *w;
             rows.push((r, Sign::Le, 0.0));
             let mut r = vec![0.0; width];
-            r[next] = 1.0;
-            r[z] = -w_next;
+            for &j in later {
+                r[j] = 1.0;
+            }
+            r[*z] = -room;
             rows.push((r, Sign::Le, 0.0));
         }
         // The tableau's rows: these, and one for each variable with an upper bound (every piece and switch has one).
