@@ -1,3 +1,5 @@
+@font-face { font-family: "Fraunces"; src: url(fonts/Fraunces.woff2) format("woff2"); font-weight: 100 900; font-style: normal; }
+@font-face { font-family: "Fraunces"; src: url(fonts/Fraunces-Italic.woff2) format("woff2"); font-weight: 100 900; font-style: italic; }
 :root {
   --surface: #fffefb;
   --border: #fffefb;
@@ -5,7 +7,7 @@
   --text: #22312a;
   --text-bright: #22312a;
   --text-dim: #6b7a71;
-  --font-sans: "Iowan Old Style", Georgia, serif;
+  --font-sans: "Fraunces", Georgia, serif;
   --chart-font-scale: 1.15;
   --chart-1: #2f6f4f;
   --chart-2: #d9a441;
@@ -16,23 +18,23 @@
   --chart-7: #b5835a;
   --chart-8: #9aa36b;
 }
-body { background: #f3efe6; color: #22312a; font-family: "Iowan Old Style", Georgia, serif; }
-.letter { max-width: 760px; margin: 0 auto; background: #fffefb; padding: 48px 56px; border-radius: 4px; box-shadow: 0 24px 48px -32px rgba(34, 49, 42, 0.5); }
+body { background: #ece6d8 url(images/paper-grain.png); color: #22312a; font-family: "Fraunces", Georgia, serif; font-optical-sizing: auto; }
+.letter { max-width: 760px; margin: 0 auto; background: #fffefb; padding: 48px 56px; border: 1px solid #ddd5c4; }
 .date { font-variant: small-caps; letter-spacing: 0.08em; color: #6b7a71; margin: 0; }
-h1 { font-size: 44px; font-weight: 400; margin: 6px 0 14px; }
+h1 { font-size: 52px; font-weight: 300; letter-spacing: -0.02em; margin: 6px 0 14px; text-wrap-style: balance; }
 h1 em { color: #2f6f4f; }
-.intro { font-size: 18px; line-height: 1.6; margin: 0 0 30px; }
+.intro { font-size: 19px; line-height: 1.6; margin: 0 0 30px; text-wrap-style: pretty; }
 .good { color: #2f6f4f; }
 .cat { margin-bottom: 14px; }
 .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; gap: 12px; }
 .name { font-size: 16px; }
-.amt { font-family: system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums; }
+.amt { font-family: var(--font-mono); font-size: 13px; }
 .amt small { color: #6b7a71; }
-.track { position: relative; height: 10px; background: #efe9dc; border-radius: 99px; }
-.bar { height: 100%; border-radius: 99px; background: #2f6f4f; }
+.track { position: relative; height: 6px; background: #efe9dc; }
+.bar { height: 100%; background: #2f6f4f; }
 .over .bar { background: #c2593f; }
 .over .name { color: #c2593f; }
-.flag { position: absolute; right: 0; top: -22px; font-family: system-ui, sans-serif; font-size: 11px; font-weight: 700; color: #c2593f; }
+.flag { position: absolute; right: 0; top: -22px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: #c2593f; }
 .pair { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; margin-top: 34px; align-items: start; }
 h2 { font-size: 18px; font-weight: 600; margin: 0 0 10px; }
 .note ul { padding-left: 18px; line-height: 1.7; margin: 0; }
@@ -40,3 +42,4 @@ h2 { font-size: 18px; font-weight: 600; margin: 0 0 10px; }
 [data-sol-ref="split"] .sol-box { height: 300px; border: none; }
 .sol-box__label, .sol-box__title { display: none; }
 @media (max-width: 720px) { .letter { padding: 28px 22px; } .pair { grid-template-columns: 1fr; } h1 { font-size: 32px; } }
+.signature { width: 160px; margin-top: 4px; }

@@ -554,7 +554,19 @@ lines.
 selectors under `.sol-htmlpage__doc`, `html`, `body` and `:root` naming the page itself, rules in `@media`, `@supports`,
 `@container` and `@layer` scoped the same, `@keyframes` and `@font-face` left as they are. So a page styles nothing else
 on screen, and the app's look reaches the page only where the page leaves it unset. Nothing in it fetches: `@import`
-goes, and so does every `url()` that isn't an inline image (it reads `none`).
+goes, and so does every `url()` that isn't an inline image or font (it reads `none`).
+
+**Pictures and fonts from the data folder.** A page names its own files as a web page would: `<img src="images/logo.svg">`,
+`style="background: url(images/grain.png)"`, `@font-face { src: url(fonts/Fraunces.woff2) }`. A path is relative to the
+file it's written in (`localAssetPath`; a leading `/` starts at the data folder), and the card reads each file and puts it
+inline as a `data:` URI (`assetRefs`, `withAssets`), so the page still fetches nothing and the sanitizer stays as it is.
+The stylesheet's files resolve when it is read; the page's after its Knap render, so a path that comes from the data
+(`<img src="{{ p.Photo }}">` over a Photo column of `photos/ada.png`) draws too. Only pictures (png, jpg, gif, webp,
+avif, svg) and fonts (woff2, woff, ttf, otf) are read (`ASSET_TYPES`), only inside the data folder (a `..` that climbs out
+names nothing), at most 8 MB each (`MAX_ASSET_BYTES`). Each file is read once a Refresh, with the page. A file the card
+can't read stays as written and is named on the card ("pages/img/gone.png isn't in the data folder"); the page still
+draws. The demo vault's pictures and fonts ship in the web build beside its workbooks (`DEMO_VAULT_BINARY`), so the
+examples show on the web.
 
 **On screen** (`HtmlPageOverlay.tsx`, open state in `htmlPageStore.ts`): the Dashboard board's chrome (the header with
 the card's title, a Refresh that reads the files again and Close; Esc closes; the canvas under it stops painting) over
@@ -586,7 +598,9 @@ a Dashboard does, and a page's own `@media` rules answer the screen's width.
 Tests: `tests/graph/nodes/htmlPage.test.ts`: the CSS scoped (page selectors, lists, `@media`, `@keyframes` left alone) and
 kept from fetching; a document split into its body and styles; a bare tag's slot; the card's inputs in first-use order;
 a render over its inputs (a slot per bare tag, a filtered tag escaped, a loop over a Frame's rows); an unwired tag left as
-written; a missing file named; the save round-trip with its sockets. The demo pages render in the HTML Showcase example.
+written; a missing file named; the save round-trip with its sockets; a local file's path (relative, from the root, none
+that climbs out or has a scheme or another kind), found in a src and a url() and put inline, a path from the data drawn,
+a missing picture named on the card; a quoted inline font kept while a quoted web url() goes. The demo pages render in the HTML Showcase example.
 
 ## What is sanitized, and where
 
@@ -596,7 +610,7 @@ A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each
 |---|---|
 | Note card read view, and a text value shown as markdown | `sanitizeNoteHtml` (`noteHtml.ts`, DOMPurify plus the network gate: without a grant, a foreign document's web pictures, video and audio, an SVG picture's `href`, a `background`, and any style or `<style>` that can fetch are held back, since loading one is a fetch; which addresses count is [[live-connections#The network gate]]) on every render. Checkboxes are re-enabled after sanitizing, on marked's own `<input>` elements only. |
 | Report preview, Note panel, embedded document, Import Obsidian Note | `sanitizeNoteHtml` on the rendered HTML. |
-| HTML Page | `sanitizeNoteHtml` on the rendered page; each tag's print HTML-escaped first (`renderKnapHtml`); its CSS scoped to the page with `@import` and every non-image `url()` removed (`scopeCss`, [[#HTML pages]]). |
+| HTML Page | `sanitizeNoteHtml` on the rendered page; each tag's print HTML-escaped first (`renderKnapHtml`); its CSS scoped to the page with `@import` and every `url()` that isn't an inline picture or font removed (`scopeCss`); a local picture or font only from inside the data folder, inline (`localAssetPath`, [[#HTML pages]]). An inline `data:` URL never counts as a fetch for the network gate (`CSS_FETCH`, `webUrl.ts`). |
 | Webpage export | each markdown segment passes DOMPurify; the title, embed names, chart labels and every frozen value pass `escapeHtml` after the render; an image source must be `http(s)` or `data:image`; an SVG value's markup passes `sanitizeSvg`. The palette accent is written into the stylesheet, so a palette override loaded from a file must be a `#rrggbb` hex (`palette.ts`). Chart SVG is serialized from the live canvas, where every SVG source was already sanitized at its seam (Pele with links and images off, the SVG Picker's class at intake). |
 | Source highlight | the source is HTML-escaped before any span is added. |
 | Links in rendered markdown | one capture-phase document click guard (`installExternalLinkGuard`, installed by `App.tsx`) opens `http(s)` links to another origin, and `mailto:` links, in the system browser (a new tab on web), and never navigates the app's webview. Same-origin, hash and relative links are left alone. |

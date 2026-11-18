@@ -1,41 +1,39 @@
-body {
-  background: #0f172a;
-  color: #e2e8f0;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-.brief { max-width: 760px; margin: 0 auto; }
-.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-h1 { font-size: 30px; margin: 0; letter-spacing: -0.01em; }
-.badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
-.badge.ok { background: #14532d; color: #86efac; }
-.badge.warn { background: #713f12; color: #fde68a; }
-.badge.late { background: #7f1d1d; color: #fecaca; }
-.summary { color: #94a3b8; font-size: 16px; margin: 10px 0 24px; }
-.numbers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 0 28px; }
-.numbers div { background: #1e293b; border-radius: 10px; padding: 14px 16px; }
-.numbers dt { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
-.numbers dd { margin: 4px 0 0; font-size: 24px; font-weight: 700; }
-h2 { font-size: 15px; color: #cbd5e1; margin: 26px 0 10px; }
-.timeline { list-style: none; padding: 0; margin: 0; border-left: 2px solid #334155; }
-.timeline li { position: relative; padding: 6px 0 10px 18px; display: flex; gap: 14px; }
-.timeline li::before { content: ""; position: absolute; left: -7px; top: 11px; width: 12px; height: 12px; border-radius: 50%; background: #334155; border: 2px solid #0f172a; }
-.timeline li.done::before { background: #22c55e; }
-.timeline .when { color: #94a3b8; font-variant-numeric: tabular-nums; min-width: 96px; }
-.timeline li.done .what { color: #94a3b8; text-decoration: line-through; }
-[data-sol-ref="burn"] .dashboard-box { height: 260px; }
-/* The app's own colors, set for this page: the chart box follows. */
+@font-face { font-family: "Space Grotesk"; src: url(fonts/SpaceGrotesk.woff2) format("woff2"); font-weight: 300 700; }
+
 :root {
-  --surface: #1e293b;
-  --surface-sunken: #0f172a;
-  --border: #334155;
+  --surface: #121a2c;
+  --surface-sunken: #0c1220;
+  --border: #26324a;
+  --border-strong: #26324a;
   --text: #e2e8f0;
   --text-bright: #f8fafc;
+  --text-dim: #94a3b8;
   --text-muted: #94a3b8;
-}
-:root {
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
   --chart-font-scale: 1.2;
-  --chart-1: #38bdf8;
-  --chart-2: #f59e0b;
-  --border-strong: #334155;
+  --chart-1: #7dd3fc;
+  --chart-2: #f5b914;
 }
-[data-sol-ref="burn"] .sol-box__label { display: none; }
+body { background: #0c1220; color: #e2e8f0; font-family: "Space Grotesk", system-ui, sans-serif; }
+.brief { max-width: 780px; margin: 0 auto; }
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid #26324a; }
+h1 { font-size: 40px; font-weight: 700; margin: 0; letter-spacing: -0.03em; text-wrap-style: balance; }
+.badge { font-family: var(--font-mono); font-size: 12px; padding: 3px 8px; border-radius: 4px; border: 1px solid; }
+.badge.ok { color: #6ee7b7; border-color: #2fae7a; background: color-mix(in srgb, #2fae7a 16%, transparent); }
+.badge.warn { color: #fcd34d; border-color: #d9a93b; background: color-mix(in srgb, #d9a93b 16%, transparent); }
+.badge.late { color: #fca5a5; border-color: #e0473a; background: color-mix(in srgb, #e0473a 16%, transparent); }
+.summary { color: #94a3b8; font-size: 17px; margin: 14px 0 24px; text-wrap-style: pretty; }
+/* Each figure is a Solenoid card: a header tinted and capped in its color, a neutral body beneath. */
+.numbers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 0 28px; }
+.numbers div { border-radius: 8px; overflow: hidden; }
+.numbers dt { font-size: 12px; padding: 6px 12px; background: color-mix(in srgb, #f5b914 18%, #121a2c); border: 1px solid #f5b914; border-bottom-color: color-mix(in srgb, #f5b914 40%, #121a2c); border-radius: 8px 8px 0 0; color: #f5d77a; }
+.numbers dd { margin: 0; padding: 10px 12px 12px; font-family: var(--font-mono); font-size: 22px; border: 1px solid #26324a; border-top: none; border-radius: 0 0 8px 8px; background: #121a2c; }
+h2 { font-size: 13px; font-weight: 500; color: #94a3b8; margin: 28px 0 10px; }
+.timeline { list-style: none; padding: 0; margin: 0; border-left: 1px solid #26324a; }
+.timeline li { position: relative; padding: 6px 0 10px 18px; display: flex; gap: 16px; }
+.timeline li::before { content: ""; position: absolute; left: -5px; top: 12px; width: 9px; height: 9px; border-radius: 50%; background: #0c1220; border: 1px solid #475569; }
+.timeline li.done::before { background: #2fae7a; border-color: #2fae7a; }
+.timeline .when { font-family: var(--font-mono); font-size: 13px; color: #94a3b8; min-width: 100px; padding-top: 1px; }
+.timeline li.done .what { color: #64748b; text-decoration: line-through; }
+[data-sol-ref="burn"] .sol-box { height: 260px; }
+[data-sol-ref="burn"] .sol-box__label, [data-sol-ref="burn"] .sol-box__title { display: none; }

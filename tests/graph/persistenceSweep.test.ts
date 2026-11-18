@@ -182,6 +182,7 @@ describe("[[save-format#A save loses nothing quietly]] — every own field is pe
     templateVars: "Report's last Knap render variables, for the overlay's live preview; rebuilt from the cables on every compute",
     render: "HTML Page's page as its last compute rendered it (body and scoped CSS), for the overlay; read from its files and rendered again on every compute",
     error: "HTML Page's reason its page didn't render (a file it can't read, a Knap error); recomputed with the page",
+    missingAssets: "HTML Page's pictures and fonts it couldn't draw, for the card; found again on every compute",
     lastWritten: "Write to Obsidian's last written note path, for Open in Obsidian; a load has written nothing",
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",
     plannedKeys: "Write to Obsidian's Keys text as of its last plan, so a Keys edit re-plans; re-read from the literal on every compute",

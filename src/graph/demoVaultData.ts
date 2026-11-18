@@ -4,7 +4,7 @@ export const DEMO_VAULT_FILES = import.meta.glob(
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
 
-/** The vault's files that aren't text (a workbook), as the address the build serves each from. */
-export const DEMO_VAULT_BINARY = import.meta.glob("../../demo-vault/**/*.{xlsx,xlsm}", {
+/** The vault's files that aren't text (a workbook, a picture, a font), as the address the build serves each from. */
+export const DEMO_VAULT_BINARY = import.meta.glob("../../demo-vault/**/*.{xlsx,xlsm,png,jpg,jpeg,gif,webp,avif,svg,woff2,woff,ttf,otf}", {
   query: "?url", import: "default", eager: true,
 }) as Record<string, string>;

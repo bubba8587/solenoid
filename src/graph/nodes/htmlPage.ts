@@ -6,11 +6,11 @@ import { dropInputCables } from "../components/cablePrune";
 import { embedBareVariables, extractKnapVariables, knapErrorText, renderKnapHtml } from "../knapTemplate";
 import { toTemplateValue } from "../templateValue";
 import { isFrameRef, readFrame } from "../frameBackend";
-import { hasFs, readFileText } from "../fileBridge";
+import { hasFs, readFileBytes, readFileText } from "../fileBridge";
 import { getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { connectionStore } from "../connectionStore";
 import { solError, type SolError } from "../errorValue";
-import { pageParts, scopeCss, slotsFor } from "../htmlPageText";
+import { ASSET_TYPES, assetDataUri, assetRefs, dirOf, pageParts, scopeCss, slotsFor, withAssets } from "../htmlPageText";
 
 /** The page as the last compute left it: its body with a slot per bare tag (unsanitized: the overlay sanitizes it as it
  *  draws), its CSS scoped, or what kept it from rendering. */
@@ -18,6 +18,9 @@ export interface HtmlPageRender {
   body: string;
   css: string;
 }
+
+/** The most one picture or font may weigh: it travels inline in the page. */
+export const MAX_ASSET_BYTES = 8 * 1024 * 1024;
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
@@ -36,11 +39,15 @@ export class HtmlPageNode extends GraphNode {
 
   render: HtmlPageRender | null = null;
   error: SolError | null = null;
+  /** The pictures and fonts the page names that couldn't be drawn, each with why. */
+  missingAssets: string[] = [];
 
   private _refKeys: string[];
   private _values = new Map<string, unknown>();
   private _key: string | undefined;
   private _files: { html: string; css: string } | null = null;
+  /** Each local file the page drew on, inline, or why it couldn't be: read once a Refresh. */
+  private _assets = new Map<string, string | { missing: string }>();
 
   constructor(init?: { label?: string; fileName?: string; styleFile?: string; sideVars?: string[]; collapsed?: boolean }) {
     super("HtmlPage");
@@ -90,7 +97,8 @@ export class HtmlPageNode extends GraphNode {
     if (key === this._key && this._files) return this._files;
     try {
       const [html, css] = await Promise.all([readFileText(folder, page), style ? readFileText(folder, style) : Promise.resolve("")]);
-      this._files = { html, css };
+      this._assets = new Map();
+      this._files = { html, css: await this.inlined(folder, css, dirOf(style)) };
       this._key = key;
       return this._files;
     } catch {
@@ -98,6 +106,24 @@ export class HtmlPageNode extends GraphNode {
       this._key = undefined;
       return solError("#REF!", `Can't read ${page}${style ? ` or ${style}` : ""} in the data folder`);
     }
+  }
+
+  /** `text` with the pictures and fonts it names, relative to `dir`, inline from the data folder. */
+  private async inlined(folder: string, text: string, dir: string): Promise<string> {
+    const refs = assetRefs(text, dir);
+    await Promise.all(refs.filter((p) => !this._assets.has(p)).map(async (p) => {
+      try {
+        const bytes = await readFileBytes(folder, p);
+        this._assets.set(p, bytes.length > MAX_ASSET_BYTES
+          ? { missing: `${p} is over ${MAX_ASSET_BYTES / 1024 / 1024} MB` }
+          : assetDataUri(bytes, ASSET_TYPES[p.split(".").pop()!.toLowerCase()]));
+      } catch {
+        this._assets.set(p, { missing: `${p} isn't in the data folder` });
+      }
+    }));
+    const inline = new Map<string, string>();
+    for (const p of refs) { const a = this._assets.get(p); if (typeof a === "string") inline.set(p, a); }
+    return withAssets(text, dir, inline);
   }
 
   async data(inputs?: Record<string, unknown[]>): Promise<Record<string, never>> {
@@ -122,7 +148,12 @@ export class HtmlPageNode extends GraphNode {
       return {};
     }
     this.error = null;
-    this.render = { body: slotsFor(r.output), css: scopeCss([...parts.styles, files.css].join("\n")) };
+    const folder = getCsvFolder();
+    const pageDir = dirOf(this.fileName.trim());
+    const body = await this.inlined(folder, r.output, pageDir);
+    const styles = await this.inlined(folder, parts.styles.join("\n"), pageDir);
+    this.missingAssets = [...this._assets.values()].flatMap((a) => (typeof a === "string" ? [] : [a.missing]));
+    this.render = { body: slotsFor(body), css: scopeCss([styles, files.css].join("\n")) };
     return {};
   }
 }

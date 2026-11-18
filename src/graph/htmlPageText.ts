@@ -49,12 +49,12 @@ function scopeSelectors(list: string): string {
 }
 
 /** The page's CSS with every rule scoped to the page, so it styles nothing else on screen, and nothing that fetches:
- *  `@import` goes, and a `url()` that isn't an inline image. */
+ *  `@import` goes, and a `url()` that isn't an inline image or font (a local file the card read is inline by now). */
 export function scopeCss(css: string): string {
   const src = css
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/@import[^;]*;?/gi, "")
-    .replace(/url\(\s*(['"]?)(?!data:image\/)[^)]*\1\s*\)/gi, "none");
+    .replace(/url\((?!\s*['"]?\s*data:(?:image|font)\/)\s*(['"]?)[^)]*\1\s*\)/gi, "none");
   let out = "";
   let i = 0;
   const block = (depth: number): void => {
@@ -98,4 +98,62 @@ export function scopeCss(css: string): string {
   };
   block(0);
   return out.trim();
+}
+
+/** The files a page may draw from the data folder, by extension: pictures and fonts, nothing that runs. */
+export const ASSET_TYPES: Readonly<Record<string, string>> = {
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", avif: "image/avif",
+  svg: "image/svg+xml", woff2: "font/woff2", woff: "font/woff", ttf: "font/ttf", otf: "font/otf",
+};
+
+/** A file the page names, as a path in the data folder: relative to the folder of the file it's written in, or from the
+ *  data folder's root with a leading `/`. None for an address with a scheme (`https:`, `data:`), a kind not in
+ *  ASSET_TYPES, or a path that climbs out of the data folder. */
+export function localAssetPath(ref: string, baseDir: string): string | null {
+  const r = ref.trim();
+  if (!r || /^[a-z][a-z0-9+.-]*:/i.test(r) || r.startsWith("//") || r.startsWith("#")) return null;
+  const clean = r.split(/[?#]/)[0];
+  const ext = (/\.([a-z0-9]+)$/i.exec(clean)?.[1] ?? "").toLowerCase();
+  if (!(ext in ASSET_TYPES)) return null;
+  let decoded: string;
+  try { decoded = decodeURIComponent(clean); } catch { return null; }
+  const parts = decoded.startsWith("/") ? [] : baseDir.split("/").filter(Boolean);
+  for (const seg of decoded.split(/[/\\]/)) {
+    if (!seg || seg === ".") continue;
+    if (seg === "..") { if (!parts.length) return null; parts.pop(); } else parts.push(seg);
+  }
+  return parts.join("/");
+}
+
+/** The folder a data-folder path sits in (`pages/team.html` → `pages`). */
+export function dirOf(path: string): string {
+  const i = path.replace(/\\/g, "/").lastIndexOf("/");
+  return i === -1 ? "" : path.slice(0, i);
+}
+
+const SRC_RE = /(\b(?:src|poster)\s*=\s*)(["'])([^"']*)\2/gi;
+const URL_RE = /url\(\s*(["']?)([^"')]+)\1\s*\)/gi;
+
+/** Every local file a page's text names, in a `src` or a CSS `url()`, as data-folder paths. */
+export function assetRefs(text: string, baseDir: string): string[] {
+  const out = new Set<string>();
+  for (const m of text.matchAll(SRC_RE)) { const p = localAssetPath(m[3], baseDir); if (p) out.add(p); }
+  for (const m of text.matchAll(URL_RE)) { const p = localAssetPath(m[2], baseDir); if (p) out.add(p); }
+  return [...out];
+}
+
+/** The text with each local file it names replaced by that file inline (`data` holds each path's data: URI); a file
+ *  `data` lacks is left as written, so it shows as missing rather than as something else. */
+export function withAssets(text: string, baseDir: string, data: ReadonlyMap<string, string>): string {
+  const inline = (ref: string) => { const p = localAssetPath(ref, baseDir); return p ? data.get(p) : undefined; };
+  return text
+    .replace(SRC_RE, (m, lead: string, q: string, ref: string) => { const d = inline(ref); return d ? `${lead}${q}${d}${q}` : m; })
+    .replace(URL_RE, (m, _q: string, ref: string) => { const d = inline(ref); return d ? `url("${d}")` : m; });
+}
+
+/** A file's bytes as a data: URI of its type. */
+export function assetDataUri(bytes: Uint8Array, mime: string): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return `data:${mime};base64,${btoa(bin)}`;
 }

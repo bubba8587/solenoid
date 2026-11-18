@@ -84,6 +84,11 @@ export function HtmlPageComponent({ data, emit }: NodeProps<HtmlPageNodeType>) {
             </>
           )}
           {data.error && <ErrorChip err={data.error} />}
+          {data.missingAssets.length > 0 && (
+            <div className="sol-conn__note" title={data.missingAssets.join("\n")}>
+              {data.missingAssets.length === 1 ? data.missingAssets[0] : `${data.missingAssets.length} pictures or fonts aren't in the data folder: ${data.missingAssets[0]}…`}
+            </div>
+          )}
           {refKeys.length > 0 && <div className="solenoid-node__section-divider" />}
           {refKeys.map((key) => (
             <ReportRefRow key={key} data={data} emit={emit} refKey={key} label={key} value={data.refValue(key)} />

@@ -6,7 +6,7 @@
     {% if unpaid == 0 %}<div class="stamp">Paid</div>{% else %}<div class="stamp due">Balance due</div>{% endif %}
     <header>
       <div>
-        <div class="brand">Kiln &amp; Co.</div>
+        <div class="brand"><img src="images/kiln-mark.svg" alt="">Kiln &amp; Co.</div>
         <p class="addr">14 Potter's Row<br>Asheville, NC 28801</p>
       </div>
       <div class="meta">
@@ -43,6 +43,10 @@
       <div class="grand"><span>Total</span><span>${{ due | number_format: 2 }}</span></div>
     </section>
 
+    <section class="sign">
+      <img src="images/signature.svg" alt="Signed">
+      <p>Mara Okafor, accounts</p>
+    </section>
     <footer>Thank you for your business. Payment is due within 30 days; make checks out to Kiln &amp; Co.</footer>
   </div>
 </body></html>

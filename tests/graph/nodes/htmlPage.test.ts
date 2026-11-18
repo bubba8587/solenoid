@@ -1,7 +1,7 @@
 // [[C68]] knapIsTheDocumentSyntax, [[reports-and-notes#HTML pages]], [[engineering#Untrusted content]]
 import { describe, it, expect, afterEach } from "vitest";
 import { HtmlPageNode } from "../../../src/graph/nodes/htmlPage";
-import { pageParts, scopeCss, slotsFor, PAGE_SCOPE, SLOT_ATTR } from "../../../src/graph/htmlPageText";
+import { pageParts, scopeCss, slotsFor, localAssetPath, assetRefs, withAssets, PAGE_SCOPE, SLOT_ATTR } from "../../../src/graph/htmlPageText";
 import { setFsProvider, type FsProvider } from "../../../src/graph/fileBridge";
 import { settingsStore } from "../../../src/graph/settingsStore";
 import { extractInit } from "../../../src/graph/nodeInit";
@@ -32,6 +32,9 @@ describe("an HTML Page's CSS", () => {
     expect(out).not.toContain("x.test");
     expect(out).toContain("background: none");
     expect(out).toContain("url(data:image/png;base64,AA)");
+    // Quoted, as the card writes a local file it inlined; a quote mustn't let a fetch past either.
+    expect(scopeCss('@font-face { src: url("data:font/woff2;base64,AA") }')).toContain('url("data:font/woff2;base64,AA")');
+    expect(scopeCss('.a { background: url("https://x.test/c.png") }')).toContain("background: none");
   });
 });
 
@@ -119,5 +122,64 @@ describe("the HTML Page card", () => {
     const init = extractInit(node) as Record<string, unknown>;
     expect(init).toMatchObject({ fileName: "pages/q3.html", styleFile: "pages/q3.css", sideVars: ["title", "total", "sales", "note"] });
     expect(Object.keys(new HtmlPageNode(init as never).inputs)).toEqual(["title", "total", "sales", "note"]);
+  });
+});
+
+describe("an HTML Page's pictures and fonts", () => {
+  it("names a file in the data folder relative to the file that names it, or from its root", () => {
+    expect(localAssetPath("img/a.png", "pages")).toBe("pages/img/a.png");
+    expect(localAssetPath("../logo.svg", "pages/2026")).toBe("pages/logo.svg");
+    expect(localAssetPath("/brand/logo.svg", "pages")).toBe("brand/logo.svg");
+    expect(localAssetPath("fonts/A%20B.woff2?v=2", "pages")).toBe("pages/fonts/A B.woff2");
+  });
+
+  it("names nothing outside the data folder, at another address, or of a kind that isn't a picture or a font", () => {
+    for (const ref of ["../../etc/x.png", "https://x.test/a.png", "data:image/png;base64,AA", "//x.test/a.png", "notes.md", "run.js", "#top"]) {
+      expect(localAssetPath(ref, "pages"), ref).toBeNull();
+    }
+  });
+
+  it("finds them in a src and a CSS url(), and puts each file inline in their place", () => {
+    const html = '<img src="img/a.png"><div style="background: url(\'img/b.jpg\')"></div><img src="https://x.test/c.png">';
+    expect(assetRefs(html, "pages")).toEqual(["pages/img/a.png", "pages/img/b.jpg"]);
+    const out = withAssets(html, "pages", new Map([["pages/img/a.png", "data:image/png;base64,AA"]]));
+    expect(out).toContain('src="data:image/png;base64,AA"');
+    expect(out).toContain("url('img/b.jpg')");
+    expect(out).toContain('src="https://x.test/c.png"');
+  });
+
+  it("draws them inline on the page, a path from the data too, and names one it can't find", async () => {
+    const ROOT = "/data";
+    const TEXT: Record<string, string> = {
+      "pages/p.html": '<img src="img/logo.svg">{% for r in rows %}<img src="{{ r.Photo }}">{% endfor %}<img src="img/gone.png">',
+      "pages/p.css": '@font-face { font-family: X; src: url(fonts/x.woff2) } body { background: url("img/grain.png") }',
+    };
+    const BIN: Record<string, Uint8Array> = {
+      "pages/img/logo.svg": new TextEncoder().encode("<svg/>"),
+      "pages/photos/ada.png": new Uint8Array([137, 80, 78, 71]),
+      "pages/fonts/x.woff2": new Uint8Array([119, 79, 70, 50]),
+      "pages/img/grain.png": new Uint8Array([1, 2, 3]),
+    };
+    const rel = (p: string) => p.slice(ROOT.length + 1);
+    setFsProvider({
+      readTextFile: async (p: string) => { if (!(rel(p) in TEXT)) throw new Error("no"); return TEXT[rel(p)]; },
+      readBinary: async (p: string) => { if (!(rel(p) in BIN)) throw new Error("no"); return BIN[rel(p)]; },
+      join: async (...parts: string[]) => parts.join("/"),
+    } as unknown as FsProvider);
+    settingsStore.set("csvFolder", ROOT);
+    const node = new HtmlPageNode({ fileName: "pages/p.html", styleFile: "pages/p.css" });
+    const rows = { __frame: true, columns: [{ name: "Photo", type: "string", values: ["photos/ada.png"] }] };
+    await node.data({ rows: [rows] });
+    await new Promise((r) => setTimeout(r, 0));
+    await node.data({ rows: [rows] });
+    const body = node.render!.body;
+    expect(body).toContain(`src="data:image/svg+xml;base64,${btoa("<svg/>")}"`);
+    expect(body).toContain('src="data:image/png;base64,iVBORw=="');
+    expect(body).toContain('src="img/gone.png"');
+    expect(node.render!.css).toContain('url("data:font/woff2;base64,');
+    expect(node.render!.css).toContain('url("data:image/png;base64,');
+    expect(node.missingAssets).toEqual(["pages/img/gone.png isn't in the data folder"]);
+    setFsProvider(null);
+    settingsStore.set("csvFolder", "");
   });
 });

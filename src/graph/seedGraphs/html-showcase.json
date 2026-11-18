@@ -851,8 +851,8 @@
       "targetInput": "list"
     },
     {
-      "source": "q_col",
-      "sourceOutput": "values",
+      "source": "q_ledger",
+      "sourceOutput": "frame",
       "target": "q_chart",
       "targetInput": "values"
     },

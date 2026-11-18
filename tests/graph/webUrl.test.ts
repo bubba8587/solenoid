@@ -21,5 +21,6 @@ describe("which addresses reach the web", () => {
   it("CSS that fetches is caught", () => {
     for (const c of ["background:url(x)", "background-image: image-set('x.png' 1x)", "@import 'x.css';"]) expect(CSS_FETCH.test(c), c).toBe(true);
     expect(CSS_FETCH.test("color: red")).toBe(false);
+    for (const c of ["background:url(data:image/png;base64,AA)", "src: url('data:font/woff2;base64,AA')", 'background: url( "data:image/svg+xml;base64,AA")']) expect(CSS_FETCH.test(c), c).toBe(false);
   });
 });

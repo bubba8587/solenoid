@@ -1,53 +1,51 @@
+@font-face { font-family: "Space Grotesk"; src: url(fonts/SpaceGrotesk.woff2) format("woff2"); font-weight: 300 700; }
+
+/* Each person is drawn the way Solenoid draws a card: a header tinted in their color and capped in it on three sides,
+   over a neutral body. Flat, no shadow at rest; numbers in the app's mono so they line up. */
 :root {
+  --ink: #17151f;
+  --muted: #6b6779;
+  --line: #e4e1ea;
   --surface: #ffffff;
-  --border: #ece7f6;
-  --border-strong: #ece7f6;
-  --text: #241f35;
-  --text-bright: #241f35;
-  --text-dim: #6e6787;
-  --text-muted: #8e88a6;
-  --font-sans: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --border: var(--line);
+  --border-strong: var(--line);
+  --text: var(--ink);
+  --text-bright: var(--ink);
+  --text-dim: var(--muted);
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
   --chart-font-scale: 1.2;
-  --chart-1: #7c3aed;
+  --chart-1: #5b4fd6;
 }
-body {
-  background: linear-gradient(180deg, #f4f0ff 0, #fbfaff 320px);
-  color: #241f35;
-  font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
-  max-width: 1120px;
-  margin: 0 auto;
+body { background: #f7f6f9; color: var(--ink); font-family: "Space Grotesk", system-ui, sans-serif; max-width: 1140px; margin: 0 auto; }
+.hero { display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 8px 0 26px; border-bottom: 2px solid var(--ink); margin-bottom: 26px; }
+h1 { font-size: 64px; font-weight: 700; letter-spacing: -0.04em; line-height: 0.9; margin: 0; }
+.stats { display: flex; gap: 28px; margin: 0; flex-wrap: wrap; }
+.stats dt { font-size: 12px; color: var(--muted); }
+.stats dd { margin: 2px 0 0; font-family: var(--font-mono); font-size: 18px; font-weight: 600; }
+.people { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+.person { border-radius: 8px; overflow: hidden; background: #fff; }
+.person > header {
+  display: flex; gap: 12px; align-items: center; padding: 12px 14px;
+  background: color-mix(in srgb, var(--c) 14%, #fff);
+  border: 1px solid var(--c); border-bottom: 1px solid color-mix(in srgb, var(--c) 40%, #fff);
+  border-radius: 8px 8px 0 0;
 }
-.hero { padding: 12px 0 26px; }
-.kicker { text-transform: uppercase; letter-spacing: 0.18em; font-size: 12px; color: #7c3aed; margin: 0; font-weight: 700; }
-h1 { font-size: 48px; margin: 4px 0 10px; letter-spacing: -0.03em; }
-.stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 10px; }
-.stats span { background: #fff; border: 1px solid #ece7f6; border-radius: 999px; padding: 6px 14px; font-size: 14px; color: #6e6787; }
-.stats b { color: #241f35; }
-.lead { color: #6e6787; margin: 0; }
-.people { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
-.person {
-  background: #fff;
-  border-radius: 16px;
-  padding: 16px;
-  border-top: 5px solid var(--c);
-  box-shadow: 0 1px 2px rgba(36, 31, 53, 0.06), 0 8px 24px -12px rgba(36, 31, 53, 0.18);
-  transition: transform 160ms ease, box-shadow 160ms ease;
-}
-.person:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(36, 31, 53, 0.08), 0 16px 32px -12px rgba(36, 31, 53, 0.28); }
-.top { display: flex; align-items: center; gap: 12px; }
-.avatar { width: 46px; height: 46px; border-radius: 12px; }
-h2 { font-size: 16px; margin: 0; }
-.where { font-size: 13px; color: #8e88a6; margin: 2px 0 0; white-space: nowrap; }
-.top > div { min-width: 0; flex: 1 1 auto; }
-.remote { color: #059669; font-weight: 600; margin-left: 6px; }
-.remote::before { content: "· "; color: #8e88a6; font-weight: 400; }
-.team { margin-left: auto; align-self: flex-start; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c); background: color-mix(in srgb, var(--c) 12%, white); padding: 4px 8px; border-radius: 6px; }
-.stars { color: #f59e0b; letter-spacing: 2px; margin: 12px 0 8px; font-size: 15px; }
-.goal { height: 8px; background: #f1eef8; border-radius: 99px; overflow: hidden; }
-.fill { height: 100%; background: var(--c); border-radius: 99px; }
-.goal-label { font-size: 12px; color: #8e88a6; margin: 6px 0 0; }
-.bio { font-size: 13px; color: #4b4562; margin: 10px 0 0; line-height: 1.45; }
-.chart { margin-top: 30px; }
-.chart h3 { font-size: 15px; margin: 0 0 10px; }
+.avatar { width: 40px; height: 40px; border-radius: 6px; }
+.who { min-width: 0; }
+.who h2 { font-size: 16px; font-weight: 600; margin: 0; text-wrap-style: balance; }
+.who p { font-size: 12px; color: var(--muted); margin: 2px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.remote { margin-left: 6px; color: #12805c; }
+.remote::before { content: "· "; color: var(--muted); }
+.body { border: 1px solid var(--line); border-top: none; border-radius: 0 0 8px 8px; padding: 10px 14px 14px; }
+.line { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; padding: 3px 0; }
+.line span { color: var(--muted); }
+.line b { font-family: var(--font-mono); font-weight: 500; }
+.stars { color: #c98a0b; letter-spacing: 1px; font-family: inherit !important; }
+.goal { height: 4px; background: var(--line); margin: 2px 0 6px; }
+.fill { height: 100%; background: var(--c); }
+.bio { font-size: 13px; color: #3f3b4b; margin: 10px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); text-wrap-style: pretty; }
+.chart { margin-top: 34px; }
+.chart h3 { font-size: 15px; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--ink); }
+.sol-box { border: none; background: transparent; }
 .sol-box__label, .sol-box__title { display: none; }
-.sol-box { border-radius: 16px; }
+@media (max-width: 720px) { h1 { font-size: 46px; } }

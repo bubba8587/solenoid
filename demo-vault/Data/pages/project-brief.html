@@ -10,9 +10,9 @@
     <p class="summary">{{ summary }}</p>
 
     <dl class="numbers">
-      <div><dt>Budget</dt><dd>{{ budget }}</dd></div>
-      <div><dt>Spent</dt><dd>{{ spent }}</dd></div>
-      <div><dt>Left</dt><dd>{{ left }}</dd></div>
+      <div><dt>Budget</dt><dd>${{ budget | number_format }}</dd></div>
+      <div><dt>Spent</dt><dd>${{ spent | number_format }}</dd></div>
+      <div><dt>Left</dt><dd>${{ left | number_format }}</dd></div>
     </dl>
 
     <h2>Milestones</h2>

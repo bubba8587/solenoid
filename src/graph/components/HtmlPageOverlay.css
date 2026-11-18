@@ -22,7 +22,8 @@
 /* A box sized by its content can't contain its own size (that would make it zero high). */
 .sol-htmlpage__box--flow .dashboard-box__value { container-type: inline-size; }
 /* A value in the page's text reads in the page's own type and ink; only an error keeps its red. */
-.sol-htmlpage__doc .solenoid-ref-inline:not(.solenoid-ref-inline--error) {
+/* At one class's weight, so the page's own rules for its values win (`h1 .solenoid-ref-inline`). */
+:where(.sol-htmlpage__doc) .solenoid-ref-inline:where(:not(.solenoid-ref-inline--error)) {
   font: inherit;
   color: inherit;
 }
