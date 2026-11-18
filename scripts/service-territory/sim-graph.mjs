@@ -14,8 +14,8 @@ const value = (id, label, v) => ({ id, type: "ValueInputNode", init: { label, va
 const wire = (source, sourceOutput, target, targetInput) => ({ source, sourceOutput, target, targetInput });
 const at = (n, x, y) => Object.assign(n, { x, y });
 
-/** In: Sites (with Incidents per Yr and Plan B Operator) and Days. Out, a value per run: drive hours, jobs served, the mean
- *  wait in days, the incidents still open at the end, and Plan B's drive hours on the same incidents and what it saves. */
+/** In: Sites (with Incidents per Yr, Plan B Operator and Plan C Operator) and Days. Out, a value per run: drive hours, jobs served, the mean
+ *  wait in days, the incidents still open at the end, Plan B's and Plan C's drive hours on the same incidents and what each saves, and the incidents each plan leaves open. */
 export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 20, x = 0, y = 0 } = {}) {
   const nodes = [
     at({ id: "m_sites", type: "CompositeInputNode", init: { label: "Sites" } }, 0, 0),
@@ -45,6 +45,18 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     at({ id: "m_queue_b", type: "GreedyQueueNode", init: { label: "Daily dispatch (Plan B)", orderDir: "desc" },
       stringLiterals: { group: "Plan B Operator", step: "Day", orderColumn: "Severity" } }, 2180, 700),
     at({ id: "m_saved", type: "ArithmeticNode", init: { label: "Plan B saving", op: "sub" } }, 3140, 860),
+    // Plan C: each site with the operator whose home base is fewest incident-miles away (the Solver outside).
+    at({ id: "m_queue_c", type: "GreedyQueueNode", init: { label: "Daily dispatch (Plan C)", orderDir: "desc" },
+      stringLiterals: { group: "Plan C Operator", step: "Day", orderColumn: "Severity" } }, 2180, 1100),
+    at({ id: "m_saved_c", type: "ArithmeticNode", init: { label: "Plan C saving", op: "sub" } }, 3140, 1160),
+    at(getCol("m_left_c", "Site"), 2820, 1320),
+    at(getCol("m_left_b", "Site"), 2820, 1020),
+    at({ id: "m_open_b", type: "ListLengthNode", init: { label: "Still open (Plan B)" } }, 3140, 1020),
+    at({ id: "o_open_b", type: "CompositeOutputNode", init: { label: "Still open (Plan B)" } }, 3460, 1480),
+    at({ id: "m_open_c", type: "ListLengthNode", init: { label: "Still open (Plan C)" } }, 3140, 1320),
+    at({ id: "o_hours_c", type: "CompositeOutputNode", init: { label: "Plan C drive hours" } }, 3460, 1020),
+    at({ id: "o_saved_c", type: "CompositeOutputNode", init: { label: "Hours Plan C saves" } }, 3460, 1160),
+    at({ id: "o_open_c", type: "CompositeOutputNode", init: { label: "Still open (Plan C)" } }, 3460, 1320),
     at({ id: "o_hours_b", type: "CompositeOutputNode", init: { label: "Plan B drive hours" } }, 3460, 700),
     at({ id: "o_saved", type: "CompositeOutputNode", init: { label: "Hours Plan B saves" } }, 3460, 860),
     at(getCol("m_dmin", "Cost"), 2820, 0),
@@ -74,6 +86,21 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     wire("m_jobs_day", "value", "m_queue_b", "perStep"),
     wire("m_score", "result", "m_queue_b", "order"),
     wire("m_cost", "result", "m_queue_b", "cost"),
+    wire("m_sev", "frame", "m_queue_c", "items"),
+    wire("m_days", "value", "m_queue_c", "steps"),
+    wire("m_jobs_day", "value", "m_queue_c", "perStep"),
+    wire("m_score", "result", "m_queue_c", "order"),
+    wire("m_cost", "result", "m_queue_c", "cost"),
+    wire("m_queue", "total", "m_saved_c", "a"),
+    wire("m_queue_c", "total", "m_saved_c", "b"),
+    wire("m_queue_c", "total", "o_hours_c", "value"),
+    wire("m_saved_c", "result", "o_saved_c", "value"),
+    wire("m_queue_c", "left", "m_left_c", "frame"),
+    wire("m_queue_b", "left", "m_left_b", "frame"),
+    wire("m_left_b", "values", "m_open_b", "list"),
+    wire("m_open_b", "result", "o_open_b", "value"),
+    wire("m_left_c", "values", "m_open_c", "list"),
+    wire("m_open_c", "result", "o_open_c", "value"),
     wire("m_queue", "total", "m_saved", "a"),
     wire("m_queue_b", "total", "m_saved", "b"),
     wire("m_queue_b", "total", "o_hours_b", "value"),
@@ -109,6 +136,10 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
         { id: "o_open", label: "Still open", tier: "basic", internalNodeId: "o_open" },
         { id: "o_hours_b", label: "Plan B drive hours", tier: "basic", internalNodeId: "o_hours_b" },
         { id: "o_saved", label: "Hours Plan B saves", tier: "basic", internalNodeId: "o_saved" },
+        { id: "o_hours_c", label: "Plan C drive hours", tier: "basic", internalNodeId: "o_hours_c" },
+        { id: "o_saved_c", label: "Hours Plan C saves", tier: "basic", internalNodeId: "o_saved_c" },
+        { id: "o_open_b", label: "Still open (Plan B)", tier: "basic", internalNodeId: "o_open_b" },
+        { id: "o_open_c", label: "Still open (Plan C)", tier: "basic", internalNodeId: "o_open_c" },
       ],
       scenarios: [], dataTableValues: { in_run: Array.from({ length: runs }, (_, i) => i + 1) },
       internal: { nodes, connections },

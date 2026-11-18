@@ -21,8 +21,9 @@ const rand = () => {
 };
 const normal = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
 
-// Each operator's territory center, used only here to hand out sites: four west (three in Texas), six east, so neither side's operators
-// carry several times the other's load. Service starts at a site, so the graph carries no home base.
+// Each operator's home base, which hands out the sites here and is the Operators table Plan C measures from: four west (three
+// in Texas), six east, so neither side's operators carry several times the other's load. The dispatch simulation still
+// starts each operator at their first job.
 const OPERATORS = [
   ["OP-01", "Round Rock, TX", 30.5083, -97.6789],
   ["OP-02", "San Marcos, TX", 29.8833, -97.9414],
@@ -156,6 +157,34 @@ const graph = {
     cc("expected", "Expected incidents", "Incidents per Yr", "ROUND(annual * @[Rel Freq] / SUM([Rel Freq]), 2)", { sideVars: ["annual"] }),
     // ── plan B: the same sites with the crossovers handed back to their nearest operator ──
     cc("plan_b", "Plan B operator", "Plan B Operator", 'IF(@Assignment = "Crossover", @[Nearest Operator], @Operator)'),
+    // ── plan C: each site to the operator whose home base is fewest incident-miles away, by the Solver: every site and
+    // operator paired, each pair's straight-line miles times the site's incidents a year, one whole operator a site, no
+    // operator past their Capacity. Without the capacity limit this is each site's nearest base, which is Plan B. ──
+    { id: "operators", type: "FrameInputNode", init: { label: "Operators" }, frame: [
+      { name: "Operator", type: "string", cells: OPERATORS.map((o) => o[0]) },
+      { name: "Home Base", type: "string", cells: OPERATORS.map((o) => o[1]) },
+      { name: "Base Lat", type: "number", cells: OPERATORS.map((o) => o[2]) },
+      { name: "Base Lon", type: "number", cells: OPERATORS.map((o) => o[3]) },
+      // Incidents a year: one job a day is 365 at most, and a queue kept 80% busy (292) leaves room for a bad week.
+      { name: "Capacity", type: "number", cells: OPERATORS.map(() => 292) },
+    ] },
+    { id: "c_sites", type: "PickColumnsNode", init: { label: "Where and how often" }, stringLiterals: { columns: "Site, Latitude, Longitude, Incidents per Yr" } },
+    { id: "c_pairs", type: "JoinNode", init: { label: "Every site with every operator", how: "cross" } },
+    cc("c_miles", "Miles from base", "Miles", "ROUND(3958.8 * 2 * ASIN(SQRT(SIN((@[Base Lat] - @Latitude) * PI() / 360)^2 + COS(@Latitude * PI() / 180) * COS(@[Base Lat] * PI() / 180) * SIN((@[Base Lon] - @Longitude) * PI() / 360)^2)), 1)"),
+    cc("c_cost", "Incident-miles", "Incident Miles", "@[Incidents per Yr] * @Miles"),
+    cc("c_whole", "One whole operator", "Whole", "TRUE", { addAs: "logical" }),
+    { id: "c_solve", type: "SolverNode", init: { label: "Plan C: fewest incident-miles", goal: "min", limitList: [
+      { of: "", by: "Site", sign: "eq", limit: 1 },
+      { of: "Incidents per Yr", by: "Operator", sign: "le", limit: null, limitColumn: "Capacity" },
+    ] },
+      stringLiterals: { objective: "Incident Miles" } },
+    { id: "c_take", type: "FilterFrameNode", init: { label: "The pairs it chose", condConfig: { 0: { op: "gt" } }, valueKeys: ["frame", "column0", "value0"] },
+      stringLiterals: { column0: "Amount", value0: "0.5" } },
+    { id: "c_pick", type: "PickColumnsNode", init: { label: "Site and operator" }, stringLiterals: { columns: "Site, Operator" } },
+    { id: "c_ren", type: "RenameNode", init: { label: "As Plan C Operator" }, stringLiterals: { from: "Operator", to: "Plan C Operator" } },
+    { id: "c_join", type: "JoinNode", init: { label: "Sites with Plan C", how: "left" }, stringLiterals: { leftKey: "Site" } },
+    { id: "c_load", type: "PivotNode", init: { label: "Plan C load", agg: "sum" }, stringLiterals: { rowFields: "Plan C Operator", values: "Incidents per Yr" } },
+    { id: "map_c", type: "UsMapNode", init: { label: "Plan C by operator" }, stringLiterals: { options: "c=Plan C Operator; s=Rel Freq; annotate=Site; title=Plan C: fewest incident-miles" } },
     {
       id: "load", type: "CompositeNode",
       init: {
@@ -194,6 +223,12 @@ const graph = {
     { id: "b_sd", type: "AggregateNode", init: { label: "Saving std dev", op: "stdev" } },
     { id: "b_ci", type: "ConfidenceNode", init: { label: "Plan B saving ± (95%)", op: "norm" }, literals: { alpha: 0.05 } },
     { id: "mc_ci", type: "ConfidenceNode", init: { label: "Mean drive hours ± (95%)", op: "norm" }, literals: { alpha: 0.05 } },
+    { id: "c_mean", type: "AggregateNode", init: { label: "Plan C saving", op: "avg" } },
+    { id: "c_sd", type: "AggregateNode", init: { label: "Plan C saving std dev", op: "stdev" } },
+    { id: "c_ci", type: "ConfidenceNode", init: { label: "Plan C saving ± (95%)", op: "norm" }, literals: { alpha: 0.05 } },
+    { id: "open_a", type: "AggregateNode", init: { label: "Still open, baseline", op: "avg" } },
+    { id: "open_b", type: "AggregateNode", init: { label: "Still open, Plan B", op: "avg" } },
+    { id: "open_c", type: "AggregateNode", init: { label: "Still open, Plan C", op: "avg" } },
     { id: "mc_run", type: "SeriesNode", init: { label: "Run", op: "range" }, literals: { start: 1, step: 1 } },
     { id: "mc_running", type: "RunningNode", init: { label: "Running mean", agg: "avg" } },
     { id: "mc_frame", type: "FrameFromListsNode", init: { label: "Convergence", valueKeys: ["name0", "name1", "name2"] },
@@ -210,7 +245,28 @@ const graph = {
     "expected.frame -> map_ops.frame",
     "expected.frame -> map_how.frame",
     "expected.frame -> plan_b.frame",
-    "plan_b.frame -> runs.in_sites",
+    "expected.frame -> c_sites.frame",
+    "c_sites.frame -> c_pairs.left",
+    "operators.frame -> c_pairs.right",
+    "c_pairs.frame -> c_miles.frame",
+    "c_miles.frame -> c_cost.frame",
+    "c_cost.frame -> c_whole.frame",
+    "c_whole.frame -> c_solve.options",
+    "c_solve.plan -> c_take.frame",
+    "c_take.frame -> c_pick.frame",
+    "c_pick.frame -> c_ren.frame",
+    "plan_b.frame -> c_join.left",
+    "c_ren.frame -> c_join.right",
+    "c_join.frame -> c_load.frame",
+    "c_join.frame -> map_c.frame",
+    "c_join.frame -> runs.in_sites",
+    "runs.o_saved_c -> c_mean.list",
+    "runs.o_saved_c -> c_sd.list",
+    "c_sd.result -> c_ci.stdev",
+    "mc_n.result -> c_ci.n",
+    "runs.o_open -> open_a.list",
+    "runs.o_open_b -> open_b.list",
+    "runs.o_open_c -> open_c.list",
     "days.value -> runs.in_days",
     "runs.o_hours -> mc_mean.list",
     "runs.o_hours -> mc_sd.list",
@@ -232,12 +288,49 @@ const graph = {
   ],
 };
 const AT = {
-  sites: [0, 0], annual: [0, 300], expected: [340, 0], plan_b: [340, 260], b_mean: [1000, 1100], b_ci: [1000, 1240], load: [700, 0], map_ops: [700, 300], map_how: [1360, 300],
-  days: [340, 520], runs: [340, 700], mc_mean: [700, 960], mc_sd: [700, 820], mc_n: [700, 680], b_sd: [1000, 820], mc_ci: [700, 1100], mc_run: [700, 1240], mc_running: [700, 1380],
-  mc_frame: [1000, 960], mc_opts: [1000, 1400], mc_chart: [1360, 960],
+  sites: [0, 421],
+  annual: [60, 234],
+  expected: [342, 213],
+  plan_b: [771, 251],
+  load: [721, -71],
+  map_ops: [721, 660],
+  map_how: [721, 1090],
+  days: [881, 1504],
+  runs: [1196, 689],
+  mc_mean: [1577, 221],
+  mc_sd: [1577, 1078],
+  mc_n: [1577, 847],
+  b_mean: [1577, 419],
+  b_sd: [1577, 604],
+  b_ci: [1863, 583],
+  mc_ci: [1863, 1057],
+  mc_run: [1863, 837],
+  mc_running: [1863, 1311],
+  mc_frame: [2143, 1028],
+  mc_opts: [2143, 1468],
+  mc_chart: [2491, 1418],
+  operators: [60, 2160],
+  c_sites: [342, 2160],
+  c_pairs: [700, 2160],
+  c_miles: [1000, 2160],
+  c_cost: [1300, 2160],
+  c_whole: [1600, 2160],
+  c_solve: [1900, 2160],
+  c_take: [2260, 2160],
+  c_pick: [2560, 2160],
+  c_ren: [2860, 2160],
+  c_join: [881, 1760],
+  c_mean: [2850, 221],
+  c_sd: [2850, 419],
+  c_ci: [2850, 604],
+  open_a: [2850, 847],
+  open_b: [2850, 1057],
+  open_c: [2850, 1267],
+  c_load: [3200, 221],
+  map_c: [3200, 660],
 };
 for (const n of graph.nodes) [n.x, n.y] = AT[n.id];
-for (const id of ["map_ops", "map_how", "mc_chart"]) graph.nodes.find((n) => n.id === id).init.width = 620;
+for (const id of ["map_ops", "map_how", "map_c", "mc_chart"]) graph.nodes.find((n) => n.id === id).init.width = 620;
 writeFileSync(new URL("./baseline.json", import.meta.url), JSON.stringify(graph, null, 1) + "\n");
 const count = (k, v) => rows.filter((r) => r[k] === v).length;
 const west = sites.filter((x) => x.lon < -91).length;

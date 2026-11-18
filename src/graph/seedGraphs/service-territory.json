@@ -54,6 +54,194 @@
       "y": 251
     },
     {
+      "id": "operators",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Operators",
+        "frameText": "[{\"name\":\"Operator\",\"type\":\"string\",\"cells\":[\"OP-01\",\"OP-02\",\"OP-03\",\"OP-04\",\"OP-05\",\"OP-06\",\"OP-07\",\"OP-08\",\"OP-09\",\"OP-10\"]},{\"name\":\"Home Base\",\"type\":\"string\",\"cells\":[\"Round Rock, TX\",\"San Marcos, TX\",\"Little Rock, AR\",\"Houston, TX\",\"Birmingham, AL\",\"Montgomery, AL\",\"Mobile, AL\",\"Albany, GA\",\"Chattanooga, TN\",\"Knoxville, TN\"]},{\"name\":\"Base Lat\",\"type\":\"number\",\"cells\":[\"30.5083\",\"29.8833\",\"34.7465\",\"29.7604\",\"33.5186\",\"32.3792\",\"30.6954\",\"31.5785\",\"35.0456\",\"35.9606\"]},{\"name\":\"Base Lon\",\"type\":\"number\",\"cells\":[\"-97.6789\",\"-97.9414\",\"-92.2896\",\"-95.3698\",\"-86.8104\",\"-86.3077\",\"-88.0399\",\"-84.1557\",\"-85.3097\",\"-83.9207\"]},{\"name\":\"Capacity\",\"type\":\"number\",\"cells\":[\"292\",\"292\",\"292\",\"292\",\"292\",\"292\",\"292\",\"292\",\"292\",\"292\"]}]"
+      },
+      "x": 60,
+      "y": 2160
+    },
+    {
+      "id": "c_sites",
+      "type": "PickColumnsNode",
+      "init": {
+        "label": "Where and how often"
+      },
+      "stringLiterals": {
+        "columns": "Site, Latitude, Longitude, Incidents per Yr"
+      },
+      "x": 342,
+      "y": 2160
+    },
+    {
+      "id": "c_pairs",
+      "type": "JoinNode",
+      "init": {
+        "label": "Every site with every operator",
+        "how": "cross"
+      },
+      "x": 700,
+      "y": 2160
+    },
+    {
+      "id": "c_miles",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Miles from base",
+        "expr": "ROUND(3958.8 * 2 * ASIN(SQRT(SIN((@[Base Lat] - @Latitude) * PI() / 360)^2 + COS(@Latitude * PI() / 180) * COS(@[Base Lat] * PI() / 180) * SIN((@[Base Lon] - @Longitude) * PI() / 360)^2)), 1)"
+      },
+      "stringLiterals": {
+        "name": "Miles"
+      },
+      "x": 1000,
+      "y": 2160
+    },
+    {
+      "id": "c_cost",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Incident-miles",
+        "expr": "@[Incidents per Yr] * @Miles"
+      },
+      "stringLiterals": {
+        "name": "Incident Miles"
+      },
+      "x": 1300,
+      "y": 2160
+    },
+    {
+      "id": "c_whole",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "One whole operator",
+        "expr": "TRUE",
+        "addAs": "logical"
+      },
+      "stringLiterals": {
+        "name": "Whole"
+      },
+      "x": 1600,
+      "y": 2160
+    },
+    {
+      "id": "c_solve",
+      "type": "SolverNode",
+      "init": {
+        "label": "Plan C: fewest incident-miles",
+        "goal": "min",
+        "limitList": [
+          {
+            "of": "",
+            "by": "Site",
+            "sign": "eq",
+            "limit": 1
+          },
+          {
+            "of": "Incidents per Yr",
+            "by": "Operator",
+            "sign": "le",
+            "limit": null,
+            "limitColumn": "Capacity"
+          }
+        ]
+      },
+      "stringLiterals": {
+        "objective": "Incident Miles"
+      },
+      "x": 1900,
+      "y": 2160
+    },
+    {
+      "id": "c_take",
+      "type": "FilterFrameNode",
+      "init": {
+        "label": "The pairs it chose",
+        "condConfig": {
+          "0": {
+            "op": "gt"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "Amount",
+        "value0": "0.5"
+      },
+      "x": 2260,
+      "y": 2160
+    },
+    {
+      "id": "c_pick",
+      "type": "PickColumnsNode",
+      "init": {
+        "label": "Site and operator"
+      },
+      "stringLiterals": {
+        "columns": "Site, Operator"
+      },
+      "x": 2560,
+      "y": 2160
+    },
+    {
+      "id": "c_ren",
+      "type": "RenameNode",
+      "init": {
+        "label": "As Plan C Operator"
+      },
+      "stringLiterals": {
+        "from": "Operator",
+        "to": "Plan C Operator"
+      },
+      "x": 2860,
+      "y": 2160
+    },
+    {
+      "id": "c_join",
+      "type": "JoinNode",
+      "init": {
+        "label": "Sites with Plan C",
+        "how": "left"
+      },
+      "stringLiterals": {
+        "leftKey": "Site"
+      },
+      "x": 881,
+      "y": 1760
+    },
+    {
+      "id": "c_load",
+      "type": "PivotNode",
+      "init": {
+        "label": "Plan C load",
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "rowFields": "Plan C Operator",
+        "values": "Incidents per Yr"
+      },
+      "x": 3200,
+      "y": 221
+    },
+    {
+      "id": "map_c",
+      "type": "UsMapNode",
+      "init": {
+        "label": "Plan C by operator",
+        "width": 620
+      },
+      "stringLiterals": {
+        "options": "c=Plan C Operator; s=Rel Freq; annotate=Site; title=Plan C: fewest incident-miles"
+      },
+      "x": 3200,
+      "y": 660
+    },
+    {
       "id": "load",
       "type": "CompositeNode",
       "init": {
@@ -263,6 +451,30 @@
             "label": "Hours Plan B saves",
             "tier": "basic",
             "internalNodeId": "o_saved"
+          },
+          {
+            "id": "o_hours_c",
+            "label": "Plan C drive hours",
+            "tier": "basic",
+            "internalNodeId": "o_hours_c"
+          },
+          {
+            "id": "o_saved_c",
+            "label": "Hours Plan C saves",
+            "tier": "basic",
+            "internalNodeId": "o_saved_c"
+          },
+          {
+            "id": "o_open_b",
+            "label": "Still open (Plan B)",
+            "tier": "basic",
+            "internalNodeId": "o_open_b"
+          },
+          {
+            "id": "o_open_c",
+            "label": "Still open (Plan C)",
+            "tier": "basic",
+            "internalNodeId": "o_open_c"
           }
         ],
         "scenarios": [],
@@ -532,6 +744,109 @@
               "y": 860
             },
             {
+              "id": "m_queue_c",
+              "type": "GreedyQueueNode",
+              "init": {
+                "label": "Daily dispatch (Plan C)",
+                "orderDir": "desc"
+              },
+              "stringLiterals": {
+                "group": "Plan C Operator",
+                "step": "Day",
+                "orderColumn": "Severity"
+              },
+              "x": 2180,
+              "y": 1100
+            },
+            {
+              "id": "m_saved_c",
+              "type": "ArithmeticNode",
+              "init": {
+                "label": "Plan C saving",
+                "op": "sub"
+              },
+              "x": 3140,
+              "y": 1160
+            },
+            {
+              "id": "m_left_c",
+              "type": "GetColumnNode",
+              "init": {
+                "label": "Site"
+              },
+              "stringLiterals": {
+                "name": "Site"
+              },
+              "x": 2820,
+              "y": 1320
+            },
+            {
+              "id": "m_left_b",
+              "type": "GetColumnNode",
+              "init": {
+                "label": "Site"
+              },
+              "stringLiterals": {
+                "name": "Site"
+              },
+              "x": 2820,
+              "y": 1020
+            },
+            {
+              "id": "m_open_b",
+              "type": "ListLengthNode",
+              "init": {
+                "label": "Still open (Plan B)"
+              },
+              "x": 3140,
+              "y": 1020
+            },
+            {
+              "id": "o_open_b",
+              "type": "CompositeOutputNode",
+              "init": {
+                "label": "Still open (Plan B)"
+              },
+              "x": 3460,
+              "y": 1480
+            },
+            {
+              "id": "m_open_c",
+              "type": "ListLengthNode",
+              "init": {
+                "label": "Still open (Plan C)"
+              },
+              "x": 3140,
+              "y": 1320
+            },
+            {
+              "id": "o_hours_c",
+              "type": "CompositeOutputNode",
+              "init": {
+                "label": "Plan C drive hours"
+              },
+              "x": 3460,
+              "y": 1020
+            },
+            {
+              "id": "o_saved_c",
+              "type": "CompositeOutputNode",
+              "init": {
+                "label": "Hours Plan C saves"
+              },
+              "x": 3460,
+              "y": 1160
+            },
+            {
+              "id": "o_open_c",
+              "type": "CompositeOutputNode",
+              "init": {
+                "label": "Still open (Plan C)"
+              },
+              "x": 3460,
+              "y": 1320
+            },
+            {
               "id": "o_hours_b",
               "type": "CompositeOutputNode",
               "init": {
@@ -743,6 +1058,96 @@
               "targetInput": "cost"
             },
             {
+              "source": "m_sev",
+              "sourceOutput": "frame",
+              "target": "m_queue_c",
+              "targetInput": "items"
+            },
+            {
+              "source": "m_days",
+              "sourceOutput": "value",
+              "target": "m_queue_c",
+              "targetInput": "steps"
+            },
+            {
+              "source": "m_jobs_day",
+              "sourceOutput": "value",
+              "target": "m_queue_c",
+              "targetInput": "perStep"
+            },
+            {
+              "source": "m_score",
+              "sourceOutput": "result",
+              "target": "m_queue_c",
+              "targetInput": "order"
+            },
+            {
+              "source": "m_cost",
+              "sourceOutput": "result",
+              "target": "m_queue_c",
+              "targetInput": "cost"
+            },
+            {
+              "source": "m_queue",
+              "sourceOutput": "total",
+              "target": "m_saved_c",
+              "targetInput": "a"
+            },
+            {
+              "source": "m_queue_c",
+              "sourceOutput": "total",
+              "target": "m_saved_c",
+              "targetInput": "b"
+            },
+            {
+              "source": "m_queue_c",
+              "sourceOutput": "total",
+              "target": "o_hours_c",
+              "targetInput": "value"
+            },
+            {
+              "source": "m_saved_c",
+              "sourceOutput": "result",
+              "target": "o_saved_c",
+              "targetInput": "value"
+            },
+            {
+              "source": "m_queue_c",
+              "sourceOutput": "left",
+              "target": "m_left_c",
+              "targetInput": "frame"
+            },
+            {
+              "source": "m_queue_b",
+              "sourceOutput": "left",
+              "target": "m_left_b",
+              "targetInput": "frame"
+            },
+            {
+              "source": "m_left_b",
+              "sourceOutput": "values",
+              "target": "m_open_b",
+              "targetInput": "list"
+            },
+            {
+              "source": "m_open_b",
+              "sourceOutput": "result",
+              "target": "o_open_b",
+              "targetInput": "value"
+            },
+            {
+              "source": "m_left_c",
+              "sourceOutput": "values",
+              "target": "m_open_c",
+              "targetInput": "list"
+            },
+            {
+              "source": "m_open_c",
+              "sourceOutput": "result",
+              "target": "o_open_c",
+              "targetInput": "value"
+            },
+            {
               "source": "m_queue",
               "sourceOutput": "total",
               "target": "m_saved",
@@ -908,7 +1313,7 @@
       "id": "b_ci",
       "type": "ConfidenceNode",
       "init": {
-        "label": "Plan B saving ± (95%)",
+        "label": "Plan B saving \u00b1 (95%)",
         "op": "norm"
       },
       "literals": {
@@ -921,7 +1326,7 @@
       "id": "mc_ci",
       "type": "ConfidenceNode",
       "init": {
-        "label": "Mean drive hours ± (95%)",
+        "label": "Mean drive hours \u00b1 (95%)",
         "op": "norm"
       },
       "literals": {
@@ -929,6 +1334,69 @@
       },
       "x": 1863,
       "y": 1057
+    },
+    {
+      "id": "c_mean",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Plan C saving",
+        "op": "avg"
+      },
+      "x": 2850,
+      "y": 221
+    },
+    {
+      "id": "c_sd",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Plan C saving std dev",
+        "op": "stdev"
+      },
+      "x": 2850,
+      "y": 419
+    },
+    {
+      "id": "c_ci",
+      "type": "ConfidenceNode",
+      "init": {
+        "label": "Plan C saving \u00b1 (95%)",
+        "op": "norm"
+      },
+      "literals": {
+        "alpha": 0.05
+      },
+      "x": 2850,
+      "y": 604
+    },
+    {
+      "id": "open_a",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Still open, baseline",
+        "op": "avg"
+      },
+      "x": 2850,
+      "y": 847
+    },
+    {
+      "id": "open_b",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Still open, Plan B",
+        "op": "avg"
+      },
+      "x": 2850,
+      "y": 1057
+    },
+    {
+      "id": "open_c",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Still open, Plan C",
+        "op": "avg"
+      },
+      "x": 2850,
+      "y": 1267
     },
     {
       "id": "mc_run",
@@ -1033,10 +1501,136 @@
       "targetInput": "frame"
     },
     {
+      "source": "expected",
+      "sourceOutput": "frame",
+      "target": "c_sites",
+      "targetInput": "frame"
+    },
+    {
+      "source": "c_sites",
+      "sourceOutput": "frame",
+      "target": "c_pairs",
+      "targetInput": "left"
+    },
+    {
+      "source": "operators",
+      "sourceOutput": "frame",
+      "target": "c_pairs",
+      "targetInput": "right"
+    },
+    {
+      "source": "c_pairs",
+      "sourceOutput": "frame",
+      "target": "c_miles",
+      "targetInput": "frame"
+    },
+    {
+      "source": "c_miles",
+      "sourceOutput": "frame",
+      "target": "c_cost",
+      "targetInput": "frame"
+    },
+    {
+      "source": "c_cost",
+      "sourceOutput": "frame",
+      "target": "c_whole",
+      "targetInput": "frame"
+    },
+    {
+      "source": "c_whole",
+      "sourceOutput": "frame",
+      "target": "c_solve",
+      "targetInput": "options"
+    },
+    {
+      "source": "c_solve",
+      "sourceOutput": "plan",
+      "target": "c_take",
+      "targetInput": "frame"
+    },
+    {
+      "source": "c_take",
+      "sourceOutput": "frame",
+      "target": "c_pick",
+      "targetInput": "frame"
+    },
+    {
+      "source": "c_pick",
+      "sourceOutput": "frame",
+      "target": "c_ren",
+      "targetInput": "frame"
+    },
+    {
       "source": "plan_b",
+      "sourceOutput": "frame",
+      "target": "c_join",
+      "targetInput": "left"
+    },
+    {
+      "source": "c_ren",
+      "sourceOutput": "frame",
+      "target": "c_join",
+      "targetInput": "right"
+    },
+    {
+      "source": "c_join",
+      "sourceOutput": "frame",
+      "target": "c_load",
+      "targetInput": "frame"
+    },
+    {
+      "source": "c_join",
+      "sourceOutput": "frame",
+      "target": "map_c",
+      "targetInput": "frame"
+    },
+    {
+      "source": "c_join",
       "sourceOutput": "frame",
       "target": "runs",
       "targetInput": "in_sites"
+    },
+    {
+      "source": "runs",
+      "sourceOutput": "o_saved_c",
+      "target": "c_mean",
+      "targetInput": "list"
+    },
+    {
+      "source": "runs",
+      "sourceOutput": "o_saved_c",
+      "target": "c_sd",
+      "targetInput": "list"
+    },
+    {
+      "source": "c_sd",
+      "sourceOutput": "result",
+      "target": "c_ci",
+      "targetInput": "stdev"
+    },
+    {
+      "source": "mc_n",
+      "sourceOutput": "result",
+      "target": "c_ci",
+      "targetInput": "n"
+    },
+    {
+      "source": "runs",
+      "sourceOutput": "o_open",
+      "target": "open_a",
+      "targetInput": "list"
+    },
+    {
+      "source": "runs",
+      "sourceOutput": "o_open_b",
+      "target": "open_b",
+      "targetInput": "list"
+    },
+    {
+      "source": "runs",
+      "sourceOutput": "o_open_c",
+      "target": "open_c",
+      "targetInput": "list"
     },
     {
       "source": "days",

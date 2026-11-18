@@ -60,6 +60,13 @@ specific item.
   counting global allocator and a FrameRef live count (temporary, not committed): live bytes, not wasm size, tell a
   held value from fragmentation. `computeAll` never sends JS's collected ids (`forgetCollected`), only `pass` does, so
   a harness that loops `computeAll` sees the kept map grow on its own.
+- **Service territory, Plan C** (`scripts/service-territory/gen-baseline.mjs`, then the seed): an Operators table with
+  home bases and a Capacity (292 incidents a year: one job a day, kept 80% busy), every site paired with every operator,
+  and a Solver for the fewest incident-miles (incidents a year × miles from base), one whole operator a site, none past
+  Capacity. Without Capacity it is each site's nearest base, which is Plan B to the site: the cap is what makes it a
+  plan. It moves three Houston-area sites to OP-01 and solves in about 7 s. The Monte Carlo runs it beside the baseline
+  and Plan B on the same incidents: Plan B saves about 109 drive hours a year, Plan C about 102; all three leave about 3
+  incidents open at year end, within noise, so at one job a day the assignment moves drive time, not resolution.
 - Not done: a limit that is itself a formula (nonlinear constraints); a Solve button for the heavy cards (measured: the
   seed's problems solve at once, so composites keep the only hold); shadow prices for averages, shares and counts.
 
