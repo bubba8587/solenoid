@@ -44,33 +44,31 @@ for (const [id, label, column] of [["by_due", "Earliest due first", "Due"], ["by
   wire(`jobs.frame -> ${id}.items`, `machines.frame -> ${id}.start`, `day.value -> ${id}.budget`);
   add(`${id}_late`, "ComputedColumnNode", { label: "Days late", expr: "MAX(0, @Picked - @Due)" }, { stringLiterals: { name: "Late" } });
   getCol(`${id}_col`, "Late", "Late");
-  total(`${id}_sum`, `${label}: days late`);
+  total(`${id}_sum`, `Days late (${label.toLowerCase()})`);
   wire(`${id}.picks -> ${id}_late.frame`, `${id}_late.frame -> ${id}_col.frame`, `${id}_col.values -> ${id}_sum.list`);
 }
 // Then improved: the earliest-due plan as a start, counted by the hour. A job waits for its arrival day, and each hour
 // past its due day's end counts; Local Search moves jobs between machines and reorders them while that helps.
-lambda("job_wait", "Wait for the job to arrive", "Arrives, before", "MAX(0, (Arrives - 1) * day - before)");
+lambda("job_wait", "Arrival wait", "Arrives, before", "MAX(0, (Arrives - 1) * day - before)");
 lambda("job_late", "Hours late", "Due, at", "MAX(0, at - Due * day)");
 wire("day.value -> job_wait.day", "day.value -> job_late.day");
-for (const [id, label, extra] of [["jobs_scored", "Earliest due, as it came", { literals: { passes: 0 } }], ["jobs_better", "Earliest due, improved", {}]]) {
+for (const [id, label, extra] of [["jobs_scored", "Earliest due plan", { literals: { passes: 0 } }], ["jobs_better", "Improved plan", {}]]) {
   add(id, "LocalSearchNode", { label }, { stringLiterals: { group: "Machine", costColumn: "Hours" }, ...extra });
   wire(`by_due.picks -> ${id}.items`, `machines.frame -> ${id}.start`, `job_wait.result -> ${id}.cost`, `job_late.result -> ${id}.penalty`);
   getCol(`${id}_pen`, "Penalty", "Penalty");
-  total(`${id}_sum`, id === "jobs_scored" ? "Before: hours late" : "After: hours late");
+  total(`${id}_sum`, id === "jobs_scored" ? "Hours late before" : "Hours late after");
   wire(`${id}.plan -> ${id}_pen.frame`, `${id}_pen.values -> ${id}_sum.list`);
 }
-add("jobs_better_chart", "ChartNode", { label: "Each change", op: "line" }, { stringLiterals: { options: "x=Change; y=Total; xlabel=Change; ylabel=Hours" } });
-wire("jobs_better.history -> jobs_better_chart.values");
 
 // ── 2. Loading trucks: boxes, 1,000 kg a truck, heaviest first ──
 const kg = Array.from({ length: 36 }, () => pick([60, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500, 600]));
 add("boxes", "FrameInputNode", { label: "Boxes" }, frame({ Box: kg.map((_, i) => `B${String(i + 1).padStart(2, "0")}`), "Kg (kg)": kg }));
 add("capacity", "ValueInputNode", { label: "Truck capacity (kg)", value: "1000" });
-for (const [id, label, mode] of [["fit", "Load trucks", "skip"], ["nofit", "Load trucks, no skipping", "stop"]]) {
+for (const [id, label, mode] of [["fit", "Truck loading", "skip"], ["nofit", "Truck loading (no skipping)", "stop"]]) {
   queue(id, label, { mode, orderDir: "desc" }, { orderColumn: "Kg", costColumn: "Kg" });
   wire(`boxes.frame -> ${id}.items`, `capacity.value -> ${id}.budget`);
-  add(`${id}_kg`, "GroupByFrameNode", { label: `${label}: kg a truck`, agg: "sum" }, { stringLiterals: { keys: "Picked", column: "Kg" } });
-  add(`${id}_chart`, "ChartNode", { label: `${label}`, op: "column" }, { stringLiterals: { options: "xlabel=Truck; ylabel=Kg; ymax=1000" } });
+  add(`${id}_kg`, "GroupByFrameNode", { label: label.replace("Truck loading", "Kg per truck"), agg: "sum" }, { stringLiterals: { keys: "Picked", column: "Kg" } });
+  add(`${id}_chart`, "ChartNode", { label: label.replace("Truck loading", "Kg per truck"), op: "column" }, { stringLiterals: { options: "xlabel=Truck; ylabel=Kg; ymax=1000" } });
   wire(`${id}.picks -> ${id}_kg.frame`, `${id}_kg.frame -> ${id}_chart.values`);
 }
 
@@ -81,37 +79,37 @@ const stops = Array.from({ length: 16 }, (_, i) => ({
 add("stops", "FrameInputNode", { label: "Stops" }, frame({ Stop: stops.map((s) => s.Stop), Latitude: stops.map((s) => s.Latitude), Longitude: stops.map((s) => s.Longitude) }));
 add("depot", "FrameInputNode", { label: "Depot" }, frame({ Stop: ["Depot"], Latitude: [35.96], Longitude: [-83.92] }));
 const KM = "2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))";
-lambda("km", "Km from the last stop", "Latitude, Longitude, last_Latitude, last_Longitude", KM);
-for (const [id, label, ordered] of [["nearest", "Nearest next", true], ["listed", "In the listed order", false]]) {
-  queue(id, label, {}, {});
-  wire(`stops.frame -> ${id}.items`, `depot.frame -> ${id}.start`, `km.result -> ${id}.cost`, ...(ordered ? [`km.result -> ${id}.order`] : []));
-  round1(`${id}_sum`, `${label}: km`);
-  add(`${id}_chart`, "ChartNode", { label, op: "xyline" }, { stringLiterals: { options: "x=Longitude; y=Latitude; annotate=Stop; aspect=equal" } });
+lambda("km", "Leg km", "Latitude, Longitude, last_Latitude, last_Longitude", KM);
+for (const [id, label, ordered] of [["nearest", "Nearest next", true], ["listed", "Listed order", false]]) {
+  queue(id, label, ordered ? { orderBy: "cost" } : {}, {});
+  wire(`stops.frame -> ${id}.items`, `depot.frame -> ${id}.start`, `km.result -> ${id}.cost`);
+  round1(`${id}_sum`, `Route km (${label.toLowerCase()})`);
+  add(`${id}_chart`, "ChartNode", { label: `Route (${label.toLowerCase()})`, op: "xyline" }, { stringLiterals: { options: "x=Longitude; y=Latitude; annotate=Stop; aspect=equal" } });
   wire(`${id}.total -> ${id}_sum.value`, `${id}.picks -> ${id}_chart.values`);
 }
 // Then improved: 2-opt and relocate on the nearest-next route, by the same km formula.
-add("route_better", "LocalSearchNode", { label: "Nearest next, improved", stuck: "look" });
+add("route_better", "LocalSearchNode", { label: "Improved route", stuck: "look" });
 wire("nearest.picks -> route_better.items", "depot.frame -> route_better.start", "km.result -> route_better.cost");
-round1("route_better_sum", "Improved: km");
-add("route_better_chart", "ChartNode", { label: "Nearest next, improved", op: "xyline" }, { stringLiterals: { options: "x=Longitude; y=Latitude; annotate=Stop; aspect=equal" } });
+round1("route_better_sum", "Route km (improved)");
+add("route_better_chart", "ChartNode", { label: "Route (improved)", op: "xyline" }, { stringLiterals: { options: "x=Longitude; y=Latitude; annotate=Stop; aspect=equal" } });
 wire("route_better.total -> route_better_sum.value", "route_better.plan -> route_better_chart.values");
 
 // Each problem is three groups: what both plans share, then the weaker plan and the better. The cards carry the rules;
 // a note says only what no card shows.
 const note = (id, label, body) => add(id, "NoteNode", { label, body, width: 320, height: 150 });
 const problems = [
-  ["grp_jobs", "Job shop: the jobs and machines", ["jobs", "machines", "day"],
+  ["grp_jobs", "Job shop", ["jobs", "machines", "day"],
     ["note_jobs", "The setup", "Jobs open on their **Arrives** day, and any machine can do any job."],
-    ["grp_jobs_weak", "Job shop, not optimized: shortest job first", ["by_short", "by_short_late", "by_short_col", "by_short_sum"]],
-    ["grp_jobs_good", "Job shop, optimized: earliest due first, then improved", ["by_due", "by_due_late", "by_due_col", "by_due_sum", "job_wait", "job_late", "jobs_scored", "jobs_scored_pen", "jobs_scored_sum", "jobs_better", "jobs_better_pen", "jobs_better_sum", "jobs_better_chart"]]],
-  ["grp_trucks", "Loading trucks: the boxes", ["boxes", "capacity"],
+    ["grp_jobs_weak", "Job shop, not optimized", ["by_short", "by_short_late", "by_short_col", "by_short_sum"]],
+    ["grp_jobs_good", "Job shop, optimized", ["by_due", "by_due_late", "by_due_col", "by_due_sum", "job_wait", "job_late", "jobs_scored", "jobs_scored_pen", "jobs_scored_sum", "jobs_better", "jobs_better_pen", "jobs_better_sum"]]],
+  ["grp_trucks", "Truck loading", ["boxes", "capacity"],
     ["note_trucks", "The setup", "A truck is one step: it loads until its capacity is used, then the next truck pulls up."],
-    ["grp_trucks_weak", "Loading trucks, not optimized: stop at the first box that won't fit", ["nofit", "nofit_kg", "nofit_chart"]],
-    ["grp_trucks_good", "Loading trucks, optimized: skip boxes that won't fit", ["fit", "fit_kg", "fit_chart"]]],
-  ["grp_route", "Delivery route: the stops", ["stops", "depot", "km"],
+    ["grp_trucks_weak", "Truck loading, not optimized", ["nofit", "nofit_kg", "nofit_chart"]],
+    ["grp_trucks_good", "Truck loading, optimized", ["fit", "fit_kg", "fit_chart"]]],
+  ["grp_route", "Delivery route", ["stops", "depot", "km"],
     ["note_route", "The setup", "One driver leaves the depot and visits each stop once."],
-    ["grp_route_weak", "Delivery route, not optimized: the stops in listed order", ["listed", "listed_sum", "listed_chart"]],
-    ["grp_route_good", "Delivery route, optimized: nearest stop next, then improved", ["nearest", "nearest_sum", "nearest_chart", "route_better", "route_better_sum", "route_better_chart"]]],
+    ["grp_route_weak", "Delivery route, not optimized", ["listed", "listed_sum", "listed_chart"]],
+    ["grp_route_good", "Delivery route, optimized", ["nearest", "nearest_sum", "nearest_chart", "route_better", "route_better_sum", "route_better_chart"]]],
 ];
 note("note_read", "How to read this page", "Each problem is three groups: gray is the setup both plans share, amber a simple plan, green a better one.");
 for (const [id, label, shared, [nid, nlabel, nbody], ...sides] of problems) {

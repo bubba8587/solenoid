@@ -2345,7 +2345,7 @@
    "id": "plan_b",
    "type": "ComputedColumnNode",
    "init": {
-    "label": "Plan B: crossovers back to the nearest operator",
+    "label": "Plan B operator",
     "expr": "IF(@Assignment = \"Crossover\", @[Nearest Operator], @Operator)"
    },
    "stringLiterals": {
@@ -2703,7 +2703,7 @@
        "id": "m_cross",
        "type": "JoinNode",
        "init": {
-        "label": "Every site, every day",
+        "label": "Site-days",
         "how": "cross"
        },
        "x": 900,
@@ -2764,7 +2764,7 @@
        "id": "m_score",
        "type": "LambdaNode",
        "init": {
-        "label": "Then the oldest, then the nearest",
+        "label": "Oldest, then nearest",
         "params": "Day, Latitude, Longitude, last_Latitude, last_Longitude",
         "expr": "HSTACK(Day, IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))))"
        },
@@ -2775,7 +2775,7 @@
        "id": "m_cost",
        "type": "LambdaNode",
        "init": {
-        "label": "Drive hours from the last site",
+        "label": "Leg drive hours",
         "params": "Latitude, Longitude, last_Latitude, last_Longitude",
         "expr": "IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2)) * road / 1.609344 / mph)"
        },
@@ -2786,7 +2786,7 @@
        "id": "m_queue",
        "type": "GreedyQueueNode",
        "init": {
-        "label": "Each operator, a day at a time",
+        "label": "Daily dispatch",
         "orderDir": "desc"
        },
        "stringLiterals": {
@@ -2801,7 +2801,7 @@
        "id": "m_jobs_day",
        "type": "ValueInputNode",
        "init": {
-        "label": "Jobs an operator does a day",
+        "label": "Jobs per operator per day",
         "value": "1"
        },
        "x": 1860,
@@ -2811,7 +2811,7 @@
        "id": "m_queue_b",
        "type": "GreedyQueueNode",
        "init": {
-        "label": "Plan B: each operator, a day at a time",
+        "label": "Daily dispatch (Plan B)",
         "orderDir": "desc"
        },
        "stringLiterals": {
@@ -2826,7 +2826,7 @@
        "id": "m_saved",
        "type": "ArithmeticNode",
        "init": {
-        "label": "Hours Plan B saves",
+        "label": "Plan B saving",
         "op": "sub"
        },
        "x": 3140,
@@ -3159,7 +3159,7 @@
    "id": "mc_mean",
    "type": "AggregateNode",
    "init": {
-    "label": "Mean drive hours a run",
+    "label": "Mean drive hours",
     "op": "avg"
    },
    "x": 700,
@@ -3169,7 +3169,7 @@
    "id": "mc_sd",
    "type": "AggregateNode",
    "init": {
-    "label": "Spread between runs",
+    "label": "Run std dev",
     "op": "stdev"
    },
    "x": 700,
@@ -3189,7 +3189,7 @@
    "id": "b_mean",
    "type": "AggregateNode",
    "init": {
-    "label": "Plan B saves (hours a year)",
+    "label": "Plan B saving",
     "op": "avg"
    },
    "x": 1000,
@@ -3199,7 +3199,7 @@
    "id": "b_sd",
    "type": "AggregateNode",
    "init": {
-    "label": "Spread of the saving",
+    "label": "Saving std dev",
     "op": "stdev"
    },
    "x": 1000,
@@ -3209,7 +3209,7 @@
    "id": "b_ci",
    "type": "ConfidenceNode",
    "init": {
-    "label": "Plan B saving, 95% interval ± hours",
+    "label": "Plan B saving ± (95%)",
     "op": "norm"
    },
    "literals": {
@@ -3222,7 +3222,7 @@
    "id": "mc_ci",
    "type": "ConfidenceNode",
    "init": {
-    "label": "95% interval ± hours",
+    "label": "Mean drive hours ± (95%)",
     "op": "norm"
    },
    "literals": {
@@ -3288,7 +3288,7 @@
    "id": "mc_chart",
    "type": "ChartNode",
    "init": {
-    "label": "Does it converge?",
+    "label": "Convergence",
     "op": "line",
     "width": 620
    },

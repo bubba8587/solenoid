@@ -51,6 +51,14 @@ describe("Greedy Queue", () => {
     expect(isSolError(run(missing, { items }).picks)).toBe(true);
   });
 
+  it("orders by its own cost, cheapest first: the nearest next stop", () => {
+    const items = frame([job("A", 1, 1, 9), job("A", 1, 1, 2), job("A", 1, 1, 5), job("A", 1, 1, 1)]);
+    const start = frame([{ Group: "A", X: 0 }]);
+    const dist = lambda("X, last_X", DIST);
+    const once = run(new GreedyQueueNode({ orderBy: "cost" }), { items, start, cost: dist, group: "Group" });
+    expect(rows(once.picks).map((r) => r.X)).toEqual([1, 2, 5, 9]);
+  });
+
   it("spends a budget a step by the Cost formula, the step's first pick always", () => {
     const items = frame([job("A", 1, 1, 0, 2), job("A", 1, 1, 1, 2), job("A", 1, 1, 2, 2), job("A", 1, 1, 3, 2)]);
     const cost = lambda("Hours, X, last_X", `Hours + ${DIST}`);

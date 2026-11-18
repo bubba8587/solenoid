@@ -42,7 +42,7 @@ const MAX_PASSES: f64 = 1000.0;
 /// A search stops, keeping its best plan, after this many item walks: a time limit that answers the same everywhere.
 const MAX_WORK: u64 = 20_000_000;
 /// The columns the plan adds after the items' own, replacing an item column of the same name.
-const ADDED: [&str; 5] = ["Position", "Cost", "At", "Penalty", "Allowed"];
+const ADDED: [&str; 5] = ["Position", "Cost", "So Far", "Penalty", "Allowed"];
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Spot {
@@ -871,7 +871,7 @@ fn local_search(c: &mut Call) -> Answer {
     // The plan's costs, running sums and penalties carry the Cost column's unit; a formula's plain number is read in it.
     let cost_m = cost_col_m;
     cols.push(cost_m.column("Cost", legs.iter().map(|l| Some(cost_m.base(l.1.cost)))));
-    cols.push(cost_m.column("At", legs.iter().map(|l| Some(cost_m.base(l.1.at)))));
+    cols.push(cost_m.column("So Far", legs.iter().map(|l| Some(cost_m.base(l.1.at)))));
     cols.push(cost_m.column("Penalty", legs.iter().map(|l| Some(cost_m.base(l.1.penalty)))));
     cols.push(Column {
         name: "Allowed".into(),

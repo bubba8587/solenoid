@@ -257,6 +257,8 @@ fn greedy_queue(c: &mut Call) -> Answer {
     let skip = c.field_str("mode", "stop") == "skip";
     let best_pair = c.field_str("turns", "rotate") == "best";
     let largest = c.field_str("orderDir", "asc") == "desc";
+    // Ordered by its own cost, cheapest first: the nearest next stop, the shortest job, with no second wire.
+    let by_cost = c.field_str("orderBy", "column") == "cost";
     let settings = (|| -> Result<_, V> {
         let budget = match read_role(c, "budget", &Role::Setting(V::Undef)) {
             V::Undef | V::Null => None,
@@ -451,6 +453,19 @@ fn greedy_queue(c: &mut Call) -> Answer {
         // A group's choice this pick: its first item by Order by among those Allowed lets it take (a tie goes to the
         // item that opened first, then to the earlier row) that fits its budget, with that item's key and cost.
         type Choice = (Vec<f64>, usize, usize, f64);
+        // An item's cost to a group: its Cost column's number plus the Cost formula's.
+        let spend_of = |row: usize, args: &dyn Fn(usize) -> V| -> Result<f64, V> {
+            let own = match ci {
+                Some(i) => cell_number(&f, i, row, &cost_name)?.unwrap_or(0.0),
+                None => 0.0,
+            };
+            let extra = if cost.is_some() {
+                keys(cost.as_ref(), &ev, args, "cost", row)?.first().copied().unwrap_or(0.0)
+            } else {
+                0.0
+            };
+            Ok(own + extra)
+        };
         let choose = |k: usize, crew: &Crew, open: &[Vec<Item>]| -> Result<Option<Choice>, V> {
             let home = start_row.get(&k).copied();
             let mut ranked: Vec<(Vec<f64>, usize, usize)> = Vec::new();
@@ -459,7 +474,9 @@ fn greedy_queue(c: &mut Call) -> Answer {
                     let args = |i| scope.var(i, it.row, &crew.last, home, step - it.opens, step, crew.used);
                     if allowed(allow.as_ref(), &ev, &args, it.row)? {
                         let mut key = Vec::new();
-                        if let Some(i) = oi {
+                        if by_cost {
+                            key.push(spend_of(it.row, &args)?);
+                        } else if let Some(i) = oi {
                             // A blank goes last whichever way the column runs.
                             let n = cell_number(&f, i, it.row, &order_name)?;
                             key.push(n.map_or(f64::INFINITY, |n| if largest { -n } else { n }));
@@ -478,16 +495,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
             for (key, q, j) in ranked {
                 let it = &open[q][j];
                 let args = |i| scope.var(i, it.row, &crew.last, home, step - it.opens, step, crew.used);
-                let own = match ci {
-                    Some(i) => cell_number(&f, i, it.row, &cost_name)?.unwrap_or(0.0),
-                    None => 0.0,
-                };
-                let extra = if cost.is_some() {
-                    keys(cost.as_ref(), &ev, &args, "cost", it.row)?.first().copied().unwrap_or(0.0)
-                } else {
-                    0.0
-                };
-                let spend = own + extra;
+                let spend = if by_cost { key[0] } else { spend_of(it.row, &args)? };
                 // A group's first pick of the step always fits, so an item costing more than a step can't wait forever.
                 if budget.is_none_or(|b| crew.picks == 0 || crew.used + spend <= b) {
                     return Ok(Some((key, q, j, spend)));

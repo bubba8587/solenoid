@@ -87,11 +87,11 @@ describe("Staffing (Erlang C)", () => {
     const n = new StaffingNode();
     const out = call<{ options: unknown; needed: number }>(n, { arrivals: 100, minutes: 3, target: 1 / 3, share: 0.8 });
     const r = rows(out.options);
-    expect(r[0].Servers).toBe(6);
-    expect(r.map((x) => Math.round((x["Within Target"] as number) * 1e4) / 1e4).slice(0, 4)).toEqual([0.4743, 0.7404, 0.8801, 0.9484]);
-    expect(Math.round((r[1]["Chance of Waiting"] as number) * 1e4) / 1e4).toBe(0.3241);
+    expect(r[0].Staff).toBe(6);
+    expect(r.map((x) => Math.round((x["In Time"] as number) * 1e4) / 1e4).slice(0, 4)).toEqual([0.4743, 0.7404, 0.8801, 0.9484]);
+    expect(Math.round((r[1]["Chance to Wait"] as number) * 1e4) / 1e4).toBe(0.3241);
     expect(out.needed).toBe(8);
-    expect(r[r.length - 1].Servers).toBe(11);
+    expect(r[r.length - 1].Staff).toBe(11);
   });
   it("answers nothing until both rates are set, and refuses a share of 1 or more", () => {
     expect(call<{ needed: unknown }>(new StaffingNode(), { arrivals: 100 }).needed).toBe(null);

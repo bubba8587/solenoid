@@ -155,7 +155,7 @@ const graph = {
     { id: "annual", type: "ValueInputNode", init: { label: "Incidents per year", value: "1500" } },
     cc("expected", "Expected incidents", "Incidents per Yr", "ROUND(annual * @[Rel Freq] / SUM([Rel Freq]), 2)", { sideVars: ["annual"] }),
     // ── plan B: the same sites with the crossovers handed back to their nearest operator ──
-    cc("plan_b", "Plan B: crossovers back to the nearest operator", "Plan B Operator", 'IF(@Assignment = "Crossover", @[Nearest Operator], @Operator)'),
+    cc("plan_b", "Plan B operator", "Plan B Operator", 'IF(@Assignment = "Crossover", @[Nearest Operator], @Operator)'),
     {
       id: "load", type: "CompositeNode",
       init: {
@@ -186,14 +186,14 @@ const graph = {
     // ── step 2: the dispatch Monte Carlo (Solve on the runs card runs it) ──
     { id: "days", type: "ValueInputNode", init: { label: "Days to simulate", value: "365" } },
     runsComposite({ runs: 50 }),
-    { id: "mc_mean", type: "AggregateNode", init: { label: "Mean drive hours a run", op: "avg" } },
-    { id: "mc_sd", type: "AggregateNode", init: { label: "Spread between runs", op: "stdev" } },
+    { id: "mc_mean", type: "AggregateNode", init: { label: "Mean drive hours", op: "avg" } },
+    { id: "mc_sd", type: "AggregateNode", init: { label: "Run std dev", op: "stdev" } },
     { id: "mc_n", type: "AggregateNode", init: { label: "Runs", op: "count" } },
     // Both plans run on each run's same incidents, so the saving is measured run by run and its interval is narrow.
-    { id: "b_mean", type: "AggregateNode", init: { label: "Plan B saves (hours a year)", op: "avg" } },
-    { id: "b_sd", type: "AggregateNode", init: { label: "Spread of the saving", op: "stdev" } },
-    { id: "b_ci", type: "ConfidenceNode", init: { label: "Plan B saving, 95% interval ± hours", op: "norm" }, literals: { alpha: 0.05 } },
-    { id: "mc_ci", type: "ConfidenceNode", init: { label: "95% interval ± hours", op: "norm" }, literals: { alpha: 0.05 } },
+    { id: "b_mean", type: "AggregateNode", init: { label: "Plan B saving", op: "avg" } },
+    { id: "b_sd", type: "AggregateNode", init: { label: "Saving std dev", op: "stdev" } },
+    { id: "b_ci", type: "ConfidenceNode", init: { label: "Plan B saving ± (95%)", op: "norm" }, literals: { alpha: 0.05 } },
+    { id: "mc_ci", type: "ConfidenceNode", init: { label: "Mean drive hours ± (95%)", op: "norm" }, literals: { alpha: 0.05 } },
     { id: "mc_run", type: "SeriesNode", init: { label: "Run", op: "range" }, literals: { start: 1, step: 1 } },
     { id: "mc_running", type: "RunningNode", init: { label: "Running mean", agg: "avg" } },
     { id: "mc_frame", type: "FrameFromListsNode", init: { label: "Convergence", valueKeys: ["name0", "name1", "name2"] },
@@ -201,7 +201,7 @@ const graph = {
     // The axis starts just under the lowest run, so the spread between runs shows.
     { id: "mc_opts", type: "ExpressionNode", init: { label: "Chart options",
       expr: '"title=Drive hours per run and the running mean; xlabel=Run; ylabel=Hours; ymin=" & ROUND(MIN(h) * 0.97, -1)' } },
-    { id: "mc_chart", type: "ChartNode", init: { label: "Does it converge?", op: "line" } },
+    { id: "mc_chart", type: "ChartNode", init: { label: "Convergence", op: "line" } },
   ],
   cables: [
     "sites.frame -> expected.frame",

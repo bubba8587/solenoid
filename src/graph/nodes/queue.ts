@@ -17,17 +17,17 @@ const PICK_COLUMNS = ["Picked", "Wait", "Cost", "Used Before"];
 /** Where a group's state starts each step: its last pick, or its Start row again. */
 export type QueueStepStart = "continue" | "start";
 export const QUEUE_STEP_START_OPTIONS: { value: QueueStepStart; label: string }[] = [
-  { value: "continue", label: "Carry on from the last item" },
-  { value: "start", label: "Go back to Start" },
+  { value: "continue", label: "Where it left off" },
+  { value: "start", label: "Back at its start" },
 ];
 /** The question the step-start pick answers, shown before it. */
-export const QUEUE_STEP_START_ASK = "Each new step";
+export const QUEUE_STEP_START_ASK = "Each step starts";
 
 /** When the next item in order doesn't fit the budget: the group's step ends, or it tries the next in order. */
 export type QueueFit = "stop" | "skip";
 export const QUEUE_FIT_OPTIONS: { value: QueueFit; label: string }[] = [
   { value: "stop", label: "Stop" },
-  { value: "skip", label: "Skip it, try the next" },
+  { value: "skip", label: "Skip it" },
 ];
 export const QUEUE_FIT_ASK = "If an item won't fit";
 
@@ -36,6 +36,13 @@ export type QueueOrderDir = "asc" | "desc";
 export const QUEUE_ORDER_DIR_OPTIONS: { value: QueueOrderDir; label: string }[] = [
   { value: "asc", label: "Smallest first" },
   { value: "desc", label: "Largest first" },
+];
+
+/** What decides the next item: a column (with an Order formula after it), or the item's own cost, cheapest first. */
+export type QueueOrderBy = "column" | "cost";
+export const QUEUE_ORDER_BY_OPTIONS: { value: QueueOrderBy; label: string }[] = [
+  { value: "column", label: "By a column" },
+  { value: "cost", label: "Cheapest first" },
 ];
 
 /** Who picks next: the groups in turn, one pick each a round; or the best group and item pair anywhere. */
@@ -60,7 +67,8 @@ export class GreedyQueueNode extends GraphNode {
     group: "A blank cell lets any group take the item.",
     step: "When each item becomes available. Empty: all at once.",
     budget: "Each item's cost counts against it. A step's first item always goes.",
-    order: "A LAMBDA, lowest first. After an Order by column, it breaks ties.",
+    orderColumn: "Neither this nor an Order formula: first in line.",
+    order: "A LAMBDA, lowest first: the order where no Order by column is set, otherwise a tie-break.",
     cost: "A LAMBDA added to the Cost column, such as the drive from the last item.",
     allowed: "A LAMBDA: TRUE if this group may take this item now.",
     picks: "In pick order, with the step, wait and cost.",
@@ -79,6 +87,7 @@ export class GreedyQueueNode extends GraphNode {
   turns: QueueTurns = "rotate";
   literals: Record<string, number> = {};
   orderDir: QueueOrderDir = "asc";
+  orderBy: QueueOrderBy = "column";
   stringLiterals: Record<string, string> = { group: "", step: "", orderColumn: "", costColumn: "" };
   cachedResult: FrameValue | SolError | null = null;
   cachedLeft: FrameValue | SolError | null = null;
@@ -87,24 +96,25 @@ export class GreedyQueueNode extends GraphNode {
   cachedOver: number | null = null;
   width = 280; height = 300;
 
-  constructor(init?: { label?: string; stepStart?: QueueStepStart; mode?: QueueFit; turns?: QueueTurns; orderDir?: QueueOrderDir }) {
+  constructor(init?: { label?: string; stepStart?: QueueStepStart; mode?: QueueFit; turns?: QueueTurns; orderDir?: QueueOrderDir; orderBy?: QueueOrderBy }) {
     super("GreedyQueue");
     this.label = init?.label ?? "Greedy Queue";
     if (init?.orderDir === "desc") this.orderDir = "desc";
+    if (init?.orderBy === "cost") this.orderBy = "cost";
     if (init?.stepStart === "start") this.stepStart = "start";
     if (init?.mode === "skip") this.mode = "skip";
     if (init?.turns === "best") this.turns = "best";
     // In the card's order: what and which first, then the Groups, Steps and Budget sections.
     this.addInput("items", frameIn("Items"));
     this.addInput("orderColumn", strIn("Order by"));
-    this.addInput("order", lambdaIn("Then by"));
+    this.addInput("order", lambdaIn("Order formula"));
     this.addInput("costColumn", strIn("Cost"));
     this.addInput("cost", lambdaIn("Cost formula"));
     this.addInput("group", strIn("Group column"));
-    this.addInput("start", frameIn("Start"));
+    this.addInput("start", frameIn("Groups"));
     this.addInput("allowed", lambdaIn("Allowed if"));
-    this.addInput("step", strIn("Step column"));
-    this.addInput("steps", numIn("Steps"));
+    this.addInput("step", strIn("Opens at"));
+    this.addInput("steps", numIn("Steps to run"));
     this.addInput("perStep", numIn("Picks per step"));
     this.addInput("budget", numIn("Budget per step"));
     this.addOutput("picks", frameOut("Picks"));
@@ -143,7 +153,7 @@ export class GreedyQueueNode extends GraphNode {
 
 /** The columns the plan adds after the items' own, as the core names them (`nodes/improve.rs`). */
 const PLAN_COLUMNS: { name: string; type: "number" | "logical" }[] = [
-  { name: "Position", type: "number" }, { name: "Cost", type: "number" }, { name: "At", type: "number" },
+  { name: "Position", type: "number" }, { name: "Cost", type: "number" }, { name: "So Far", type: "number" },
   { name: "Penalty", type: "number" }, { name: "Allowed", type: "logical" },
 ];
 
@@ -151,17 +161,17 @@ const PLAN_COLUMNS: { name: string; type: "number" | "logical" }[] = [
 export type SearchReach = "across" | "within";
 export const SEARCH_REACH_OPTIONS: { value: SearchReach; label: string }[] = [
   { value: "across", label: "Move between groups" },
-  { value: "within", label: "Only change the order" },
+  { value: "within", label: "Stay in their group" },
 ];
-export const SEARCH_REACH_ASK = "Items can";
+export const SEARCH_REACH_ASK = "Items may";
 
 /** Whether a group's walk ends at its last item, or comes back to its Start row (a round trip). */
 export type SearchEnds = "open" | "return";
 export const SEARCH_ENDS_OPTIONS: { value: SearchEnds; label: string }[] = [
-  { value: "open", label: "Stay at the last item" },
-  { value: "return", label: "Go back to Start" },
+  { value: "open", label: "At its last item" },
+  { value: "return", label: "Back at its start" },
 ];
-export const SEARCH_ENDS_ASK = "At the end";
+export const SEARCH_ENDS_ASK = "Each group ends";
 
 /** How hard the search looks: stop at the first plan no single change improves, or look past it (guided local search),
  *  for up to ten times as long, keeping the best plan found. Thorough is never worse, only slower. */
@@ -214,7 +224,7 @@ export class LocalSearchNode extends GraphNode {
     this.addInput("cost", lambdaIn("Cost formula"));
     this.addInput("penalty", lambdaIn("Penalty"));
     this.addInput("group", strIn("Group column"));
-    this.addInput("start", frameIn("Start"));
+    this.addInput("start", frameIn("Groups"));
     this.addInput("allowed", lambdaIn("Allowed if"));
     this.addInput("passes", numIn("Rounds"));
     this.addOutput("plan", frameOut("Plan"));

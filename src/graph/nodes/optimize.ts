@@ -224,9 +224,9 @@ export class StaffingNode extends GraphNode {
   /** Times and rates arrive with their units, read in minutes and an hour's worth ([[C25]] firstClassUnits). */
   unitAware = true;
   static socketDocs: Record<string, string> = {
-    target: "The wait a job should start within, in minutes. Empty: at once.",
-    share: "The share of jobs to start within the target, such as 0.8.",
-    options: "A row per server count, from the fewest that keep up.",
+    target: "Empty: at once.",
+    share: "Such as 0.8, for 80%.",
+    options: "A row per staff level, from the fewest that keep up.",
   };
 
   label: string;
@@ -238,16 +238,16 @@ export class StaffingNode extends GraphNode {
   constructor(init?: { label?: string }) {
     super("Staffing");
     this.label = init?.label ?? "Staffing (Erlang C)";
-    this.addInput("arrivals", numIn("Arrivals an hour"));
-    this.addInput("minutes", numIn("Minutes a job"));
-    this.addInput("target", numIn("Target wait (min)"));
-    this.addInput("share", numIn("Share within target"));
-    this.addOutput("options", frameOut("Options"));
-    this.addOutput("needed", numOut("Servers needed"));
+    this.addInput("arrivals", numIn("Arrivals per hour"));
+    this.addInput("minutes", numIn("Minutes per job"));
+    this.addInput("target", numIn("Start within (min)"));
+    this.addInput("share", numIn("Share in time"));
+    this.addOutput("options", frameOut("Staff levels"));
+    this.addOutput("needed", numOut("Staff needed"));
   }
 
   frameShape(): Shape | null {
-    return { columns: ["Servers", "Busy", "Chance of Waiting", "Mean Wait", "Within Target"].map((name) => ({ name, type: "number" as const })) };
+    return { columns: ["Staff", "Busy", "Chance to Wait", "Mean Wait", "In Time"].map((name) => ({ name, type: "number" as const })) };
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {

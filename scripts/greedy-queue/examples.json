@@ -339,7 +339,7 @@
    "id": "by_due_sum",
    "type": "AggregateNode",
    "init": {
-    "label": "Earliest due first: days late",
+    "label": "Days late (earliest due first)",
     "op": "sum"
    }
   },
@@ -382,7 +382,7 @@
    "id": "by_short_sum",
    "type": "AggregateNode",
    "init": {
-    "label": "Shortest first: days late",
+    "label": "Days late (shortest first)",
     "op": "sum"
    }
   },
@@ -390,7 +390,7 @@
    "id": "job_wait",
    "type": "LambdaNode",
    "init": {
-    "label": "Wait for the job to arrive",
+    "label": "Arrival wait",
     "params": "Arrives, before",
     "expr": "MAX(0, (Arrives - 1) * day - before)"
    }
@@ -408,7 +408,7 @@
    "id": "jobs_scored",
    "type": "LocalSearchNode",
    "init": {
-    "label": "Earliest due, as it came"
+    "label": "Earliest due plan"
    },
    "stringLiterals": {
     "group": "Machine",
@@ -432,7 +432,7 @@
    "id": "jobs_scored_sum",
    "type": "AggregateNode",
    "init": {
-    "label": "Before: hours late",
+    "label": "Hours late before",
     "op": "sum"
    }
   },
@@ -440,7 +440,7 @@
    "id": "jobs_better",
    "type": "LocalSearchNode",
    "init": {
-    "label": "Earliest due, improved"
+    "label": "Improved plan"
    },
    "stringLiterals": {
     "group": "Machine",
@@ -461,19 +461,8 @@
    "id": "jobs_better_sum",
    "type": "AggregateNode",
    "init": {
-    "label": "After: hours late",
+    "label": "Hours late after",
     "op": "sum"
-   }
-  },
-  {
-   "id": "jobs_better_chart",
-   "type": "ChartNode",
-   "init": {
-    "label": "Each change",
-    "op": "line"
-   },
-   "stringLiterals": {
-    "options": "x=Change; y=Total; xlabel=Change; ylabel=Hours"
    }
   },
   {
@@ -582,7 +571,7 @@
    "id": "fit",
    "type": "GreedyQueueNode",
    "init": {
-    "label": "Load trucks",
+    "label": "Truck loading",
     "mode": "skip",
     "orderDir": "desc"
    },
@@ -595,7 +584,7 @@
    "id": "fit_kg",
    "type": "GroupByFrameNode",
    "init": {
-    "label": "Load trucks: kg a truck",
+    "label": "Kg per truck",
     "agg": "sum"
    },
    "stringLiterals": {
@@ -607,7 +596,7 @@
    "id": "fit_chart",
    "type": "ChartNode",
    "init": {
-    "label": "Load trucks",
+    "label": "Kg per truck",
     "op": "column"
    },
    "stringLiterals": {
@@ -618,7 +607,7 @@
    "id": "nofit",
    "type": "GreedyQueueNode",
    "init": {
-    "label": "Load trucks, no skipping",
+    "label": "Truck loading (no skipping)",
     "mode": "stop",
     "orderDir": "desc"
    },
@@ -631,7 +620,7 @@
    "id": "nofit_kg",
    "type": "GroupByFrameNode",
    "init": {
-    "label": "Load trucks, no skipping: kg a truck",
+    "label": "Kg per truck (no skipping)",
     "agg": "sum"
    },
    "stringLiterals": {
@@ -643,7 +632,7 @@
    "id": "nofit_chart",
    "type": "ChartNode",
    "init": {
-    "label": "Load trucks, no skipping",
+    "label": "Kg per truck (no skipping)",
     "op": "column"
    },
    "stringLiterals": {
@@ -759,7 +748,7 @@
    "id": "km",
    "type": "LambdaNode",
    "init": {
-    "label": "Km from the last stop",
+    "label": "Leg km",
     "params": "Latitude, Longitude, last_Latitude, last_Longitude",
     "expr": "2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))"
    }
@@ -768,7 +757,8 @@
    "id": "nearest",
    "type": "GreedyQueueNode",
    "init": {
-    "label": "Nearest next"
+    "label": "Nearest next",
+    "orderBy": "cost"
    },
    "stringLiterals": {}
   },
@@ -776,7 +766,7 @@
    "id": "nearest_sum",
    "type": "RoundNNode",
    "init": {
-    "label": "Nearest next: km",
+    "label": "Route km (nearest next)",
     "op": "round"
    },
    "literals": {
@@ -787,7 +777,7 @@
    "id": "nearest_chart",
    "type": "ChartNode",
    "init": {
-    "label": "Nearest next",
+    "label": "Route (nearest next)",
     "op": "xyline"
    },
    "stringLiterals": {
@@ -798,7 +788,7 @@
    "id": "listed",
    "type": "GreedyQueueNode",
    "init": {
-    "label": "In the listed order"
+    "label": "Listed order"
    },
    "stringLiterals": {}
   },
@@ -806,7 +796,7 @@
    "id": "listed_sum",
    "type": "RoundNNode",
    "init": {
-    "label": "In the listed order: km",
+    "label": "Route km (listed order)",
     "op": "round"
    },
    "literals": {
@@ -817,7 +807,7 @@
    "id": "listed_chart",
    "type": "ChartNode",
    "init": {
-    "label": "In the listed order",
+    "label": "Route (listed order)",
     "op": "xyline"
    },
    "stringLiterals": {
@@ -828,7 +818,7 @@
    "id": "route_better",
    "type": "LocalSearchNode",
    "init": {
-    "label": "Nearest next, improved",
+    "label": "Improved route",
     "stuck": "look"
    }
   },
@@ -836,7 +826,7 @@
    "id": "route_better_sum",
    "type": "RoundNNode",
    "init": {
-    "label": "Improved: km",
+    "label": "Route km (improved)",
     "op": "round"
    },
    "literals": {
@@ -847,7 +837,7 @@
    "id": "route_better_chart",
    "type": "ChartNode",
    "init": {
-    "label": "Nearest next, improved",
+    "label": "Route (improved)",
     "op": "xyline"
    },
    "stringLiterals": {
@@ -878,7 +868,7 @@
    "id": "grp_jobs",
    "type": "GroupNode",
    "init": {
-    "label": "Job shop: the jobs and machines",
+    "label": "Job shop",
     "members": [
      "note_jobs",
      "jobs",
@@ -892,7 +882,7 @@
    "id": "grp_jobs_weak",
    "type": "GroupNode",
    "init": {
-    "label": "Job shop, not optimized: shortest job first",
+    "label": "Job shop, not optimized",
     "members": [
      "by_short",
      "by_short_late",
@@ -906,7 +896,7 @@
    "id": "grp_jobs_good",
    "type": "GroupNode",
    "init": {
-    "label": "Job shop, optimized: earliest due first, then improved",
+    "label": "Job shop, optimized",
     "members": [
      "by_due",
      "by_due_late",
@@ -919,8 +909,7 @@
      "jobs_scored_sum",
      "jobs_better",
      "jobs_better_pen",
-     "jobs_better_sum",
-     "jobs_better_chart"
+     "jobs_better_sum"
     ],
     "color": "green"
    }
@@ -939,7 +928,7 @@
    "id": "grp_trucks",
    "type": "GroupNode",
    "init": {
-    "label": "Loading trucks: the boxes",
+    "label": "Truck loading",
     "members": [
      "note_trucks",
      "boxes",
@@ -952,7 +941,7 @@
    "id": "grp_trucks_weak",
    "type": "GroupNode",
    "init": {
-    "label": "Loading trucks, not optimized: stop at the first box that won't fit",
+    "label": "Truck loading, not optimized",
     "members": [
      "nofit",
      "nofit_kg",
@@ -965,7 +954,7 @@
    "id": "grp_trucks_good",
    "type": "GroupNode",
    "init": {
-    "label": "Loading trucks, optimized: skip boxes that won't fit",
+    "label": "Truck loading, optimized",
     "members": [
      "fit",
      "fit_kg",
@@ -988,7 +977,7 @@
    "id": "grp_route",
    "type": "GroupNode",
    "init": {
-    "label": "Delivery route: the stops",
+    "label": "Delivery route",
     "members": [
      "note_route",
      "stops",
@@ -1002,7 +991,7 @@
    "id": "grp_route_weak",
    "type": "GroupNode",
    "init": {
-    "label": "Delivery route, not optimized: the stops in listed order",
+    "label": "Delivery route, not optimized",
     "members": [
      "listed",
      "listed_sum",
@@ -1015,7 +1004,7 @@
    "id": "grp_route_good",
    "type": "GroupNode",
    "init": {
-    "label": "Delivery route, optimized: nearest stop next, then improved",
+    "label": "Delivery route, optimized",
     "members": [
      "nearest",
      "nearest_sum",
@@ -1055,7 +1044,6 @@
   "job_late.result -> jobs_better.penalty",
   "jobs_better.plan -> jobs_better_pen.frame",
   "jobs_better_pen.values -> jobs_better_sum.list",
-  "jobs_better.history -> jobs_better_chart.values",
   "boxes.frame -> fit.items",
   "capacity.value -> fit.budget",
   "fit.picks -> fit_kg.frame",
@@ -1067,7 +1055,6 @@
   "stops.frame -> nearest.items",
   "depot.frame -> nearest.start",
   "km.result -> nearest.cost",
-  "km.result -> nearest.order",
   "nearest.total -> nearest_sum.value",
   "nearest.picks -> nearest_chart.values",
   "stops.frame -> listed.items",

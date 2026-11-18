@@ -52,7 +52,7 @@ import type {
   BlankRowMode,
 } from "../nodeClasses";
 import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS, SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS,
-  SOLVER_GOAL_OPTIONS, ASSIGN_GOAL_OPTIONS, PATH_DIRECTION_OPTIONS, QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_ORDER_DIR_OPTIONS, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK, SEARCH_STUCK_OPTIONS, SEARCH_STUCK_ASK } from "../nodeClasses";
+  SOLVER_GOAL_OPTIONS, ASSIGN_GOAL_OPTIONS, QUEUE_ORDER_BY_OPTIONS, PATH_DIRECTION_OPTIONS, QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_ORDER_DIR_OPTIONS, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK, SEARCH_STUCK_OPTIONS, SEARCH_STUCK_ASK } from "../nodeClasses";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType, LocalSearchNode as LocalSearchNodeType, SolverNode as SolverNodeType,
   AssignmentNode as AssignmentNodeType, ShortestPathNode as ShortestPathNodeType, ParetoNode as ParetoNodeType, StaffingNode as StaffingNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
@@ -1315,7 +1315,10 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
   const [fit, setFit] = useNodeField(data, "mode");
   const [turns, setTurns] = useNodeField(data, "turns");
   const [dir, setDir] = useNodeField(data, "orderDir");
+  const [orderBy, setOrderBy] = useNodeField(data, "orderBy");
   const connected = useConnectedInputs(data.id);
+  // Cheapest first orders by the Cost rows below, so the column and its direction step aside unless one is wired.
+  const byColumn = orderBy !== "cost" || connected.has("orderColumn");
   // Which way the order runs says something only once a column orders the items.
   const hasOrderColumn = connected.has("orderColumn") || !!data.stringLiterals.orderColumn || dir !== "asc";
   // Each pick says something only where it can change the run: the step start with a Start wired, the fit with a budget.
@@ -1327,13 +1330,15 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
   const budgetUsed = useRowsInUse(data, QUEUE_BUDGET_KEYS) || fit !== "stop";
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["items", "orderColumn"]} fullWiredKeys={QUEUE_WHOLE} />
-      {hasOrderColumn && <SegToggle value={dir} options={QUEUE_ORDER_DIR_OPTIONS} onChange={setDir} />}
+      <InlineInputs node={data} emit={emit} keys={["items"]} fullWiredKeys={QUEUE_WHOLE} />
+      <SegToggle value={orderBy} options={QUEUE_ORDER_BY_OPTIONS} onChange={setOrderBy} />
+      {byColumn && <InlineInputs node={data} emit={emit} keys={["orderColumn"]} fullWiredKeys={QUEUE_WHOLE} />}
+      {byColumn && hasOrderColumn && <SegToggle value={dir} options={QUEUE_ORDER_DIR_OPTIONS} onChange={setDir} />}
       <InlineInputs node={data} emit={emit} keys={["order", "costColumn", "cost"]} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
       <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: QUEUE_GROUP_KEYS }}>
         <InlineInputs node={data} emit={emit} keys={QUEUE_GROUP_KEYS} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
         {hasStart && <AskSelect label={QUEUE_STEP_START_ASK} value={stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={setStepStart} />}
-        {groupsUsed && <AskSelect label={QUEUE_TURNS_ASK} value={turns} options={QUEUE_TURNS_OPTIONS} onChange={setTurns} />}
+        {(connected.has("group") || !!data.stringLiterals.group || turns !== "rotate") && <AskSelect label={QUEUE_TURNS_ASK} value={turns} options={QUEUE_TURNS_OPTIONS} onChange={setTurns} />}
       </CardSection>
       <CardSection label="Steps" collapsible defaultOpen={stepsUsed} sockets={{ node: data, emit, keys: QUEUE_STEP_KEYS }}>
         <InlineInputs node={data} emit={emit} keys={QUEUE_STEP_KEYS} fullWiredKeys={QUEUE_WHOLE} />
@@ -1496,7 +1501,7 @@ export function StaffingComponent({ data, emit }: NodeProps<StaffingNodeType>) {
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
       <MeasuredSocketRow side="output" socketKey="needed" nodeId={data.id} emit={emit} payload={data.outputs.needed!.socket}>
-        <span className="solenoid-node__io-label">Servers needed</span>
+        <span className="solenoid-node__io-label">Staff needed</span>
         <ValueDisplay value={data.cachedNeeded} />
       </MeasuredSocketRow>
     </NodeShell>

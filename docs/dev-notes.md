@@ -25,7 +25,7 @@ specific item.
   at the axis' default (floor 0), so `ymax` alone no longer lifts a Column chart's floor to its smallest bar.
   `validate-graph` flags a group inside a group (groups don't nest; the tidy scatters one).
 - **Rules that are only a column are picked, not written** (author: a formula card that names a column is a UI gap).
-  Greedy Queue's Order by is a column with Smallest first / Largest first, Then by a LAMBDA after it; Cost (both
+  Greedy Queue's Order by is a column with Smallest first / Largest first, an Order formula (a LAMBDA) after it or alone; Cost (both
   cards) is a column plus an optional Cost formula. Conditions are named value cards ("Hours a machine works a day")
   wired into Budget and the rest, and both cards show a wired card's whole name. Picks lead with their question
   (`AskSelect`: "If an item won't fit" Stop / Skip it). Typed-in-place formulas were tried and refused (author).

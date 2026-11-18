@@ -703,11 +703,11 @@ fn staffing(c: &mut Call) -> Answer {
     }
     let col = |i: usize, name: &str| num_column(name, rows.iter().map(|r| V::Num(r[i])).collect());
     let table = vec![
-        col(0, "Servers"),
+        col(0, "Staff"),
         col(1, "Busy"),
-        col(2, "Chance of Waiting"),
+        col(2, "Chance to Wait"),
         minute.column("Mean Wait", rows.iter().map(|r| Some(minute.base(r[3])))),
-        col(4, "Within Target"),
+        col(4, "In Time"),
     ];
     out(c, frame_v(table), needed.map_or(V::Null, V::Num))
 }
