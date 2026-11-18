@@ -433,3 +433,120 @@ mod assign_tests {
         assert_eq!(super::assign(&c), vec![1, 2]);
     }
 }
+
+#[cfg(test)]
+mod brute_force {
+    use super::*;
+
+    /// A small deterministic generator, so a failure names its case.
+    struct Lcg(u64);
+    impl Lcg {
+        fn next(&mut self) -> u64 {
+            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            self.0 >> 33
+        }
+        fn int(&mut self, lo: i64, hi: i64) -> f64 {
+            (lo + (self.next() % ((hi - lo + 1) as u64)) as i64) as f64
+        }
+    }
+
+    #[test]
+    fn whole_programs_match_every_point_tried() {
+        let mut r = Lcg(7);
+        for case in 0..300 {
+            let n = 2 + (r.next() % 3) as usize;
+            let m = 1 + (r.next() % 3) as usize;
+            let c: Vec<f64> = (0..n).map(|_| r.int(-3, 9)).collect();
+            let rows: Vec<(Vec<f64>, Sign, f64)> = (0..m)
+                .map(|_| {
+                    let a: Vec<f64> = (0..n).map(|_| r.int(0, 6)).collect();
+                    let s = if r.next() % 4 == 0 { Sign::Ge } else { Sign::Le };
+                    (a, s, r.int(2, 20))
+                })
+                .collect();
+            let p =
+                Program { c: c.clone(), rows: rows.clone(), lo: vec![0.0; n], hi: vec![4.0; n], whole: vec![true; n] };
+            // Every point of {0..4}^n.
+            let mut best: Option<f64> = None;
+            for code in 0..5usize.pow(n as u32) {
+                let x: Vec<f64> = (0..n).map(|j| ((code / 5usize.pow(j as u32)) % 5) as f64).collect();
+                let ok = rows.iter().all(|(a, s, b)| {
+                    let v: f64 = a.iter().zip(&x).map(|(p, q)| p * q).sum();
+                    match s {
+                        Sign::Le => v <= b + 1e-9,
+                        Sign::Ge => v >= b - 1e-9,
+                        Sign::Eq => (v - b).abs() < 1e-9,
+                    }
+                });
+                if ok {
+                    let v: f64 = c.iter().zip(&x).map(|(p, q)| p * q).sum();
+                    best = Some(best.map_or(v, |b: f64| b.max(v)));
+                }
+            }
+            match (solve(&p), best) {
+                (Outcome::Best { total, stopped: false, .. }, Some(b)) => {
+                    assert!((total - b).abs() < 1e-6, "case {case}: {total} vs {b}")
+                }
+                (Outcome::Infeasible, None) => {}
+                (o, b) => panic!("case {case}: {o:?} vs {b:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn linear_programs_meet_their_duals() {
+        // max c·x, A x ≤ b, x ≥ 0 with b > 0: the duals are feasible (yA ≥ c, y ≥ 0) and b·y equals the best total.
+        let mut r = Lcg(11);
+        for case in 0..300 {
+            let n = 2 + (r.next() % 4) as usize;
+            let m = 1 + (r.next() % 4) as usize;
+            let c: Vec<f64> = (0..n).map(|_| r.int(1, 9)).collect();
+            let rows: Vec<(Vec<f64>, Sign, f64)> =
+                (0..m).map(|_| ((0..n).map(|_| r.int(1, 7)).collect(), Sign::Le, r.int(5, 40))).collect();
+            let p = Program {
+                c: c.clone(),
+                rows: rows.clone(),
+                lo: vec![0.0; n],
+                hi: vec![f64::INFINITY; n],
+                whole: vec![false; n],
+            };
+            let Outcome::Best { total, duals: Some(y), .. } = solve(&p) else { panic!("case {case}: not solved") };
+            let dual: f64 = rows.iter().zip(&y).map(|((_, _, b), yi)| b * yi).sum();
+            assert!((dual - total).abs() < 1e-6 * total.max(1.0), "case {case}: dual {dual} vs {total}");
+            assert!(y.iter().all(|&v| v >= -1e-9), "case {case}: a negative dual");
+            for j in 0..n {
+                let reduced: f64 = rows.iter().zip(&y).map(|((a, _, _), yi)| a[j] * yi).sum::<f64>() - c[j];
+                assert!(reduced >= -1e-6, "case {case}: column {j} prices below its gain");
+            }
+        }
+    }
+
+    #[test]
+    fn assignment_matches_every_permutation() {
+        let mut r = Lcg(3);
+        for case in 0..200 {
+            let n = 2 + (r.next() % 4) as usize;
+            let cost: Vec<Vec<f64>> = (0..n).map(|_| (0..n).map(|_| r.int(0, 30)).collect()).collect();
+            let got: f64 = assign(&cost).iter().enumerate().map(|(i, &j)| cost[i][j]).sum();
+            let mut perm: Vec<usize> = (0..n).collect();
+            let mut best = f64::INFINITY;
+            // Heap's algorithm over every permutation.
+            fn heap(k: usize, p: &mut Vec<usize>, cost: &[Vec<f64>], best: &mut f64) {
+                if k == 1 {
+                    *best = best.min(p.iter().enumerate().map(|(i, &j)| cost[i][j]).sum());
+                    return;
+                }
+                for i in 0..k {
+                    heap(k - 1, p, cost, best);
+                    if k % 2 == 0 {
+                        p.swap(i, k - 1)
+                    } else {
+                        p.swap(0, k - 1)
+                    }
+                }
+            }
+            heap(n, &mut perm, &cost, &mut best);
+            assert_eq!(got, best, "case {case}");
+        }
+    }
+}
