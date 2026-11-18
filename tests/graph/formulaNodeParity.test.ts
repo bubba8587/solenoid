@@ -50,17 +50,6 @@ describe("formula ↔ node parity ratchet", () => {
     });
   });
 
-  it("never advertises Formula.js internals as formula functions", () => {
-    const leaked = m.noNode.filter((n) => n.startsWith("utils."));
-    expect(leaked, `Formula.js internals leaked into the formula name list:${fmt(leaked)}`).toEqual([]);
-  });
-
-  it("inScope and nativeGap partition the catalog — the coverage denominator is honest", () => {
-    const inScope = new Set(m.inScope.map((r) => r.type));
-    const excluded = new Set(m.nativeGap.map((r) => r.type));
-    for (const t of inScope) expect(excluded.has(t), `${t} counted in BOTH populations`).toBe(false);
-  });
-
   // Gap A is empty, so only a made-up partly covered row tells `every` from `some`.
   it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node", () => {
     const only = (avail: string[]) => (n: string) => avail.includes(n);

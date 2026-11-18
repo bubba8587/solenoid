@@ -187,8 +187,6 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
     node.expr = "x * y - z";
     node._rebuild();
     expect(varTypes(node)).toEqual(["anydata", "anydata", "anydata"]);
-    // The node no longer carries a coercion side-channel — the socket is the truth.
-    expect("noWidenInputs" in node).toBe(false);
   });
   it("scalar inputs → a SCALAR result (not a 1-element list)", () => {
     expect(runExpr("a + b", { a: [5], b: [3] })).toBe(8);

@@ -1,5 +1,4 @@
 // [[C24]] arraySemantics
-import { solError, type SolError } from "./errorValue";
 import { coreReadDecimal, coreReadLogical } from "./engineWasm";
 
 export type Missing = null;
@@ -10,7 +9,7 @@ export function numberToLogical(n: number): boolean {
 
 /** A value read as a logical ([[C58]] tableInputRawText, [[B17]] typedValueModel): a boolean as itself, a finite number or
  *  numeric text as true when non-zero, and other text only as `true` or `false` in any case. Blank is null; anything
- *  else is NaN: a cell shows it, and a computation turns it into `#TYPE!` (`logicalOrTypeError`). */
+ *  else is NaN: a cell shows it, and a computation turns it into `#TYPE!`. */
 export function coerceLogical(v: unknown): boolean | null | number {
   if (v === null || v === undefined) return null;
   if (typeof v === "boolean") return v;
@@ -20,13 +19,6 @@ export function coerceLogical(v: unknown): boolean | null | number {
     return r === undefined ? null : Number.isNaN(r) ? NaN : r === 1;
   }
   return NaN;
-}
-
-/** `coerceLogical` for a computation: what can't read as a logical is `#TYPE!`, naming the value. */
-export function logicalOrTypeError(v: unknown, where: string): boolean | null | SolError {
-  const b = coerceLogical(v);
-  if (typeof b !== "number") return b;
-  return solError("#TYPE!", `${where}: ${typeof v === "string" ? `"${v}"` : String(v)} isn't a logical. Only TRUE, FALSE or a number read as one`);
 }
 
 export function coerceNumber(v: unknown): number {

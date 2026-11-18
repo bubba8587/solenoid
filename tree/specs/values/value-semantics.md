@@ -78,13 +78,13 @@ Three distinctions carry the most weight:
       inf -->|no| ok["the number"]
   ```
 
-  So a computation cannot produce NaN. The remaining NaN sources are data entry (dirty imported data, or unreadable text in any typed cell, list item or list field, all read through `coerceFrameCell`, [[C58]] tableInputRawText) and one class of bug: a `UnitCell` that escapes the unit-blind boundary reaches `coerceNumber` as NaN, which `stripUnitCells` exists to prevent.
+  So a computation cannot produce NaN. The remaining NaN sources are data entry (dirty imported data, or unreadable text in any typed cell, list item or list field, all read through `coerceFrameCell`, [[C58]] tableInputRawText) and one class of bug: a `UnitCell` that escapes the unit-blind boundary reaches `coerceNumber` as NaN, which `strip_unit_cells` exists to prevent.
 
 ```mermaid
 flowchart LR
     t["typed text its type can't read<br>(any typed cell, list item or field,<br>through coerceFrameCell)"] --> nan["a NaN cell"]
     d["dirty imported data"] --> nan
-    bug["a UnitCell past the unit-blind<br>boundary (a bug: stripUnitCells<br>exists to stop it)"] --> nan
+    bug["a UnitCell past the unit-blind<br>boundary (a bug: strip_unit_cells<br>exists to stop it)"] --> nan
     nan --> show["shows NaN on a muted chip:<br>not an error, not #N/A, not blank;<br>ISERROR is FALSE, IFNA passes it"]
     nan -->|"enters a numeric op"| dom["#DOMAIN! (guard_finite)"]
     op["a computation's own result"] -.->|"never NaN: a NaN result<br>is #DOMAIN!"| dom

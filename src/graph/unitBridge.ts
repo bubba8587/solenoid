@@ -1,7 +1,7 @@
 // [[C25]] firstClassUnits
 import { type Unit, dimEqual, fcUnitToUnit } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
-import { isUnitCell, withMatrixUnit, matrixUnitOf, roundAtLargerTerm, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
+import { withMatrixUnit, matrixUnitOf, roundAtLargerTerm, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
 import { frameFnOnCore } from "./frameBackend";
 
 /** A value tagged with a Format Controller's unit, on the core (`tag_fc_unit`, the card's own rule): a number takes
@@ -22,20 +22,6 @@ export function displayMagnitudeOf(cell: UnitCellT): number {
     if (u && dimEqual(u.dim, cell.dim)) return roundAtLargerTerm((cell.value - (u.offset ?? 0)) / u.scale, Math.max(Math.abs(cell.value), Math.abs(u.offset ?? 0)) / u.scale);
   }
   return cell.value;
-}
-
-export function stripUnitCells(v: unknown): unknown {
-  if (isUnitCell(v)) return displayMagnitudeOf(v);
-  if (Array.isArray(v)) {
-    let changed = false;
-    const out = v.map((c) => {
-      const s = stripUnitCells(c);
-      if (s !== c) changed = true;
-      return s;
-    });
-    return changed ? out : v;
-  }
-  return v;
 }
 
 /** The FC id whose scale and offset are exactly `u`'s, or none. */

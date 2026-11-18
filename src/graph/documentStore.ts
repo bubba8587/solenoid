@@ -39,9 +39,6 @@ import {
   type SolDoc,
 } from "./documentStoreCore";
 
-const OLD_LIB_SLOT_A = "solenoid.docs.lib.a";
-const OLD_LIB_SLOT_B = "solenoid.docs.lib.b";
-
 const INDEX_SLOT_A = "solenoid.docs.index.a";
 const INDEX_SLOT_B = "solenoid.docs.index.b";
 const docSlotKey = (id: string, slot: "a" | "b") => `solenoid.docs.doc.${id}.${slot}`;
@@ -404,10 +401,6 @@ export const documentStore = {
   },
 
   async restore(): Promise<boolean> {
-    try {
-      localStorage.removeItem(OLD_LIB_SLOT_A);
-      localStorage.removeItem(OLD_LIB_SLOT_B);
-    } catch { /* storage disabled */ }
     const lib = readLibraryFromStorage();
     if (!lib || lib.documents.length === 0) return false;
     _lib = lib;

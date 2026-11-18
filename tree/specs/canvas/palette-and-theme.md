@@ -10,7 +10,7 @@ Serves [[A1]] visualGraphCalculator: every color rule below exists so the app we
 
 Every color the app paints comes from one of two places. A **palette** is a named set of twelve accent colors plus, optionally, a neutral ramp for the workbench around the graph. The **theme** is the user's accent choice and light or dark mode, which `appTheme.ts` writes onto `<html>` as CSS custom properties. What each built-in palette is meant to look like, and the structure every neutral ramp keeps, is in `DESIGN.md` §2 Colors.
 
-Code: `palette.ts` (the palette half), `appTheme.ts` and `themeVars.ts` (the theme half), `cssColor.ts`, `categoryColor.ts`.
+Code: `palette.ts` (the palette half), `appTheme.ts` and `themeVars.ts` (the theme half), `categoryColor.ts`.
 
 ```mermaid
 flowchart LR
@@ -295,11 +295,3 @@ The marketing pages' `.sol-landing` wrapper overrides the four accent variables 
 - **Category chips** (`categoryColorIndex(values)` in `categoryColor.ts`): each distinct string gets an index by first appearance, skipping null and undefined. It is pure and order-deterministic, so a value keeps its index wherever it sits and a chip keeps its color when rows are reordered for display (the renderer feeds the source order). The index maps to the chart series colors (`useSeriesColors`, modulo their count) at render time.
 
 Tests: `categoryColor.test.ts`: an index by first appearance, deduplicated, with null and undefined skipped.
-
-## Color math for canvas renderers
-
-A `<canvas>` cannot evaluate `color-mix()` or `var(--…)`, so `cssColor.ts` does that math for the canvas renderers. It stays free of the DOM; resolving a `var()` needs `getComputedStyle` and is the caller's job.
-
-- `parseColor` reads `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()` and `rgba()` (alpha as a fraction or a percentage), and `color(srgb r g b / a)`. Chromium serializes any `color-mix()` result in that last form, so without it header tints and group-tinted borders fall back to a flat body fill. Its channels are rounded after scaling to 0 to 255, because the serialized floats are truncated and a bare multiply lands one step low. Whitespace is tolerated. Anything else (a named color, `hsl()`, a `var()`, an unresolved `color-mix()`) returns null.
-
-Tests: `cssColor.test.ts`: each hex form, `rgb()` and `rgba()`, whitespace, the `color(srgb …)` form with and without alpha, and null for the unsupported forms.

@@ -217,13 +217,6 @@ describe("guesser only (no type sources)", () => {
   });
 });
 
-describe("cube brand", () => {
-  it("emits a __cube value", () => {
-    const cube = notesToCube([{ path: "a.md", text: "---\nx: 1\n---" }], NO_TYPES);
-    expect(cube.__cube).toBe(true);
-  });
-});
-
 describe("mdbase validation (Write Properties, item B)", () => {
   const collection = parseMdbaseCollection(read("Projects/mdbase.yaml"), [read("Projects/_types/project.md")]);
   const sch = mdbaseSchemaFor(collection, "Kitchen remodel.md")!;

@@ -133,12 +133,11 @@ Tests:
 
 `restore()` runs on startup:
 
-1. It deletes the whole-library keys `solenoid.docs.lib.a` and `.b`, if present. There is no migration from them ([[B7]] preAlphaBreakFreely).
-2. It reads the newest valid index. An index without a `docs` array is invalid.
-3. For each entry, it reads that document's newest valid slot. A missing or corrupt document is skipped, and the rest of the library loads.
-4. With no documents left, restore reports nothing to show, and the caller creates a first document.
-5. The current document is the index's `currentId` if that document loaded, and otherwise the first document.
-6. It seeds `_lastPersisted` with the loaded objects, persists once to settle the library into the current write slots, and shows the current document.
+1. It reads the newest valid index. An index without a `docs` array is invalid.
+2. For each entry, it reads that document's newest valid slot. A missing or corrupt document is skipped, and the rest of the library loads.
+3. With no documents left, restore reports nothing to show, and the caller creates a first document.
+4. The current document is the index's `currentId` if that document loaded, and otherwise the first document.
+5. It seeds `_lastPersisted` with the loaded objects, persists once to settle the library into the current write slots, and shows the current document.
 
 ```mermaid
 flowchart TD

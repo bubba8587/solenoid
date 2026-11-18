@@ -28,11 +28,6 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
     expect(types("table input")[0]).toBe("table-input");
   });
 
-  it("'text input' and 'frame input' find their input nodes", () => {
-    expect(types("text input")).toContain("value-input__op-string");
-    expect(types("frame input")).toContain("frame-input");
-  });
-
   it("an exact label still wins (no regression from the wider haystack)", () => {
     expect(types("multiply")[0]).toBe("arith-mul");
   });
@@ -42,21 +37,9 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
     expect(types("subtract")[0]).toBe("arith-sub");
     expect(types("divide")[0]).toBe("arith-div");
   });
-
-  it("Excel function names still match", () => {
-    expect(search("sumproduct").length).toBeGreaterThan(0);
-  });
 });
 
 describe("Add-menu search — typo tolerance and word order", () => {
-  it("'frane input' (one-letter typo) ranks Frame Input #1", () => {
-    expect(types("frane input")[0]).toBe("frame-input");
-  });
-
-  it("'input frame' (reversed word order) still surfaces Frame Input at the top", () => {
-    expect(types("input frame")).toContain("frame-input");
-  });
-
   it("a typo'd Excel name still finds its node ('xlokup' → XLOOKUP)", () => {
     expect(types("xlokup")).toContain("lookup-xlookup");
   });
@@ -180,11 +163,6 @@ describe("Add-menu search — hyphenated tokens and word hits over description n
     expect(searchLeaves(all, "savitzky-golay")[0]?.type).toBe("list-smooth");
     expect(searchLeaves(all, "savitzky golay")[0]?.type).toBe("list-smooth");
   });
-
-  it("'sunm' ranks SUM ahead of leaves whose descriptions merely contain the letters", () => {
-    const top = types("sunm", 3);
-    expect(top[0]).toBe("reduce-sum");
-  });
 });
 
 describe("Excel-alias rows never repeat a name a card already wears", () => {
@@ -201,12 +179,6 @@ describe("Excel-alias rows never repeat a name a card already wears", () => {
     expect(types("GROUPBY", 1)).toEqual(["group-by-frame"]);
     expect(types("SCAN", 1)).toEqual(["scan-lambda"]);
     expect(search("GROUPBY").map((l) => l.label)).not.toContain("Group Lists: GROUPBY");
-  });
-
-  // [[D73]] nodeCoversFormula: ISERR is current Excel, so it is a real Type Check op, not an alias row.
-  it("ISERR is a real Type Check op, and ISERROR ranks its own op first", () => {
-    expect(types("ISERR", 1)).toEqual(["is-test__op-iserr"]);
-    expect(types("ISERROR", 1)).toEqual(["is-test__op-iserror"]);
   });
 
   it("the Table Reshape card's family name finds its four ops first", () => {

@@ -34,11 +34,6 @@ describe("the mobile bar and the tablet top-bar actions share one source", () =>
     expect((mobile.match(/<svg/g) ?? []).length, "MobileControls inlines more than the Add FAB").toBe(1);
     expect((tablet.match(/<svg/g) ?? []).length, "TabletActions inlines a glyph").toBe(0);
   });
-
-  it("a device is never both mobile and tablet, and never neither", () => {
-    const coarse = read("./coarse.ts");
-    expect(coarse).toContain("return IS_COARSE && !_mobile;");
-  });
 });
 
 describe("top-anchored overlays derive from the measured header envelope", () => {

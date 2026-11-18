@@ -1,7 +1,6 @@
 // [[obsidian-plugin]], [[C67]] mdbaseCeiling, [[frame-verbs#The Cube value]], [[obsidian-plugin#The app reads the picks]]
 import { describe, it, expect } from "vitest";
 import { parsePluginColumnTypes, parsePluginNestedTables } from "../../src/graph/pluginColumnTypes";
-import { PLUGIN_DATA_PATH } from "../../src/graph/pluginDataPath";
 
 describe("the plugin's picked column types", () => {
   it("reads columnTypes, property then column, keeping only real types", () => {
@@ -19,9 +18,5 @@ describe("the plugin's picked column types", () => {
     expect(parsePluginColumnTypes("{")).toEqual({});
     expect(parsePluginColumnTypes(JSON.stringify({ look: true }))).toEqual({});
     expect(parsePluginColumnTypes(JSON.stringify({ columnTypes: [] }))).toEqual({});
-  });
-
-  it("lives where the plugin keeps its data", () => {
-    expect(PLUGIN_DATA_PATH).toBe(".obsidian/plugins/solenoid-properties/data.json");
   });
 });

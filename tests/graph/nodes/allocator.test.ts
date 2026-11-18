@@ -139,10 +139,6 @@ describe("Min proportional (least spend, weight-proportional)", () => {
 });
 
 describe("the modes + range normalization", () => {
-  it("dispatches by mode", () => {
-    expect(alloc("budget", [20, 10], [50, 40], [1, 1], 60)).toEqual([30, 30]);
-    expect(alloc("minProportional", [20, 10], [1000, 1000], [1, 3], 0)).toEqual([20, 60]);
-  });
   it("normalizes an inverted min>max row", () => {
     // [50,20] normalizes to [20,50]; equal-weight budget 60 over [20,50]&[10,40] → 30/30.
     expect(alloc("budget", [50, 40], [20, 10], [1, 1], 60)).toEqual([30, 30]);

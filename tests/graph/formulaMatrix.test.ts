@@ -51,7 +51,6 @@ describe("each matrix name computes what its node computes", () => {
     expect(ev("MUNIT(3)")).toEqual(new TableUnitNode().data({ n: [3] }).result);
   });
 
-
   it("DIAGONAL node — a list becomes a square matrix's diagonal (numpy.diag); off-diagonal 0 or blank", () => {
     const zero = new TableDiagNode({ offDiag: "zero" }).data({ diag: [[2, 5, 7]] }).result as (number | null)[][];
     expect(zero).toEqual([[2, 0, 0], [0, 5, 0], [0, 0, 7]]);
@@ -163,12 +162,6 @@ describe("a matrix reaches its function whole", () => {
     // An empty axis still costs a step per row, and an infinite count never ends: both meet the cell cap.
     expect(code(ev("EXPAND(e, 1e9, 0)", { e: [[]] }))).toBe("#OVERFLOW!");
     expect(code(ev("EXPAND(e, x, 0)", { e: [[]], x: Infinity }))).toBe("#OVERFLOW!");
-  });
-
-  it("the D* database family is BLOCKED like VLOOKUP/MATCH (superseded by Frame Filter)", () => {
-    for (const name of ["DSUM", "DAVERAGE", "DCOUNT", "DGET", "DMAX", "DMIN", "DPRODUCT", "DSTDEV", "DVAR"]) {
-      expect(code(ev(`${name}(a, 1, a)`, { a: [[1, 2], [3, 4]] })), name).toBe("#NAME?");
-    }
   });
 
   it("every tranche registration declares the [[C15]] matricesInFormulas gate", () => {

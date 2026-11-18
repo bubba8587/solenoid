@@ -20,11 +20,11 @@ export const RULES = [
 
   // ── nodes: the card set and the packs ──
   ["nodes", /^tests\/graph\/(nodes|packs)\//],
-  ["nodes", /(^|\/)(cardSweep|nodeFuzz|nodeOps|nodeNames|nodeNameStore|cardTitle|cardLayout|decisionIntuition|decisionMatrix|monteCarlo|tornadoRun|qrCode|weightedShuffle|regexCard|timeZoneCards|cardsRefuseText|cardBlankReads|cardFormulaTwins|coreCardHelpers|coreCardShapes|coreNodes|directBodies|catalogRegistry|nodeStoreRegistry|textFormCatalog|literalEditors|inputRoles|controlledCell|constrainedEntry|listInputChip|nameCase|equationUnits|financeUnits|trigMode|uncertainValue|dataProviders|coreProviders|fxConvert|fxProvider|geocodeProvider|holidaysProvider|weatherProvider|cardBatchBench)\.test\./],
+  ["nodes", /(^|\/)(cardSweep|nodeFuzz|nodeOps|nodeNames|nodeNameStore|cardTitle|cardLayout|decisionIntuition|decisionMatrix|monteCarlo|tornadoRun|qrCode|weightedShuffle|regexCard|timeZoneCards|cardsRefuseText|cardBlankReads|cardFormulaTwins|coreCardHelpers|coreCardShapes|coreNodes|directBodies|catalogRegistry|nodeStoreRegistry|textFormCatalog|literalEditors|inputRoles|controlledCell|constrainedEntry|listInputChip|nameCase|equationUnits|financeUnits|trigMode|uncertainValue|dataProviders|coreProviders|fxConvert|fxProvider|geocodeProvider|holidaysProvider|weatherProvider)\.test\./],
 
   // ── figures: charts, the Gantt and the scheduler, records ──
   ["figures", /^packages\/gantt-layout\//],
-  ["figures", /(^|\/)(chart\w*|usMap\w*|heatmap|sparklineFormula|gantt\w*|scheduleCpm|recordViews|recordNav|recordCardsFromPopup|displayPeekCoverage|displayPopupCoverage|fcLambdaChart|reportExport|svgLayer|rasterAtlas|vectorOrient|valueDisplayAnnotation|chipStyle|categoryColor|palette|paletteDiagrams|cssColor)\.test\./],
+  ["figures", /(^|\/)(chart\w*|usMap\w*|heatmap|sparklineFormula|gantt\w*|scheduleCpm|recordViews|recordNav|recordCardsFromPopup|displayPeekCoverage|displayPopupCoverage|fcLambdaChart|reportExport|svgLayer|rasterAtlas|vectorOrient|valueDisplayAnnotation|chipStyle|categoryColor|palette|paletteDiagrams)\.test\./],
 
   // ── integrations: Obsidian, files, the network, scripts, AI ──
   ["integrations", /^tests\/obsidian-plugin\//],
@@ -47,7 +47,7 @@ export const RULES = [
   ["values", /(^|\/)(error\w*|date\w*|datesNeverSerials|volatileDates|unit\w*|coreUnitCatalog|convertUnitLabels|valueKinds|formatModel|format\w*|fc\w*|coreFcReconcile|coreFcTag|noTextGuessing|heldValues|coreAnnotations|coreDimLabels|compositeFcSettle)\.test\./],
 
   // ── engine: the graph model, the pass, sockets and types ──
-  ["engine", /(^|\/)(graph\w*|dataflowEngine|process\w*|core\w*|dimension|settle|socket\w*|passthrough\w*|trueAnyAdopt|typesKnownAfterCalc|namedEdits|cardWireBinary|binaryBytes|perfScaling|passBench|wasmEngineBench|circularReset|clampSeeding|connectionRace|connectionStore|calcModeStore|composite\w*|closedCompositePrune|coerceInputs|cableSettlePipe|cableValueStore)\.test\./],
+  ["engine", /(^|\/)(graph\w*|dataflowEngine|process\w*|core\w*|dimension|settle|socket\w*|passthrough\w*|trueAnyAdopt|typesKnownAfterCalc|namedEdits|cardWireBinary|binaryBytes|passBench|wasmEngineBench|circularReset|clampSeeding|connectionRace|connectionStore|calcModeStore|composite\w*|closedCompositePrune|coerceInputs|cableSettlePipe|cableValueStore)\.test\./],
 
   // ── canvas: layout, cables, gestures, the React Flow view ──
   ["canvas", /^tests\/graph\/(flow|components)\//],

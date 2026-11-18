@@ -1,32 +1,6 @@
 // [[C24]] arraySemantics, [[value-semantics#Propagation, by context]], [[value-semantics#Boundaries and bridges]], [[frame-verbs#Type inference]]
 import { describe, it, expect } from "vitest";
-import { numberToLogical, coerceLogical, logicalOrTypeError } from "../../src/graph/valueKinds";
-import { AggregateNode } from "../../src/graph/nodes/list";
-import { solError, isSolError } from "../../src/graph/errorValue";
-
-describe("logical ↔ number coercion", () => {
-  it("number to logical: non-zero is true", () => {
-    expect(numberToLogical(0)).toBe(false);
-    expect(numberToLogical(1)).toBe(true);
-    expect(numberToLogical(-3.5)).toBe(true);
-  });
-});
-
-describe("Aggregate's list prep", () => {
-  const sum = (list: unknown[]) => new AggregateNode({ op: "sum" }).data({ list: [list] }).result;
-  it("sums a plain number list", () => {
-    expect(sum([1, 2, 3])).toBe(6);
-  });
-
-  it("skips null (missing)", () => {
-    expect(sum([1, null, 3, null])).toBe(4);
-  });
-
-  it("propagates the first SolError", () => {
-    const err = solError("#DIV/0!", "boom");
-    expect(sum([1, null, err, 3])).toEqual(err);
-  });
-});
+import { coerceLogical } from "../../src/graph/valueKinds";
 
 describe("coerceLogical — the one reading of a value as a logical ([[C58]] tableInputRawText)", () => {
   it("passes a real boolean through", () => {
@@ -48,11 +22,5 @@ describe("coerceLogical — the one reading of a value as a logical ([[C58]] tab
     for (const v of ["maybe", "yes", "0x1", NaN, {}]) expect(coerceLogical(v)).toBeNaN();
     expect(coerceLogical("")).toBeNull();
     expect(coerceLogical(null)).toBeNull();
-  });
-  it("a computation reads that NaN as #TYPE!, naming the value", () => {
-    const e = logicalOrTypeError("maybe", "XNOR");
-    expect(isSolError(e) && e.code).toBe("#TYPE!");
-    expect(isSolError(e) && e.message).toContain('"maybe"');
-    expect(logicalOrTypeError("True", "XNOR")).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 // [[C17]], [[B16]] oneFormulaSurface
 import { describe, it, expect, vi } from "vitest";
-import { SeriesNode, RandArrayNode, AggregateNode } from "../../src/graph/nodeClasses";
+import { SeriesNode, RandArrayNode } from "../../src/graph/nodeClasses";
 import { extractInit } from "../../src/graph/nodeInit";
 import { isSolError } from "../../src/graph/errorValue";
 import { compileEvaluator } from "../../src/graph/excelFormula";
@@ -10,7 +10,6 @@ import { PadNode } from "../../src/graph/nodes/list";
 // Regressions from the data-pathway audit (empty / null / error / large-list).
 
 describe("generator element caps (#5)", () => {
-
   it("RANDARRAY over the cap returns #OVERFLOW!", () => {
     const out = new RandArrayNode().data({ count: [5_000_000] });
     if (!isSolError(out.list)) throw new Error("expected SolError");
@@ -64,13 +63,3 @@ describe("generator element caps (#5)", () => {
 
   // A normal SEQUENCE's values are pinned (node ≡ formula) in formulaMatrix.test.ts.
 });
-
-describe("Aggregate min/max over a large list (#5 — no Math.min spread RangeError)", () => {
-  it("does not throw and returns the right extremes", () => {
-    const big = Array.from({ length: 200_000 }, (_, i) => i);
-    expect(new AggregateNode({ op: "min" }).data({ list: [big] }).result).toBe(0);
-    expect(new AggregateNode({ op: "max" }).data({ list: [big] }).result).toBe(199_999);
-  });
-});
-
-

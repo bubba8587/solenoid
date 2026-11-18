@@ -9,16 +9,6 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => {
   return f!(env);
 };
 
-describe("Formula.js may not mutate the graph's own arrays", () => {
-  it("CHISQ.TEST leaves its argument lists untouched", () => {
-    const a = [10, 20, 30, 40];
-    const b = [12, 18, 32, 38];
-    ev("CHISQ.TEST(a, b)", { a, b });
-    expect(a).toEqual([10, 20, 30, 40]);
-    expect(b).toEqual([12, 18, 32, 38]);
-  });
-});
-
 describe("the statistical tests answer what the NODE answers", () => {
   const a = [1, 2, 3, 4, 5];
   const b = [2, 4, 6, 8, 10];

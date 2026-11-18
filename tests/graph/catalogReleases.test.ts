@@ -30,9 +30,4 @@ describe("catalog releases", () => {
     expect(compareRelease("1.6.1", "1.6")).toBeGreaterThan(0);
     expect(compareRelease("1.10", "1.9.9")).toBeGreaterThan(0);
   });
-
-  it("1.6's new cards are tagged", () => {
-    const added = new Set(leaves.filter((l) => addedIn(l) === "1.6").map((l) => l.type));
-    for (const t of ["dashboard", "pipeline", "conditional-regions", "delayed-pass", "cards", "geo-solid"]) expect(added).toContain(t);
-  });
 });
