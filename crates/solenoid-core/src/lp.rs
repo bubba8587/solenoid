@@ -460,7 +460,7 @@ mod brute_force {
             let rows: Vec<(Vec<f64>, Sign, f64)> = (0..m)
                 .map(|_| {
                     let a: Vec<f64> = (0..n).map(|_| r.int(0, 6)).collect();
-                    let s = if r.next() % 4 == 0 { Sign::Ge } else { Sign::Le };
+                    let s = if r.next().is_multiple_of(4) { Sign::Ge } else { Sign::Le };
                     (a, s, r.int(2, 20))
                 })
                 .collect();
@@ -538,7 +538,7 @@ mod brute_force {
                 }
                 for i in 0..k {
                     heap(k - 1, p, cost, best);
-                    if k % 2 == 0 {
+                    if k.is_multiple_of(2) {
                         p.swap(i, k - 1)
                     } else {
                         p.swap(0, k - 1)
