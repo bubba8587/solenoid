@@ -367,6 +367,10 @@ A card **label's** parenthetical is deliberate and stays (author 2026-11-05): "C
   _"Turn order"_; _"If an item won't fit"_ → _"Oversize items"_ (Stop, Skip it); _"Items may"_ → _"Item moves"_ (Move
   between groups, Stay in their group). Sentence case, as Settings' rows are. A sentence built of fields (a Solver
   limit: "Total Wood must be at most 300") is a sentence, not a label, and keeps its words (the author, 2026-11-18).
+  The rule covers every label that names a setting, a tooltip standing in for one on a select included ("Card layout",
+  not "How cards are laid out"; "QR content", not "What the QR encodes"). Two things are not setting labels and keep
+  their verbs: a checkbox's label, which is the one choice it turns on ("Export totals"), and a control's own action
+  ("Show in Files"). A function's argument keeps its Excel name ("If not found").
 - **Representative, not exhaustive.** List a few concrete examples; don't inventory every feature (and never
   list the same one twice for cadence). One definition per noun — no stacked appositives. _"A node-based
   computation graph — an Excel alternative for data tables."_ → _"A node-graph alternative to Excel for data

@@ -273,7 +273,7 @@ export class StaffingNode extends GraphNode {
     this.label = init?.label ?? "Staffing (Erlang C)";
     this.addInput("arrivals", numIn("Arrivals per hour"));
     this.addInput("minutes", numIn("Minutes per job"));
-    this.addInput("target", numIn("Start within (min)"));
+    this.addInput("target", numIn("Target wait (min)"));
     this.addInput("share", numIn("Share in time"));
     this.addOutput("options", frameOut("Staff levels"));
     this.addOutput("needed", numOut("Staff needed"));

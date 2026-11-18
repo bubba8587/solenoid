@@ -740,16 +740,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 .solenoid-node__io-label {
   flex: 0 0 auto;
 }
-/* A question and its pick (`AskSelect`): the question above, the answer the card's full width below. */
-.solenoid-node__ask {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 2px 4px 4px;
-  color: var(--text-dim);
-  font-size: 12px;
-  font-weight: 500;
-}
 /* The label column: every labeled input row's field starts at one x, the card's widest label (`--io-label-w`,
    NodeCard measures it), capped so the field keeps 60px, room for six digits or a short word. A label past the cap
    wraps onto a second, balanced line rather than squeezing its field. Same selector as NodeCard's IO_LABEL_COLUMN. */

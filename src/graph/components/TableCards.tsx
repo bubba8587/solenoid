@@ -120,8 +120,8 @@ export function TableCards({
           type="button"
           className="table-cards__dir"
           aria-pressed={rulesOpen}
-          title="How cards are laid out"
-          aria-label="How cards are laid out"
+          title="Card layout"
+          aria-label="Card layout"
           onClick={() => setRulesOpen((o) => !o)}
         >
           <InfoIcon size={14} />

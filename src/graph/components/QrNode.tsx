@@ -48,7 +48,7 @@ export function QrCodeComponent({ data, emit }: NodeProps<QrCodeNodeType>) {
     <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <LazySelect
-          className="sol-conn__select" value={template} title="What the QR encodes"
+          className="sol-conn__select" value={template} title="QR content"
           onChange={(e) => pickTemplate(e.target.value as QrTemplate)} {...stopDrag}
         >
           <option value="text">Text / URL</option>

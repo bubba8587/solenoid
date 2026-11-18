@@ -185,7 +185,7 @@ export function LogicalStyleSelect({ value, onChange, className, title, inherit 
     <LazySelect
       className={className}
       value={value ?? "truefalse"}
-      title={title ?? "How TRUE/FALSE renders"}
+      title={title ?? "TRUE/FALSE display"}
       onChange={(e) => onChange(e.target.value as LogicalStyle | "")}
     >
       {inheritOption(inherit)}

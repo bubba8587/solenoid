@@ -486,7 +486,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             onChange={(e) => onLogicalChange(e.target.value as LogicalStyle | "")}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            title="How TRUE/FALSE renders"
+            title="TRUE/FALSE display"
           >
             <option value="" title="Inherit the upstream format">—</option>
             {Object.entries(LOGICAL_STYLE_LABELS).map(([id, label]) => (
@@ -512,7 +512,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             onChange={(e) => onLambdaViewChange(e.target.value as LambdaView)}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            title="How the formula renders"
+            title="Formula display"
           >
             {Object.entries(LAMBDA_VIEW_LABELS).map(([id, label]) => (
               <option key={id} value={id}>{label}</option>

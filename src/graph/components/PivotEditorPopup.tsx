@@ -397,7 +397,7 @@ export function PivotEditorPopup() {
             {renderZone("vals", "Values")}
             {anyPercent && (
               <div className="pivot-zone__controls">
-                <label>% relative to {numSelect(cfg.relativeTo, REL_TO_OPTIONS, (n) => commit({ ...cfg, relativeTo: n }))}</label>
+                <label>Percent base {numSelect(cfg.relativeTo, REL_TO_OPTIONS, (n) => commit({ ...cfg, relativeTo: n }))}</label>
               </div>
             )}
           </div>

@@ -565,7 +565,7 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
           <LazySelect
             className="sol-conn__select"
             value={data.pickedLabel || data.matches[0].label}
-            title="Which match"
+            title="Picked match"
             onChange={(e) => { data.pickedLabel = e.target.value; void processEdited(data.id); }}
           >
             {data.matches.map((m2) => <option key={m2.label} value={m2.label}>{m2.label}</option>)}
@@ -1071,7 +1071,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
         <LazySelect
           className="sol-conn__select"
           value={provider}
-          title="What to read"
+          title="Source"
           onChange={(e) => void pickProvider(e.target.value as TaskNotesProvider)}
         >
           {(Object.keys(TASKNOTES_PROVIDER_META) as TaskNotesProvider[]).map((k) => (

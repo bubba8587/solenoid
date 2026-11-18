@@ -463,18 +463,6 @@ export function ArgSelect<T extends string>(props: PickProps<T>) {
   return <PickSelect {...props} className="solenoid-node__select" />;
 }
 
-/** An argument picker led by the question it answers, the question on its own line above so neither is cut short:
- *  "If an item won't fit", then Stop or Skip it. Outside the label column, which would squeeze the pick. */
-export function AskSelect<T extends string>({ label, ...props }: PickProps<T> & { label: string }) {
-  return (
-    <div className="solenoid-node__ask">
-      <span className="solenoid-node__ask-label">{label}</span>
-      <ArgSelect {...props} />
-    </div>
-  );
-}
-
-
 function ChipList({ items, cased }: { items: (string | null | SolError)[]; cased: (s: string) => string }) {
   const idx = categoryColorIndex(items.map((v) => (v === null || isSolError(v) ? null : v)));
   return (

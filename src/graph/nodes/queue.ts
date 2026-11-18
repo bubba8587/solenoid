@@ -138,7 +138,7 @@ export class GreedyQueueNode extends GraphNode {
     this.addInput("start", frameIn("Groups"));
     this.addInput("allowed", lambdaIn("Allowed if"));
     this.addInput("step", strIn("Opening step"));
-    this.addInput("steps", numIn("Steps to run"));
+    this.addInput("steps", numIn("Step count"));
     this.addInput("perStep", numIn("Picks per step"));
     this.addInput("budget", numIn("Budget per step"));
     this.addOutput("picks", frameOut("Picks"));
