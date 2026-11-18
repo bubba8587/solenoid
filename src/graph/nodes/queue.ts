@@ -109,7 +109,7 @@ export class GreedyQueueNode extends GraphNode {
     this.addInput("budget", numIn("Budget per step"));
     this.addOutput("picks", frameOut("Picks"));
     this.addOutput("left", frameOut("Left"));
-    this.addOutput("total", numOut("Total cost"));
+    this.addOutput("total", numOut("Total"));
   }
 
   columnPickers(): ColumnPickerSpec[] {

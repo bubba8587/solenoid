@@ -1356,7 +1356,7 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
         </div>
       )}
       <MeasuredSocketRow side="output" socketKey="total" nodeId={data.id} emit={emit} payload={data.outputs.total!.socket}>
-        <span className="solenoid-node__io-label">Total cost</span>
+        <span className="solenoid-node__io-label">Total</span>
         <ValueDisplay value={data.cachedTotal} />
       </MeasuredSocketRow>
     </NodeShell>
