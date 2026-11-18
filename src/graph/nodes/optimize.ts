@@ -221,6 +221,8 @@ export class ParetoNode extends GraphNode {
 }
 
 export class StaffingNode extends GraphNode {
+  /** Times and rates arrive with their units, read in minutes and an hour's worth ([[C25]] firstClassUnits). */
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     target: "The wait a job should start within, in minutes. Empty: at once.",
     share: "The share of jobs to start within the target, such as 0.8.",
@@ -245,7 +247,7 @@ export class StaffingNode extends GraphNode {
   }
 
   frameShape(): Shape | null {
-    return { columns: ["Servers", "Busy", "Chance of Waiting", "Mean Wait (min)", "Within Target"].map((name) => ({ name, type: "number" as const })) };
+    return { columns: ["Servers", "Busy", "Chance of Waiting", "Mean Wait", "Within Target"].map((name) => ({ name, type: "number" as const })) };
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {

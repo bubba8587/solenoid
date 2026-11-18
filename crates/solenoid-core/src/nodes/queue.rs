@@ -7,6 +7,7 @@
 
 use super::frames::{frame_in, frame_v, num_column, str_input, trimmed};
 use super::matrix::{wired_lambda, Body};
+use super::measure::{meet, Measure};
 use super::scalar::{read_role, Role};
 use super::{err, Answer, Call, Column, Cv, Frame};
 use crate::error_value::ErrorCode;
@@ -174,6 +175,8 @@ pub(super) fn keys(
             V::Num(n) | V::Date(n) if n.is_finite() => out.push(*n),
             V::Null | V::Undef => out.push(0.0),
             V::Bool(b) => out.push(f64::from(u8::from(*b))),
+            // A quantity counts as the number it shows, as a formula's own arithmetic reads it.
+            V::Unit(u) => out.push(crate::unit_expression::display_magnitude_of(u)),
             V::List(items) => items.iter().try_for_each(|x| walk(x, out, what, row))?,
             V::Err(e) => return Err(V::Err(e.clone())),
             v => {
@@ -255,14 +258,22 @@ fn greedy_queue(c: &mut Call) -> Answer {
     let best_pair = c.field_str("turns", "rotate") == "best";
     let largest = c.field_str("orderDir", "asc") == "desc";
     let settings = (|| -> Result<_, V> {
-        Ok((setting(c, "perStep", 1.0)?, setting(c, "budget", 0.0)?, setting(c, "steps", 1.0)?))
+        let budget = match read_role(c, "budget", &Role::Setting(V::Undef)) {
+            V::Undef | V::Null => None,
+            v if v.is_sol_error() => return Err(v),
+            v => match Measure::of_value(&v) {
+                Some((n, m)) if n.is_finite() && n >= 0.0 => Some((n, m)),
+                _ => return Err(err(ErrorCode::Domain, format!("{} takes a number of 0 or more", c.label("budget")))),
+            },
+        };
+        Ok((setting(c, "perStep", 1.0)?, budget, setting(c, "steps", 1.0)?))
     })();
-    let (per_step, budget, horizon) = match settings {
+    let (per_step, budget_in, horizon) = match settings {
         Ok(s) => s,
         Err(e) => return fail(c, e),
     };
     // Neither a cap nor a budget: one pick a step.
-    let cap = match (per_step, budget) {
+    let cap = match (per_step, &budget_in) {
         (Some(n), _) => Some(n.floor() as usize),
         (None, None) => Some(1),
         (None, Some(_)) => None,
@@ -287,6 +298,18 @@ fn greedy_queue(c: &mut Call) -> Answer {
     let (oi, ci) = match (col(&order_name, "order"), col(&cost_name, "cost")) {
         (Ok(o), Ok(k)) => (o, k),
         (Err(e), _) | (_, Err(e)) => return fail(c, e),
+    };
+    // The costs' unit: the Cost column's, a Budget with a unit meeting it as arithmetic would; the budget in it.
+    let column_m = ci.map_or_else(Measure::none, |i| Measure::of_column(&f.columns[i]));
+    let (cost_m, budget) = match &budget_in {
+        None => (column_m, None),
+        Some((n, bm)) => match meet(&column_m, bm, "Budget per step") {
+            Ok(m) => {
+                let shown = if bm.plain() { *n } else { m.shown(*n) };
+                (m, Some(shown))
+            }
+            Err(e) => return fail(c, e),
+        },
     };
     let start_group = match (&start, gi.is_some() || pooled) {
         (Some(s), true) => match position(s, &group_name) {
@@ -533,10 +556,10 @@ fn greedy_queue(c: &mut Call) -> Answer {
     let column = |name: &str, f: &dyn Fn(&Pick) -> f64| num_column(name, picks.iter().map(|p| V::Num(f(p))).collect());
     cols.push(column("Picked", &|p| p.step));
     cols.push(column("Wait", &|p| p.wait));
-    cols.push(column("Cost", &|p| p.cost));
-    cols.push(column("Used Before", &|p| p.used));
+    cols.push(cost_m.column("Cost", picks.iter().map(|p| Some(cost_m.base(p.cost)))));
+    cols.push(cost_m.column("Used Before", picks.iter().map(|p| Some(cost_m.base(p.used)))));
     let left: Vec<usize> = (0..rows).filter(|&r| !picked[r]).collect();
-    let total = V::Num(picks.iter().map(|p| p.cost).sum());
+    let total = cost_m.value(cost_m.base(picks.iter().map(|p| p.cost).sum()));
     // A step's first pick goes even when it alone is over the budget; the card says how many did.
     let over = budget.map_or(0, |b| picks.iter().filter(|p| p.used == 0.0 && p.cost > b).count());
     c.show("cachedOver", V::Num(over as f64));

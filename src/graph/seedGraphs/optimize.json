@@ -8,8 +8,8 @@
       "id": "blends",
       "type": "FrameInputNode",
       "init": {
-        "label": "Blends (kg of beans a kg)",
-        "frameText": "[{\"name\":\"Blend\",\"type\":\"string\",\"cells\":[\"House\",\"Espresso\",\"Breakfast\",\"Ethiopia single origin\"]},{\"name\":\"Profit\",\"type\":\"number\",\"cells\":[\"6\",\"9\",\"7\",\"12\"]},{\"name\":\"Brazil\",\"type\":\"number\",\"cells\":[\"0.6\",\"0.5\",\"0.3\",\"0\"]},{\"name\":\"Colombia\",\"type\":\"number\",\"cells\":[\"0.4\",\"0.2\",\"0.5\",\"0\"]},{\"name\":\"Ethiopia\",\"type\":\"number\",\"cells\":[\"0\",\"0.3\",\"0.2\",\"1\"]},{\"name\":\"Roaster hours\",\"type\":\"number\",\"cells\":[\"0.02\",\"0.03\",\"0.02\",\"0.025\"]},{\"name\":\"Max\",\"type\":\"number\",\"cells\":[\"600\",\"400\",\"350\",\"200\"]}]"
+        "label": "Blends, per kg roasted",
+        "frameText": "[{\"name\":\"Blend\",\"type\":\"string\",\"cells\":[\"House\",\"Espresso\",\"Breakfast\",\"Ethiopia single origin\"]},{\"name\":\"Profit\",\"type\":\"number\",\"cells\":[\"6\",\"9\",\"7\",\"12\"],\"unit\":\"usd\"},{\"name\":\"Brazil\",\"type\":\"number\",\"cells\":[\"0.6\",\"0.5\",\"0.3\",\"0\"],\"unit\":\"kg\"},{\"name\":\"Colombia\",\"type\":\"number\",\"cells\":[\"0.4\",\"0.2\",\"0.5\",\"0\"],\"unit\":\"kg\"},{\"name\":\"Ethiopia\",\"type\":\"number\",\"cells\":[\"0\",\"0.3\",\"0.2\",\"1\"],\"unit\":\"kg\"},{\"name\":\"Roaster\",\"type\":\"number\",\"cells\":[\"0.02\",\"0.03\",\"0.02\",\"0.025\"],\"unit\":\"h\"},{\"name\":\"Max\",\"type\":\"number\",\"cells\":[\"600\",\"400\",\"350\",\"200\"]}]"
       },
       "x": 24,
       "y": 5460
@@ -19,7 +19,7 @@
       "type": "FrameInputNode",
       "init": {
         "label": "This week's limits",
-        "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"cells\":[\"Brazil beans (kg)\",\"Colombia beans (kg)\",\"Ethiopia beans (kg)\",\"Roaster (hours)\",\"Espresso for café contracts (kg)\"]},{\"name\":\"Sum of\",\"type\":\"string\",\"cells\":[\"Brazil\",\"Colombia\",\"Ethiopia\",\"Roaster hours\",\"\"]},{\"name\":\"Where\",\"type\":\"string\",\"cells\":[\"\",\"\",\"\",\"\",\"Blend\"]},{\"name\":\"Is\",\"type\":\"string\",\"cells\":[\"\",\"\",\"\",\"\",\"Espresso\"]},{\"name\":\"Sign\",\"type\":\"string\",\"cells\":[\"<=\",\"<=\",\"<=\",\"<=\",\">=\"]},{\"name\":\"Limit\",\"type\":\"number\",\"cells\":[\"500\",\"350\",\"250\",\"30\",\"150\"]}]"
+        "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"cells\":[\"Brazil beans\",\"Colombia beans\",\"Ethiopia beans\",\"Roaster time\",\"Espresso for café contracts\"]},{\"name\":\"Sum of\",\"type\":\"string\",\"cells\":[\"Brazil\",\"Colombia\",\"Ethiopia\",\"Roaster\",\"\"]},{\"name\":\"Where\",\"type\":\"string\",\"cells\":[\"\",\"\",\"\",\"\",\"Blend\"]},{\"name\":\"Is\",\"type\":\"string\",\"cells\":[\"\",\"\",\"\",\"\",\"Espresso\"]},{\"name\":\"Sign\",\"type\":\"string\",\"cells\":[\"<=\",\"<=\",\"<=\",\"<=\",\">=\"]},{\"name\":\"Limit\",\"type\":\"number\",\"cells\":[\"500\",\"350\",\"250\",\"30\",\"150\"]}]"
       },
       "x": 24,
       "y": 5723
@@ -122,7 +122,7 @@
       "type": "FrameInputNode",
       "init": {
         "label": "Hours each crew would need",
-        "frameText": "[{\"name\":\"Crew\",\"type\":\"string\",\"cells\":[\"North\",\"South\",\"East\",\"West\",\"Central\"]},{\"name\":\"Substation A\",\"type\":\"number\",\"cells\":[\"6\",\"8\",\"5\",\"9\",\"7\"]},{\"name\":\"Line repair B\",\"type\":\"number\",\"cells\":[\"4\",\"null\",\"6\",\"5\",\"6\"]},{\"name\":\"Meter swap C\",\"type\":\"number\",\"cells\":[\"3\",\"4\",\"3\",\"5\",\"2\"]},{\"name\":\"Transformer D\",\"type\":\"number\",\"cells\":[\"9\",\"7\",\"null\",\"8\",\"10\"]},{\"name\":\"Inspection E\",\"type\":\"number\",\"cells\":[\"2\",\"3\",\"4\",\"2\",\"3\"]}]"
+        "frameText": "[{\"name\":\"Crew\",\"type\":\"string\",\"cells\":[\"North\",\"South\",\"East\",\"West\",\"Central\"]},{\"name\":\"Substation A\",\"type\":\"number\",\"cells\":[\"6\",\"8\",\"5\",\"9\",\"7\"],\"unit\":\"h\"},{\"name\":\"Line repair B\",\"type\":\"number\",\"cells\":[\"4\",\"null\",\"6\",\"5\",\"6\"],\"unit\":\"h\"},{\"name\":\"Meter swap C\",\"type\":\"number\",\"cells\":[\"3\",\"4\",\"3\",\"5\",\"2\"],\"unit\":\"h\"},{\"name\":\"Transformer D\",\"type\":\"number\",\"cells\":[\"9\",\"7\",\"null\",\"8\",\"10\"],\"unit\":\"h\"},{\"name\":\"Inspection E\",\"type\":\"number\",\"cells\":[\"2\",\"3\",\"4\",\"2\",\"3\"],\"unit\":\"h\"}]"
       },
       "x": 24,
       "y": 4882
@@ -141,7 +141,7 @@
       "type": "FrameInputNode",
       "init": {
         "label": "Roads (minutes)",
-        "frameText": "[{\"name\":\"From\",\"type\":\"string\",\"cells\":[\"Depot\",\"Depot\",\"Depot\",\"Halls\",\"Halls\",\"Powell\",\"Powell\",\"Bearden\",\"Bearden\",\"Downtown\",\"Downtown\",\"Sequoyah\",\"Farragut\"]},{\"name\":\"To\",\"type\":\"string\",\"cells\":[\"Halls\",\"Powell\",\"Downtown\",\"Powell\",\"Fountain City\",\"Bearden\",\"Fountain City\",\"Farragut\",\"Sequoyah\",\"Sequoyah\",\"Fountain City\",\"Maryville\",\"Maryville\"]},{\"name\":\"Minutes\",\"type\":\"number\",\"cells\":[\"12\",\"15\",\"9\",\"8\",\"7\",\"14\",\"10\",\"11\",\"6\",\"8\",\"9\",\"22\",\"18\"]}]"
+        "frameText": "[{\"name\":\"From\",\"type\":\"string\",\"cells\":[\"Depot\",\"Depot\",\"Depot\",\"Halls\",\"Halls\",\"Powell\",\"Powell\",\"Bearden\",\"Bearden\",\"Downtown\",\"Downtown\",\"Sequoyah\",\"Farragut\"]},{\"name\":\"To\",\"type\":\"string\",\"cells\":[\"Halls\",\"Powell\",\"Downtown\",\"Powell\",\"Fountain City\",\"Bearden\",\"Fountain City\",\"Farragut\",\"Sequoyah\",\"Sequoyah\",\"Fountain City\",\"Maryville\",\"Maryville\"]},{\"name\":\"Minutes\",\"type\":\"number\",\"cells\":[\"12\",\"15\",\"9\",\"8\",\"7\",\"14\",\"10\",\"11\",\"6\",\"8\",\"9\",\"22\",\"18\"],\"unit\":\"min\"}]"
       },
       "x": 24,
       "y": 6411
@@ -204,7 +204,7 @@
       "type": "FrameInputNode",
       "init": {
         "label": "Territory plans",
-        "frameText": "[{\"name\":\"Plan\",\"type\":\"string\",\"cells\":[\"Baseline\",\"Plan B\",\"Pooled\",\"Ten crews\",\"Weekend shift\",\"Split Houston\"]},{\"name\":\"Drive hours\",\"type\":\"number\",\"cells\":[\"2344\",\"2234\",\"3500\",\"2290\",\"2410\",\"2180\"]},{\"name\":\"Mean wait (days)\",\"type\":\"number\",\"cells\":[\"1.6\",\"1.6\",\"0.4\",\"1.9\",\"1.1\",\"1.7\"]},{\"name\":\"Overtime hours\",\"type\":\"number\",\"cells\":[\"120\",\"110\",\"40\",\"160\",\"300\",\"130\"]}]"
+        "frameText": "[{\"name\":\"Plan\",\"type\":\"string\",\"cells\":[\"Baseline\",\"Plan B\",\"Pooled\",\"Ten crews\",\"Weekend shift\",\"Split Houston\"]},{\"name\":\"Drive hours\",\"type\":\"number\",\"cells\":[\"2344\",\"2234\",\"3500\",\"2290\",\"2410\",\"2180\"]},{\"name\":\"Mean wait\",\"type\":\"number\",\"cells\":[\"1.6\",\"1.6\",\"0.4\",\"1.9\",\"1.1\",\"1.7\"],\"unit\":\"day\"},{\"name\":\"Overtime hours\",\"type\":\"number\",\"cells\":[\"120\",\"110\",\"40\",\"160\",\"300\",\"130\"]}]"
       },
       "x": 665,
       "y": 4882
@@ -216,7 +216,7 @@
         "label": "Plans worth weighing"
       },
       "stringLiterals": {
-        "lower": "Drive hours, Mean wait (days), Overtime hours",
+        "lower": "Drive hours, Mean wait, Overtime hours",
         "higher": ""
       },
       "x": 994,
@@ -230,7 +230,7 @@
         "op": "scatter"
       },
       "stringLiterals": {
-        "options": "x=Drive hours; y=Mean wait (days); annotate=Plan"
+        "options": "x=Drive hours; y=Mean wait; annotate=Plan"
       },
       "x": 1323,
       "y": 4982

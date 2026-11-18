@@ -47,6 +47,8 @@ export const QUEUE_TURNS_OPTIONS: { value: QueueTurns; label: string }[] = [
 export const QUEUE_TURNS_ASK = "Who picks next";
 
 export class GreedyQueueNode extends GraphNode {
+  /** A Budget arrives with its unit, which the costs must share ([[C25]] firstClassUnits). */
+  unitAware = true;
   static inputRoles = {
     perStep: setting(LEFT_OUT, "auto"),
     budget: setting(LEFT_OUT, "no limit"),

@@ -203,7 +203,8 @@
       8,
       2
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "h"
     },
     {
      "name": "Due",
@@ -564,7 +565,8 @@
       450,
       150
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "kg"
     }
    ]
   },

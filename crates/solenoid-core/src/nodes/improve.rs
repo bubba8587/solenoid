@@ -7,6 +7,7 @@
 
 use super::frames::{frame_in, frame_v, num_column, str_input, trimmed};
 use super::matrix::{wired_lambda, Body};
+use super::measure::Measure;
 use super::queue::{allowed, cell_number, key, keys, position, setting, taken, text};
 use super::{err, Answer, Call, Column, Cv, Frame};
 use crate::error_value::ErrorCode;
@@ -612,6 +613,7 @@ fn local_search(c: &mut Call) -> Answer {
         },
         Err(e) => return fail(c, e),
     };
+    let cost_col_m = cost_col.as_ref().map_or_else(Measure::none, |(i, _)| Measure::of_column(&f.columns[*i]));
     let across = c.field_str("reach", "across") == "across";
     let back = c.field_str("ends", "open") == "return";
     let guided = c.field_str("stuck", "stop") == "look";
@@ -866,9 +868,11 @@ fn local_search(c: &mut Call) -> Answer {
     let column =
         |name: &str, f: &dyn Fn(&(usize, Leg)) -> f64| num_column(name, legs.iter().map(|l| V::Num(f(l))).collect());
     cols.push(column("Position", &|l| l.0 as f64));
-    cols.push(column("Cost", &|l| l.1.cost));
-    cols.push(column("At", &|l| l.1.at));
-    cols.push(column("Penalty", &|l| l.1.penalty));
+    // The plan's costs, running sums and penalties carry the Cost column's unit; a formula's plain number is read in it.
+    let cost_m = cost_col_m;
+    cols.push(cost_m.column("Cost", legs.iter().map(|l| Some(cost_m.base(l.1.cost)))));
+    cols.push(cost_m.column("At", legs.iter().map(|l| Some(cost_m.base(l.1.at)))));
+    cols.push(cost_m.column("Penalty", legs.iter().map(|l| Some(cost_m.base(l.1.penalty)))));
     cols.push(Column {
         name: "Allowed".into(),
         ty: FrameColType::Logical,
@@ -888,8 +892,8 @@ fn local_search(c: &mut Call) -> Answer {
             format: None,
             raw: None,
         },
-        num_column("Total", history.iter().map(|h| V::Num(h.1.total)).collect()),
+        cost_m.column("Total", history.iter().map(|h| Some(cost_m.base(h.1.total)))),
         num_column("Not Allowed", history.iter().map(|h| V::Num(f64::from(h.1.bad))).collect()),
     ];
-    out(c, frame_v(cols), V::Num(total), frame_v(hist))
+    out(c, frame_v(cols), cost_m.value(cost_m.base(total)), frame_v(hist))
 }

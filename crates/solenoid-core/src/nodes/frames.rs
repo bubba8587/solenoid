@@ -2618,7 +2618,7 @@ fn nest_join(c: &mut Call) -> Answer {
 // ─── Cube Rollup ────────────────────────────────────────────────────────────────
 
 /// A unit cell's column unit, `{ dim, display }`.
-fn cell_column_unit(u: &crate::unit_dims::UnitCell) -> Json {
+pub(crate) fn cell_column_unit(u: &crate::unit_dims::UnitCell) -> Json {
     let mut o = serde_json::Map::new();
     o.insert("dim".into(), dim_json(&u.dim));
     if let Some(d) = &u.display {

@@ -28,6 +28,7 @@ mod lambda;
 mod list;
 mod logic;
 mod matrix;
+mod measure;
 pub(crate) mod packs;
 mod probability;
 pub mod qr;

@@ -9,27 +9,30 @@ const nodes = [];
 const cables = [];
 const add = (id, type, init, extra = {}) => nodes.push({ id, type, init, ...extra });
 const wire = (...cs) => cables.push(...cs);
+// A header "Name (unit)" is a column of that unit, as a person keys one ($ is US dollars).
 const table = (id, label, cols) => add(id, "FrameInputNode", { label }, {
-  frame: Object.entries(cols).map(([name, cells]) => ({
-    name, cells, type: cells.some((c) => typeof c === "number") ? "number" : cells.some((c) => typeof c === "boolean") ? "logical" : "string",
-  })),
+  frame: Object.entries(cols).map(([header, cells]) => {
+    const [, name, unit] = header.match(/^(.*) \((\$|[A-Za-z/]+)\)$/) ?? [, header];
+    const type = cells.some((c) => typeof c === "number") ? "number" : cells.some((c) => typeof c === "boolean") ? "logical" : "string";
+    return { name, cells, type, ...(unit ? { unit: unit === "$" ? "usd" : unit } : {}) };
+  }),
 });
 const keep = (id, label, columns) => add(id, "ColumnsNode", { label }, { stringLiterals: { columns } });
 const chart = (id, label, op, options) => add(id, "ChartNode", { label, op }, { stringLiterals: { options } });
 
 // ── 1. A product mix: how many kg of each blend a coffee roaster should roast this week ──
-table("blends", "Blends (kg of beans a kg)", {
+table("blends", "Blends, per kg roasted", {
   Blend: ["House", "Espresso", "Breakfast", "Ethiopia single origin"],
-  Profit: [6, 9, 7, 12],
-  Brazil: [0.6, 0.5, 0.3, 0],
-  Colombia: [0.4, 0.2, 0.5, 0],
-  Ethiopia: [0, 0.3, 0.2, 1],
-  "Roaster hours": [0.02, 0.03, 0.02, 0.025],
+  "Profit ($)": [6, 9, 7, 12],
+  "Brazil (kg)": [0.6, 0.5, 0.3, 0],
+  "Colombia (kg)": [0.4, 0.2, 0.5, 0],
+  "Ethiopia (kg)": [0, 0.3, 0.2, 1],
+  "Roaster (h)": [0.02, 0.03, 0.02, 0.025],
   Max: [600, 400, 350, 200],
 });
 table("stock", "This week's limits", {
-  Resource: ["Brazil beans (kg)", "Colombia beans (kg)", "Ethiopia beans (kg)", "Roaster (hours)", "Espresso for café contracts (kg)"],
-  "Sum of": ["Brazil", "Colombia", "Ethiopia", "Roaster hours", ""],
+  Resource: ["Brazil beans", "Colombia beans", "Ethiopia beans", "Roaster time", "Espresso for café contracts"],
+  "Sum of": ["Brazil", "Colombia", "Ethiopia", "Roaster", ""],
   Where: ["", "", "", "", "Blend"],
   Is: ["", "", "", "", "Espresso"],
   Sign: ["<=", "<=", "<=", "<=", ">="],
@@ -68,11 +71,11 @@ wire("portfolio.plan -> portfolio_pick.frame");
 // ── 3. Crew assignment: who takes which job, hours each would need (blank: not certified) ──
 table("hours", "Hours each crew would need", {
   Crew: ["North", "South", "East", "West", "Central"],
-  "Substation A": [6, 8, 5, 9, 7],
-  "Line repair B": [4, null, 6, 5, 6],
-  "Meter swap C": [3, 4, 3, 5, 2],
-  "Transformer D": [9, 7, null, 8, 10],
-  "Inspection E": [2, 3, 4, 2, 3],
+  "Substation A (h)": [6, 8, 5, 9, 7],
+  "Line repair B (h)": [4, null, 6, 5, 6],
+  "Meter swap C (h)": [3, 4, 3, 5, 2],
+  "Transformer D (h)": [9, 7, null, 8, 10],
+  "Inspection E (h)": [2, 3, 4, 2, 3],
 });
 add("crews", "AssignmentNode", { label: "Fewest total hours" });
 wire("hours.frame -> crews.costs");
@@ -81,7 +84,7 @@ wire("hours.frame -> crews.costs");
 table("roads", "Roads (minutes)", {
   From: ["Depot", "Depot", "Depot", "Halls", "Halls", "Powell", "Powell", "Bearden", "Bearden", "Downtown", "Downtown", "Sequoyah", "Farragut"],
   To: ["Halls", "Powell", "Downtown", "Powell", "Fountain City", "Bearden", "Fountain City", "Farragut", "Sequoyah", "Sequoyah", "Fountain City", "Maryville", "Maryville"],
-  Minutes: [12, 15, 9, 8, 7, 14, 10, 11, 6, 8, 9, 22, 18],
+  "Minutes (min)": [12, 15, 9, 8, 7, 14, 10, 11, 6, 8, 9, 22, 18],
 });
 add("route", "ShortestPathNode", { label: "Depot to Maryville" }, { stringLiterals: { cost: "Minutes", from: "Depot", to: "Maryville" } });
 add("reach", "ShortestPathNode", { label: "Minutes from the depot" }, { stringLiterals: { cost: "Minutes", from: "Depot", to: "" } });
@@ -93,11 +96,11 @@ wire("roads.frame -> route.links", "roads.frame -> reach.links", "reach.path -> 
 table("plans", "Territory plans", {
   Plan: ["Baseline", "Plan B", "Pooled", "Ten crews", "Weekend shift", "Split Houston"],
   "Drive hours": [2344, 2234, 3500, 2290, 2410, 2180],
-  "Mean wait (days)": [1.6, 1.6, 0.4, 1.9, 1.1, 1.7],
+  "Mean wait (day)": [1.6, 1.6, 0.4, 1.9, 1.1, 1.7],
   "Overtime hours": [120, 110, 40, 160, 300, 130],
 });
-add("front", "ParetoNode", { label: "Plans worth weighing" }, { stringLiterals: { lower: "Drive hours, Mean wait (days), Overtime hours", higher: "" } });
-chart("front_chart", "Drive hours against wait", "scatter", "x=Drive hours; y=Mean wait (days); annotate=Plan");
+add("front", "ParetoNode", { label: "Plans worth weighing" }, { stringLiterals: { lower: "Drive hours, Mean wait, Overtime hours", higher: "" } });
+chart("front_chart", "Drive hours against wait", "scatter", "x=Drive hours; y=Mean wait; annotate=Plan");
 wire("plans.frame -> front.options", "front.all -> front_chart.values");
 
 // ── 6. Staffing: how many dispatchers keep callers from waiting ──

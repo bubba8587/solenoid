@@ -36,6 +36,19 @@ flowchart LR
 
 Tests: `unitWiring.test.ts`: units entering through the base-SI cell an FC authors, and through the formula and the cards; `convert.test.ts`: Convert tags its output.
 
+## Optimization cards
+
+Code: `nodes/measure.rs`. Greedy Queue, Local Search, Solver, Assignment, Shortest Path and Staffing read the unit of each column or value they compute with, work in base SI, and put the unit back on what they answer ([[C25]] firstClassUnits). Two quantities that meet follow arithmetic's rule (`meet`): a plain number takes the other's unit (a Budget of 1000 against a Kg column is 1000 kg), two dimensions that differ, or two currencies, are `#UNIT!` naming both ("Budget per step: kg and h don't add up").
+
+- **Greedy Queue:** the Cost column's unit is the costs' (a Cost formula's plain number is read in it); a Budget with a unit meets it and converts (a Budget of 1 t against kg costs is 1000 kg). Picks' Cost and Used Before, and Total cost, carry it. The card is `unitAware`, so the Budget arrives with its unit.
+- **Local Search:** the Cost column's unit is the plan's: Cost, At, Penalty, the Changes' Total and Total carry it, a formula's plain number read in it.
+- **Solver:** Best carries the goal column's unit. Each limit's unit is its Sum of column's: a plain Limit is read in it, a Limit with a unit meets it and converts. Used, Slack and Shadow Price (the goal's unit per the limit's, $/kg) carry a unit only when every limit shares one, a column holding one unit; otherwise each row's numbers are in its own limit's unit.
+- **Assignment:** every job column meets the others (plain ones read in their unit), each cell converts into it, and Cost and Total carry it: a grid of hours beside minutes totals hours, one of hours beside km is `#UNIT!`.
+- **Shortest Path:** Leg, So Far, Distance and Total carry the cost column's unit; counted links are plain.
+- **Staffing:** a time with a unit is read in minutes (`3 min`, `20 s`) and a rate with one in an hour's worth (`100 /h`); a plain number is taken as its label says. Another dimension is `#UNIT!`. Mean Wait is in minutes. The card is `unitAware`.
+
+Tests: `optimizeUnits.test.ts`.
+
 ## Dimensions
 
 Code: `unit_dims.rs`, `unit_catalog.rs`; `dimension.ts` in the app

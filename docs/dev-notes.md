@@ -53,6 +53,10 @@ specific item.
   jobs, a road route, plans worth weighing, dispatchers on shift. Seeds now use SUM, ROUND, AVERAGE, STDEV.S,
   CONFIDENCE.NORM, Range and Running cards where they had single-function Expressions. Not done: a Gantt of the
   job shop (it works in machine hours; the Gantt needs dates, and a job crossing a day's end needs a split).
+- **Units through the optimization cards** ([[C25]] firstClassUnits; `nodes/measure.rs`, unit-flow § Optimization
+  cards): every cost, total, Best, Used, path and wait carries its column's unit, a plain number takes the other's unit
+  as arithmetic does, two dimensions refuse with `#UNIT!`. Found by reading the tree: the cards had dropped units
+  everywhere (a kg budget beside hour costs passed). The seeds now key units in their tables ("Hours (h)").
 - **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
   per run (sites × days, a draw each, then the Greedy Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
   a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common

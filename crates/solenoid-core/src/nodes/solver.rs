@@ -4,6 +4,7 @@
 //! Where a column Is a value, against a Sign and a Limit. The engine is `crate::lp`.
 
 use super::frames::{frame_in, frame_v, num_column, str_input, trimmed};
+use super::measure::{meet, Measure};
 use super::queue::{key, position, taken};
 use super::{err, Answer, Call, Column, Cv, Frame};
 use crate::error_value::ErrorCode;
@@ -105,10 +106,12 @@ fn solver(c: &mut Call) -> Answer {
     let col = |fr: &Frame, name: &str| position(fr, name);
     // The objective: the goal column's number per option, blank 0; empty goal, every option counts 1.
     let mut obj = vec![1.0; rows];
+    let mut goal_m = Measure::none();
     if !goal.is_empty() {
         let Some(g) = col(&f, &goal) else {
             return fail(c, err(ErrorCode::Ref, format!("Options has no column \"{goal}\"")));
         };
+        goal_m = Measure::of_column(&f.columns[g]);
         for (r, o) in obj.iter_mut().enumerate() {
             *o = match cell(&f, g, r) {
                 v if blank(v) => 0.0,
@@ -142,6 +145,8 @@ fn solver(c: &mut Call) -> Answer {
 
     // Each limit: Sum of a column (blank, the amounts themselves) over the options Where a column Is a value.
     let mut prog_rows = Vec::new();
+    // Each limit's unit: its Sum of column's, a plain Limit read in it, a Limit with a unit converted to it.
+    let mut row_m: Vec<Measure> = Vec::new();
     if let Some(l) = lim.as_deref() {
         let n = l.columns.first().map_or(0, |c| c.values.len());
         let (sum_c, where_c, is_c) = (col(l, "Sum of"), col(l, "Where"), col(l, "Is"));
@@ -152,7 +157,7 @@ fn solver(c: &mut Call) -> Answer {
             let Some(s) = sign(cell(l, sign_c, r)) else {
                 return fail(c, err(ErrorCode::Value, format!("Sign in limit row {} isn't <=, >= or =", r + 1)));
             };
-            let Some(b) = num(cell(l, limit_c, r)) else {
+            let Some(mut b) = num(cell(l, limit_c, r)) else {
                 return fail(c, err(ErrorCode::Value, format!("Limit in limit row {} isn't a number", r + 1)));
             };
             let of = sum_c.map(|j| cell(l, j, r)).filter(|v| !blank(*v)).map(|v| v.map(value_text).unwrap_or_default());
@@ -211,6 +216,17 @@ fn solver(c: &mut Call) -> Answer {
                     },
                 };
             }
+            let sum_m = of_col.map_or_else(Measure::none, |j| Measure::of_column(&f.columns[j]));
+            let limit_m = Measure::of_column(&l.columns[limit_c]);
+            match meet(&sum_m, &limit_m, &format!("Limit row {}", r + 1)) {
+                Ok(m) => {
+                    if !sum_m.plain() && !limit_m.plain() {
+                        b = sum_m.shown(limit_m.base(b));
+                    }
+                    row_m.push(m);
+                }
+                Err(e) => return fail(c, e),
+            }
             prog_rows.push((a, s, b));
         }
     }
@@ -235,35 +251,39 @@ fn solver(c: &mut Call) -> Answer {
             let n = l.columns.first().map_or(0, |c| c.values.len());
             let mut cols = taken(&base(l, &LIMIT_ADDED), &(0..n).collect::<Vec<_>>());
             let used: Vec<f64> = prog_rows.iter().map(|(a, _, _)| a.iter().zip(&x).map(|(p, q)| p * q).sum()).collect();
-            cols.push(num_column("Used", used.iter().map(|&u| V::Num(clean(u))).collect()));
-            cols.push(num_column(
-                "Slack",
-                prog_rows
-                    .iter()
-                    .zip(&used)
-                    .map(|((_, s, b), u)| {
-                        V::Num(clean(match s {
-                            Sign::Le => b - u,
-                            Sign::Ge => u - b,
-                            Sign::Eq => 0.0,
-                        }))
-                    })
-                    .collect(),
-            ));
-            cols.push(Column {
-                name: "Shadow Price".into(),
-                ty: FrameColType::Number,
-                values: (0..n).map(|i| duals.as_ref().map_or(V::Null, |d| V::Num(clean(d[i] * sense)))).collect(),
-                unit: None,
-                format: None,
-                raw: None,
+            // One unit down a column only when every limit shares it; else each row's numbers in its own Sum of unit.
+            let shared = row_m.first().filter(|m| row_m.iter().all(|o| o.same(m) && o.name() == m.name())).cloned();
+            let col_m = shared.clone().unwrap_or_else(Measure::none);
+            let slack: Vec<f64> = prog_rows
+                .iter()
+                .zip(&used)
+                .map(|((_, s, b), u)| match s {
+                    Sign::Le => b - u,
+                    Sign::Ge => u - b,
+                    Sign::Eq => 0.0,
+                })
+                .collect();
+            cols.push(col_m.column("Used", used.iter().map(|&u| Some(col_m.base(clean(u))))));
+            cols.push(col_m.column("Slack", slack.iter().map(|&u| Some(col_m.base(clean(u))))));
+            // A shadow price is the goal's unit per the limit's: dollars a kg.
+            let price_m = shared.as_ref().map_or_else(Measure::none, |m| goal_m.per(m));
+            let prices = (0..n).map(|i| {
+                duals.as_ref().map(|d| {
+                    let per_shown = clean(d[i] * sense);
+                    if shared.is_some() {
+                        goal_m.base(per_shown) / col_m.base(1.0)
+                    } else {
+                        per_shown
+                    }
+                })
             });
+            cols.push(price_m.column("Shadow Price", prices));
             frame_v(cols)
         }
         None => Cv::NULL,
     };
     let status = if stopped { format!("Best found: stopped after {MAX_NODES} branches") } else { "Optimal".into() };
-    out(c, frame_v(plan_cols), V::Num(clean(total)), limits, V::str(&status))
+    out(c, frame_v(plan_cols), goal_m.value(goal_m.base(clean(total))), limits, V::str(&status))
 }
 
 /// The Assignment card: a cost grid, a row per person or crew and a column per job, a blank cell where the pair can't
@@ -290,6 +310,14 @@ fn assignment(c: &mut Call) -> Answer {
     if rows > MAX_SIZE || jobs.len() > MAX_SIZE {
         return fail(c, err(ErrorCode::Domain, format!("Assignment takes at most {MAX_SIZE} rows and columns")));
     }
+    // Every job column in one unit (plain ones read in it); each cell in that unit.
+    let mut cell_m = Measure::none();
+    for &j in &jobs {
+        match meet(&cell_m, &Measure::of_column(&f.columns[j]), "Costs") {
+            Ok(m) => cell_m = m,
+            Err(e) => return fail(c, e),
+        }
+    }
     let mut grid: Vec<Vec<Option<f64>>> = Vec::with_capacity(rows);
     for r in 0..rows {
         let mut row = Vec::with_capacity(jobs.len());
@@ -297,7 +325,10 @@ fn assignment(c: &mut Call) -> Answer {
             row.push(match cell(&f, j, r) {
                 v if blank(v) => None,
                 v => match num(v) {
-                    Some(x) => Some(x),
+                    Some(x) => {
+                        let jm = Measure::of_column(&f.columns[j]);
+                        Some(if jm.plain() { x } else { cell_m.shown(jm.base(x)) })
+                    }
                     None => {
                         return fail(
                             c,
@@ -345,12 +376,12 @@ fn assignment(c: &mut Call) -> Answer {
         format: None,
         raw: None,
     });
-    cols.push(num_column(
-        "Cost",
-        taken.iter().enumerate().map(|(r, t)| t.and_then(|j| grid[r][j]).map_or(V::Null, V::Num)).collect(),
-    ));
+    cols.push(
+        cell_m
+            .column("Cost", taken.iter().enumerate().map(|(r, t)| t.and_then(|j| grid[r][j]).map(|x| cell_m.base(x)))),
+    );
     let total: f64 = taken.iter().enumerate().filter_map(|(r, t)| t.and_then(|j| grid[r][j])).sum();
-    out(c, frame_v(cols), V::Num(total))
+    out(c, frame_v(cols), cell_m.value(cell_m.base(total)))
 }
 
 /// The Shortest Path card: a table of links (From, To, and a cost column, blank counting 1 a link), each both ways
@@ -389,6 +420,8 @@ fn shortest_path(c: &mut Call) -> Answer {
             None => return fail(c, err(ErrorCode::Ref, format!("Links has no column \"{cost_name}\""))),
         }
     };
+    // A path's legs and totals carry the cost column's unit; counted links are plain.
+    let cost_m = cc.map_or_else(Measure::none, |j| Measure::of_column(&f.columns[j]));
     if start.is_empty() {
         return out(c, Cv::NULL, V::Null);
     }
@@ -465,7 +498,7 @@ fn shortest_path(c: &mut Call) -> Answer {
         order.sort_by(|&a, &b| dist[a].total_cmp(&dist[b]).then(a.cmp(&b)));
         let cols = vec![
             text_col("Place", order.iter().map(|&i| V::str(&place[i])).collect()),
-            num_column("Distance", order.iter().map(|&i| V::Num(dist[i])).collect()),
+            cost_m.column("Distance", order.iter().map(|&i| Some(cost_m.base(dist[i])))),
             text_col("Via", order.iter().map(|&i| prev[i].map_or(V::Null, |p| V::str(&place[p]))).collect()),
         ];
         return out(c, frame_v(cols), V::Null);
@@ -484,16 +517,15 @@ fn shortest_path(c: &mut Call) -> Answer {
     let cols = vec![
         num_column("Step", (0..way.len()).map(|i| V::Num(i as f64)).collect()),
         text_col("Place", way.iter().map(|&i| V::str(&place[i])).collect()),
-        num_column(
+        cost_m.column(
             "Leg",
             way.iter()
                 .enumerate()
-                .map(|(k, &i)| V::Num(if k == 0 { 0.0 } else { dist[i] - dist[way[k - 1]] }))
-                .collect(),
+                .map(|(k, &i)| Some(cost_m.base(if k == 0 { 0.0 } else { dist[i] - dist[way[k - 1]] }))),
         ),
-        num_column("So Far", way.iter().map(|&i| V::Num(dist[i])).collect()),
+        cost_m.column("So Far", way.iter().map(|&i| Some(cost_m.base(dist[i])))),
     ];
-    out(c, frame_v(cols), V::Num(dist[e]))
+    out(c, frame_v(cols), cost_m.value(cost_m.base(dist[e])))
 }
 
 /// The Pareto Front card: the options no other option beats, at least as good on every measure and better on one.
@@ -580,14 +612,37 @@ fn staffing(c: &mut Call) -> Answer {
         Ok(vec![("options".into(), table), ("needed".into(), Cv::from(needed))])
     };
     let fail = |c: &mut Call, e: V| out(c, Cv::V(e.clone()), e);
-    let read = |c: &Call, k: &str| match c.read_input(k, c.unwired(k)) {
-        V::Num(n) if n.is_finite() => Ok(Some(n)),
-        V::Null | V::Undef => Ok(None),
-        v if v.is_sol_error() => Err(v),
-        _ => Err(err(ErrorCode::Value, format!("{} takes a number", c.label(k)))),
+    // A time with a unit reads in minutes and a rate with one in an hour's worth; a plain number is taken as labeled.
+    let minute = Measure::named("min");
+    let read = |c: &Call, k: &str, per_time: bool| -> Result<Option<f64>, V> {
+        let v = c.read_input(k, c.unwired(k));
+        if matches!(v, V::Null | V::Undef) {
+            return Ok(None);
+        }
+        if v.is_sol_error() {
+            return Err(v);
+        }
+        let Some((n, m)) = Measure::of_value(&v).filter(|(n, _)| n.is_finite()) else {
+            return Err(err(ErrorCode::Value, format!("{} takes a number", c.label(k))));
+        };
+        if m.plain() {
+            return Ok(Some(n));
+        }
+        let want = if per_time { Measure::none().per(&minute) } else { minute.clone() };
+        if !m.same(&want) {
+            let kind = if per_time { "a rate, such as 40 /h" } else { "a time, such as 6 min" };
+            return Err(err(ErrorCode::Unit, format!("{} takes {kind}, not {}", c.label(k), m.name())));
+        }
+        // n is in base SI: seconds, or a count a second.
+        Ok(Some(if per_time { n * 3600.0 } else { n / 60.0 }))
     };
     let vals = (|| -> Result<_, V> {
-        Ok((read(c, "arrivals")?, read(c, "minutes")?, read(c, "target")?, read(c, "share")?))
+        Ok((
+            read(c, "arrivals", true)?,
+            read(c, "minutes", false)?,
+            read(c, "target", false)?,
+            read(c, "share", false)?,
+        ))
     })();
     let (arrivals, minutes, target, share) = match vals {
         Ok(v) => v,
@@ -637,7 +692,7 @@ fn staffing(c: &mut Call) -> Answer {
         col(0, "Servers"),
         col(1, "Busy"),
         col(2, "Chance of Waiting"),
-        col(3, "Mean Wait (min)"),
+        minute.column("Mean Wait", rows.iter().map(|r| Some(minute.base(r[3])))),
         col(4, "Within Target"),
     ];
     out(c, frame_v(table), needed.map_or(V::Null, V::Num))

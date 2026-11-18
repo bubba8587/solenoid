@@ -14,7 +14,11 @@ const rand = () => {
 };
 const pick = (xs) => xs[Math.floor(rand() * xs.length)];
 const int = (lo, hi) => lo + Math.floor(rand() * (hi - lo + 1));
-const frame = (cols) => ({ frame: Object.entries(cols).map(([name, cells]) => ({ name, cells, type: typeof cells[0] === "number" ? "number" : "string" })) });
+// A header "Name (unit)" is a column of that unit, as a person keys one.
+const frame = (cols) => ({ frame: Object.entries(cols).map(([header, cells]) => {
+  const [, name, unit] = header.match(/^(.*) \(([A-Za-z/]+)\)$/) ?? [, header];
+  return { name, cells, type: typeof cells[0] === "number" ? "number" : "string", ...(unit ? { unit } : {}) };
+}) });
 
 const nodes = [];
 const cables = [];
@@ -32,7 +36,7 @@ const jobs = Array.from({ length: 60 }, (_, i) => {
   const arrives = int(1, 8);
   return { Job: `J${String(i + 1).padStart(2, "0")}`, Arrives: arrives, Hours: pick([1, 1, 2, 2, 3, 4, 5, 6, 8]), Due: arrives + int(0, 3) };
 }).sort((a, b) => a.Arrives - b.Arrives || a.Job.localeCompare(b.Job));
-add("jobs", "FrameInputNode", { label: "Jobs" }, frame({ Job: jobs.map((j) => j.Job), Arrives: jobs.map((j) => j.Arrives), Hours: jobs.map((j) => j.Hours), Due: jobs.map((j) => j.Due) }));
+add("jobs", "FrameInputNode", { label: "Jobs" }, frame({ Job: jobs.map((j) => j.Job), Arrives: jobs.map((j) => j.Arrives), "Hours (h)": jobs.map((j) => j.Hours), Due: jobs.map((j) => j.Due) }));
 add("machines", "FrameInputNode", { label: "Machines" }, frame({ Machine: ["Lathe 1", "Lathe 2", "Mill"] }));
 add("day", "ValueInputNode", { label: "Hours a machine works a day", value: "8" });
 for (const [id, label, column] of [["by_due", "Earliest due first", "Due"], ["by_short", "Shortest first", "Hours"]]) {
@@ -60,7 +64,7 @@ wire("jobs_better.history -> jobs_better_chart.values");
 
 // ── 2. Loading trucks: boxes, 1,000 kg a truck, heaviest first ──
 const kg = Array.from({ length: 36 }, () => pick([60, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500, 600]));
-add("boxes", "FrameInputNode", { label: "Boxes" }, frame({ Box: kg.map((_, i) => `B${String(i + 1).padStart(2, "0")}`), Kg: kg }));
+add("boxes", "FrameInputNode", { label: "Boxes" }, frame({ Box: kg.map((_, i) => `B${String(i + 1).padStart(2, "0")}`), "Kg (kg)": kg }));
 add("capacity", "ValueInputNode", { label: "Truck capacity (kg)", value: "1000" });
 for (const [id, label, mode] of [["fit", "Load trucks", "skip"], ["nofit", "Load trucks, no skipping", "stop"]]) {
   queue(id, label, { mode, orderDir: "desc" }, { orderColumn: "Kg", costColumn: "Kg" });

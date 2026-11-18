@@ -4,7 +4,7 @@
    "id": "blends",
    "type": "FrameInputNode",
    "init": {
-    "label": "Blends (kg of beans a kg)"
+    "label": "Blends, per kg roasted"
    },
    "frame": [
     {
@@ -25,7 +25,8 @@
       7,
       12
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "usd"
     },
     {
      "name": "Brazil",
@@ -35,7 +36,8 @@
       0.3,
       0
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "kg"
     },
     {
      "name": "Colombia",
@@ -45,7 +47,8 @@
       0.5,
       0
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "kg"
     },
     {
      "name": "Ethiopia",
@@ -55,17 +58,19 @@
       0.2,
       1
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "kg"
     },
     {
-     "name": "Roaster hours",
+     "name": "Roaster",
      "cells": [
       0.02,
       0.03,
       0.02,
       0.025
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "h"
     },
     {
      "name": "Max",
@@ -89,11 +94,11 @@
     {
      "name": "Resource",
      "cells": [
-      "Brazil beans (kg)",
-      "Colombia beans (kg)",
-      "Ethiopia beans (kg)",
-      "Roaster (hours)",
-      "Espresso for café contracts (kg)"
+      "Brazil beans",
+      "Colombia beans",
+      "Ethiopia beans",
+      "Roaster time",
+      "Espresso for café contracts"
      ],
      "type": "string"
     },
@@ -103,7 +108,7 @@
       "Brazil",
       "Colombia",
       "Ethiopia",
-      "Roaster hours",
+      "Roaster",
       ""
      ],
      "type": "string"
@@ -412,7 +417,8 @@
       9,
       7
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "h"
     },
     {
      "name": "Line repair B",
@@ -423,7 +429,8 @@
       5,
       6
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "h"
     },
     {
      "name": "Meter swap C",
@@ -434,7 +441,8 @@
       5,
       2
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "h"
     },
     {
      "name": "Transformer D",
@@ -445,7 +453,8 @@
       8,
       10
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "h"
     },
     {
      "name": "Inspection E",
@@ -456,7 +465,8 @@
       2,
       3
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "h"
     }
    ]
   },
@@ -529,7 +539,8 @@
       22,
       18
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "min"
     }
    ]
   },
@@ -610,7 +621,7 @@
      "type": "number"
     },
     {
-     "name": "Mean wait (days)",
+     "name": "Mean wait",
      "cells": [
       1.6,
       1.6,
@@ -619,7 +630,8 @@
       1.1,
       1.7
      ],
-     "type": "number"
+     "type": "number",
+     "unit": "day"
     },
     {
      "name": "Overtime hours",
@@ -642,7 +654,7 @@
     "label": "Plans worth weighing"
    },
    "stringLiterals": {
-    "lower": "Drive hours, Mean wait (days), Overtime hours",
+    "lower": "Drive hours, Mean wait, Overtime hours",
     "higher": ""
    }
   },
@@ -654,7 +666,7 @@
     "op": "scatter"
    },
    "stringLiterals": {
-    "options": "x=Drive hours; y=Mean wait (days); annotate=Plan"
+    "options": "x=Drive hours; y=Mean wait; annotate=Plan"
    }
   },
   {
