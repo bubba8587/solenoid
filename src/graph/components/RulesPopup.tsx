@@ -42,6 +42,17 @@ export function RulesSection({ title, action, children }: { title: string; actio
   );
 }
 
+/** Settings that belong to the row above them or to one thing (Legs' three, the choices that need groups): indented on
+ *  the limits' guide line, under an optional small caption, so they read as that row's or that thing's. */
+export function RulesGroup({ title, children }: { title?: string; children: ReactNode }) {
+  return (
+    <div className="sol-rules__group">
+      {title && <div className="sol-rules__group-title">{title}</div>}
+      {children}
+    </div>
+  );
+}
+
 /** A setting: its label and help on the left, its control on the right. `idle`: the other rules leave it without effect. */
 export function RulesRow({ label, help, idle, children }: { label: string; help?: ReactNode; idle?: boolean; children: ReactNode }) {
   return (

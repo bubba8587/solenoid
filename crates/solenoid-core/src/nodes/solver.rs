@@ -1460,12 +1460,18 @@ fn staffing(c: &mut Call) -> Answer {
         k += 1;
     }
     let col = |i: usize, name: &str| num_column(name, rows.iter().map(|r| V::Num(r[i])).collect());
+    // Shares read as percents and a wait to a tenth of a minute: display formats, the numbers kept whole.
+    let shown = |c: Column, fmt: Json| Column { format: Some(fmt), ..c };
+    let pct = || serde_json::json!({ "format": "percent", "decimalDigits": 1 });
     let table = vec![
         col(0, "Staff"),
-        col(1, "Busy"),
-        col(2, "Chance to Wait"),
-        minute.column("Mean Wait", rows.iter().map(|r| Some(minute.base(r[3])))),
-        col(4, "In Time"),
+        shown(col(1, "Busy"), pct()),
+        shown(col(2, "Chance to Wait"), pct()),
+        shown(
+            minute.column("Mean Wait", rows.iter().map(|r| Some(minute.base(r[3])))),
+            serde_json::json!({ "format": "decimal", "decimalDigits": 1 }),
+        ),
+        shown(col(4, "In Time"), pct()),
     ];
     out(c, frame_v(table), needed.map_or(V::Null, V::Num))
 }

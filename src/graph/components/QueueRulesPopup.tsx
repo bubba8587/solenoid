@@ -11,7 +11,7 @@ import { GreedyQueueNode, LocalSearchNode, QUEUE_ORDER_OPTIONS, QUEUE_TURNS_OPTI
   SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS, SEARCH_STUCK_OPTIONS, LEGS_DIRECTION_OPTIONS } from "../nodes/queue";
 import { useFeedShape } from "./ColumnPickerField";
 import { useConnectedInputs } from "./inlineInput";
-import { RulesPopup, RulesSection, RulesRow, RulesSeg, RulesColumn } from "./RulesPopup";
+import { RulesPopup, RulesSection, RulesRow, RulesSeg, RulesColumn, RulesGroup } from "./RulesPopup";
 
 type QueueCard = GreedyQueueNode | LocalSearchNode;
 
@@ -75,8 +75,8 @@ export function QueueRulesPopup() {
   const hasLegs = wired.has("legs");
   const legNumbers = legCols.filter((c) => c.type === "number").map((c) => c.name);
   const legs = (
-    <>
-      <RulesRow label="Legs read" idle={!hasLegs} help={hasLegs ? "Each road's number counts either way, or only From to To." : "Wire a table of roads into Legs on the card."}>
+    <RulesGroup title="Legs">
+      <RulesRow label="Read" idle={!hasLegs} help={hasLegs ? "Each road's number counts either way, or only From to To." : "Wire a table of roads into Legs on the card."}>
         <RulesSeg label="Legs read" value={node.legsDirection} options={LEGS_DIRECTION_OPTIONS} onChange={(v) => set(() => { node.legsDirection = v; })} />
       </RulesRow>
       <RulesRow label="Match places by" idle={!hasLegs} help="The items' column naming each place.">
@@ -85,7 +85,7 @@ export function QueueRulesPopup() {
       <RulesRow label="Leg number" idle={!hasLegs} help="The Legs column to add: minutes, km.">
         <RulesColumn label="Leg number" value={node.legsOf} columns={legNumbers} blank="first number column" onChange={(v) => set(() => { node.legsOf = v; })} />
       </RulesRow>
-    </>
+    </RulesGroup>
   );
 
   if (node instanceof GreedyQueueNode) {
@@ -115,9 +115,11 @@ export function QueueRulesPopup() {
           <RulesRow label="Group column" help="Items with a blank group are anyone's.">
             {column("group", "Group column", "one group")}
           </RulesRow>
-          <RulesRow label="Who picks next" idle={!hasGroups} help={hasGroups ? undefined : "Needs groups."}>
-            <RulesSeg label="Who picks next" value={node.turns} options={QUEUE_TURNS_OPTIONS} onChange={(v) => set(() => { node.turns = v; })} />
-          </RulesRow>
+          <RulesGroup>
+            <RulesRow label="Who picks next" idle={!hasGroups} help={hasGroups ? undefined : "Needs a group column or Groups wired."}>
+              <RulesSeg label="Who picks next" value={node.turns} options={QUEUE_TURNS_OPTIONS} onChange={(v) => set(() => { node.turns = v; })} />
+            </RulesRow>
+          </RulesGroup>
         </RulesSection>
         <RulesSection title="Steps">
           <RulesRow label="Opens at" help="The step each item becomes available.">
@@ -149,9 +151,11 @@ export function QueueRulesPopup() {
         <RulesRow label="Group column" help="Each group's items in order, as Greedy Queue's picks give them.">
           {column("group", "Group column", "one group")}
         </RulesRow>
-        <RulesRow label="Items may" idle={!hasGroups} help={hasGroups ? undefined : "Needs groups."}>
-          <RulesSeg label="Items may" value={node.reach} options={SEARCH_REACH_OPTIONS} onChange={(v) => set(() => { node.reach = v; })} />
-        </RulesRow>
+        <RulesGroup>
+          <RulesRow label="Items may" idle={!hasGroups} help={hasGroups ? undefined : "Needs a group column or Groups wired."}>
+            <RulesSeg label="Items may" value={node.reach} options={SEARCH_REACH_OPTIONS} onChange={(v) => set(() => { node.reach = v; })} />
+          </RulesRow>
+        </RulesGroup>
         <RulesRow label="Each group ends" idle={!wired.has("start")} help={wired.has("start") ? undefined : "Back at its start needs Groups wired."}>
           <RulesSeg label="Each group ends" value={node.ends} options={SEARCH_ENDS_OPTIONS} onChange={(v) => set(() => { node.ends = v; })} />
         </RulesRow>

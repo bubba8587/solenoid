@@ -65,6 +65,18 @@
   gap: 3px;
   min-width: 0;
 }
+/* Settings of one thing, or that need the row above: indented on the guide line a limit's clauses hang on. */
+.sol-rules__group {
+  margin: 0 0 4px 4px;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--border);
+}
+.sol-rules__group-title {
+  padding-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
 .sol-rules__label { font-size: 13px; color: var(--text); }
 .sol-rules__help { font-size: 11.5px; line-height: 1.4; color: var(--text-muted); }
 /* A row the rest of the rules leave without effect stays, dimmed, its help saying why. */
@@ -219,12 +231,13 @@
 .sol-rules__menu-list { z-index: 10; }
 .sol-rules__empty { font-size: 12px; color: var(--text-muted); padding: 6px 0 8px; }
 
+/* The right padding clears the resize grip in the corner. */
 .sol-rules__footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 8px 14px;
+  padding: 8px 22px 8px 14px;
   border-top: 1px solid var(--border);
 }
 .sol-rules__note { margin-right: auto; font-size: 11.5px; color: var(--text-muted); }

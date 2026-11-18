@@ -61,6 +61,7 @@ Built on the kit (`RulesPopup`), except PIVOTBY's, whose drag zones are its own:
   card's accent and its ink, per DESIGN.md's Nearest-Accent Rule), a select for a column or a longer list (recessed,
   28px, a saved name the input lacks stays listed so another never shows in its place), number and text fields that
   commit on Enter or blur ([[B19]] spreadsheetHabits), percentages typed and shown as percents.
+- **Settings of one thing, or that need the row above** sit indented on the guide line a limit's clauses hang on (`RulesGroup`), under a small caption when they share a subject: Legs' Read, Match places by and Leg number under "Legs"; Who picks next and Items may under Group column. The hierarchy shows on the page rather than in the help text.
 - **A setting the other rules leave without effect** stays, its label dimmed and its help saying what it needs ("Needs a
   Budget on the card", "Not used by Cheapest first"). Nothing hides because a cable arrived or a choice changed (the
   author, 2026-11-18).
