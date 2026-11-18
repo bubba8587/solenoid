@@ -228,6 +228,12 @@ export function RulesLine({ children, onRemove, removeLabel }: { children: React
   );
 }
 
+/** Where a sentence of fields breaks on a narrow screen (what is measured, then its rule), so it wraps there and only
+ *  there; on a wide one the sentence stays on one line. */
+export function RulesBreak() {
+  return <span className="sol-rules__break" aria-hidden="true" />;
+}
+
 export function RulesWord({ children }: { children: ReactNode }) {
   return <span className="sol-rules__word">{children}</span>;
 }

@@ -9,7 +9,7 @@ import { appThemeStore } from "../appTheme";
 import { SOLVER_MEASURE_OPTIONS, SOLVER_SIGN_OPTIONS, type SolverLimit, type SolverMeasure, type SolverNode, type SolverSign } from "../nodes/optimize";
 import { isFrameValue } from "../frame";
 import { useFeedShape } from "./ColumnPickerField";
-import { RulesPopup, RulesSection, RulesItem, RulesLine, RulesWord, RulesColumn, RulesChoice, RulesNumber, RulesText } from "./RulesPopup";
+import { RulesPopup, RulesSection, RulesItem, RulesLine, RulesWord, RulesBreak, RulesColumn, RulesChoice, RulesNumber, RulesText } from "./RulesPopup";
 
 const measureOf = (l: SolverLimit): SolverMeasure => l.measure ?? "total";
 /** A share is a fraction, shown and typed as a percent. */
@@ -104,6 +104,7 @@ export function SolverLimitsPopup() {
                 {m !== "used" && (
                   <RulesColumn label="Column" value={l.of} columns={columns} blank={m === "average" ? "choose a column" : "Amount"} onChange={(v) => patch(i, { of: v })} />
                 )}
+                <RulesBreak />
                 <RulesWord>must be</RulesWord>
                 <RulesChoice label="Rule" value={l.sign} options={SOLVER_SIGN_OPTIONS} onChange={(v: SolverSign) => patch(i, { sign: v })} />
                 {!l.limitColumn && <RulesNumber label="Limit" value={l.limit} percent={m === "share"} onChange={(n) => patch(i, { limit: n })} />}

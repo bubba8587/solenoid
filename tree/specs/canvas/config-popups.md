@@ -76,7 +76,7 @@ Built on the kit (`RulesPopup`), except PIVOTBY's, whose drag zones are its own:
 - **Editing:** every change saves and recalculates at once, as a card's own edit does (`processEdited`, with the type
   reconcile), and is undoable the same way; there is no Apply. The popup reads the input's columns from its shape
   (`useFeedShape`), so it lists them before the first compute.
-- **Phone and touch:** rows wrap under 640px; segments, fields and the remove target grow on a coarse pointer.
+- **Phone and touch:** under 640px the popup takes the screen's width less 20px, every row puts its control under its label (the same in every row; wrapping wherever the width ran out left some beside and some below, the author, 2026-11-18: "it looks bad how much it's wrapping"), and a sentence of fields breaks at its one marked break (`RulesBreak`: what is measured, then its rule), never wherever the width runs out. The number and a line's × sit level with the first row of fields. On a coarse pointer the controls take the sizes the other popups take, never new ones (the author, 2026-11-18): segments, selects, fields and the Add condition button the table popup's pill height (30px) with their desktop type, a remove × a Pivot chip's (24px), Done the Pivot editor's (13px, 9px by 16px).
 
 ## A new one
 

@@ -141,9 +141,11 @@
   border-top: 1px solid var(--border-subtle, var(--border));
 }
 .sol-rules__head + .sol-rules__item { border-top: none; }
+/* The number and a line's × sit level with the line's first row of fields (28px tall), however the line wraps. */
 .sol-rules__num {
   grid-row: 1;
-  align-self: center;
+  align-self: start;
+  line-height: 28px;
   font-size: 11px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -160,7 +162,8 @@
 .sol-rules__word { font-size: 12.5px; color: var(--text-dim); }
 .sol-rules__remove {
   grid-column: 3;
-  align-self: center;
+  align-self: start;
+  margin-top: 3px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -218,13 +221,24 @@
 }
 .sol-rules__done:hover { filter: brightness(1.06); }
 
+.sol-rules__break { display: none; }
+/* A phone: every setting's control sits under its label, the same in every row (wrapping only where the width ran out
+   left some beside and some below), and a sentence of fields breaks at its one break (what is
+   measured, then its rule) rather than wherever the width runs out; the popup takes the screen's width. */
 @media (max-width: 640px) {
-  .sol-rules__row { flex-wrap: wrap; gap: 8px; }
+  .sol-rules { width: calc(100vw - 20px); max-width: none; }
+  .sol-rules__body { padding: 2px 12px; }
+  .sol-rules__row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .sol-rules__break { display: block; flex-basis: 100%; height: 0; }
+  .sol-rules__item { grid-template-columns: 14px 1fr auto; column-gap: 6px; }
 }
+/* Touch: the sizes the other popups take on a coarse pointer, not new ones. Segments, selects, fields and the Add
+   condition button the table popup's pill height (30px), their type as on desktop (Settings, whose sizes these are,
+   keeps its own on touch); a remove × as a Pivot chip's (24px); Done as the Pivot editor's. */
 @media (pointer: coarse) {
-  .sol-rules__segbtn { height: 34px; font-size: 13px; }
-  .sol-rules__select, .sol-rules__input { height: 34px; font-size: 13px; }
-  .sol-rules__remove { width: 32px; height: 32px; }
-  .sol-rules__add { height: 32px; font-size: 13px; }
+  .sol-rules__segbtn { height: 30px; }
+  .sol-rules__select, .sol-rules__input, .sol-rules__add { height: 30px; }
+  .sol-rules__remove { width: 24px; height: 24px; }
+  .sol-rules__num { line-height: 30px; }
   .sol-rules__done { font-size: 13px; padding: 9px 16px; }
 }
