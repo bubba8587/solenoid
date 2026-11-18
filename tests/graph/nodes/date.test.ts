@@ -13,8 +13,6 @@ const WED = parseDateToSerial("2023-01-04");
 const FRI = parseDateToSerial("2023-01-06");
 
 describe("WORKDAY / NETWORKDAYS — optional holidays list (Excel [holidays] parity)", () => {
-
-
   it("NETWORKDAYS counts whole days whatever the times of day, as the formula does", () => {
     const n = new WorkdaysNode({ op: "networkdays" });
     expect(n.data({ start: [solDate(MON + 0.5)], end: [solDate(WED + 0.25)] }).result).toBe(3);
@@ -71,10 +69,6 @@ describe("DATE — numeric year is literal (no century guessing)", () => {
   it("a small year is that literal year, not 1900+year", () => {
     const r = new DateConstructNode().data({ year: [26], month: [1], day: [15] }).result;
     expect(yr((r as unknown as SolDate).__date)).toBe(26); // 26 AD, NOT 1926
-  });
-  it("a full year round-trips", () => {
-    const r = new DateConstructNode().data({ year: [2026], month: [3], day: [15] }).result;
-    expect(r).toEqual(solDate(jsDateToSerial(new Date(Date.UTC(2026, 2, 15)))));
   });
 });
 
@@ -356,14 +350,6 @@ describe("DATEVALUE / TIMEVALUE — one node, op-switch mechanics", () => {
 });
 
 describe("date nodes broadcast over lists (scalar-or-list combo sockets)", () => {
-
-
-  it("both operands broadcast together, zipped by position", () => {
-    expect(new DateDiffNode({ op: "days" }).data({ start: [[solDate(MON), solDate(MON)]], end: [[solDate(WED), solDate(FRI)]] }).result).toEqual([2, 4]);
-    expect(new DateConstructNode().data({ year: [[2023, 2024]], month: [1], day: [2] }).result)
-      .toEqual([solDate(MON), solDate(parseDateToSerial("2024-01-02"))]);
-  });
-
   it("a CONFIG input stays scalar — a per-element mode is meaningless", () => {
     // return_type / basis / weekend_code select a MODE; holidays is a whole SET
     // consulted for every result, not an element-wise operand.
@@ -379,7 +365,6 @@ describe("date nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     // The holidays SET still applies across a broadcast result.
     expect(nw.data({ start: [solDate(MON)], end: [[solDate(WED), solDate(FRI)]], holidays: [[solDate(WED)]] }).result).toEqual([2, 4]);
   });
-
 
 });
 

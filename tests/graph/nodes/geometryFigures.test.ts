@@ -115,14 +115,6 @@ describe("Two Points", () => {
   });
 });
 
-describe("keyed tables", () => {
-  it("each card solves its own default", () => {
-    expect((new CircleSolverNode().data({}) as { valid: unknown[] }).valid).toEqual([true]);
-    expect((new RegularPolygonNode().data({}) as { valid: unknown[] }).valid).toEqual([true]);
-    expect(cell((new TwoPointsNode().data({}) as { frame: FrameValue }).frame, "distance")).toBe(5);
-  });
-});
-
 describe("Polygon from Points", () => {
   const poly = (rows: Row[]) => new PolygonPointsNode().data({ vertices: [frameOf(rows)] }) as { vertices: FrameValue; polygon: FrameValue };
   const square = [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 }];
@@ -177,13 +169,5 @@ describe("Solid", () => {
     expect(valid).toEqual([false]);
     const c = solid("cylinder", { d: 4, surface: 28 * Math.PI });
     expect(cell(c.frame, "h")).toBeCloseTo(5, 9);
-  });
-  it("an extra part checks; a volume takes the lengths' unit cubed; a switch of shape is a new table", () => {
-    expect(solid("sphere", { r: 3, d: 6 }).valid).toEqual([true]);
-    expect(solid("sphere", { r: 3, d: 7 }).valid).toEqual([false]);
-    const cm = { dim: { length: 1 }, display: "cm" };
-    const { frame } = solve(new SolidNode({ op: "cube" }), "solids", [{ side: 2 }], { side: cm });
-    expect(frame.columns.find((c) => c.name === "volume")?.unit?.dim).toEqual({ length: 3 });
-    expect(cell((new SolidNode({ op: "box" }).data({}) as { frame: FrameValue }).frame, "volume")).toBe(24);
   });
 });

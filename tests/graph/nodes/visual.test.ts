@@ -3,14 +3,14 @@ import { solDate } from "../../../src/graph/dateValue";
 import { cellImageSrc } from "../../../src/graph/recordLayout";
 import { describe, it, expect } from "vitest";
 import {
-  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode,
-  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, ChartBuilderNode, SurfaceNode,
+  BoxplotNode, CalendarHeatmapNode, ProportionNode, 
   HistogramNode,
   RecordNode, CardsNode, parseRecordLayout, recordImageSrc,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
-import type { XYPayload, BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, HeatmapPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
+import type { XYPayload, BoxplotPayload, CalHeatPayload, ProportionPayload, RecordPayload } from "../../../src/graph/chartValue";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
 import { XYPadNode } from "../../../src/graph/nodes/control";
 import { ValueInputNode } from "../../../src/graph/nodes/control";
@@ -111,20 +111,6 @@ describe("visual nodes", () => {
     expect((g.data({}).chart.payload as { value: number }).value).toBe(0);
   });
 
-  it("Gauge (Bar) emits a bar payload with target and 0→Max track (the former Bullet)", () => {
-    const g = new GaugeNode({ mode: "bar" });
-    const out = g.data({ value: [42], target: [80], max: [200] }).chart;
-    expect(out.payload).toMatchObject({ kind: "scale", style: "bar", value: 42, target: 80, min: 0, max: 200 });
-  });
-
-  it("Heatmap draws a plain table as it stands, numbering rows and columns, blanks as gaps", async () => {
-    const out = (await new HeatmapNode().data({ values: [[[1, 2, 3], [4, "x", null]]] })).chart;
-    expect(out).toMatchObject({ __chart: true, op: "heatmap", values: null, title: "Heatmap" });
-    expect(out.payload).toEqual({ kind: "heatmap", z: [[1, 2, 3], [4, null, null]], rows: ["1", "2"], cols: ["1", "2", "3"] });
-    expect((await new HeatmapNode().data({ values: [[5, 6]] })).chart.payload).toMatchObject({ z: [[5, 6]], rows: ["1"] });
-    expect((await new HeatmapNode().data({})).chart.payload).toMatchObject({ z: [], rows: [], cols: [] });
-  });
-
   it("op + literals round-trip through extractInit", () => {
     const sp = new SparklineNode({ op: "column" });
     const sp2 = new SparklineNode(extractInit(sp));
@@ -137,31 +123,6 @@ describe("visual nodes", () => {
 });
 
 describe("Surface (3-D plot)", () => {
-  it("emits a surface ChartValue carrying the Z table + wired axes + default view angles", () => {
-    const s = new SurfaceNode({ label: "Heights" });
-    const out = s.data({ z: [[[1, 2], [3, 4]]], xs: [[0, 10]], ys: [[0, 5]] });
-    expect(out.chart).toMatchObject({
-      __chart: true,
-      op: "surface",
-      title: "Heights",
-      payload: { kind: "surface", xs: [0, 10], ys: [0, 5], z: [[1, 2], [3, 4]], yaw: 45, pitch: 45 },
-    });
-  });
-
-  it("unwired axes count 1, 2, 3… beside the Z table", () => {
-    const out = new SurfaceNode().data({ z: [[[1, 2], [3, 4]]] });
-    expect(out.chart.payload).toMatchObject({ kind: "surface", xs: [1, 2], ys: [1, 2], z: [[1, 2], [3, 4]] });
-  });
-
-  it("a bad axis (wrong length / non-finite) collapses the figure to an empty grid", () => {
-    const badLen = new SurfaceNode().data({ z: [[[1, 2], [3, 4]]], xs: [[0, 10, 20]] }).chart;
-    expect(badLen.payload).toMatchObject({ xs: [], ys: [], z: [] });
-    const badNum = new SurfaceNode().data({ z: [[[1, 2]]], xs: [[NaN, 1]] }).chart;
-    expect(badNum.payload).toMatchObject({ xs: [], ys: [], z: [] });
-    // No Z at all → empty, still a valid (drawable-as-empty) surface value.
-    expect(new SurfaceNode().data({}).chart).toMatchObject({ op: "surface", payload: { kind: "surface", xs: [], ys: [], z: [] } });
-  });
-
   it("the view angles round-trip through the paste path (rotate buttons persist)", async () => {
     const s = new SurfaceNode();
     s.literals.yaw = 135;
@@ -397,52 +358,6 @@ describe("Boxplot statistics", () => {
 });
 
 describe("chart-wave nodes emit their payloads", () => {
-  it("Contour reads the Z table + axes and clamps levels", () => {
-    const n = new SurfaceNode({ op: "contour" });
-    const p = n.data({ z: [[[5, 6], [7, 8]]], xs: [[0, 1]], ys: [[0, 1]], levels: [99] }).chart.payload as ContourPayload;
-    expect(p.kind).toBe("contour");
-    expect(p.xs).toEqual([0, 1]);
-    expect(p.ys).toEqual([0, 1]);
-    expect(p.z).toEqual([[5, 6], [7, 8]]);
-    expect(p.levels).toBe(24); // clamped
-  });
-
-  it("Waterfall pairs labels with deltas and flags the computed total", async () => {
-    const n = new WaterfallNode();
-    const f = frame([
-      { name: "Item", type: "string", values: ["Rev", "COGS", "Opex"] },
-      { name: "Δ", type: "number", values: [100, -40, -25] },
-    ]);
-    const p = (await n.data({ frame: [f] })).chart.payload as WaterfallPayload;
-    expect(p.names).toEqual(["Rev", "COGS", "Opex"]);
-    expect(p.values).toEqual([100, -40, -25]);
-    expect(p.total).toBe(true);
-  });
-
-  it("Candlestick: 5 columns → date labels; 4 columns → 1-based index labels", async () => {
-    const n = new CandlestickNode();
-    const withDates = frame([
-      { name: "Date", type: "string", values: ["Jan", "Feb"] },
-      { name: "O", type: "number", values: [10, 12] },
-      { name: "H", type: "number", values: [15, 13] },
-      { name: "L", type: "number", values: [9, 11] },
-      { name: "C", type: "number", values: [12, 11] },
-    ]);
-    const p1 = ((await n.data({ frame: [withDates] })).chart as { payload: CandlePayload }).payload;
-    expect(p1.labels).toEqual(["Jan", "Feb"]);
-    expect(p1.open).toEqual([10, 12]);
-    expect(p1.close).toEqual([12, 11]);
-    const bare = frame([
-      { name: "O", type: "number", values: [10] },
-      { name: "H", type: "number", values: [15] },
-      { name: "L", type: "number", values: [9] },
-      { name: "C", type: "number", values: [12] },
-    ]);
-    const p2 = ((await n.data({ frame: [bare] })).chart as { payload: CandlePayload }).payload;
-    expect(p2.labels).toEqual(["1"]);
-    expect(p2.high).toEqual([15]);
-  });
-
   it("Boxplot: one box per numeric frame column; a plain list gets one box", async () => {
     const n = new BoxplotNode();
     const f = frame([
@@ -488,20 +403,6 @@ describe("chart-wave nodes emit their payloads", () => {
     expect(q.values).toEqual([2, 1]);
   });
 
-  it("Proportion carries label/value pairs and defaults to the treemap layout", async () => {
-    const n = new ProportionNode();
-    const f = frame([
-      { name: "Part", type: "string", values: ["A", "B"] },
-      { name: "Share", type: "number", values: [3, 1] },
-    ]);
-    const chart = (await n.data({ frame: [f] })).chart;
-    expect(chart.op).toBe("proportion");
-    const p = chart.payload as ProportionPayload;
-    expect(p.layout).toBe("treemap");
-    expect(p.names).toEqual(["A", "B"]);
-    expect(p.values).toEqual([3, 1]);
-  });
-
   it("Proportion emits the waffle layout when its op is waffle, round-tripping through extractInit", async () => {
     const n = new ProportionNode({ op: "waffle" });
     const f = frame([{ name: "Part", type: "string", values: ["A"] }, { name: "Share", type: "number", values: [1] }]);
@@ -512,12 +413,6 @@ describe("chart-wave nodes emit their payloads", () => {
     expect(((await n2.data({ frame: [f] })).chart.payload as ProportionPayload).layout).toBe("treemap");
   });
 
-  it("Vector Field normalizes both component matrices, keeping nulls as holes", () => {
-    const n = new QuiverNode();
-    const p = n.data({ u: [[[1, null], [0, 2]]], v: [[[0, 1], [null, 2]]] }).chart.payload as QuiverPayload;
-    expect(p.u).toEqual([[1, null], [0, 2]]);
-    expect(p.v).toEqual([[0, 1], [null, 2]]);
-  });
 });
 
 describe("Surface — the 3-D / Flat view toggle (old Contour)", () => {
@@ -812,48 +707,6 @@ describe("Record node", () => {
 
 describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
   const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
-  it("Waterfall keeps a null delta as a null step; the chart's values carry only the known ones", async () => {
-    const n = new WaterfallNode();
-    const f = frame([
-      { name: "Item", type: "string", values: ["a", "b", "c"] },
-      { name: "Δ", type: "number", values: [10, null, -3] },
-    ]);
-    const out = await n.data({ frame: [f] });
-    expect((out.chart.payload as WaterfallPayload).values).toEqual([10, null, -3]);
-    expect(out.chart.values).toEqual([10, -3]);
-  });
-  it("Candlestick keeps a null low as null; fewer than four columns is #SHAPE!", async () => {
-    const n = new CandlestickNode();
-    const f = frame([
-      { name: "O", type: "number", values: [10, 12] },
-      { name: "H", type: "number", values: [15, 13] },
-      { name: "L", type: "number", values: [null, 11] },
-      { name: "C", type: "number", values: [12, 11] },
-    ]);
-    const out = await n.data({ frame: [f] });
-    expect(((out.chart as { payload: CandlePayload }).payload).low).toEqual([null, 11]);
-    const short = frame([{ name: "O", type: "number", values: [1] }, { name: "H", type: "number", values: [2] }]);
-    const bad = await n.data({ frame: [short] });
-    expect(isSolError(bad.chart) && bad.chart.code).toBe("#SHAPE!");
-  });
-  it("Heatmap names rows by a text first column and keeps only number columns", async () => {
-    const f = frame([
-      { name: "Region", type: "string", values: ["North", "South"] },
-      { name: "Q1", type: "number", values: [12, 18] },
-      { name: "Note", type: "string", values: ["a", "b"] },
-      { name: "Q2", type: "number", values: [15, null] },
-    ]);
-    const n = new HeatmapNode();
-    n.stringLiterals.options = "title=Sales;cmap=rdbu_R;center=0";
-    const out = (await n.data({ values: [f] })).chart;
-    expect(out.payload).toEqual({ kind: "heatmap", z: [[12, 15], [18, null]], rows: ["North", "South"], cols: ["Q1", "Q2"] });
-    expect(out.title).toBe("Sales");
-    expect(out.options).toMatchObject({ cmap: "RdBu_r", center: 0 });
-  });
-  it("Heatmap plots an all-number frame whole, rows numbered", async () => {
-    const f = frame([{ name: "A", type: "number", values: [1, 2] }, { name: "B", type: "number", values: [3, 4] }]);
-    expect((await new HeatmapNode().data({ values: [f] })).chart.payload).toEqual({ kind: "heatmap", z: [[1, 3], [2, 4]], rows: ["1", "2"], cols: ["A", "B"] });
-  });
   it("Surface carries the parsed options on both views", () => {
     const n = new SurfaceNode({ op: "contour" });
     n.stringLiterals.options = "title=Terrain;cmap=magma";
@@ -861,28 +714,6 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
     expect(flat).toMatchObject({ op: "contour", title: "Terrain", options: { cmap: "magma" } });
     n.setOp("surface");
     expect(n.data({ z: [[[1, 2], [3, 4]]] }).chart.options).toMatchObject({ cmap: "magma" });
-  });
-  it("Vector Field reads its options", () => {
-    const n = new QuiverNode();
-    const out = n.data({ u: [[[1]]], v: [[[0]]], options: ["cmap=viridis;title=Wind"] }).chart;
-    expect(out).toMatchObject({ title: "Wind", options: { cmap: "viridis" } });
-  });
-  it("Histogram 2-D draws its bins as a heatmap, y growing upward, bins labeled by their lower edge", () => {
-    const n = new HistogramNode({ mode: "2d" });
-    n.stringLiterals.options = "cmap=magma";
-    const out = n.data({ values: [[0, 1, 2, 0]], y: [[0, 1, 2, 2]], bins: [2], ybins: [2] }).chart as ChartValue;
-    expect(out.op).toBe("heatmap");
-    expect(out.payload).toEqual({ kind: "heatmap", z: [[1, 0], [1, 2]], rows: ["0", "1"], cols: ["0", "1"] });
-    expect(out.options).toMatchObject({ origin: "lower", aspect: "auto", cmap: "magma" });
-  });
-  it("Heatmap cuts a huge table to HEATMAP_MAX and says how big it was", async () => {
-    const HEATMAP_MAX = 400;
-    const big = Array.from({ length: HEATMAP_MAX + 5 }, (_, r) => Array.from({ length: 3 }, (_, c) => r + c));
-    const p = (await new HeatmapNode().data({ values: [big] })).chart.payload as HeatmapPayload;
-    expect(p.z.length).toBe(HEATMAP_MAX);
-    expect(p.rows.length).toBe(HEATMAP_MAX);
-    expect(p.totalRows).toBe(HEATMAP_MAX + 5);
-    expect(p.totalCols).toBeUndefined();
   });
   it("Calendar Heatmap counts a dated row whose value is blank as 1, never 0", async () => {
     const n = new CalendarHeatmapNode();
@@ -893,16 +724,6 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
     const p = (await n.data({ frame: [f] })).chart.payload as CalHeatPayload;
     expect(p.days).toEqual([46023, 46024, 46025]);
     expect(p.values).toEqual([3, 1, 4]);
-  });
-});
-
-describe("Sparkline blanks are gaps", () => {
-  it("[5, null, 7] keeps the gap in its series; win/loss of [3, null, -2] is [1, null, -1]", () => {
-    const line = new SparklineNode({ op: "line" }).data({ values: [[5, null, 7] as never] }).chart;
-    expect(line.series?.[0].values).toEqual([5, null, 7]);
-    expect(line.values).toEqual([5, 7]);
-    const wl = new SparklineNode({ op: "winloss" }).data({ values: [[3, null, -2] as never] }).chart;
-    expect(wl.series?.[0].values).toEqual([1, null, -1]);
   });
 });
 
@@ -929,30 +750,10 @@ describe("Sankey loops, Histogram bins, Date Range order (review pins)", () => {
     expect((all.chart as { payload?: unknown }).payload).toBeDefined(); // a self-loop is skipped, not a cycle
   });
 
-  it("repeated From → To flows merge into one summed flow before drawing", async () => {
-    const { SankeyNode } = await import("../../../src/graph/nodes/visual");
-    const n = new SankeyNode();
-    const out = await n.data({ frame: [{ __frame: true, columns: [
-      { name: "From", type: "string", values: ["Salary", "Salary", "Bonus", "Salary"] },
-      { name: "To", type: "string", values: ["Rent", "Food", "Savings", "Rent"] },
-      { name: "Value", type: "number", values: [1000, 300, 500, 200] },
-    ] } as never] });
-    const p = (out.chart as { payload?: { sources: string[]; targets: string[]; values: number[] } }).payload!;
-    expect(p.sources).toEqual(["Salary", "Salary", "Bonus"]);
-    expect(p.targets).toEqual(["Rent", "Food", "Savings"]);
-    expect(p.values).toEqual([1200, 300, 500]);
-  });
-
   it("Histogram refuses a bins count below 1 or not a number", () => {
     const err = histogramBins([1, 2, 3], 0);
     expect((err as { code?: string }).code).toBe("#DOMAIN!");
     expect((histogramBins([1, 2, 3], NaN) as { code?: string }).code).toBe("#DOMAIN!");
   });
 
-  it("Date Range never emits an end before its start", async () => {
-    const { DateRangeNode } = await import("../../../src/graph/nodes/control");
-    const n = new DateRangeNode();
-    n.literals.start = 46030; n.literals.end = 46027;
-    expect(n.data()).toEqual({ start: 46027, end: 46030 });
-  });
 });

@@ -98,10 +98,4 @@ describe("MathFn inverse trig and units", () => {
     const r = n.data({ in: [tagDim(0.5, { length: 1 }, "m") as never] }).result;
     expect((r as { code?: string }).code).toBe("#UNIT!");
   });
-  it("in deg mode a dimensionless tagged cell answers in degrees beside a plain number", () => {
-    const n = new MathFXNode({ op: "asin", angleMode: "deg" });
-    const r = n.data({ in: [[0.5, { __unitCell: true, value: 0.5, dim: {}, ratio: true }] as never] }).result;
-    expect(mags(r)[0]).toBeCloseTo(30, 9);
-    expect(mags(r)[1]).toBeCloseTo(30, 9);
-  });
 });

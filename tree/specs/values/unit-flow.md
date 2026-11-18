@@ -34,7 +34,7 @@ flowchart LR
 - **How it travels.** The tag rides through anything that passes the value along. A transform works the dimension out again through the algebra (`tag_dim`, the core's `unit_lists.rs`) and keeps an operand's `display` when the result's dimension matches it (`$5 + 2 = $7`, `2 × 3 m = 6 m`). A result whose dimension fits neither operand falls back to its derived-symbol form.
 - **Where it becomes text.** Cast to Text writes the unit into the text in the unit the value reads in (`5 km`, `$5`; `unit_cell_text` in `crates/solenoid-core/src/nodes/text.rs`), so a cast never drops it silently; Cast's other ops read the value as it shows, unit-blind.
 
-Tests: `unitWiring.test.ts`: units entering through the base-SI cell an FC authors, and through the formula and the cards; `convert.test.ts`: Convert tags its output.
+Tests: `unitWiring.test.ts`: units entering through the base-SI cell an FC authors, and through the formula and the cards; Convert tagging its output is a frozen case in `fixtures/core/nodes/ConvertNode.json.gz`.
 
 ## Optimization cards
 
@@ -384,7 +384,7 @@ Convert (`nodes/convert.ts`, its body `convert` in `crates/solenoid-core/src/nod
 
 **Convert and the FC share one id space**: a Convert unit the FC also lists carries the FC's id (`kmh`, `ms1`, `degC`, `L`, `oz`, `ac`), so a Convert's output reads in its target unit and an FC downstream mirrors it. **Every Convert unit id resolves through the display bridge** (`fc_unit_to_unit` reads `convert_units.rs`), so a `UnitCell.display` that Convert set (yd, psi…) resolves at render time even with no FC-registry twin. A Convert unit the bridge missed would show the base-SI derived symbol downstream, and Convert would lose control of the value's unit.
 
-Tests: `convert.test.ts`: Convert tags its output, the shared id space, and the whole-output `#N/A`; `unitCoercion.test.ts`: an FC after a Convert forwards the converted unit, and an FC feeding a Convert is dictated its from-unit.
+Tests: `convert.test.ts`: the shared id space and the whole-output `#N/A` (Convert tagging its output is a frozen case in `ConvertNode.json.gz`); `unitCoercion.test.ts`: an FC after a Convert forwards the converted unit, and an FC feeding a Convert is dictated its from-unit.
 
 ## The format annotation
 
