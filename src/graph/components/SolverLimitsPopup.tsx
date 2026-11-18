@@ -9,7 +9,7 @@ import { appThemeStore } from "../appTheme";
 import { SOLVER_MEASURE_OPTIONS, SOLVER_SIGN_OPTIONS, type SolverLimit, type SolverMeasure, type SolverNode, type SolverSign } from "../nodes/optimize";
 import { isFrameValue } from "../frame";
 import { useFeedShape } from "./ColumnPickerField";
-import { RulesPopup, RulesSection, RulesItem, RulesLine, RulesWord, RulesBreak, RulesColumn, RulesChoice, RulesNumber, RulesText } from "./RulesPopup";
+import { RulesPopup, RulesSection, RulesItem, RulesWord, RulesBreak, RulesColumn, RulesChoice, RulesNumber, RulesText } from "./RulesPopup";
 
 const measureOf = (l: SolverLimit): SolverMeasure => l.measure ?? "total";
 /** A share is a fraction, shown and typed as a percent. */
@@ -98,8 +98,8 @@ export function SolverLimitsPopup() {
             ...(!grouped && m !== "each" ? [{ label: "Once for each value of a column", onPick: () => patch(i, { by: "" }) }] : []),
           ];
           return (
-            <RulesItem key={i} index={i + 1} onRemove={() => remove(i)} removeLabel="Remove limit" add={{ label: "+ Add condition", options: conditions }}>
-              <RulesLine>
+            <RulesItem key={i} index={i + 1} onRemove={() => remove(i)} removeLabel="Remove limit" add={{ label: "+ Add condition", options: conditions }}
+              sentence={<>
                 <RulesChoice label="Measure" value={m} options={SOLVER_MEASURE_OPTIONS} onChange={(v) => pickMeasure(i, v)} />
                 {m !== "used" && (
                   <RulesColumn label="Column" value={l.of} columns={columns} blank={m === "average" ? "choose a column" : "Amount"} onChange={(v) => patch(i, { of: v })} />
@@ -111,22 +111,29 @@ export function SolverLimitsPopup() {
                 {perGroup && (
                   <RulesColumn label="Limit from a column" value={l.limitColumn ?? ""} columns={columns} blank={l.limitColumn ? "a number" : "or its…"} prefix="its " onChange={(v) => patch(i, { limitColumn: v || undefined })} />
                 )}
-              </RulesLine>
-              {grouped && (
-                <RulesLine onRemove={() => patch(i, { by: undefined, limitColumn: undefined })} removeLabel="Remove condition: once for all options">
-                  <RulesWord>for each</RulesWord>
-                  <RulesColumn label="For each" value={l.by ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { by: v })} />
-                </RulesLine>
-              )}
-              {l.where !== undefined && (
-                <RulesLine onRemove={() => patch(i, { where: undefined, is: undefined })} removeLabel="Remove condition: count every option">
-                  <RulesWord>only where</RulesWord>
-                  <RulesColumn label="Where" value={l.where ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { where: v })} />
-                  <RulesWord>is</RulesWord>
-                  <RulesText label="Is" value={l.is ?? ""} placeholder="value" onChange={(v) => patch(i, { is: v })} />
-                </RulesLine>
-              )}
-            </RulesItem>
+              </>}
+              clauses={[
+                ...(grouped ? [{
+                  key: "by",
+                  removeLabel: "Remove condition: once for all options",
+                  onRemove: () => patch(i, { by: undefined, limitColumn: undefined }),
+                  content: <>
+                    <RulesWord>for each</RulesWord>
+                    <RulesColumn label="For each" value={l.by ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { by: v })} />
+                  </>,
+                }] : []),
+                ...(l.where !== undefined ? [{
+                  key: "where",
+                  removeLabel: "Remove condition: count every option",
+                  onRemove: () => patch(i, { where: undefined, is: undefined }),
+                  content: <>
+                    <RulesWord>only where</RulesWord>
+                    <RulesColumn label="Where" value={l.where ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { where: v })} />
+                    <RulesWord>is</RulesWord>
+                    <RulesText label="Is" value={l.is ?? ""} placeholder="value" onChange={(v) => patch(i, { is: v })} />
+                  </>,
+                }] : []),
+              ]} />
           );
         })}
       </RulesSection>

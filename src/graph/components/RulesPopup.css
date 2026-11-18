@@ -162,6 +162,7 @@
 .sol-rules__word { font-size: 12.5px; color: var(--text-dim); }
 .sol-rules__remove {
   grid-column: 3;
+  grid-row: 1;
   align-self: start;
   margin-top: 3px;
   display: inline-flex;
@@ -177,7 +178,25 @@
   cursor: pointer;
 }
 .sol-rules__remove:hover { color: var(--text); background: var(--btn-hover, var(--surface-raised)); }
-.sol-rules__more { grid-column: 2; display: flex; gap: 8px; }
+/* A limit's clauses and its Add condition button hang under its sentence: indented on a guide line, so they read as
+   belonging to it, their × still on the item's right edge. */
+.sol-rules__clauses {
+  grid-column: 2 / 4;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 0 4px;
+  padding: 2px 0 2px 12px;
+  border-left: 1px solid var(--border);
+}
+.sol-rules__clause {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+}
+.sol-rules__clause .sol-rules__line { grid-column: 1; }
+.sol-rules__clause .sol-rules__remove { grid-column: 2; }
+.sol-rules__clause-add { display: flex; }
 /* "+ Add condition": a plain secondary button (the section action's look), its choices in the app's popup menu
    opening from its left edge. */
 .sol-rules__add {

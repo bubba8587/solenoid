@@ -64,7 +64,9 @@ Built on the kit (`RulesPopup`), except PIVOTBY's, whose drag zones are its own:
 - **A setting the other rules leave without effect** stays, its label dimmed and its help saying what it needs ("Needs a
   Budget on the card", "Not used by Cheapest first"). Nothing hides because a cable arrived or a choice changed (the
   author, 2026-11-18).
-- **A list** (limits) is numbered items, each a sentence of fields with a remove ×; an optional clause is a line of its
+- **A list** (limits) is numbered items, each a sentence of fields with a remove ×; its clauses and its Add condition
+  button hang under the sentence, indented on a guide line, so they read as belonging to it (the author, 2026-11-18:
+  "indentation could be a lot better"), every × on the item's right edge. An optional clause is a line of its
   own with its own ×, opened from the item's one **+ Add condition** button: a plain secondary button with no caret,
   since it isn't a dropdown (the author, 2026-11-18), that opens the app's popup menu (`sol-popup-menu`) of the clauses
   not yet on the item, even when one is left, so the button always does the same thing; it goes once none are left.

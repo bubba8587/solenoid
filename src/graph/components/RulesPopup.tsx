@@ -189,42 +189,43 @@ function RulesAddMenu({ label, options }: { label: string; options: { label: str
   );
 }
 
-/** One numbered item of a list (a limit): its lines of fields, a remove button, and an Add condition button whose menu
- *  offers the clauses not yet on it, each opening a line. */
-export function RulesItem({ index, onRemove, removeLabel, add, children }: {
+/** One numbered item of a list (a limit): its sentence of fields beside its number and remove ×, then, indented under
+ *  the sentence on a guide line, its clauses (each a line of fields with its own ×) and the Add condition button whose
+ *  menu offers the clauses not yet on it. */
+export function RulesItem({ index, onRemove, removeLabel, sentence, clauses, add }: {
   index: number;
   onRemove: () => void;
   removeLabel: string;
+  sentence: ReactNode;
+  clauses: { key: string; content: ReactNode; onRemove: () => void; removeLabel: string }[];
   add?: { label: string; options: { label: string; onPick: () => void }[] };
-  children: ReactNode;
 }) {
+  const adding = !!add && add.options.length > 0;
   return (
     <div className="sol-rules__item">
       <span className="sol-rules__num">{index}</span>
-      {children}
-      <button type="button" className="sol-rules__remove" style={{ gridRow: 1 }} onClick={onRemove} aria-label={removeLabel} title={removeLabel}>
-        <CloseIcon size={10} />
-      </button>
-      {add && add.options.length > 0 && (
-        <div className="sol-rules__more">
-          <RulesAddMenu label={add.label} options={add.options} />
+      <div className="sol-rules__line">{sentence}</div>
+      <RemoveButton onClick={onRemove} label={removeLabel} />
+      {(clauses.length > 0 || adding) && (
+        <div className="sol-rules__clauses">
+          {clauses.map((c) => (
+            <div key={c.key} className="sol-rules__clause">
+              <div className="sol-rules__line">{c.content}</div>
+              <RemoveButton onClick={c.onRemove} label={c.removeLabel} />
+            </div>
+          ))}
+          {adding && <div className="sol-rules__clause-add"><RulesAddMenu label={add.label} options={add.options} /></div>}
         </div>
       )}
     </div>
   );
 }
 
-/** A line of an item: words and fields in a sentence; `onRemove` gives the line its own remove (an optional clause). */
-export function RulesLine({ children, onRemove, removeLabel }: { children: ReactNode; onRemove?: () => void; removeLabel?: string }) {
+function RemoveButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
-    <>
-      <div className="sol-rules__line">{children}</div>
-      {onRemove && (
-        <button type="button" className="sol-rules__remove" onClick={onRemove} aria-label={removeLabel} title={removeLabel}>
-          <CloseIcon size={10} />
-        </button>
-      )}
-    </>
+    <button type="button" className="sol-rules__remove" onClick={onClick} aria-label={label} title={label}>
+      <CloseIcon size={10} />
+    </button>
   );
 }
 
