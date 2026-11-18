@@ -8,7 +8,9 @@
 use super::frames::{frame_in, frame_v, num_column, str_input, trimmed};
 use super::matrix::{wired_lambda, Body};
 use super::measure::Measure;
-use super::queue::{allowed, cell_number, key, keys, legs_in, position, setting, taken, text, with_legs, Legs};
+use super::queue::{
+    allowed, cell_number, key, keys, position, setting, taken, text, transitions_in, with_transitions, Transitions,
+};
 use super::{err, Answer, Call, Column, Cv, Frame};
 use crate::error_value::ErrorCode;
 use crate::eval::Eval;
@@ -96,8 +98,8 @@ struct Model<'a> {
     back: bool,
     /// The Cost column, its number added to the Cost formula's.
     cost_col: Option<(usize, String)>,
-    /// The legs between named places, each item's leg from the one before added to its cost.
-    legs: Option<Legs>,
+    /// The transitions table: each item's cost of following the one before (a drive, a changeover) added to its cost.
+    transitions: Option<Transitions>,
     ev: Eval<'a>,
     memo: [HashMap<(usize, usize, Spot), f64>; 3],
     placed: [HashMap<Placed, f64>; 3],
@@ -163,13 +165,13 @@ impl Model<'_> {
         let shown = if let Spot::Item(r) = this { r } else { 0 };
         let v = match f {
             0 => {
-                let leg = match (&self.legs, this, last) {
+                let step = match (&self.transitions, this, last) {
                     (Some(l), Spot::Item(r), Spot::Item(q)) => l.into(self.items, self.start, r, Some(q), None)?,
                     (Some(l), Spot::Item(r), Spot::Start(h)) => l.into(self.items, self.start, r, None, Some(h))?,
                     (Some(l), Spot::Start(h), Spot::Item(q)) => l.home(self.items, self.start, q, h)?,
                     _ => 0.0,
                 };
-                keys(self.cost.as_ref(), &self.ev, &args, "cost", shown)?.first().copied().unwrap_or(0.0) + leg
+                keys(self.cost.as_ref(), &self.ev, &args, "cost", shown)?.first().copied().unwrap_or(0.0) + step
             }
             1 => keys(self.penalty.as_ref(), &self.ev, &args, "penalty", shown)?.first().copied().unwrap_or(0.0),
             _ => f64::from(u8::from(allowed(self.allow.as_ref(), &self.ev, &args, shown)?)),
@@ -623,13 +625,13 @@ fn local_search(c: &mut Call) -> Answer {
         },
         Err(e) => return fail(c, e),
     };
-    let legs = match legs_in(c, &f, start.as_deref()) {
+    let transitions = match transitions_in(c, &f, start.as_deref()) {
         Ok(l) => l,
         Err(e) => return fail(c, e),
     };
-    let cost_col_m = match with_legs(
+    let cost_col_m = match with_transitions(
         cost_col.as_ref().map_or_else(Measure::none, |(i, _)| Measure::of_column(&f.columns[*i])),
-        &legs,
+        &transitions,
     ) {
         Ok(m) => m,
         Err(e) => return fail(c, e),
@@ -739,7 +741,7 @@ fn local_search(c: &mut Call) -> Answer {
         allow,
         back,
         cost_col,
-        legs,
+        transitions,
         ev: Eval::default(),
         memo: Default::default(),
         placed: Default::default(),
@@ -868,7 +870,7 @@ fn local_search(c: &mut Call) -> Answer {
     };
     let mut order: Vec<usize> = Vec::with_capacity(rows);
     let mut owner: Vec<usize> = Vec::with_capacity(rows);
-    let mut legs: Vec<(usize, Leg)> = Vec::with_capacity(rows);
+    let mut walked: Vec<(usize, Leg)> = Vec::with_capacity(rows);
     for (k, seq) in seqs.iter().enumerate() {
         let mut before = 0.0;
         for p in 0..seq.len() {
@@ -879,7 +881,7 @@ fn local_search(c: &mut Call) -> Answer {
             before = leg.at;
             order.push(seq[p]);
             owner.push(k);
-            legs.push((p + 1, leg));
+            walked.push((p + 1, leg));
         }
     }
     let mut cols = taken(&base, &order);
@@ -887,17 +889,17 @@ fn local_search(c: &mut Call) -> Answer {
         gc.values = owner.iter().map(|&k| V::str(&groups[k])).collect();
     }
     let column =
-        |name: &str, f: &dyn Fn(&(usize, Leg)) -> f64| num_column(name, legs.iter().map(|l| V::Num(f(l))).collect());
+        |name: &str, f: &dyn Fn(&(usize, Leg)) -> f64| num_column(name, walked.iter().map(|l| V::Num(f(l))).collect());
     cols.push(column("Position", &|l| l.0 as f64));
     // The plan's costs, running sums and penalties carry the Cost column's unit; a formula's plain number is read in it.
     let cost_m = cost_col_m;
-    cols.push(cost_m.column("Cost", legs.iter().map(|l| Some(cost_m.base(l.1.cost)))));
-    cols.push(cost_m.column("So Far", legs.iter().map(|l| Some(cost_m.base(l.1.at)))));
-    cols.push(cost_m.column("Penalty", legs.iter().map(|l| Some(cost_m.base(l.1.penalty)))));
+    cols.push(cost_m.column("Cost", walked.iter().map(|l| Some(cost_m.base(l.1.cost)))));
+    cols.push(cost_m.column("So Far", walked.iter().map(|l| Some(cost_m.base(l.1.at)))));
+    cols.push(cost_m.column("Penalty", walked.iter().map(|l| Some(cost_m.base(l.1.penalty)))));
     cols.push(Column {
         name: "Allowed".into(),
         ty: FrameColType::Logical,
-        values: legs.iter().map(|l| V::Bool(l.1.ok)).collect(),
+        values: walked.iter().map(|l| V::Bool(l.1.ok)).collect(),
         unit: None,
         format: None,
         raw: None,

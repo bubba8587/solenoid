@@ -8,7 +8,7 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { appThemeStore } from "../appTheme";
 import { GreedyQueueNode, LocalSearchNode, QUEUE_ORDER_OPTIONS, QUEUE_TURNS_OPTIONS, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS,
-  SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS, SEARCH_STUCK_OPTIONS, LEGS_DIRECTION_OPTIONS } from "../nodes/queue";
+  SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS, SEARCH_STUCK_OPTIONS, TRANSITION_DIRECTION_OPTIONS, TRANSITION_UNLISTED_OPTIONS } from "../nodes/queue";
 import { useFeedShape } from "./ColumnPickerField";
 import { useConnectedInputs } from "./inlineInput";
 import { RulesPopup, RulesSection, RulesRow, RulesSeg, RulesColumn, RulesGroup } from "./RulesPopup";
@@ -23,7 +23,7 @@ function columnOf(node: QueueCard, key: string, wired: Set<string>): string {
 
 /** The card's rules as a numbered list, each a name and its answer in plain words. */
 export function queueRuleSteps(node: QueueCard, wired: Set<string>): { name: string; value: string }[] {
-  const cost = [columnOf(node, "costColumn", wired), wired.has("cost") ? "formula" : "", wired.has("legs") ? "legs" : ""].filter(Boolean);
+  const cost = [columnOf(node, "costColumn", wired), wired.has("cost") ? "formula" : "", wired.has("transitions") ? "transitions" : ""].filter(Boolean);
   const group = columnOf(node, "group", wired);
   const steps: { name: string; value: string }[] = [];
   if (node instanceof GreedyQueueNode) {
@@ -52,7 +52,7 @@ export function QueueRulesPopup() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const id = state?.node.id ?? "";
   const items = useFeedShape(id, "items").map((c) => c.name);
-  const legCols = useFeedShape(id, "legs");
+  const transitionCols = useFeedShape(id, "transitions");
   const wired = useConnectedInputs(id);
   if (!state) return null;
   const node = state.node;
@@ -72,18 +72,24 @@ export function QueueRulesPopup() {
     wired.has(key) ? <span className="sol-rules__word">wired</span>
       : <RulesColumn label={label} value={node.stringLiterals[key] ?? ""} columns={items} blank={blank} onChange={setColumn(key)} />;
 
-  const hasLegs = wired.has("legs");
-  const legNumbers = legCols.filter((c) => c.type === "number").map((c) => c.name);
-  const legs = (
-    <RulesGroup title="Legs">
-      <RulesRow label="Read" idle={!hasLegs} help={hasLegs ? "Each road's number counts either way, or only From to To." : "Wire a table of roads into Legs on the card."}>
-        <RulesSeg label="Legs read" value={node.legsDirection} options={LEGS_DIRECTION_OPTIONS} onChange={(v) => set(() => { node.legsDirection = v; })} />
+  const hasTransitions = wired.has("transitions");
+  const transitionNumbers = transitionCols.filter((c) => c.type === "number").map((c) => c.name);
+  const needs = hasTransitions ? undefined : "Needs a Transitions table wired on the card.";
+  const transitions = (
+    <RulesGroup title="Transitions">
+      <RulesRow label="Rows count" idle={!hasTransitions} help={needs ?? "Each row either way round, or only From to To (a one-way street, a changeover)."}>
+        <RulesSeg label="Rows count" value={node.transitionsDirection} options={TRANSITION_DIRECTION_OPTIONS} onChange={(v) => set(() => { node.transitionsDirection = v; })} />
       </RulesRow>
-      <RulesRow label="Match places by" idle={!hasLegs} help="The items' column naming each place.">
-        <RulesColumn label="Match places by" value={node.legsMatch} columns={items} blank="first text column" onChange={(v) => set(() => { node.legsMatch = v; })} />
+      <RulesRow label="Pairs it doesn't list" idle={!hasTransitions} help={needs ?? (node.transitionsUnlisted === "none"
+        ? "An error naming the pair: for a table that lists every pair."
+        : "The cheapest chain of listed pairs, as a road network routes.")}>
+        <RulesSeg label="Pairs it doesn't list" value={node.transitionsUnlisted} options={TRANSITION_UNLISTED_OPTIONS} onChange={(v) => set(() => { node.transitionsUnlisted = v; })} />
       </RulesRow>
-      <RulesRow label="Leg number" idle={!hasLegs} help="The Legs column to add: minutes, km.">
-        <RulesColumn label="Leg number" value={node.legsOf} columns={legNumbers} blank="first number column" onChange={(v) => set(() => { node.legsOf = v; })} />
+      <RulesRow label="Match items by" idle={!hasTransitions} help={needs ?? "The items' column of the names From and To use."}>
+        <RulesColumn label="Match items by" value={node.transitionsMatch} columns={items} blank="first text column" onChange={(v) => set(() => { node.transitionsMatch = v; })} />
+      </RulesRow>
+      <RulesRow label="Value column" idle={!hasTransitions} help={needs ?? "The Transitions column whose number is added, in any unit."}>
+        <RulesColumn label="Value column" value={node.transitionsOf} columns={transitionNumbers} blank="first number column" onChange={(v) => set(() => { node.transitionsOf = v; })} />
       </RulesRow>
     </RulesGroup>
   );
@@ -95,7 +101,7 @@ export function QueueRulesPopup() {
     return (
       <RulesPopup title={state.title} accent={state.accent} onClose={close} note="Formulas and numbers are wired on the card.">
         <RulesSection title="Next item">
-          <RulesRow label="Order" help={node.orderBy === "cost" ? "The item that costs least to take next, legs included: the nearest stop." : "By a column of the items; an Order formula on the card breaks ties."}>
+          <RulesRow label="Order" help={node.orderBy === "cost" ? "The item that costs least to take next, its transition included: the nearest stop, the quickest changeover." : "By a column of the items; an Order formula on the card breaks ties."}>
             <RulesSeg label="Order" value={order} options={QUEUE_ORDER_OPTIONS} onChange={(v) => set(() => {
               if (v === "cost") node.orderBy = "cost";
               else { node.orderBy = "column"; node.orderDir = v; }
@@ -106,10 +112,10 @@ export function QueueRulesPopup() {
           </RulesRow>
         </RulesSection>
         <RulesSection title="Cost of an item">
-          <RulesRow label="Column" help="Its number counts, plus a Cost formula and legs where wired.">
+          <RulesRow label="Column" help="Its number counts, plus a Cost formula and transitions where wired.">
             {column("costColumn", "Cost column", "none")}
           </RulesRow>
-          {legs}
+          {transitions}
         </RulesSection>
         <RulesSection title="Groups">
           <RulesRow label="Group column" help="Items with a blank group are anyone's.">
@@ -142,10 +148,10 @@ export function QueueRulesPopup() {
   return (
     <RulesPopup title={state.title} accent={state.accent} onClose={close} note="Formulas and numbers are wired on the card.">
       <RulesSection title="Cost of an item">
-        <RulesRow label="Column" help="Its number counts, plus a Cost formula and legs where wired.">
+        <RulesRow label="Column" help="Its number counts, plus a Cost formula and transitions where wired.">
           {column("costColumn", "Cost column", "none")}
         </RulesRow>
-        {legs}
+        {transitions}
       </RulesSection>
       <RulesSection title="Groups">
         <RulesRow label="Group column" help="Each group's items in order, as Greedy Queue's picks give them.">

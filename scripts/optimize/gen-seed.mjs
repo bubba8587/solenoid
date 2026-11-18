@@ -108,8 +108,9 @@ keep("feed_kg", "Kg in a tonne", "Ingredient, Amount");
 keep("feed_check", "Blend check", "Limit, Bound, Used");
 wire("feeds.frame -> feed.options", "feed.plan -> feed_kg.frame", "feed.limits -> feed_check.frame");
 
-// ── 2e. A paint line: changing to a darker color is quick, to a lighter one a full clean. Legs read one way, matched by
-// Color, so the jobs run light to dark. ──
+// ── 2e. A paint line: changing to a darker color is quick, to a lighter one a full clean. The changeovers are
+// Transitions counted one way, matched by Color, every pair listed (an unlisted one isn't allowed), so the jobs run light
+// to dark. ──
 table("paint_jobs", "Paint jobs", {
   Job: ["Fence posts", "Mailboxes", "Gates", "Railings", "Planters", "Benches"],
   Color: ["Black", "White", "Red", "Yellow", "White", "Red"],
@@ -118,11 +119,11 @@ const shades = ["White", "Yellow", "Red", "Black"];
 const pairs = shades.flatMap((a, i) => shades.filter((b) => b !== a).map((b) => [a, b, shades.indexOf(b) > i ? 10 * (shades.indexOf(b) - i) : 45 * (i - shades.indexOf(b))]));
 table("changeovers", "Changeovers (min)", { From: pairs.map((p) => p[0]), To: pairs.map((p) => p[1]), "Minutes (min)": pairs.map((p) => p[2]) });
 table("paint_start", "Line starts", { Job: ["Clean line"], Color: ["White"] });
-const paintLegs = { legsDirection: "one", legsMatch: "Color" };
-add("paint_first", "GreedyQueueNode", { label: "Quickest change next", orderBy: "cost", ...paintLegs }, { stringLiterals: {} });
-add("paint", "LocalSearchNode", { label: "Paint order", stuck: "look", ...paintLegs }, { stringLiterals: {} });
-wire("paint_jobs.frame -> paint_first.items", "paint_start.frame -> paint_first.start", "changeovers.frame -> paint_first.legs",
-  "paint_first.picks -> paint.items", "paint_start.frame -> paint.start", "changeovers.frame -> paint.legs");
+const paintTransitions = { transitionsDirection: "one", transitionsMatch: "Color", transitionsUnlisted: "none" };
+add("paint_first", "GreedyQueueNode", { label: "Quickest change next", orderBy: "cost", ...paintTransitions }, { stringLiterals: {} });
+add("paint", "LocalSearchNode", { label: "Paint order", stuck: "look", ...paintTransitions }, { stringLiterals: {} });
+wire("paint_jobs.frame -> paint_first.items", "paint_start.frame -> paint_first.start", "changeovers.frame -> paint_first.transitions",
+  "paint_first.picks -> paint.items", "paint_start.frame -> paint.start", "changeovers.frame -> paint.transitions");
 
 // ── 3. Crew assignment: who takes which job, hours each would need (blank: not certified) ──
 table("hours", "Crew hours", {
@@ -148,13 +149,14 @@ add("reach", "ShortestPathNode", { label: "Depot distances" }, { stringLiterals:
 chart("reach_chart", "Minutes from depot", "bar", "xlabel=Minutes");
 keep("reach_cols", "Minutes by place", "Place, Distance");
 wire("roads.frame -> route.links", "roads.frame -> reach.links", "reach.path -> reach_cols.frame", "reach_cols.frame -> reach_chart.values");
-// A van that visits every place and comes back: the same roads as Legs, each leg the fastest way through the network.
+// A van that visits every place and comes back: the same roads as Transitions, a pair with no road between them the
+// fastest way through the others.
 table("visits", "Places to visit", { Place: ["Halls", "Powell", "Bearden", "Downtown", "Fountain City", "Sequoyah", "Farragut", "Maryville"] });
 table("home", "Start", { Place: ["Depot"] });
 add("tour_first", "GreedyQueueNode", { label: "Nearest next", orderBy: "cost" }, { stringLiterals: {} });
 add("tour", "LocalSearchNode", { label: "Round trip", ends: "return", stuck: "look" }, { stringLiterals: {} });
-wire("visits.frame -> tour_first.items", "home.frame -> tour_first.start", "roads.frame -> tour_first.legs",
-  "tour_first.picks -> tour.items", "home.frame -> tour.start", "roads.frame -> tour.legs");
+wire("visits.frame -> tour_first.items", "home.frame -> tour_first.start", "roads.frame -> tour_first.transitions",
+  "tour_first.picks -> tour.items", "home.frame -> tour.start", "roads.frame -> tour.transitions");
 
 // ── 5. Comparing plans: which territory plans are real tradeoffs ──
 table("plans", "Territory plans", {

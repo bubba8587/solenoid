@@ -372,8 +372,9 @@
       "init": {
         "label": "Quickest change next",
         "orderBy": "cost",
-        "legsDirection": "one",
-        "legsMatch": "Color"
+        "transitionsDirection": "one",
+        "transitionsMatch": "Color",
+        "transitionsUnlisted": "none"
       },
       "stringLiterals": {},
       "x": 1800,
@@ -385,8 +386,9 @@
       "init": {
         "label": "Paint order",
         "stuck": "look",
-        "legsDirection": "one",
-        "legsMatch": "Color"
+        "transitionsDirection": "one",
+        "transitionsMatch": "Color",
+        "transitionsUnlisted": "none"
       },
       "stringLiterals": {},
       "x": 2145,
@@ -921,7 +923,7 @@
       "source": "changeovers",
       "sourceOutput": "frame",
       "target": "paint_first",
-      "targetInput": "legs"
+      "targetInput": "transitions"
     },
     {
       "source": "paint_first",
@@ -939,7 +941,7 @@
       "source": "changeovers",
       "sourceOutput": "frame",
       "target": "paint",
-      "targetInput": "legs"
+      "targetInput": "transitions"
     },
     {
       "source": "hours",
@@ -987,7 +989,7 @@
       "source": "roads",
       "sourceOutput": "frame",
       "target": "tour_first",
-      "targetInput": "legs"
+      "targetInput": "transitions"
     },
     {
       "source": "tour_first",
@@ -1005,7 +1007,7 @@
       "source": "roads",
       "sourceOutput": "frame",
       "target": "tour",
-      "targetInput": "legs"
+      "targetInput": "transitions"
     },
     {
       "source": "plans",

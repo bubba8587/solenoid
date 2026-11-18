@@ -51,18 +51,25 @@ export const QUEUE_TURNS_OPTIONS: { value: QueueTurns; label: string }[] = [
 ];
 export const QUEUE_TURNS_ASK = "Who picks next";
 
-/** How a Legs table's roads count: either way round, or only From to To (a one-way street, a changeover). */
-export type LegsDirection = "both" | "one";
-export const LEGS_DIRECTION_OPTIONS: { value: LegsDirection; label: string }[] = [
+/** How a Transitions table's rows count: either way round, or only From to To (a one-way street, a changeover). */
+export type TransitionDirection = "both" | "one";
+export const TRANSITION_DIRECTION_OPTIONS: { value: TransitionDirection; label: string }[] = [
   { value: "both", label: "Both ways" },
   { value: "one", label: "From → To only" },
 ];
+/** A pair the Transitions table doesn't list: the cheapest chain of listed pairs (a road network), or not allowed. */
+export type TransitionUnlisted = "through" | "none";
+export const TRANSITION_UNLISTED_OPTIONS: { value: TransitionUnlisted; label: string }[] = [
+  { value: "through", label: "Go through others" },
+  { value: "none", label: "Not allowed" },
+];
 
-type LegsInit = { legsDirection?: LegsDirection; legsMatch?: string; legsOf?: string };
-const initLegs = (n: { legsDirection: LegsDirection; legsMatch: string; legsOf: string }, init?: LegsInit) => {
-  if (init?.legsDirection === "one") n.legsDirection = "one";
-  if (typeof init?.legsMatch === "string") n.legsMatch = init.legsMatch;
-  if (typeof init?.legsOf === "string") n.legsOf = init.legsOf;
+type TransitionsInit = { transitionsDirection?: TransitionDirection; transitionsMatch?: string; transitionsOf?: string; transitionsUnlisted?: TransitionUnlisted };
+const initTransitions = (n: { transitionsDirection: TransitionDirection; transitionsMatch: string; transitionsOf: string; transitionsUnlisted: TransitionUnlisted }, init?: TransitionsInit) => {
+  if (init?.transitionsDirection === "one") n.transitionsDirection = "one";
+  if (init?.transitionsUnlisted === "none") n.transitionsUnlisted = "none";
+  if (typeof init?.transitionsMatch === "string") n.transitionsMatch = init.transitionsMatch;
+  if (typeof init?.transitionsOf === "string") n.transitionsOf = init.transitionsOf;
 };
 
 export class GreedyQueueNode extends GraphNode {
@@ -82,7 +89,7 @@ export class GreedyQueueNode extends GraphNode {
     orderColumn: "With no column and no Order formula, items go in the order they're listed.",
     order: "A LAMBDA, lowest first. It sets the order when no column does, and breaks ties when one does.",
     cost: "A LAMBDA added to each item's Cost, such as the drive from the last item.",
-    legs: "A table of roads or changeovers between named places or things (From, To and a number such as Minutes). Each item's leg from the one before is added to its cost.",
+    transitions: "What it costs to take an item right after another: From, To and a number, by the items' names (a drive between stops, a changeover between products). Each item's transition from the one before is added to its cost.",
     allowed: "A LAMBDA that gives TRUE when this group may take this item now.",
     picks: "Every pick in order, with its step, wait and cost.",
   };
@@ -101,11 +108,12 @@ export class GreedyQueueNode extends GraphNode {
   literals: Record<string, number> = {};
   orderDir: QueueOrderDir = "asc";
   orderBy: QueueOrderBy = "column";
-  legsDirection: LegsDirection = "both";
-  /** The items' column naming each place for Legs; empty, the first text column. */
-  legsMatch = "";
-  /** The Legs column a leg adds; empty, its first number column. */
-  legsOf = "";
+  transitionsDirection: TransitionDirection = "both";
+  /** The items' column of names the Transitions table's From and To use; empty, the first text column. */
+  transitionsMatch = "";
+  /** The Transitions column a transition adds; empty, its first number column. */
+  transitionsOf = "";
+  transitionsUnlisted: TransitionUnlisted = "through";
   stringLiterals: Record<string, string> = { group: "", step: "", orderColumn: "", costColumn: "" };
   cachedResult: FrameValue | SolError | null = null;
   cachedLeft: FrameValue | SolError | null = null;
@@ -114,10 +122,10 @@ export class GreedyQueueNode extends GraphNode {
   cachedOver: number | null = null;
   width = 280; height = 300;
 
-  constructor(init?: { label?: string; stepStart?: QueueStepStart; mode?: QueueFit; turns?: QueueTurns; orderDir?: QueueOrderDir; orderBy?: QueueOrderBy } & LegsInit) {
+  constructor(init?: { label?: string; stepStart?: QueueStepStart; mode?: QueueFit; turns?: QueueTurns; orderDir?: QueueOrderDir; orderBy?: QueueOrderBy } & TransitionsInit) {
     super("GreedyQueue");
     this.label = init?.label ?? "Greedy Queue";
-    initLegs(this, init);
+    initTransitions(this, init);
     if (init?.orderDir === "desc") this.orderDir = "desc";
     if (init?.orderBy === "cost") this.orderBy = "cost";
     if (init?.stepStart === "start") this.stepStart = "start";
@@ -129,7 +137,7 @@ export class GreedyQueueNode extends GraphNode {
     this.addInput("order", lambdaIn("Order formula"));
     this.addInput("costColumn", strIn("Cost"));
     this.addInput("cost", lambdaIn("Cost formula"));
-    this.addInput("legs", frameIn("Legs"));
+    this.addInput("transitions", frameIn("Transitions"));
     this.addInput("group", strIn("Group column"));
     this.addInput("start", frameIn("Groups"));
     this.addInput("allowed", lambdaIn("Allowed if"));
@@ -210,7 +218,7 @@ export class LocalSearchNode extends GraphNode {
     start: "One row per group. Formulas read its columns as group_ columns, and only groups listed here can take items.",
     group: "Empty: one group, reordered only.",
     cost: "A LAMBDA added to each item's Cost. It can read before, the cost so far, and position.",
-    legs: "A table of roads or changeovers between named places or things (From, To and a number such as Minutes). Each item's leg from the one before is added to its cost.",
+    transitions: "What it costs to take an item right after another: From, To and a number, by the items' names (a drive between stops, a changeover between products). Each item's transition from the one before is added to its cost.",
     penalty: "A LAMBDA added to the total, such as a charge for lateness. It can read at, the cost through this item.",
     allowed: "A LAMBDA that gives TRUE when this item may go here. A plan with fewer refusals always wins.",
     history: "One row per change made.",
@@ -226,9 +234,10 @@ export class LocalSearchNode extends GraphNode {
   reach: SearchReach = "across";
   ends: SearchEnds = "open";
   stuck: SearchStuck = "stop";
-  legsDirection: LegsDirection = "both";
-  legsMatch = "";
-  legsOf = "";
+  transitionsDirection: TransitionDirection = "both";
+  transitionsMatch = "";
+  transitionsOf = "";
+  transitionsUnlisted: TransitionUnlisted = "through";
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { group: "", costColumn: "" };
   cachedResult: FrameValue | SolError | null = null;
@@ -236,17 +245,17 @@ export class LocalSearchNode extends GraphNode {
   cachedHistory: FrameValue | SolError | null = null;
   width = 280; height = 280;
 
-  constructor(init?: { label?: string; reach?: SearchReach; ends?: SearchEnds; stuck?: SearchStuck } & LegsInit) {
+  constructor(init?: { label?: string; reach?: SearchReach; ends?: SearchEnds; stuck?: SearchStuck } & TransitionsInit) {
     super("LocalSearch");
     this.label = init?.label ?? "Local Search";
-    initLegs(this, init);
+    initTransitions(this, init);
     if (init?.reach === "within") this.reach = "within";
     if (init?.ends === "return") this.ends = "return";
     if (init?.stuck === "look") this.stuck = "look";
     this.addInput("items", frameIn("Plan"));
     this.addInput("costColumn", strIn("Cost"));
     this.addInput("cost", lambdaIn("Cost formula"));
-    this.addInput("legs", frameIn("Legs"));
+    this.addInput("transitions", frameIn("Transitions"));
     this.addInput("penalty", lambdaIn("Penalty"));
     this.addInput("group", strIn("Group column"));
     this.addInput("start", frameIn("Groups"));

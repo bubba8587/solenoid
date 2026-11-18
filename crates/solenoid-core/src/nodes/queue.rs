@@ -228,53 +228,62 @@ fn take(
     crew.last = Last::Item(it.row);
 }
 
-/// A table of legs between named places or things (`frame-verbs.md` § Greedy Queue, Legs): From, To and a number column
-/// (minutes, km, a changeover's minutes), each road either way round or only From to To. Two places with no road
-/// between them are as far apart as the fastest way through the others, so a road network serves as well as a table of
-/// every pair. An item's place is the column Match places by names, else its first text column; a Start row's, the Start
-/// column of that name, else Start's first text column.
-pub(super) struct Legs {
-    /// Each place's index, by its key.
+/// A table of transitions (`frame-verbs.md` § Greedy Queue, Transitions): what it costs to take an item right after
+/// another, by name. From, To and a number column, in any unit (minutes of driving, km, a changeover's minutes, dollars
+/// of setup), each row counting either way round or only From to To. A pair the table doesn't list either goes through
+/// others, the cheapest chain of listed pairs (a road network serves as well as a table of every pair), or isn't
+/// allowed (a changeover table, where a chain would be a cleaning nobody listed). An item's name is the column Match
+/// items by names, else its first text column; a Start row's, the Start column of that name, else Start's first text
+/// column.
+pub(super) struct Transitions {
+    /// Each name's index, by its key.
     at: HashMap<String, usize>,
-    /// The fastest way between every two places (Floyd–Warshall), infinite where none.
+    /// The cost from each name to each, the listed rows or the cheapest chain of them (Floyd–Warshall); infinite where
+    /// none.
     far: Vec<Vec<f64>>,
+    /// Pairs the table doesn't list go through others.
+    chained: bool,
     pub(super) measure: Measure,
-    place: usize,
-    start_place: Option<usize>,
+    name_col: usize,
+    start_name_col: Option<usize>,
 }
 
-/// The most places Legs takes: every pair's fastest way is worked out up front, which grows with the cube.
+/// The most names Transitions takes: every pair's cost is worked out up front, which grows with the cube.
 const MAX_PLACES: usize = 500;
 
-pub(super) fn legs_in(c: &Call, items: &Frame, start: Option<&Frame>) -> Result<Option<Legs>, V> {
-    let Some(t) = frame_in(c, "legs") else { return Ok(None) };
+pub(super) fn transitions_in(c: &Call, items: &Frame, start: Option<&Frame>) -> Result<Option<Transitions>, V> {
+    let Some(t) = frame_in(c, "transitions") else { return Ok(None) };
     let (Some(from), Some(to)) = (position(&t, "From"), position(&t, "To")) else {
-        return Err(err(ErrorCode::Ref, "Legs needs a From column and a To column"));
+        return Err(err(ErrorCode::Ref, "Transitions needs a From column and a To column"));
     };
-    // The number a leg adds: the column Leg number names, else the first number column besides From and To.
-    let of = trim_space(c.field_str("legsOf", "")).to_string();
+    // The cost a transition adds: the column Cost column names, else the first number column besides From and To.
+    let of = trim_space(c.field_str("transitionsOf", "")).to_string();
     let v = if of.is_empty() {
         let first = (0..t.columns.len())
             .find(|&j| j != from && j != to && t.columns[j].ty == crate::frame::FrameColType::Number);
-        first.ok_or_else(|| err(ErrorCode::Ref, "Legs needs a number column: the time or distance of each leg"))?
+        first.ok_or_else(|| err(ErrorCode::Ref, "Transitions needs a number column: what each transition costs"))?
     } else {
-        position(&t, &of).ok_or_else(|| err(ErrorCode::Ref, format!("Legs has no column \"{of}\"")))?
+        position(&t, &of).ok_or_else(|| err(ErrorCode::Ref, format!("Transitions has no column \"{of}\"")))?
     };
-    // The items' place: the column Match places by names, else their first text column.
+    // The items' names: the column Match items by names, else their first text column.
     let text_col = |f: &Frame| f.columns.iter().position(|c| c.ty == crate::frame::FrameColType::String);
-    let matched = trim_space(c.field_str("legsMatch", "")).to_string();
-    let place = if matched.is_empty() {
+    let matched = trim_space(c.field_str("transitionsMatch", "")).to_string();
+    let name_col = if matched.is_empty() {
         text_col(items).ok_or_else(|| {
-            err(ErrorCode::Ref, "Legs finds items by name: the items need a text column naming each place")
+            err(
+                ErrorCode::Ref,
+                "Transitions finds items by name: the items need a text column, or Match items by naming one",
+            )
         })?
     } else {
         position(items, &matched)
             .ok_or_else(|| err(ErrorCode::Ref, format!("The items have no column \"{matched}\"")))?
     };
-    let one_way = c.field_str("legsDirection", "both") == "one";
-    let start_place = start.and_then(|s| position(s, &items.columns[place].name).or_else(|| text_col(s)));
+    let one_way = c.field_str("transitionsDirection", "both") == "one";
+    let chained = c.field_str("transitionsUnlisted", "through") != "none";
+    let start_name_col = start.and_then(|s| position(s, &items.columns[name_col].name).or_else(|| text_col(s)));
     let mut at: HashMap<String, usize> = HashMap::new();
-    let mut roads = Vec::new();
+    let mut rows = Vec::new();
     for r in 0..t.columns[from].values.len() {
         let (a, b) = (text(t.columns[from].values.get(r)), text(t.columns[to].values.get(r)));
         if trim_space(&a).is_empty() || trim_space(&b).is_empty() {
@@ -282,29 +291,29 @@ pub(super) fn legs_in(c: &Call, items: &Frame, start: Option<&Frame>) -> Result<
         }
         let n = cell_number(&t, v, r, &t.columns[v].name)?.unwrap_or(0.0);
         if n < 0.0 {
-            return Err(err(ErrorCode::Value, format!("Legs row {} is below 0", r + 1)));
+            return Err(err(ErrorCode::Value, format!("Transitions row {} is below 0", r + 1)));
         }
         let mut index = |p: &str| {
             let k = at.len();
             *at.entry(key(p)).or_insert(k)
         };
-        roads.push((index(&a), index(&b), n));
+        rows.push((index(&a), index(&b), n));
     }
     let n = at.len();
     if n > MAX_PLACES {
-        return Err(err(ErrorCode::Domain, format!("Legs takes at most {MAX_PLACES} places")));
+        return Err(err(ErrorCode::Domain, format!("Transitions takes at most {MAX_PLACES} names")));
     }
     let mut far = vec![vec![f64::INFINITY; n]; n];
     for (i, row) in far.iter_mut().enumerate() {
         row[i] = 0.0;
     }
-    for (a, b, w) in roads {
+    for (a, b, w) in rows {
         far[a][b] = far[a][b].min(w);
         if !one_way {
             far[b][a] = far[b][a].min(w);
         }
     }
-    for k in 0..n {
+    for k in (0..n).filter(|_| chained) {
         for i in 0..n {
             let ik = far[i][k];
             if !ik.is_finite() {
@@ -318,28 +327,29 @@ pub(super) fn legs_in(c: &Call, items: &Frame, start: Option<&Frame>) -> Result<
             }
         }
     }
-    Ok(Some(Legs { at, far, measure: Measure::of_column(&t.columns[v]), place, start_place }))
+    Ok(Some(Transitions { at, far, chained, measure: Measure::of_column(&t.columns[v]), name_col, start_name_col }))
 }
 
-impl Legs {
-    /// The leg from one place to another, either way round unless the roads run one way; a place to itself is 0.
+impl Transitions {
+    /// The cost from one name to another (either way round unless the rows count one way); a name to itself is 0.
     fn between(&self, a: &str, b: &str) -> Result<f64, V> {
         if key(a) == key(b) {
             return Ok(0.0);
         }
         let (Some(&i), Some(&j)) = (self.at.get(&key(a)), self.at.get(&key(b))) else {
             let missing = if self.at.contains_key(&key(a)) { b } else { a };
-            return Err(err(ErrorCode::Ref, format!("Legs never names {missing}")));
+            return Err(err(ErrorCode::Ref, format!("Transitions never names {missing}")));
         };
         let d = self.far[i][j];
         if d.is_finite() {
             Ok(d)
         } else {
-            Err(err(ErrorCode::Value, format!("Legs has no way from {a} to {b}")))
+            let why = if self.chained { "no way" } else { "no row" };
+            Err(err(ErrorCode::Value, format!("Transitions has {why} from {a} to {b}")))
         }
     }
 
-    /// The leg into item `row` from the item `from_item` or Start row `from_start` (neither: the walk's first, 0).
+    /// The transition into item `row` from the item `from_item` or Start row `from_start` (neither: the first, 0).
     pub(super) fn into(
         &self,
         items: &Frame,
@@ -348,10 +358,10 @@ impl Legs {
         from_item: Option<usize>,
         from_start: Option<usize>,
     ) -> Result<f64, V> {
-        let here = text(items.columns[self.place].values.get(row));
+        let here = text(items.columns[self.name_col].values.get(row));
         let there = match (from_item, from_start) {
-            (Some(r), _) => text(items.columns[self.place].values.get(r)),
-            (None, Some(r)) => match (start, self.start_place) {
+            (Some(r), _) => text(items.columns[self.name_col].values.get(r)),
+            (None, Some(r)) => match (start, self.start_name_col) {
                 (Some(s), Some(j)) => text(s.columns[j].values.get(r)),
                 _ => return Ok(0.0),
             },
@@ -360,26 +370,30 @@ impl Legs {
         self.between(&there, &here)
     }
 
-    /// The leg from item `row` back to Start row `r`.
+    /// The transition from item `row` back to Start row `r`.
     pub(super) fn home(&self, items: &Frame, start: Option<&Frame>, row: usize, r: usize) -> Result<f64, V> {
-        match (start, self.start_place) {
+        match (start, self.start_name_col) {
             (Some(s), Some(j)) => {
-                self.between(&text(items.columns[self.place].values.get(row)), &text(s.columns[j].values.get(r)))
+                self.between(&text(items.columns[self.name_col].values.get(row)), &text(s.columns[j].values.get(r)))
             }
             _ => Ok(0.0),
         }
     }
 }
 
-/// The cost column's unit, or the legs' where there is no column; two that differ refuse ([[C25]] firstClassUnits).
-pub(super) fn with_legs(column: Measure, legs: &Option<Legs>) -> Result<Measure, V> {
-    match legs {
+/// The cost column's unit, or the transitions' where there is no column; two that differ refuse ([[C25]] firstClassUnits).
+pub(super) fn with_transitions(column: Measure, transitions: &Option<Transitions>) -> Result<Measure, V> {
+    match transitions {
         None => Ok(column),
         Some(l) if column.plain() => Ok(l.measure.clone()),
         Some(l) if l.measure.plain() || (l.measure.same(&column) && l.measure.name() == column.name()) => Ok(column),
         Some(l) => Err(err(
             ErrorCode::Unit,
-            format!("Legs are in {} and the Cost column in {}: give them one unit", l.measure.name(), column.name()),
+            format!(
+                "Transitions are in {} and the Cost column in {}: give them one unit",
+                l.measure.name(),
+                column.name()
+            ),
         )),
     }
 }
@@ -457,16 +471,17 @@ fn greedy_queue(c: &mut Call) -> Answer {
         (Ok(o), Ok(k)) => (o, k),
         (Err(e), _) | (_, Err(e)) => return fail(c, e),
     };
-    let legs = match legs_in(c, &f, start.as_deref()) {
+    let transitions = match transitions_in(c, &f, start.as_deref()) {
         Ok(l) => l,
         Err(e) => return fail(c, e),
     };
-    // The costs' unit: the Cost column's (or the legs'), a Budget with a unit meeting it as arithmetic would; the budget
+    // The costs' unit: the Cost column's (or the transitions'), a Budget with a unit meeting it as arithmetic would; the budget
     // in it.
-    let column_m = match with_legs(ci.map_or_else(Measure::none, |i| Measure::of_column(&f.columns[i])), &legs) {
-        Ok(m) => m,
-        Err(e) => return fail(c, e),
-    };
+    let column_m =
+        match with_transitions(ci.map_or_else(Measure::none, |i| Measure::of_column(&f.columns[i])), &transitions) {
+            Ok(m) => m,
+            Err(e) => return fail(c, e),
+        };
     let (cost_m, budget) = match &budget_in {
         None => (column_m, None),
         Some((n, bm)) => match meet(&column_m, bm, "Budget per step") {
@@ -511,7 +526,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
         Err(e) => return fail(c, V::Err(e.into())),
     };
     // A budget nothing spends from would never stop a group: say so rather than answer as if it did.
-    if budget.is_some() && ci.is_none() && cost.is_none() && legs.is_none() {
+    if budget.is_some() && ci.is_none() && cost.is_none() && transitions.is_none() {
         return fail(
             c,
             err(
@@ -617,7 +632,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
         // A group's choice this pick: its first item by Order by among those Allowed lets it take (a tie goes to the
         // item that opened first, then to the earlier row) that fits its budget, with that item's key and cost.
         type Choice = (Vec<f64>, usize, usize, f64);
-        // An item's cost to a group: its Cost column's number, the Cost formula's, and its leg from the group's last.
+        // An item's cost to a group: its Cost column's number, the Cost formula's, and its transition from the group's last.
         let spend_of = |row: usize, last: &Last, args: &dyn Fn(usize) -> V| -> Result<f64, V> {
             let own = match ci {
                 Some(i) => cell_number(&f, i, row, &cost_name)?.unwrap_or(0.0),
@@ -628,7 +643,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
             } else {
                 0.0
             };
-            let leg = match &legs {
+            let step = match &transitions {
                 None => 0.0,
                 Some(l) => match *last {
                     Last::None => 0.0,
@@ -636,7 +651,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
                     Last::Start(r) => l.into(&f, start.as_deref(), row, None, Some(r))?,
                 },
             };
-            Ok(own + extra + leg)
+            Ok(own + extra + step)
         };
         let choose = |k: usize, crew: &Crew, open: &[Vec<Item>]| -> Result<Option<Choice>, V> {
             let home = start_row.get(&k).copied();

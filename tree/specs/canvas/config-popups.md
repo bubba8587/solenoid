@@ -40,7 +40,7 @@ The card stays readable without opening anything. From top to bottom:
 4. **A summary of what is set**, in the step list (the Pipeline card's `solenoid-pipeline__step`, as Edit Frame lists its
    edits): a number, a name and its value per line, the value never cut (the name gives way first), the whole line on
    hover. A list the popup builds (Solver's limits) is listed item by item, each with a remove ×; rules (Greedy Queue's)
-   are a line per question in plain words ("Next: cheapest first", "Cost: Hours + legs", "Per step: within Budget, skip
+   are a line per question in plain words ("Next: cheapest first", "Cost: Hours + transitions", "Per step: within Budget, skip
    what won't fit"), and a rule with nothing set either says its default ("Steps: all at once") or is left out when it
    has none to say. PIVOTBY's summary is its one-line field list.
 5. **The outputs.**
@@ -61,7 +61,7 @@ Built on the kit (`RulesPopup`), except PIVOTBY's, whose drag zones are its own:
   card's accent and its ink, per DESIGN.md's Nearest-Accent Rule), a select for a column or a longer list (recessed,
   28px, a saved name the input lacks stays listed so another never shows in its place), number and text fields that
   commit on Enter or blur ([[B19]] spreadsheetHabits), percentages typed and shown as percents.
-- **Settings of one thing, or that need the row above** sit indented on the guide line a limit's clauses hang on (`RulesGroup`), under a small caption when they share a subject: Legs' Read, Match places by and Leg number under "Legs"; Who picks next and Items may under Group column. The hierarchy shows on the page rather than in the help text.
+- **Settings of one thing, or that need the row above** sit indented on the guide line a limit's clauses hang on (`RulesGroup`), under a small caption when they share a subject: Transitions' four settings under "Transitions"; Who picks next and Items may under Group column. The hierarchy shows on the page rather than in the help text.
 - **A setting the other rules leave without effect** stays, its label dimmed and its help saying what it needs ("Needs a
   Budget on the card", "Not used by Cheapest first"). Nothing hides because a cable arrived or a choice changed (the
   author, 2026-11-18).

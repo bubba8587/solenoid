@@ -27,7 +27,9 @@ specific item.
 - **Fourteen plain-language asks**, written by an agent with no Solenoid context, built end to end and each checked
   against brute force: 13 right first time; a setup-fee ask exposed a switch on every curve piece (20,000 branches,
   29 s, $17.50 off), now a switch per kink. A van route from a drive-time table took a SWITCH over every place, so
-  Greedy Queue and Local Search gained **Legs** (a From/To/number table, a road network served by its fastest ways).
+  Greedy Queue and Local Search gained **Transitions** (what it costs to take an item after another, by name: a
+  From/To/number table in any unit; a pair it doesn't list goes through others, as a road network routes, or is refused,
+  for a changeover table that lists every pair).
   An independent review of the Solver code found five more (switch tolerance, Min If Used reach, negative amounts, the
   search reading past a range, an uncounted size check), all fixed and pinned.
 - Shortest Path's every-place view gives each place's **Route** written out (Via didn't say via what) and a **Total**;

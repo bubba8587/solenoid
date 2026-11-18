@@ -1343,7 +1343,7 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
 /** Greedy Queue's and Local Search's face below their tables (tree/specs/canvas/config-popups.md § What stays on the card): folded sections of
  *  their formulas, numbers and column sockets (each open once one is used), the Edit Rules button and the rules they
  *  run by, one plain line each. Every setting is asked in the rules popup. */
-const QUEUE_TABLES = ["items", "start", "legs"];
+const QUEUE_TABLES = ["items", "start", "transitions"];
 function QueueCardRules({ data, emit, formulas, numbers, columns, whole }: {
   data: GreedyQueueNodeType | LocalSearchNodeType;
   emit: NodeProps<GreedyQueueNodeType>["emit"];
@@ -1385,7 +1385,7 @@ function QueueCardRules({ data, emit, formulas, numbers, columns, whole }: {
   );
 }
 // Every input shows the wired card's whole name: a card named "Hours a machine works a day" says what the Budget means.
-const QUEUE_WHOLE = new Set(["items", "orderColumn", "order", "costColumn", "cost", "legs", "start", "allowed", "group", "step", "steps", "budget", "perStep"]);
+const QUEUE_WHOLE = new Set(["items", "orderColumn", "order", "costColumn", "cost", "transitions", "start", "allowed", "group", "step", "steps", "budget", "perStep"]);
 
 // The improved plan is the card's table; the total and the moves made ride below it. Cost, Penalty and Allowed are
 // LAMBDA cards on the canvas, as on Greedy Queue, so the plan it feeds in and the rule both stay in view.
@@ -1573,7 +1573,7 @@ export function StaffingComponent({ data, emit }: NodeProps<StaffingNodeType>) {
     </NodeShell>
   );
 }
-const SEARCH_WHOLE = new Set(["items", "costColumn", "cost", "legs", "penalty", "group", "start", "allowed", "passes"]);
+const SEARCH_WHOLE = new Set(["items", "costColumn", "cost", "transitions", "penalty", "group", "start", "allowed", "passes"]);
 
 export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
   const [agg, setAgg] = useNodeField(data, "agg");

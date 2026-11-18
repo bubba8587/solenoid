@@ -42,7 +42,7 @@ export function RulesSection({ title, action, children }: { title: string; actio
   );
 }
 
-/** Settings that belong to the row above them or to one thing (Legs' three, the choices that need groups): indented on
+/** Settings that belong to the row above them or to one thing (Transitions' settings, the choices that need groups): indented on
  *  the limits' guide line, under an optional small caption, so they read as that row's or that thing's. */
 export function RulesGroup({ title, children }: { title?: string; children: ReactNode }) {
   return (

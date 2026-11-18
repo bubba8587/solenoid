@@ -891,10 +891,6 @@
   ]
  },
  "GreedyQueueNode": {
-  "legsDirection": [
-   "both",
-   "one"
-  ],
   "mode": [
    "skip",
    "stop"
@@ -910,6 +906,14 @@
   "stepStart": [
    "continue",
    "start"
+  ],
+  "transitionsDirection": [
+   "both",
+   "one"
+  ],
+  "transitionsUnlisted": [
+   "none",
+   "through"
   ],
   "turns": [
    "best",
@@ -1082,10 +1086,6 @@
    "open",
    "return"
   ],
-  "legsDirection": [
-   "both",
-   "one"
-  ],
   "reach": [
    "across",
    "within"
@@ -1093,6 +1093,14 @@
   "stuck": [
    "look",
    "stop"
+  ],
+  "transitionsDirection": [
+   "both",
+   "one"
+  ],
+  "transitionsUnlisted": [
+   "none",
+   "through"
   ]
  },
  "MakeArrayNode": {

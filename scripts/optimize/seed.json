@@ -732,8 +732,9 @@
    "init": {
     "label": "Quickest change next",
     "orderBy": "cost",
-    "legsDirection": "one",
-    "legsMatch": "Color"
+    "transitionsDirection": "one",
+    "transitionsMatch": "Color",
+    "transitionsUnlisted": "none"
    },
    "stringLiterals": {}
   },
@@ -743,8 +744,9 @@
    "init": {
     "label": "Paint order",
     "stuck": "look",
-    "legsDirection": "one",
-    "legsMatch": "Color"
+    "transitionsDirection": "one",
+    "transitionsMatch": "Color",
+    "transitionsUnlisted": "none"
    },
    "stringLiterals": {}
   },
@@ -1313,10 +1315,10 @@
   "feed.limits -> feed_check.frame",
   "paint_jobs.frame -> paint_first.items",
   "paint_start.frame -> paint_first.start",
-  "changeovers.frame -> paint_first.legs",
+  "changeovers.frame -> paint_first.transitions",
   "paint_first.picks -> paint.items",
   "paint_start.frame -> paint.start",
-  "changeovers.frame -> paint.legs",
+  "changeovers.frame -> paint.transitions",
   "hours.frame -> crews.costs",
   "roads.frame -> route.links",
   "roads.frame -> reach.links",
@@ -1324,10 +1326,10 @@
   "reach_cols.frame -> reach_chart.values",
   "visits.frame -> tour_first.items",
   "home.frame -> tour_first.start",
-  "roads.frame -> tour_first.legs",
+  "roads.frame -> tour_first.transitions",
   "tour_first.picks -> tour.items",
   "home.frame -> tour.start",
-  "roads.frame -> tour.legs",
+  "roads.frame -> tour.transitions",
   "plans.frame -> front.options",
   "front.all -> front_chart.values",
   "calls.value -> desk.arrivals",
