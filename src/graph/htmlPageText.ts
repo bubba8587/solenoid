@@ -191,3 +191,39 @@ export function assetDataUri(bytes: Uint8Array, mime: string): string {
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return `data:${mime};base64,${btoa(bin)}`;
 }
+
+/** The page a new card starts from: one of each kind of tag, so the card shows an input of each at once. */
+export const STARTER_HTML = `<!doctype html>
+<html><body>
+<article>
+  <h1>{{ title }}</h1>
+  <p>A tag on its own, like the title above, draws a value as the canvas does. A tag with a filter prints text:
+  {{ title | upper }}.</p>
+
+  <!-- A chart, table or picture wired in draws as a box. -->
+  {{ figure }}
+
+  <!-- A Frame wired in is rows to loop over. A row prints as its fields; row.Name in a tag prints one column. -->
+  <ul>
+  {% for row in rows %}  <li>{{ row }}</li>
+  {% endfor %}</ul>
+</article>
+</body></html>
+`;
+
+export const STARTER_CSS = `/* Scoped to this page. Set the app's variables (--surface, --text, --chart-1, --font-sans) to restyle its boxes. */
+:root { --chart-1: #2f6fde; }
+body { font-family: var(--font-sans); line-height: 1.55; }
+article { max-width: 720px; margin: 0 auto; }
+h1 { text-wrap-style: balance; }
+@media (prefers-color-scheme: light) { body { color: #1d1d1f; } }
+`;
+
+/** The first free name for a new page in \`pages/\`, among the data folder's files. */
+export function starterName(existing: readonly string[]): string {
+  const taken = new Set(existing.map((f) => f.toLowerCase()));
+  for (let n = 1; ; n++) {
+    const base = `pages/page${n === 1 ? "" : `-${n}`}`;
+    if (!taken.has(`${base}.html`) && !taken.has(`${base}.css`)) return base;
+  }
+}

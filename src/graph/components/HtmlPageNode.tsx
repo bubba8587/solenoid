@@ -14,7 +14,8 @@ import { cableValueStore } from "../cableValueStore";
 import { settingsStore } from "../settingsStore";
 import { htmlPageStore } from "../htmlPageStore";
 import { getCsvFolder, isDemoVaultPath } from "../demoVault";
-import { hasFs, listLocalFiles, readFileHead } from "../fileBridge";
+import { hasFs, listLocalFiles, readFileHead, writeNewFileIn } from "../fileBridge";
+import { STARTER_CSS, STARTER_HTML, starterName } from "../htmlPageText";
 import { processEdited } from "../process";
 import "./ReportNode.css";
 
@@ -60,6 +61,21 @@ export function HtmlPageComponent({ data, emit }: NodeProps<HtmlPageNodeType>) {
     void processEdited(data.id);
   };
   const readable = hasFs() || isDemoVaultPath(folder);
+  const [making, setMaking] = useState(false);
+  // A starter page and stylesheet in the data folder, so a first page begins from one that works.
+  const newPage = async () => {
+    setMaking(true);
+    try {
+      const base = starterName(await listLocalFiles(folder, ["html", "css"]));
+      if (await writeNewFileIn(folder, `${base}.html`, STARTER_HTML) && await writeNewFileIn(folder, `${base}.css`, STARTER_CSS)) {
+        data.fileName = `${base}.html`;
+        data.styleFile = `${base}.css`;
+        void processEdited(data.id);
+      }
+    } finally {
+      setMaking(false);
+    }
+  };
 
   return (
     <NodeShell node={data} emit={emit}>
@@ -81,6 +97,12 @@ export function HtmlPageComponent({ data, emit }: NodeProps<HtmlPageNodeType>) {
             <>
               <div className="solenoid-node__io-row"><span className="solenoid-node__io-label">Page</span><FilePick folder={folder} value={data.fileName} kind="html" onPick={(rel) => set("fileName", rel)} /></div>
               <div className="solenoid-node__io-row"><span className="solenoid-node__io-label">Style</span><FilePick folder={folder} value={data.styleFile} kind="css" onPick={(rel) => set("styleFile", rel)} /></div>
+              {!data.fileName && hasFs() && (
+                <button type="button" className="solenoid-node__recalc-btn" disabled={making} onClick={() => void newPage()}
+                  title="Write a starter page and stylesheet into the data folder's pages folder, to edit in any text editor">
+                  New page
+                </button>
+              )}
             </>
           )}
           {data.error && <ErrorChip err={data.error} />}

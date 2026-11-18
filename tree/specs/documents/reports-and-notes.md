@@ -531,7 +531,10 @@ flowchart LR
 the same file bridge: the desktop app's folder, the headless runner's, or on the web the demo vault, whose `.html` and
 `.css` files the build bundles (`demoVaultData.ts`). The card picks each with the data folder's file picker, which lists
 only that kind. The files are read once per name, folder and Refresh (the board's refresh button, or Refresh All
-Connections), not every compute. A file that can't be read is `#REF!` naming it; the inputs stay.
+Connections), not every compute. A file that can't be read is `#REF!` naming it; the inputs stay. On the desktop a card with no
+page offers **New page**: it writes a starter `.html` and `.css` (`STARTER_HTML`, `STARTER_CSS`) under the data folder's
+`pages/` at the first free name (`starterName`: `page`, `page-2`…), never over a file that's there, and picks both. The
+starter shows each kind of tag (a value, a filtered value, a figure, a loop), so the card has an input of each at once.
 
 **The page.** A whole document gives its `<body>` and every `<style>` block in it; a fragment is its own body. Scripts,
 event handlers and anything else the note sanitizer refuses never reach the screen ([[#What is sanitized, and where]]),

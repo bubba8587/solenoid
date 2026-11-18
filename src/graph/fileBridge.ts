@@ -293,6 +293,16 @@ export async function readFileHead(folder: string, name: string, chars: number):
   return fs().readTextHead!(await fs().join(folder, ...name.split("/")), chars);
 }
 
+/** A new text file in `folder` at `rel`, its folders made as needed; false, writing nothing, when one is there. */
+export async function writeNewFileIn(folder: string, rel: string, text: string): Promise<boolean> {
+  const parts = rel.split("/");
+  const path = await fs().join(folder, ...parts);
+  if (await fs().exists(path)) return false;
+  if (parts.length > 1) await fs().mkdir(await fs().join(folder, ...parts.slice(0, -1)), true);
+  await fs().writeTextFile(path, text);
+  return true;
+}
+
 /** Needs the `fs:allow-stat` capability; null off desktop or when the platform omits a time. */
 export async function statVaultFile(root: string, relPath: string): Promise<{ mtimeMs: number | null; birthtimeMs: number | null } | null> {
   if (!canReadRoot(root) || !isInsideVault(relPath)) return null;

@@ -1,7 +1,7 @@
 // [[C68]] knapIsTheDocumentSyntax, [[reports-and-notes#HTML pages]], [[engineering#Untrusted content]]
 import { describe, it, expect, afterEach } from "vitest";
 import { HtmlPageNode } from "../../../src/graph/nodes/htmlPage";
-import { pageParts, scopeCss, slotsFor, localAssetPath, assetRefs, withAssets, PAGE_SCOPE, SLOT_ATTR } from "../../../src/graph/htmlPageText";
+import { pageParts, scopeCss, slotsFor, localAssetPath, assetRefs, withAssets, starterName, STARTER_HTML, STARTER_CSS, PAGE_SCOPE, SLOT_ATTR } from "../../../src/graph/htmlPageText";
 import { setFsProvider, type FsProvider } from "../../../src/graph/fileBridge";
 import { settingsStore } from "../../../src/graph/settingsStore";
 import { extractInit } from "../../../src/graph/nodeInit";
@@ -114,6 +114,20 @@ describe("the HTML Page card", () => {
     const node = await page({ title: ['A "quoted" <b>'], total: [40] }, { fileName: "pages/attr.html", styleFile: "" });
     expect(node.render!.body).toBe(`<div class="bar" style="width: 40%" title="A &quot;quoted&quot; &lt;b&gt;"><span ${SLOT_ATTR}="total"></span></div>`);
     delete FILES["pages/attr.html"];
+  });
+
+  it("starts a new page from one that works: a value, a figure and a loop, under a free name", async () => {
+    FILES["pages/page.html"] = STARTER_HTML;
+    FILES["pages/page.css"] = STARTER_CSS;
+    const node = await page({ title: ["Hi"], rows: [sales] }, { fileName: "pages/page.html", styleFile: "pages/page.css" });
+    expect(node.refKeys()).toEqual(["title", "figure", "rows"]);
+    expect(node.error).toBeNull();
+    expect(node.render!.body).toContain("HI");
+    expect(node.render!.body).toContain("<li>");
+    expect(starterName(["pages/q3.html"])).toBe("pages/page");
+    expect(starterName(["pages/page.html", "Pages/Page-2.CSS"])).toBe("pages/page-3");
+    delete FILES["pages/page.html"];
+    delete FILES["pages/page.css"];
   });
 
   it("leaves an unwired variable's tag as written, so the page shows what it still needs", async () => {
