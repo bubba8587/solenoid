@@ -28,9 +28,13 @@ export function queueRuleSteps(node: QueueCard, wired: Set<string>): { name: str
   const steps: { name: string; value: string }[] = [];
   if (node instanceof GreedyQueueNode) {
     const col = columnOf(node, "orderColumn", wired);
-    const order = node.orderBy === "cost"
-      ? cost.length ? "cheapest first" : "as listed (no cost to compare)"
-      : col ? `${node.orderDir === "desc" ? "largest" : "smallest"} ${col} first` : wired.has("order") ? "by formula" : "as listed";
+    const first = node.orderBy === "cost"
+      ? cost.length ? "cheapest first" : ""
+      : col ? `${node.orderDir === "desc" ? "largest" : "smallest"} ${col} first` : "";
+    // The Order formula breaks a first key's ties, or orders alone without one.
+    const order = first
+      ? wired.has("order") ? `${first}, then by formula` : first
+      : wired.has("order") ? "by formula" : node.orderBy === "cost" ? "as listed (no cost to compare)" : "as listed";
     steps.push({ name: "Next", value: order });
     steps.push({ name: "Cost", value: cost.length ? cost.join(" + ") : "none" });
     steps.push({ name: "Groups", value: group ? `by ${group}, ${node.turns === "best" ? "best match" : "in turn"}` : "one" });

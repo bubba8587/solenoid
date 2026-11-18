@@ -74,6 +74,16 @@ describe("Greedy Queue", () => {
     expect(isSolError(noCost.picks)).toBe(true);
   });
 
+  it("names the Order formula in its rules when it breaks the order column's ties", () => {
+    const node = new GreedyQueueNode({ orderDir: "desc" });
+    node.stringLiterals.orderColumn = "Severity";
+    expect(queueRuleSteps(node, new Set())[0].value).toBe("largest Severity first");
+    expect(queueRuleSteps(node, new Set(["order"]))[0].value).toBe("largest Severity first, then by formula");
+    node.orderBy = "cost";
+    expect(queueRuleSteps(node, new Set(["order"]))[0].value).toBe("by formula");
+    expect(queueRuleSteps(node, new Set(["order", "cost"]))[0].value).toBe("cheapest first, then by formula");
+  });
+
   it("reports no budget in force when none is set or a wired one is blank, so the card's rules don't claim one", () => {
     const items = frame([job("A", 1, 1, 0, 2), job("A", 1, 1, 1, 2)]);
     const cost = lambda("Hours", "Hours");
