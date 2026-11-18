@@ -57,6 +57,36 @@ describe("Local Search", () => {
     expect(JSON.stringify(run(new LocalSearchNode({ ...one, transitionsUnlisted: "none" }), { items: jobs, start: line, transitions: short }).total)).toMatch(/no row from White to Black/);
   });
 
+  it("transitions never read a group's name for an item's, nor a blank cost as free", () => {
+    // The group column comes first: the names are the next text column, so the trucks' stops cost what the table says.
+    const table = frame([["Depot", "A", 10], ["A", "B", 5], ["Depot", "B", 12]].map(([From, To, Minutes]) => ({ From, To, Minutes })));
+    const items = frame([{ Truck: "T1", Stop: "A" }, { Truck: "T1", Stop: "B" }]);
+    const start = frame([{ Truck: "T1", Stop: "Depot" }]);
+    expect(run(new LocalSearchNode(), { items, start, group: "Truck", transitions: table }).total).toBe(15);
+    // A blank cost is an error naming its row, not a free transition.
+    const gap = frame([{ From: "Depot", To: "A", Minutes: 10 }, { From: "A", To: "B", Minutes: null }]);
+    expect(JSON.stringify(run(new LocalSearchNode(), { items, start, group: "Truck", transitions: gap }).total)).toMatch(/row 2 has no Minutes/);
+    // A blank name says so.
+    const unnamed = frame([{ Truck: "T1", Stop: "A" }, { Truck: "T1", Stop: "" }]);
+    expect(JSON.stringify(run(new LocalSearchNode(), { items: unnamed, start, group: "Truck", transitions: table }).total)).toMatch(/no name/);
+  });
+
+  it("Greedy Queue matches group names as Local Search does, and the trip home shows in the plan", () => {
+    const table = frame([["Depot", "A", 10], ["A", "B", 5], ["Depot", "B", 3]].map(([From, To, Minutes]) => ({ From, To, Minutes })));
+    const items = frame([{ G: "t1 ", Stop: "A" }, { G: "t1 ", Stop: "B" }]);
+    const start = frame([{ G: "T1", Stop: "Depot" }]);
+    const q = new GreedyQueueNode();
+    q.stringLiterals.group = "G";
+    // One group, " t1 " and "T1" alike, starting from the Depot: to A by way of B (3 + 5, under the listed 10), then 5 to B.
+    expect(q.data({ items: [items], start: [start], transitions: [table] }).total).toBe(13);
+    // Back at its start: the plan's Cost column and Back Home add up to Total.
+    const out = run(new LocalSearchNode({ ends: "return", reach: "within" }), { items, start, group: "G", transitions: table });
+    const plan = rows(out.plan);
+    const sum = plan.reduce((t, r) => t + (r.Cost as number) + ((r["Back Home"] as number | null) ?? 0), 0);
+    expect(sum).toBe(out.total);
+    expect(plan[plan.length - 1]["Back Home"]).not.toBe(null);
+  });
+
   it("prices each stop from a table of drive times between named places, no formula", () => {
     // A bakery van: four stops and the minutes between each pair, as a person has them. Nearest next, then improved
     // and back to the bakery: 43 minutes, the best of all 24 orders.

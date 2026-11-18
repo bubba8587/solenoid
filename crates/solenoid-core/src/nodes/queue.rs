@@ -251,7 +251,12 @@ pub(super) struct Transitions {
 /// The most names Transitions takes: every pair's cost is worked out up front, which grows with the cube.
 const MAX_PLACES: usize = 500;
 
-pub(super) fn transitions_in(c: &Call, items: &Frame, start: Option<&Frame>) -> Result<Option<Transitions>, V> {
+pub(super) fn transitions_in(
+    c: &Call,
+    items: &Frame,
+    start: Option<&Frame>,
+    group: &str,
+) -> Result<Option<Transitions>, V> {
     let Some(t) = frame_in(c, "transitions") else { return Ok(None) };
     let (Some(from), Some(to)) = (position(&t, "From"), position(&t, "To")) else {
         return Err(err(ErrorCode::Ref, "Transitions needs a From column and a To column"));
@@ -265,8 +270,13 @@ pub(super) fn transitions_in(c: &Call, items: &Frame, start: Option<&Frame>) -> 
     } else {
         position(&t, &of).ok_or_else(|| err(ErrorCode::Ref, format!("Transitions has no column \"{of}\"")))?
     };
-    // The items' names: the column Match items by names, else their first text column.
-    let text_col = |f: &Frame| f.columns.iter().position(|c| c.ty == crate::frame::FrameColType::String);
+    // The items' names: the column Match items by names, else their first text column that isn't the group column (a
+    // group's name would make every item one name, and every transition free).
+    let text_col = |f: &Frame| {
+        f.columns.iter().position(|c| {
+            c.ty == crate::frame::FrameColType::String && (group.is_empty() || key(&c.name) != key(group))
+        })
+    };
     let matched = trim_space(c.field_str("transitionsMatch", "")).to_string();
     let name_col = if matched.is_empty() {
         text_col(items).ok_or_else(|| {
@@ -289,7 +299,24 @@ pub(super) fn transitions_in(c: &Call, items: &Frame, start: Option<&Frame>) -> 
         if trim_space(&a).is_empty() || trim_space(&b).is_empty() {
             continue;
         }
-        let n = cell_number(&t, v, r, &t.columns[v].name)?.unwrap_or(0.0);
+        // A blank cost would be a free transition, and a free link every chain could run through: say so instead.
+        let n = match t.columns[v].values.get(r) {
+            Some(V::Num(n)) if n.is_finite() => *n,
+            Some(V::Null | V::Undef) | None => {
+                return Err(err(ErrorCode::Value, format!("Transitions row {} has no {}", r + 1, t.columns[v].name)))
+            }
+            Some(other) => {
+                return Err(err(
+                    ErrorCode::Value,
+                    format!(
+                        "{} in Transitions row {} is {}, not a number",
+                        t.columns[v].name,
+                        r + 1,
+                        value_text(other)
+                    ),
+                ))
+            }
+        };
         if n < 0.0 {
             return Err(err(ErrorCode::Value, format!("Transitions row {} is below 0", r + 1)));
         }
@@ -333,6 +360,11 @@ pub(super) fn transitions_in(c: &Call, items: &Frame, start: Option<&Frame>) -> 
 impl Transitions {
     /// The cost from one name to another (either way round unless the rows count one way); a name to itself is 0.
     fn between(&self, a: &str, b: &str) -> Result<f64, V> {
+        for name in [a, b] {
+            if trim_space(name).is_empty() {
+                return Err(err(ErrorCode::Value, "An item or Start row has no name for Transitions to match"));
+            }
+        }
         if key(a) == key(b) {
             return Ok(0.0);
         }
@@ -471,7 +503,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
         (Ok(o), Ok(k)) => (o, k),
         (Err(e), _) | (_, Err(e)) => return fail(c, e),
     };
-    let transitions = match transitions_in(c, &f, start.as_deref()) {
+    let transitions = match transitions_in(c, &f, start.as_deref(), &group_name) {
         Ok(l) => l,
         Err(e) => return fail(c, e),
     };
@@ -539,8 +571,9 @@ fn greedy_queue(c: &mut Call) -> Answer {
     // The groups: Start's rows first, then each new name among the items. Without a group column, one group.
     let mut groups: Vec<String> = Vec::new();
     let mut group_at: HashMap<String, usize> = HashMap::new();
+    // A group's name matches ignoring case and spaces at its ends, as Local Search's does; the first spelling names it.
     let mut add_group = |g: String, groups: &mut Vec<String>| -> usize {
-        *group_at.entry(g.clone()).or_insert_with(|| {
+        *group_at.entry(key(trim_space(&g))).or_insert_with(|| {
             groups.push(g);
             groups.len() - 1
         })

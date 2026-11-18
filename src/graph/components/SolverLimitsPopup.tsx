@@ -80,7 +80,8 @@ export function SolverLimitsPopup() {
     patch(i, p);
   };
   const remove = (i: number) => commit(list.filter((_, j) => j !== i));
-  const add = () => commit([...list, { of: columns.find((c) => !list.some((l) => l.of === c)) ?? "", sign: "le", limit: null }]);
+  // A new limit totals the first number column no limit measures yet (a text column can't be totaled), else the amounts.
+  const add = () => commit([...list, { of: numeric.find((c) => !list.some((l) => l.of === c)) ?? "", sign: "le", limit: null }]);
   const close = () => solverLimits.close();
 
   return (

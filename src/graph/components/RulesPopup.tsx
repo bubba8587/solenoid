@@ -167,8 +167,16 @@ function RulesAddMenu({ label, options }: { label: string; options: { label: str
       const t = (e.composedPath()[0] ?? e.target) as Node;
       if (!button.current?.contains(t) && !list.current?.contains(t)) setAt(null);
     };
+    // Placed once from the button, so a scroll or resize that moves the button closes it, as the app's menus close.
+    const close = () => setAt(null);
     document.addEventListener("pointerdown", onDown, true);
-    return () => document.removeEventListener("pointerdown", onDown, true);
+    document.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [open]);
   const toggle = () => {
     const b = button.current;

@@ -44,7 +44,7 @@ const MAX_PASSES: f64 = 1000.0;
 /// A search stops, keeping its best plan, after this many item walks: a time limit that answers the same everywhere.
 const MAX_WORK: u64 = 20_000_000;
 /// The columns the plan adds after the items' own, replacing an item column of the same name.
-const ADDED: [&str; 5] = ["Position", "Cost", "So Far", "Penalty", "Allowed"];
+const ADDED: [&str; 6] = ["Position", "Cost", "So Far", "Penalty", "Allowed", "Back Home"];
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Spot {
@@ -625,7 +625,7 @@ fn local_search(c: &mut Call) -> Answer {
         },
         Err(e) => return fail(c, e),
     };
-    let transitions = match transitions_in(c, &f, start.as_deref()) {
+    let transitions = match transitions_in(c, &f, start.as_deref(), &group_name) {
         Ok(l) => l,
         Err(e) => return fail(c, e),
     };
@@ -896,6 +896,23 @@ fn local_search(c: &mut Call) -> Answer {
     cols.push(cost_m.column("Cost", walked.iter().map(|l| Some(cost_m.base(l.1.cost)))));
     cols.push(cost_m.column("So Far", walked.iter().map(|l| Some(cost_m.base(l.1.at)))));
     cols.push(cost_m.column("Penalty", walked.iter().map(|l| Some(cost_m.base(l.1.penalty)))));
+    // Back at its start: the trip home is part of Total, so it shows on each group's last item, and the Cost column and
+    // it add up to Total.
+    if back {
+        let mut home_cost: Vec<Option<f64>> = vec![None; walked.len()];
+        let mut at = 0;
+        for (k, seq) in seqs.iter().enumerate() {
+            at += seq.len();
+            if let (Some(home), Some(&last)) = (m.start_row[k], seq.last()) {
+                let before = walked[at - 1].1.at;
+                match m.ask(0, k, Spot::Start(home), Spot::Item(last), (before, 0.0, seq.len() + 1)) {
+                    Ok(v) => home_cost[at - 1] = Some(v),
+                    Err(e) => return fail(c, e),
+                }
+            }
+        }
+        cols.push(cost_m.column("Back Home", home_cost.into_iter().map(|v| v.map(|v| cost_m.base(v)))));
+    }
     cols.push(Column {
         name: "Allowed".into(),
         ty: FrameColType::Logical,

@@ -29,19 +29,21 @@ export function queueRuleSteps(node: QueueCard, wired: Set<string>): { name: str
   if (node instanceof GreedyQueueNode) {
     const col = columnOf(node, "orderColumn", wired);
     const order = node.orderBy === "cost"
-      ? "cheapest first"
+      ? cost.length ? "cheapest first" : "as listed (no cost to compare)"
       : col ? `${node.orderDir === "desc" ? "largest" : "smallest"} ${col} first` : wired.has("order") ? "by formula" : "as listed";
     steps.push({ name: "Next", value: order });
     steps.push({ name: "Cost", value: cost.length ? cost.join(" + ") : "none" });
     steps.push({ name: "Groups", value: group ? `by ${group}, ${node.turns === "best" ? "best match" : "in turn"}` : "one" });
     const opens = columnOf(node, "step", wired);
-    steps.push({ name: "Steps", value: opens ? `by ${opens}${node.stepStart === "start" ? ", from the start" : ""}` : "all at once" });
+    const fresh = node.stepStart === "start" && wired.has("start") ? ", each from its start" : "";
+    steps.push({ name: "Steps", value: opens ? `by ${opens}${fresh}` : `all at once${fresh}` });
     const budget = wired.has("budget") || node.literals.budget != null;
     if (budget) steps.push({ name: "Per step", value: `within Budget, ${node.mode === "skip" ? "skip" : "stop at"} what won't fit` });
   } else {
     steps.push({ name: "Cost", value: cost.length ? cost.join(" + ") : "none" });
     steps.push({ name: "Groups", value: group ? `by ${group}, ${node.reach === "within" ? "items stay" : "items move"}` : "one" });
-    steps.push({ name: "Ends", value: node.ends === "return" ? "back at the start" : "at the last item" });
+    // Back at its start needs a Start row to go back to; without Groups wired the walk ends at its last item.
+    steps.push({ name: "Ends", value: node.ends === "return" && wired.has("start") ? "back at the start" : "at the last item" });
     steps.push({ name: "Search", value: node.stuck === "look" ? "thorough" : "quick" });
   }
   return steps;

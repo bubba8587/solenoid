@@ -279,8 +279,10 @@ export class LocalSearchNode extends GraphNode {
     }
     const input = ctx.inputShape("items");
     if (!input) return null;
-    const taken = new Set(PLAN_COLUMNS.map((c) => c.name.toLowerCase()));
-    return { ...input, columns: [...input.columns.filter((c) => !taken.has(c.name.trim().toLowerCase())), ...PLAN_COLUMNS] };
+    // Back at its start: the trip home shows on each group's last item.
+    const added = this.ends === "return" ? [...PLAN_COLUMNS, { name: "Back Home", type: "number" as const }] : PLAN_COLUMNS;
+    const taken = new Set([...PLAN_COLUMNS.map((c) => c.name.toLowerCase()), "back home"]);
+    return { ...input, columns: [...input.columns.filter((c) => !taken.has(c.name.trim().toLowerCase())), ...added] };
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { plan: FrameValue | SolError | null; total: number | SolError | null; history: FrameValue | SolError | null } {

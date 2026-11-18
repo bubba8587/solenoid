@@ -42,7 +42,7 @@ The card stays readable without opening anything. From top to bottom:
    hover. A list the popup builds (Solver's limits) is listed item by item, each with a remove ×; rules (Greedy Queue's)
    are a line per question in plain words ("Next: cheapest first", "Cost: Hours + transitions", "Per step: within Budget, skip
    what won't fit"), and a rule with nothing set either says its default ("Steps: all at once") or is left out when it
-   has none to say. PIVOTBY's summary is its one-line field list.
+   has none to say. A summary line says only what the engine does: "Ends: back at the start" only with a Start to go back to, "Next: as listed (no cost to compare)" for Cheapest first with nothing to cost, a step start that resets each step named even without an Opens at column. PIVOTBY's summary is its one-line field list.
 5. **The outputs.**
 
 The summary is the card's account of its configuration, so it changes with every popup edit: the card redraws on the
