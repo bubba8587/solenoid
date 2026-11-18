@@ -1,6 +1,6 @@
 // [[C10]] socketLattice, [[frame-verbs#Frames and Cubes]]
 import { describe, it, expect } from "vitest";
-import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode, ColumnsNode } from "../../src/graph/nodeClasses";
+import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode, PickColumnsNode } from "../../src/graph/nodeClasses";
 import { throughBoundary } from "./boundaryKit";
 import { cubeFromColumns, flatCubeToFrame, isFrameValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
@@ -29,7 +29,7 @@ describe("flatCubeToFrame", () => {
 
 describe("the lattice stays narrow; the nodes widen", () => {
   it("Window, GROUPBY and Chart declare cube-adoptive inputs", () => {
-    for (const n of [new WindowNode(), new GroupByFrameNode(), new ColumnsNode()]) expect(String((n.inputs.frame!.socket as { base?: string }).base)).toBe("cube");
+    for (const n of [new WindowNode(), new GroupByFrameNode(), new PickColumnsNode()]) expect(String((n.inputs.frame!.socket as { base?: string }).base)).toBe("cube");
     expect(String((new ChartNode().inputs.values!.socket as { base?: string }).base)).toBe("cube");
   });
 

@@ -46,7 +46,7 @@ import {
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
-  ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, ScheduleNode, EarnedValueNode,
+  PickColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, ScheduleNode, EarnedValueNode,
   ReconcileNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode, CubeInputNode,
   WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode, GeocodeNode, WeatherNode, HolidaysNode, FxNode, VaultFolderNode,
@@ -713,8 +713,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
         children: [
           { type: "pair", children: [
-            { type: "keep-columns", label: "Keep Columns", description: "Keeps only the named columns, in the order given. Like Excel's `CHOOSECOLS`, but by column name.", keywords: "columns select keep choosecols", create: () => new ColumnsNode(), parity: false },
-            { type: "drop-columns", label: "Drop Columns", description: "Removes the named columns; the rest pass through.", keywords: "columns drop remove", create: () => new ColumnsNode({ op: "drop" }), parity: false },
+            { type: "keep-columns", label: "Keep Columns", description: "Keeps only the named columns, in the order given. Like Excel's `CHOOSECOLS`, but by column name.", keywords: "columns select keep choosecols", create: () => new PickColumnsNode(), parity: false },
+            { type: "drop-columns", label: "Drop Columns", description: "Removes the named columns; the rest pass through.", keywords: "columns drop remove", create: () => new PickColumnsNode({ op: "drop" }), parity: false },
           ]},
           { type: "rename",      label: "Rename",      description: "Renames columns from two Lists matched by position: From `[\"qty\"]` → To `[\"Quantity\"]`.", create: () => new RenameNode(), parity: false },
           { type: "split-column", label: "Split Column", description: "Splits one text column into several by a delimiter, the parts replacing the source. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },

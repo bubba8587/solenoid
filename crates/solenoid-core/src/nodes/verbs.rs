@@ -29,7 +29,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "HeadNode" => head(c),
         "SortFrameNode" => sort(c),
         "FilterFrameNode" => filter(c),
-        "ColumnsNode" => columns(c),
+        "PickColumnsNode" => columns(c),
         "GroupByFrameNode" => group_by(c),
         "UnpivotNode" => unpivot(c),
         "RenameNode" => rename(c),

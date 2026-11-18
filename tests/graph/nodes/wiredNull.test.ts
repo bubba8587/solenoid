@@ -4,7 +4,7 @@ import { BooleanOpNode, NotNode, IfsNode } from "../../../src/graph/nodes/logic"
 import { RandBetweenNode } from "../../../src/graph/nodes/display";
 import { CableSwitchNode } from "../../../src/graph/nodes/control";
 import { DepreciationNode } from "../../../src/graph/nodes/finance";
-import { ColumnsNode } from "../../../src/graph/nodes/frame";
+import { PickColumnsNode } from "../../../src/graph/nodes/frame";
 import { AlertNode } from "../../../src/graph/nodes/display";
 import { DistributionsNode } from "../../../src/graph/nodes/distribution";
 import { throughBoundary } from "../boundaryKit";
@@ -73,12 +73,12 @@ describe("a column-LIST reference — same rule as the scalar column", () => {
   const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [1] }, { name: "b", type: "number", values: [2] }] };
 
   it("Columns (Keep): a name the frame lacks is a #REF! error", async () => {
-    await expect(Promise.resolve().then(() => new ColumnsNode().data({ frame: [f], columns: [["nope"]] }))).rejects.toMatchObject({ code: "#REF!" });
+    await expect(Promise.resolve().then(() => new PickColumnsNode().data({ frame: [f], columns: [["nope"]] }))).rejects.toMatchObject({ code: "#REF!" });
   });
 
   it("Columns: op round-trips through extractInit", () => {
-    expect(extractInit(new ColumnsNode({ op: "drop" })).op).toBe("drop");
-    expect(extractInit(new ColumnsNode()).op).toBe("keep");
+    expect(extractInit(new PickColumnsNode({ op: "drop" })).op).toBe("drop");
+    expect(extractInit(new PickColumnsNode()).op).toBe("keep");
   });
 });
 

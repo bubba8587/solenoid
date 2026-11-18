@@ -209,7 +209,7 @@ wire("crew", "crew-sort");
 node("rep-name", "ComputedColumnNode", X1, -320, { label: "Computed → Rep, the full name", expr: '@[First Name] & " " & @[Last Name]' },
   { stringLiterals: { name: "Rep", after: "" } });
 wire("crew", "rep-name");
-node("rep-lookup", "ColumnsNode", X2, -320, { label: "Keep → rep lookup" }, { stringLiterals: { columns: "Rep, Photo, Team" } });
+node("rep-lookup", "PickColumnsNode", X2, -320, { label: "Keep → rep lookup" }, { stringLiterals: { columns: "Rep, Photo, Team" } });
 wire("rep-name", "rep-lookup");
 
 node("top-rated", "FilterFrameNode", X1, 60, ...filterEq("Filter → rated 4.5 and up", "Rating", "4.5", "gte"));
@@ -218,7 +218,7 @@ node("by-price", "SortFrameNode", X1, 400, { label: "Sort → price, high first"
 wire("products", "by-price");
 node("priciest", "HeadNode", X2, 400, { label: "Head → priciest five" }, { literals: { rows: 5 } });
 wire("by-price", "priciest");
-node("product-lookup", "ColumnsNode", X1, 740, { label: "Keep → product lookup" }, { stringLiterals: { columns: "SKU, Product, Image, Category, Price" } });
+node("product-lookup", "PickColumnsNode", X1, 740, { label: "Keep → product lookup" }, { stringLiterals: { columns: "SKU, Product, Image, Category, Price" } });
 wire("products", "product-lookup");
 
 node("order-lines", "JoinNode", X2, 1100, { label: "Join Orders × product lookup (on SKU)", how: "left" }, { stringLiterals: { leftKey: "SKU", rightKey: "SKU" } });
@@ -229,7 +229,7 @@ wire("order-lines", "open-lines");
 node("with-rep", "JoinNode", X4, 1100, { label: "Join → rep lookup (on Rep)", how: "left" }, { stringLiterals: { leftKey: "Rep", rightKey: "Rep" } });
 wire("open-lines", "with-rep", "left");
 wire("rep-lookup", "with-rep", "right");
-node("order-card", "ColumnsNode", X5, 1100, { label: "Keep → the order card" },
+node("order-card", "PickColumnsNode", X5, 1100, { label: "Keep → the order card" },
   { stringLiterals: { columns: "Order, Product, Image, Customer, Placed, Qty, Price, Total, Status, Category, Rep, Photo, Paid, Note" } });
 wire("with-rep", "order-card");
 node("by-category", "GroupByFrameNode", X3, 1460, { label: "GROUPBY Category → SUM(Total)", agg: "sum", totalDepth: 1 }, { stringLiterals: { keys: "Category", column: "Total" } });

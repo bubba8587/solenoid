@@ -67,7 +67,7 @@
   },
   {
    "id": "todo",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "x": 1410,
    "y": 330,
    "init": {
@@ -117,7 +117,7 @@
   },
   {
    "id": "westCols",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "x": 940,
    "y": 1100,
    "init": {
@@ -200,7 +200,7 @@
   },
   {
    "id": "ranked",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "x": 940,
    "y": 1900,
    "init": {

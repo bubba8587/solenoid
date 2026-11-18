@@ -231,7 +231,7 @@
     },
     {
       "id": "dh-columns",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 971,
       "y": 2820,
       "init": {

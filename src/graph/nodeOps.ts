@@ -13,7 +13,7 @@ import {
   SET_META, PAD_OP_META, PadNode,
   SeriesNode,
 } from "./nodes/list";
-import { HeadNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/frame";
+import { HeadNode, PickColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/frame";
 import { RegexNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
@@ -131,8 +131,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new NPVNode({ op: op as never }), leafOps: ["periods", "dates"] },
   { type: "irr", ctor: IRRNode, ops: fromMeta(IRR_OP_META),
     create: (op) => new IRRNode({ op: op as never }), leafOps: ["periods", "dates"] },
-  { type: "keep-columns", ctor: ColumnsNode, ops: fromMeta(COLUMNS_OP_META),
-    create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
+  { type: "keep-columns", ctor: PickColumnsNode, ops: fromMeta(COLUMNS_OP_META),
+    create: (op) => new PickColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
   { type: "list-shuffle", ctor: ShuffleNode, ops: fromMeta(SHUFFLE_OP_META),

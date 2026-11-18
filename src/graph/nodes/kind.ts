@@ -42,7 +42,7 @@ import { DistributionsNode } from "./distribution";
 import { ConduitNode } from "./conduit";
 import { FrameFromListsNode, CategorizeNode } from "./frame";
 import { ScheduleNode } from "./schedule";
-import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
+import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, PickColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
 import { GreedyQueueNode, LocalSearchNode } from "./queue";
 import { SolverNode, AssignmentNode, ShortestPathNode, ParetoNode, StaffingNode } from "./optimize";
 import { CubeInputNode, BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
@@ -205,7 +205,7 @@ export function explicitKindOf(node: GraphNode): NodeKind | null {
     node instanceof SumIfsNode ||
     node instanceof JoinNode ||
     node instanceof XLookupNode ||
-    node instanceof ColumnsNode ||
+    node instanceof PickColumnsNode ||
     node instanceof GroupByFrameNode ||
     node instanceof PivotNode ||
     node instanceof UnpivotNode ||

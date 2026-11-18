@@ -90,7 +90,7 @@
     },
     {
       "id": "select",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 2456,
       "y": 513,
       "init": {

@@ -270,12 +270,6 @@
    "rgb"
   ]
  },
- "ColumnsNode": {
-  "op": [
-   "drop",
-   "keep"
-  ]
- },
  "CombinationsNode": {
   "mode": [
    "combinations",
@@ -1271,6 +1265,12 @@
    "sigma",
    "wien",
    "z0"
+  ]
+ },
+ "PickColumnsNode": {
+  "op": [
+   "drop",
+   "keep"
   ]
  },
  "PivotNode": {

@@ -98,7 +98,7 @@
     },
     {
       "id": "rep-lookup",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 1556,
       "y": 1778,
       "init": {
@@ -158,7 +158,7 @@
     },
     {
       "id": "product-lookup",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 341,
       "y": 526,
       "init": {
@@ -221,7 +221,7 @@
     },
     {
       "id": "order-card",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 2249,
       "y": 1641,
       "init": {

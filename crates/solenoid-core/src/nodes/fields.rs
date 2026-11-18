@@ -170,7 +170,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("ColebrookNode", "rr", Empty::Example("0.0001")),
     ("ColorBlendNode", "a", Empty::Fallback(Fill::Text(""))),
     ("ColorBlendNode", "b", Empty::Fallback(Fill::Text(""))),
-    ("ColumnsNode", "columns", Empty::Fallback(Fill::Text(""))),
+    ("PickColumnsNode", "columns", Empty::Fallback(Fill::Text(""))),
     ("CombinatoricsNode", "k", Empty::Fallback(Fill::Num(0.0))),
     ("CombinatoricsNode", "n", Empty::Fallback(Fill::Num(0.0))),
     ("ComparisonNode", "a", Empty::Fallback(Fill::Num(0.0))),

@@ -128,7 +128,7 @@ describe("run-graph --vault", () => {
         { id: "v", type: "VaultFolderNode", init: { label: "Notes", folder: "Notes", includeTasks: true } },
         { id: "u", type: "UnnestNode", init: { label: "Tasks" }, stringLiterals: { column: "note-tasks" } },
         { id: "c", type: "ComputedColumnNode", init: { label: "All done", expr: "TRUE", addAs: "logical" }, stringLiterals: { name: "done" } },
-        { id: "k", type: "ColumnsNode", init: { label: "Marks", op: "keep" }, stringLiterals: { columns: "path, line, task, done" } },
+        { id: "k", type: "PickColumnsNode", init: { label: "Marks", op: "keep" }, stringLiterals: { columns: "path, line, task, done" } },
       ],
       connections: [
         { source: "v", sourceOutput: "cube", target: "u", targetInput: "cube" },

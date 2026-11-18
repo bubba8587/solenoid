@@ -15,7 +15,7 @@ import type {
   SortFrameNode as SortFrameNodeType,
   FilterFrameNode as FilterFrameNodeType,
   JoinNode as JoinNodeType,
-  ColumnsNode as ColumnsNodeType,
+  PickColumnsNode as ColumnsNodeType,
   GroupByFrameNode as GroupByFrameNodeType,
   PivotNode as PivotNodeType,
   UnpivotNode as UnpivotNodeType,

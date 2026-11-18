@@ -9,7 +9,7 @@ import { solError } from "../../src/graph/errorValue";
 import { applyFcUnit } from "../../src/graph/unitBridge";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import {
-  DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, ColumnsNode, GroupByFrameNode, UnpivotNode, RenameNode,
+  DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, PickColumnsNode, GroupByFrameNode, UnpivotNode, RenameNode,
   SplitColumnNode, AddIndexNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, DropBlankRowsNode, WindowNode, GetColumnNode,
   HEAD_OP_META, COLUMNS_OP_META, AGG_OP_META, BLANK_ROW_OP_META, WINDOW_FN_META,
 } from "../../src/graph/nodes/frame";
@@ -146,7 +146,7 @@ const SPECS: Record<string, Spec> = {
   Head: { make: () => new HeadNode(), cubes: true, fields: { op: Object.keys(HEAD_OP_META) }, nums: ["rows", "to"] },
   Sort: { make: () => new SortFrameNode(), cubes: true, fields: { dir: ["asc", "desc"] }, strs: ["column"] },
   Filter: { make: () => new FilterFrameNode(), cubes: true, fields: { combine: ["and", "or"] }, pairs: true },
-  Columns: { make: () => new ColumnsNode(), cubes: true, fields: { op: Object.keys(COLUMNS_OP_META) }, lists: ["columns"] },
+  Columns: { make: () => new PickColumnsNode(), cubes: true, fields: { op: Object.keys(COLUMNS_OP_META) }, lists: ["columns"] },
   GroupBy: { make: () => new GroupByFrameNode(), fields: { agg: Object.keys(AGG_OP_META).filter((k) => k !== "percentof") }, lists: ["keys"], strs: ["column"] },
   Unpivot: { make: () => new UnpivotNode(), lists: ["idColumns", "valueColumns"] },
   Rename: { make: () => new RenameNode(), lists: ["from", "to"] },

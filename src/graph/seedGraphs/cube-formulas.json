@@ -54,7 +54,7 @@
     },
     {
       "id": "keepG",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 1249,
       "y": 484,
       "init": {
@@ -162,7 +162,7 @@
     },
     {
       "id": "keepAlloc",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 881,
       "y": 1517,
       "init": {
@@ -207,7 +207,7 @@
     },
     {
       "id": "keepH",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 1210,
       "y": 1894,
       "init": {

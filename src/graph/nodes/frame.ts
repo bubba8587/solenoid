@@ -361,7 +361,7 @@ export const COLUMNS_OP_META: Record<ColumnsOp, { label: string; description: st
   drop: { label: "Drop", fx: "DROPCOLS", description: "Remove the named columns; the rest pass through." },
 };
 
-export class ColumnsNode extends GraphNode {
+export class PickColumnsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     columns: "Keep: an empty list passes the frame through unchanged, and a name the frame lacks is a #REF! error. Drop: names the frame lacks are ignored.",
   };

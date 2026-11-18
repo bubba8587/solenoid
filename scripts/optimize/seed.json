@@ -125,7 +125,7 @@
   },
   {
    "id": "mix_units",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "init": {
     "label": "Kg per blend"
    },
@@ -146,7 +146,7 @@
   },
   {
    "id": "mix_room",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "init": {
     "label": "Sensitivity"
    },
@@ -293,7 +293,7 @@
   },
   {
    "id": "portfolio_pick",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "init": {
     "label": "Projects chosen"
    },
@@ -365,7 +365,7 @@
   },
   {
    "id": "ads_spend",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "init": {
     "label": "Spend per channel"
    },
@@ -588,7 +588,7 @@
   },
   {
    "id": "feed_kg",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "init": {
     "label": "Kg in a tonne"
    },
@@ -598,7 +598,7 @@
   },
   {
    "id": "feed_check",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "init": {
     "label": "Blend check"
    },
@@ -944,7 +944,7 @@
   },
   {
    "id": "reach_cols",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "init": {
     "label": "Minutes by place"
    },
@@ -1133,7 +1133,7 @@
   },
   {
    "id": "desk_cols",
-   "type": "ColumnsNode",
+   "type": "PickColumnsNode",
    "init": {
     "label": "In time by staff level"
    },

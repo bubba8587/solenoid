@@ -144,7 +144,7 @@
     },
     {
       "id": "board",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 2820,
       "y": 260,
       "init": {

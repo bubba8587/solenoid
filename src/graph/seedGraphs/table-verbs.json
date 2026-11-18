@@ -137,7 +137,7 @@
     },
     {
       "id": "select",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 2506,
       "y": 921,
       "init": {
@@ -149,7 +149,7 @@
     },
     {
       "id": "drop",
-      "type": "ColumnsNode",
+      "type": "PickColumnsNode",
       "x": 2506,
       "y": 1215,
       "init": {

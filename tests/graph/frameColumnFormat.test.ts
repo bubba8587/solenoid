@@ -7,7 +7,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { frameFormatStore, columnFormatRow, describeAnnotation } from "../../src/graph/frameFormatStore";
 import { fmtCell } from "../../src/graph/components/FrameDisplay";
 import {
-  FrameInputNode, SortFrameNode, ColumnsNode, ComputedColumnNode, AddIndexNode, DescribeNode,
+  FrameInputNode, SortFrameNode, PickColumnsNode, ComputedColumnNode, AddIndexNode, DescribeNode,
 } from "../../src/graph/nodes/frame";
 import {
   frameSourceToText, frameColumnsToInputText, isFrameValue,
@@ -61,7 +61,7 @@ describe("a per-column format rides the frame downstream", () => {
     frameFormatStore.set(input.id, "B", DEC3);
     const sort = new SortFrameNode();
     sort.stringLiterals.column = "A";
-    const keep = new ColumnsNode({ op: "keep" });
+    const keep = new PickColumnsNode({ op: "keep" });
     keep.stringLiterals.columns = "B";
 
     const out = await collected(await chain([input, sort, keep]));
@@ -98,7 +98,7 @@ describe("a per-column format rides the frame downstream", () => {
     const sort = new SortFrameNode();
     sort.stringLiterals.column = "B";
     frameFormatStore.set(sort.id, "B", DEC0);
-    const b = col(await collected(await chain([input, sort, new ColumnsNode()])), "B");
+    const b = col(await collected(await chain([input, sort, new PickColumnsNode()])), "B");
     expect(b.values).toEqual([0.5, 1.23456]);
     expect(b.format).toEqual(DEC0);
   });

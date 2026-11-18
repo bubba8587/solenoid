@@ -22,7 +22,7 @@ pub(crate) const LAZY_FRAME_NODES: [&str; 25] = [
     "SortFrameNode",
     "FilterFrameNode",
     "JoinNode",
-    "ColumnsNode",
+    "PickColumnsNode",
     "GroupByFrameNode",
     "UnpivotNode",
     "AppendNode",

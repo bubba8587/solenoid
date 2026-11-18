@@ -7,7 +7,7 @@ import {
   FrameInputNode, DropBlankRowsNode, FillBlanksNode, ReplaceValuesNode, AddColumnNode,
   ComputedColumnNode, BindColumnsNode, MergeColumnsNode, HeadersNode, AllocatorNode,
   ReconcileNode, DescribeNode, CorrMatrixNode, WindowNode, AppendNode, FrameFromListsNode,
-  ColumnsNode, RenameNode, GroupByFrameNode, UnpivotNode, PivotNode, JoinNode,
+  PickColumnsNode, RenameNode, GroupByFrameNode, UnpivotNode, PivotNode, JoinNode,
   SplitColumnNode, AddIndexNode,
 } from "../../src/graph/nodes/frame";
 import { ValueInputNode } from "../../src/graph/nodes/control";
@@ -224,10 +224,10 @@ describe("declared frame shapes match what the node would produce", () => {
 
 describe("a wired config socket makes the shape unknown", () => {
   it("Columns reads the typed list, and goes unknown once Columns is wired", async () => {
-    const keep = new ColumnsNode();
+    const keep = new PickColumnsNode();
     keep.stringLiterals.columns = "Region";
     expect(cols(await shapeOf(keep, "frame", SALES))).toEqual(["Region:string"]);
-    const wired = new ColumnsNode();
+    const wired = new PickColumnsNode();
     wired.stringLiterals.columns = "Region";
     expect(await wiredConfig(wired, ["columns"])).toBeNull();
   });

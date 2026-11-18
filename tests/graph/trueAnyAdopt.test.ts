@@ -8,7 +8,7 @@ import { extractInit } from "../../src/graph/nodeInit";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { IfNode, NaNode } from "../../src/graph/nodes/logic";
 import { CableSwitchNode } from "../../src/graph/nodes/control";
-import { ListIndexNode, ReverseNode, SortNode, SetsNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "../../src/graph/nodeClasses";
+import { ListIndexNode, ReverseNode, SortNode, SetsNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, PickColumnsNode } from "../../src/graph/nodeClasses";
 import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "../../src/graph/sockets";
 
 // A real editor over the nodes and cables: the settle runs on the core over its graph.
@@ -211,7 +211,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { name: "Item", type: "string", cells: ["nut"] },
       { name: "Due", type: "date", cells: ["2026-03-20"] },
     ]) });
-    const sel = new ColumnsNode();
+    const sel = new PickColumnsNode();
     (sel as unknown as { stringLiterals: Record<string, string> }).stringLiterals = { columns: "Due, Item" };
     const idx = new ListIndexNode();
     const ed = makeEditor([src, sel, idx], [

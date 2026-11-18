@@ -17,7 +17,7 @@ const table = (id, label, cols) => add(id, "FrameInputNode", { label }, {
     return { name, cells, type, ...(unit ? { unit: unit === "$" ? "usd" : unit } : {}) };
   }),
 });
-const keep = (id, label, columns) => add(id, "ColumnsNode", { label }, { stringLiterals: { columns } });
+const keep = (id, label, columns) => add(id, "PickColumnsNode", { label }, { stringLiterals: { columns } });
 const chart = (id, label, op, options) => add(id, "ChartNode", { label, op }, { stringLiterals: { options } });
 
 // ── 1. A product mix: how many kg of each blend a coffee roaster should roast this week ──
