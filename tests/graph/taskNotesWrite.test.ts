@@ -61,8 +61,6 @@ describe("urls + replies", () => {
     expect(taskUrl("http://localhost:8080", "Tasks/Read docs.md")).toBe("http://localhost:8080/api/tasks/Tasks%2FRead%20docs.md");
     expect(createTaskUrl("")).toBe("http://localhost:8080/api/tasks");
   });
-  it("a created task's path is read off the reply when present", () => {
-  });
 });
 
 describe("WriteTasksNode", () => {

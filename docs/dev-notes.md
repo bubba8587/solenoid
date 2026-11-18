@@ -23,6 +23,13 @@ specific item.
 - `answer-tests.mjs` is conservative by file: one JS card in a file (`SvgPickerNode`) skips the whole file, and a helper
   calling `magnitudeOf`/`dimOf`/`parseDateToSerial`/`formatDim` or assigning `.mode =` keeps a test. Running it per test
   on `convert`, `colorBlend` and `distributionInvariants` is the next pass.
+- That pass ran (a scratch copy of `answer-tests.mjs`: per-test JS-card check, `magnitudeOf`/`dimOf`/`parseDateToSerial`/
+  `solDate`/`isUnitCell` as value inspectors, a `.mode`/`.op` set before the call allowed): 29 more card tests, every
+  call frozen and answering the same, mostly chart payloads in `visual.test.ts`. The rest of `convert` and
+  `distributionInvariants` stays: their calls are not all frozen. Also gone: an empty test left in `taskNotesWrite` when
+  `parseWrittenTaskPath` was deleted. Sweeps that found nothing more: whole-test copy-paste, tests with no assertion,
+  opt-in suites nothing sets, and the core's inline `#[cfg(test)]` modules. `buildModel` (`flow/flowModel.ts`) has no
+  caller in `src`: a test-only loader beside `persistence.loadGraph`.
 
 ### SESSION DIGEST (2026-11-17b: the US Map card, a service-territory baseline; cloud session)
 - **Greedy Queue** (`GreedyQueueNode`, `nodes/queue.rs`, [[frame-verbs#Greedy Queue]]): the sequential loop of a
