@@ -3,7 +3,7 @@
 /* Solenoid's own look in its two themes: prefers-color-scheme here follows the app's light/dark toggle. */
 :root {
   --g-ground: #0b0b0b; --g-card: #1e1e1e; --g-sunk: #141414; --g-line: #2d2d2d; --g-line-strong: #3a3a3a;
-  --g-ink: #e8e8e8; --g-dim: #9aa0a6; --g-gold: #f5b914; --g-green: #00b862; --g-violet: #7b64ed;
+  --g-ink: #e8e8e8; --g-dim: #9aa0a6; --g-gold: #f5b914; --g-green: #00b862; --g-violet: #7b64ed; --g-tint: 22%; --g-tint-gold: 9%;
   --surface: var(--g-card); --surface-sunken: var(--g-sunk); --border: var(--g-line); --border-strong: var(--g-line-strong);
   --text: var(--g-ink); --text-dim: var(--g-dim);
   --chart-1: var(--g-violet);
@@ -12,7 +12,7 @@
 @media (prefers-color-scheme: light) {
   :root {
     --g-ground: #f6f5f2; --g-card: #ffffff; --g-sunk: #efede8; --g-line: #e2dfd8; --g-line-strong: #cfcac0;
-    --g-ink: #1d1d1f; --g-dim: #5f6368; --g-gold: #a87a00; --g-green: #00894a; --g-violet: #5b45d6;
+    --g-ink: #1d1d1f; --g-dim: #5f6368; --g-gold: #a87a00; --g-green: #00894a; --g-violet: #5b45d6; --g-tint: 14%; --g-tint-gold: 14%;
   }
 }
 body { background: var(--g-ground); color: var(--g-ink); font-family: var(--font-sans); font-size: 15px; line-height: 1.55; }
@@ -21,6 +21,7 @@ header { display: flex; gap: 18px; align-items: flex-start; padding-bottom: 18px
 .mark { width: 52px; height: 52px; background: var(--g-card); border-radius: 8px; padding: 6px; }
 .kind { margin: 0; font-size: 11px; color: var(--g-green); font-family: var(--font-mono); }
 h1 { margin: 2px 0 6px; font-size: 30px; font-weight: 600; text-wrap-style: balance; }
+.sub + .sub { margin-top: 8px; }
 .sub { margin: 0; color: var(--g-dim); text-wrap-style: pretty; }
 .toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 8px; }
 .toc a { font-size: 12px; color: var(--g-ink); text-decoration: none; background: var(--g-sunk); border: 1px solid var(--g-line); border-radius: 5px; padding: 3px 9px; }
@@ -38,10 +39,22 @@ i.k { font-style: normal; color: var(--g-green); }
 .demo .solenoid-ref-inline { color: var(--g-gold); }
 .note { font-size: 13px; color: var(--g-dim); border-left: 2px solid var(--g-gold); padding-left: 10px; }
 .planets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 12px 0; }
-.planet { border: 1px solid var(--g-line); border-radius: 8px; overflow: hidden; }
-.planet b { display: block; padding: 5px 10px; font-weight: 600; background: color-mix(in srgb, var(--g-violet) 22%, var(--g-card)); border-bottom: 1px solid var(--g-line-strong); }
-.planet span { display: block; padding: 6px 10px; font-family: var(--font-mono); font-size: 13px; color: var(--g-dim); background: var(--g-card); }
-.planet.many b { background: color-mix(in srgb, var(--g-gold) 22%, var(--g-card)); }
+/* A planet is drawn as Solenoid draws a card: the header tinted and capped in its color on three sides, a neutral
+   divider, the body in a neutral border. */
+.planet { --c: var(--g-violet); --t: var(--g-tint); }
+/* A deep tint toward yellow turns to mud: gold's is quieter, and its cap and title carry the color. */
+.planet.many { --c: var(--g-gold); --t: var(--g-tint-gold); }
+.planet b {
+  display: block; padding: 5px 10px; font-weight: 600;
+  color: color-mix(in oklch, var(--c) 55%, var(--g-ink));
+  background: color-mix(in oklch, var(--c) var(--t), var(--g-card));
+  border: 1px solid var(--c); border-bottom: 1px solid var(--g-line); border-radius: 8px 8px 0 0;
+}
+.planet span {
+  display: block; padding: 6px 10px; font-family: var(--font-mono); font-size: 13px; color: var(--g-dim);
+  background: var(--g-card); border: 1px solid var(--g-line); border-top: none; border-radius: 0 0 8px 8px;
+}
+.planet:hover span { border-color: var(--g-line-strong); }
 [data-sol-ref="moons"] .sol-box { height: 260px; }
 .vars { width: 100%; border-collapse: collapse; font-size: 13px; }
 .vars td { padding: 7px 8px; border-bottom: 1px solid var(--g-line); vertical-align: top; }

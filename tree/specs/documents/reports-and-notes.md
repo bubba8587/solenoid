@@ -515,6 +515,12 @@ and shown full screen as a Dashboard is. It is a sink, as a Dashboard is: no out
 that opens it. What it shares with the Report: Knap ([[C68]] knapIsTheDocumentSyntax) and its variable inputs; with the
 Dashboard: its board's chrome and its boxes.
 
+**What it is for** (the author, 2026-11-18): the page is only the last layer. The usual way an agent makes a report is a
+pipeline from source data to an HTML wrapper, in a script nobody audits; here the agent builds that pipeline in the
+graph, where every step (an import, a filter, a join, a chart) is a card a person can see and change directly, and the
+page only lays out what the graph already answered. So a page keeps no logic a card could hold: it formats, loops and
+places, and the numbers, filters and figures stay on the canvas.
+
 ```mermaid
 flowchart LR
     files["page.html + page.css<br>in the data folder"] --> parts["the body, its style blocks<br>(pageParts)"]
