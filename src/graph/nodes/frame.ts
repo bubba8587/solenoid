@@ -374,7 +374,7 @@ export class ColumnsNode extends GraphNode {
   width = 190; height = 150;
 
   constructor(init?: { label?: string; op?: ColumnsOp }) {
-    super("Columns");
+    super("Pick Columns");
     this.op = init?.op ?? "keep";
     this.label = init?.label ?? "";
     this.addInput("frame", cubeAdoptIn("Table / Cube"));

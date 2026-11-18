@@ -563,7 +563,7 @@ Tests:
 
 | Verb | Card | Refuses with |
 |---|---|---|
-| `select` | Columns (Keep) | `#REF!` unknown column |
+| `select` | Pick Columns (Keep) | `#REF!` unknown column |
 | `drop` | Columns (Drop) | nothing |
 | `rename` | Rename | nothing |
 | `sort` | Frame Sort | `#REF!` |
