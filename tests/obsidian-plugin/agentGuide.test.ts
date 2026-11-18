@@ -1,4 +1,4 @@
-// [[obsidian-plugin#The guide for agents]]
+// [[B1]] obsidianBet, [[obsidian-plugin]], [[obsidian-plugin#The guide for agents]]
 import { describe, it, expect } from "vitest";
 import { parse } from "yaml";
 import { agentGuide, GUIDE_EXAMPLES } from "../../obsidian-plugin/src/agentGuide";

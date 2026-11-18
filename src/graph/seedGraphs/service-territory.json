@@ -99,6 +99,29 @@
       "y": 2160
     },
     {
+      "id": "c_near",
+      "type": "FilterFrameNode",
+      "init": {
+        "label": "Within 250 miles",
+        "condConfig": {
+          "0": {
+            "op": "lt"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "Miles",
+        "value0": "250"
+      },
+      "x": 1300,
+      "y": 2160
+    },
+    {
       "id": "c_cost",
       "type": "ComputedColumnNode",
       "init": {
@@ -108,7 +131,7 @@
       "stringLiterals": {
         "name": "Incident Miles"
       },
-      "x": 1300,
+      "x": 1600,
       "y": 2160
     },
     {
@@ -122,7 +145,7 @@
       "stringLiterals": {
         "name": "Whole"
       },
-      "x": 1600,
+      "x": 1900,
       "y": 2160
     },
     {
@@ -150,7 +173,7 @@
       "stringLiterals": {
         "objective": "Incident Miles"
       },
-      "x": 1900,
+      "x": 2200,
       "y": 2160
     },
     {
@@ -173,7 +196,7 @@
         "column0": "Amount",
         "value0": "0.5"
       },
-      "x": 2260,
+      "x": 2560,
       "y": 2160
     },
     {
@@ -185,7 +208,7 @@
       "stringLiterals": {
         "columns": "Site, Operator"
       },
-      "x": 2560,
+      "x": 2860,
       "y": 2160
     },
     {
@@ -198,7 +221,7 @@
         "from": "Operator",
         "to": "Plan C Operator"
       },
-      "x": 2860,
+      "x": 3160,
       "y": 2160
     },
     {
@@ -1526,6 +1549,12 @@
     },
     {
       "source": "c_miles",
+      "sourceOutput": "frame",
+      "target": "c_near",
+      "targetInput": "frame"
+    },
+    {
+      "source": "c_near",
       "sourceOutput": "frame",
       "target": "c_cost",
       "targetInput": "frame"

@@ -142,6 +142,22 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 - [ ] **Get Column reads its text field as a name or a 1-based position** (`card_column`, `nodes/frames.rs`; the catalog says "by name or 1-based number"). A name match wins, so a column named "4" is found, but "2" typed where no column is named "2" quietly means the second column, and renaming a column to "2" quietly changes which column an existing card reads. One text socket shouldn't carry two meanings: the position belongs on its own number input (or an option), the text field reading names only. Changing it moves answers a saved graph gives (a card typed "2" today reads position 2).
 
+## From the 2026-11-18 optimization session (each needs the author's call)
+
+- [ ] **Monte Carlo mode for a composite whose randomness is inside it** (`runMonteCarlo`, `composite.ts`): the mode draws
+  only inputs marked uncertain and, with none, runs one pass, so the service-territory simulation (RAND() inside) uses
+  Data Table over a Run index instead. A proposal: with no uncertain input, run its samples anyway when the inside draws
+  (a volatile card), each draw seeding RAND from the mode's seed so a run repeats. It changes what that mode answers.
+- [ ] **Staffing's In Time column could read On Time**, to match its On-time share socket. A column rename moves what a
+  saved graph's downstream cards read.
+- [ ] **The dispatch simulation starts each operator at their first job of the year** (`scripts/service-territory/sim-graph.mjs`);
+  the seed now has home bases (the Operators table), and starting each operator, or each day, from home is a Start table
+  away. It moves every plan's drive hours.
+- [ ] **Measuring "incidents resolved" in the service-territory seed**: at one job a day every plan leaves about 3
+  incidents open at year end, within noise, so the assignment moves drive time only. A measure that separates plans
+  (each plan's mean wait, already a Greedy Queue column; fewer operators; more incidents) is a modelling choice, and so
+  is Plan C's capacity of 292 a year.
+
 ## From the 2026-11-12 hardening run (each needs the author's call)
 - [ ] **`ISNUMBER(SEARCH("a", "b"))` is `#VALUE!` in a formula, Excel's is FALSE (found 2026-11-17)**: an error operand is the cell's answer before the function runs (formula-language.md § Broadcast, rule 1), so ISNUMBER, ISTEXT, ISBLANK, ISLOGICAL and ISNONTEXT pass an error through, where Excel's answer FALSE (ISNONTEXT TRUE); ISERROR, ISERR and ISNA already test it. It breaks Excel's commonest "contains" idiom (`ISNUMBER(SEARCH(...))`) and isn't in excel-divergences.md; the Is Test card is in SEES_ERRORS and may already differ from its formula twin. Moving it changes answers saved graphs give, so it waits; `NOT(ISERROR(SEARCH(...)))` works today.
 - [ ] **Wrap as Composite over cards a path leaves and comes back to makes a loop**: in the Fluids example, wrapping `ValueInput_3`, `Expression_4`, `Expression_5`, `Expression_1` and `Expression_2` leaves `Expression_3` outside between them, so the new card both feeds it and is fed by it and everything downstream reads `#CIRC!` (found by `graphEditReach.test.ts`). `tree/specs/computation/composite-nodes.md` § Make a composite from a selection says nothing of it. Refuse with a notice naming the card between, take the cards between in, or leave it.
@@ -387,6 +403,12 @@ live in specs.
 
 - [ ] **Cards that strip units** ([[C25]] firstClassUnits): 33 of about 317 card classes are `unitAware` (the money finance cards joined under [[C25]] firstClassUnits); the rest read the numbers their inputs show and answer plain numbers, the boundary's fallback. Each family is owed carrying, as its formula functions do; do them family by family, a unit test per card. CEILING.MATH, QUOTIENT and EVEN in formulas likewise still sit in unit-flow's "any other function" row.
 
+
+- [ ] **A chart's axis ignores its column's display format**: Staffing's shares carry a percent format and read 84.0% in
+  the table, but the optimize seed's staffing chart runs its axis 0 to 1. Chart-wide: an axis would take its column's
+  format where every series on it shares one.
+- [ ] **A percent value typed on a card reads as a fraction**: Staffing's On-time share shows 0.8 where the rules popups
+  type and show percents (80%). A socket whose value is a share could say so and show it as one.
 
 ## Frame popup (follow-ups from the 2026-09-19 header session)
 - [ ] **A blank Frame's CSV view starts empty, and its header line looks like one** (author 2026-10-29): today it opens with an empty header line, so pasting `name,age` and rows makes `name,age` the first data row under blank names. Start empty, so a paste's first line becomes the column names, with a test of pasting into a blank Frame. In the CSV editor, set the first line apart as the header (a slightly darker band or similar, per DESIGN.md), so it's clear which line names the columns. Frames only: a table (matrix) has no header row.

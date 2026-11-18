@@ -257,9 +257,9 @@ export class StaffingNode extends GraphNode {
   /** Times and rates arrive with their units, read in minutes and an hour's worth ([[C25]] firstClassUnits). */
   unitAware = true;
   static socketDocs: Record<string, string> = {
-    arrivals: "Jobs arriving per hour, or a rate in any unit: 2 /min.",
-    minutes: "The average job's time in minutes, or a time in any unit: 45 s.",
-    target: "Empty: at once. Minutes, or a time in any unit.",
+    arrivals: "Jobs arriving per hour; a rate with a unit converts, such as 2 /min.",
+    minutes: "The average job's time in minutes; a time with a unit converts, such as 45 s.",
+    target: "In minutes; a time with a unit converts. Empty: at once.",
     share: "Such as 0.8, for 80%.",
     options: "A row per staff level, starting from the fewest people who can keep up.",
   };
@@ -273,9 +273,9 @@ export class StaffingNode extends GraphNode {
   constructor(init?: { label?: string }) {
     super("Staffing");
     this.label = init?.label ?? "Staffing (Erlang C)";
-    this.addInput("arrivals", numIn("Arrival rate (/h)"));
-    this.addInput("minutes", numIn("Job time (min)"));
-    this.addInput("target", numIn("Target wait (min)"));
+    this.addInput("arrivals", numIn("Arrival rate"));
+    this.addInput("minutes", numIn("Job time"));
+    this.addInput("target", numIn("Target wait"));
     this.addInput("share", numIn("On-time share"));
     this.addOutput("options", frameOut("Staff levels"));
     this.addOutput("needed", numOut("Staff needed"));
