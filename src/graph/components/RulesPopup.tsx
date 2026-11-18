@@ -1,4 +1,4 @@
-// [[B19]] spreadsheetHabits: the rules popups' kit (tree/specs/computation/frame-verbs.md § The rules popups). A card
+// [[B19]] spreadsheetHabits: the rules popups' kit (tree/specs/canvas/config-popups.md). A card
 // whose settings outgrow its face keeps its wired inputs and outputs there and asks the rest here, a section per
 // question, in PopupShell's chrome with the card's accent.
 import type { ReactNode } from "react";

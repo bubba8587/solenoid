@@ -1,7 +1,7 @@
 /* The rules popups (Solver's Limits, Greedy Queue's and Local Search's rules): a card's settings asked as questions.
    Chrome is PopupShell's (the card's accent header); the body is Settings' grammar (a section per question under a
    small caption, hairline between sections, a row a label with its help on the left and its control on the right);
-   the footer is the Pivot editor's. Selected states take the card's accent ([[DESIGN]] Nearest-Accent Rule). */
+   the footer is the Pivot editor's. Selected states take the card's accent (DESIGN.md's Nearest-Accent Rule; tree/specs/canvas/config-popups.md). */
 .sol-rules {
   width: 540px;
   max-width: 94vw;

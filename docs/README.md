@@ -188,6 +188,7 @@ results get retried and settled rulings relapse.
 | `nodeCatalog.ts` | `node-coverage.md`; [[B16]] oneFormulaSurface (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |
 | any bar/overlay position or z-index | `tree/specs/canvas/layout-chrome.md` |
+| `RulesPopup.tsx`, `RulesPopup.css`, `SolverLimitsPopup.tsx`, `QueueRulesPopup.tsx`, `solverLimitsStore.ts`, `queueRulesStore.ts` | `tree/specs/canvas/config-popups.md` |
 | `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `tree/specs/canvas/layout-chrome.md` § Desktop window frame |
 | `isAndroidApp`, `src-tauri/capabilities/android.json`, `scripts/android-prep.mjs` | `android.md` |
 | `obsidianWrite.ts`, `frontmatterPatch.ts`, `obsidianTypes.ts`, `pluginColumnTypes.ts` | `../tree/specs/integrations/vault-bridge.md` (VaultBridge Nodes and VaultBridgeFx: which spec governs each), under [[B1]] obsidianBet |

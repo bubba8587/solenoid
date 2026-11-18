@@ -1340,7 +1340,7 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
     </NodeShell>
   );
 }
-/** Greedy Queue's and Local Search's face below their tables (frame-verbs.md § The rules popups): folded sections of
+/** Greedy Queue's and Local Search's face below their tables (tree/specs/canvas/config-popups.md § What stays on the card): folded sections of
  *  their formulas, numbers and column sockets (each open once one is used), the Edit Rules button and the rules they
  *  run by, one plain line each. Every setting is asked in the rules popup. */
 const QUEUE_TABLES = ["items", "start", "legs"];
