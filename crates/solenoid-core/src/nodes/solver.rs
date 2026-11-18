@@ -102,7 +102,8 @@ fn solver(c: &mut Call) -> Answer {
     };
     let minimize = c.field_str("goal", "max") == "min";
     let rows = f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0);
-    if rows > MAX_OPTIONS || lim.as_ref().is_some_and(|l| l.columns.first().map_or(0, |c| c.values.len()) > MAX_LIMITS) {
+    if rows > MAX_OPTIONS || lim.as_ref().is_some_and(|l| l.columns.first().map_or(0, |c| c.values.len()) > MAX_LIMITS)
+    {
         return fail(
             c,
             err(ErrorCode::Domain, format!("The Solver takes at most {MAX_OPTIONS} options and {MAX_LIMITS} limits")),
@@ -240,7 +241,10 @@ fn solver(c: &mut Call) -> Answer {
     // The dense tableau: a row per limit and per bounded option, a column per option and per row.
     let tableau_rows = prog_rows.len() + hi.iter().filter(|h| h.is_finite()).count();
     if tableau_rows.saturating_mul(rows + 2 * tableau_rows) > MAX_CELLS {
-        return fail(c, err(ErrorCode::Domain, "Too large for the Solver: fewer options, fewer limits, or fewer Max bounds"));
+        return fail(
+            c,
+            err(ErrorCode::Domain, "Too large for the Solver: fewer options, fewer limits, or fewer Max bounds"),
+        );
     }
     let program = Program { c: obj.iter().map(|v| v * sense).collect(), rows: prog_rows.clone(), lo, hi, whole };
     let (x, total, duals, stopped) = match solve(&program) {
