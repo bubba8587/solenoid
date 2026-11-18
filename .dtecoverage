@@ -76,6 +76,7 @@ why: dev tooling serves the workflow; the decision, if any, is cited by the file
 scripts
 tests/buckets.mjs
 tests/graph/testBuckets.test.ts
+tests/graph/cargoLabels.test.ts
 tests/graph/fuzzDepth.ts
 tools/string-editor
 tools/renumber_tree.py
