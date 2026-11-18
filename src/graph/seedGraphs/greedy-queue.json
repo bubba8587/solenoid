@@ -12,7 +12,7 @@
         "frameText": "[{\"name\":\"Job\",\"type\":\"string\",\"cells\":[\"J03\",\"J16\",\"J31\",\"J43\",\"J49\",\"J54\",\"J06\",\"J08\",\"J42\",\"J44\",\"J52\",\"J58\",\"J60\",\"J11\",\"J23\",\"J26\",\"J29\",\"J56\",\"J04\",\"J05\",\"J07\",\"J09\",\"J17\",\"J21\",\"J48\",\"J53\",\"J55\",\"J01\",\"J02\",\"J14\",\"J18\",\"J32\",\"J33\",\"J35\",\"J50\",\"J59\",\"J13\",\"J19\",\"J20\",\"J22\",\"J25\",\"J36\",\"J37\",\"J38\",\"J40\",\"J41\",\"J47\",\"J10\",\"J15\",\"J24\",\"J27\",\"J45\",\"J46\",\"J12\",\"J28\",\"J30\",\"J34\",\"J39\",\"J51\",\"J57\"]},{\"name\":\"Arrives\",\"type\":\"number\",\"cells\":[\"1\",\"1\",\"1\",\"1\",\"1\",\"1\",\"2\",\"2\",\"2\",\"2\",\"2\",\"2\",\"2\",\"3\",\"3\",\"3\",\"3\",\"3\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"7\",\"7\",\"7\",\"7\",\"7\",\"7\",\"8\",\"8\",\"8\",\"8\",\"8\",\"8\",\"8\"]},{\"name\":\"Hours\",\"type\":\"number\",\"cells\":[\"3\",\"1\",\"1\",\"3\",\"1\",\"3\",\"1\",\"4\",\"5\",\"6\",\"4\",\"5\",\"1\",\"1\",\"3\",\"2\",\"3\",\"4\",\"3\",\"5\",\"2\",\"6\",\"3\",\"2\",\"1\",\"3\",\"5\",\"3\",\"6\",\"6\",\"5\",\"3\",\"4\",\"3\",\"5\",\"4\",\"2\",\"1\",\"8\",\"2\",\"4\",\"4\",\"1\",\"8\",\"1\",\"3\",\"1\",\"2\",\"6\",\"1\",\"4\",\"1\",\"4\",\"2\",\"4\",\"2\",\"4\",\"2\",\"8\",\"2\"],\"unit\":\"h\"},{\"name\":\"Due\",\"type\":\"number\",\"cells\":[\"3\",\"4\",\"3\",\"2\",\"4\",\"2\",\"3\",\"4\",\"3\",\"5\",\"3\",\"3\",\"5\",\"5\",\"4\",\"6\",\"3\",\"4\",\"7\",\"6\",\"6\",\"7\",\"5\",\"4\",\"7\",\"4\",\"5\",\"7\",\"7\",\"5\",\"5\",\"5\",\"8\",\"5\",\"8\",\"5\",\"8\",\"7\",\"7\",\"9\",\"6\",\"9\",\"6\",\"7\",\"7\",\"8\",\"7\",\"9\",\"8\",\"7\",\"8\",\"8\",\"9\",\"8\",\"9\",\"9\",\"10\",\"11\",\"8\",\"9\"]}]"
       },
       "x": 303,
-      "y": 8063
+      "y": 8151
     },
     {
       "id": "machines",
@@ -22,7 +22,7 @@
         "frameText": "[{\"name\":\"Machine\",\"type\":\"string\",\"cells\":[\"Lathe 1\",\"Lathe 2\",\"Mill\"]}]"
       },
       "x": 24,
-      "y": 8063
+      "y": 8151
     },
     {
       "id": "day",
@@ -32,7 +32,7 @@
         "value": "8"
       },
       "x": 24,
-      "y": 7893
+      "y": 7981
     },
     {
       "id": "by_due",
@@ -47,8 +47,8 @@
         "orderColumn": "Due",
         "costColumn": "Hours"
       },
-      "x": 736,
-      "y": 7893
+      "x": 738,
+      "y": 7981
     },
     {
       "id": "by_due_late",
@@ -60,8 +60,8 @@
       "stringLiterals": {
         "name": "Late"
       },
-      "x": 1132,
-      "y": 8120
+      "x": 1134,
+      "y": 8240
     },
     {
       "id": "by_due_col",
@@ -72,18 +72,18 @@
       "stringLiterals": {
         "name": "Late"
       },
-      "x": 1518,
-      "y": 8284
+      "x": 1501,
+      "y": 8927
     },
     {
       "id": "by_due_sum",
       "type": "AggregateNode",
       "init": {
-        "label": "Earliest due first: days late",
+        "label": "Days late (earliest due first)",
         "op": "sum"
       },
-      "x": 1897,
-      "y": 8310
+      "x": 1830,
+      "y": 8943
     },
     {
       "id": "by_short",
@@ -98,8 +98,8 @@
         "orderColumn": "Hours",
         "costColumn": "Hours"
       },
-      "x": 736,
-      "y": 6932
+      "x": 738,
+      "y": 6992
     },
     {
       "id": "by_short_late",
@@ -111,8 +111,8 @@
       "stringLiterals": {
         "name": "Late"
       },
-      "x": 1065,
-      "y": 7383
+      "x": 1067,
+      "y": 7464
     },
     {
       "id": "by_short_col",
@@ -123,29 +123,29 @@
       "stringLiterals": {
         "name": "Late"
       },
-      "x": 1394,
-      "y": 7548
+      "x": 1396,
+      "y": 7629
     },
     {
       "id": "by_short_sum",
       "type": "AggregateNode",
       "init": {
-        "label": "Shortest first: days late",
+        "label": "Days late (shortest first)",
         "op": "sum"
       },
-      "x": 1723,
-      "y": 7573
+      "x": 1725,
+      "y": 7654
     },
     {
       "id": "job_wait",
       "type": "LambdaNode",
       "init": {
-        "label": "Wait for the job to arrive",
+        "label": "Arrival wait",
         "params": "Arrives, before",
         "expr": "MAX(0, (Arrives - 1) * day - before)"
       },
-      "x": 736,
-      "y": 9155
+      "x": 738,
+      "y": 9260
     },
     {
       "id": "job_late",
@@ -155,14 +155,14 @@
         "params": "Due, at",
         "expr": "MAX(0, at - Due * day)"
       },
-      "x": 736,
-      "y": 9406
+      "x": 738,
+      "y": 9519
     },
     {
       "id": "jobs_scored",
       "type": "LocalSearchNode",
       "init": {
-        "label": "Earliest due, as it came"
+        "label": "Earliest due plan"
       },
       "stringLiterals": {
         "group": "Machine",
@@ -171,8 +171,8 @@
       "literals": {
         "passes": 0
       },
-      "x": 1132,
-      "y": 9200
+      "x": 1134,
+      "y": 8630
     },
     {
       "id": "jobs_scored_pen",
@@ -183,31 +183,31 @@
       "stringLiterals": {
         "name": "Penalty"
       },
-      "x": 1518,
-      "y": 9547
+      "x": 1501,
+      "y": 8584
     },
     {
       "id": "jobs_scored_sum",
       "type": "AggregateNode",
       "init": {
-        "label": "Before: hours late",
+        "label": "Hours late before",
         "op": "sum"
       },
-      "x": 1897,
-      "y": 9572
+      "x": 1830,
+      "y": 8610
     },
     {
       "id": "jobs_better",
       "type": "LocalSearchNode",
       "init": {
-        "label": "Earliest due, improved"
+        "label": "Improved plan"
       },
       "stringLiterals": {
         "group": "Machine",
         "costColumn": "Hours"
       },
-      "x": 1132,
-      "y": 8510
+      "x": 1134,
+      "y": 9316
     },
     {
       "id": "jobs_better_pen",
@@ -218,31 +218,18 @@
       "stringLiterals": {
         "name": "Penalty"
       },
-      "x": 1518,
-      "y": 8747
+      "x": 1501,
+      "y": 9659
     },
     {
       "id": "jobs_better_sum",
       "type": "AggregateNode",
       "init": {
-        "label": "After: hours late",
+        "label": "Hours late after",
         "op": "sum"
       },
-      "x": 1897,
-      "y": 8773
-    },
-    {
-      "id": "jobs_better_chart",
-      "type": "ChartNode",
-      "init": {
-        "label": "Each change",
-        "op": "line"
-      },
-      "stringLiterals": {
-        "options": "x=Change; y=Total; xlabel=Change; ylabel=Hours"
-      },
-      "x": 1468,
-      "y": 8956
+      "x": 1830,
+      "y": 9695
     },
     {
       "id": "boxes",
@@ -252,7 +239,7 @@
         "frameText": "[{\"name\":\"Box\",\"type\":\"string\",\"cells\":[\"B01\",\"B02\",\"B03\",\"B04\",\"B05\",\"B06\",\"B07\",\"B08\",\"B09\",\"B10\",\"B11\",\"B12\",\"B13\",\"B14\",\"B15\",\"B16\",\"B17\",\"B18\",\"B19\",\"B20\",\"B21\",\"B22\",\"B23\",\"B24\",\"B25\",\"B26\",\"B27\",\"B28\",\"B29\",\"B30\",\"B31\",\"B32\",\"B33\",\"B34\",\"B35\",\"B36\"]},{\"name\":\"Kg\",\"type\":\"number\",\"cells\":[\"80\",\"450\",\"120\",\"350\",\"450\",\"400\",\"450\",\"80\",\"80\",\"400\",\"120\",\"80\",\"200\",\"80\",\"500\",\"350\",\"400\",\"300\",\"450\",\"400\",\"200\",\"450\",\"120\",\"120\",\"80\",\"350\",\"60\",\"300\",\"600\",\"500\",\"300\",\"500\",\"60\",\"300\",\"450\",\"150\"],\"unit\":\"kg\"}]"
       },
       "x": 379,
-      "y": 5357
+      "y": 5394
     },
     {
       "id": "capacity",
@@ -262,13 +249,13 @@
         "value": "1000"
       },
       "x": 379,
-      "y": 5187
+      "y": 5224
     },
     {
       "id": "fit",
       "type": "GreedyQueueNode",
       "init": {
-        "label": "Load trucks",
+        "label": "Truck loading",
         "mode": "skip",
         "orderDir": "desc"
       },
@@ -276,41 +263,41 @@
         "orderColumn": "Kg",
         "costColumn": "Kg"
       },
-      "x": 1048,
-      "y": 4810
+      "x": 1049,
+      "y": 4836
     },
     {
       "id": "fit_kg",
       "type": "GroupByFrameNode",
       "init": {
-        "label": "Load trucks: kg a truck",
+        "label": "Kg per truck",
         "agg": "sum"
       },
       "stringLiterals": {
         "keys": "Picked",
         "column": "Kg"
       },
-      "x": 1377,
-      "y": 5078
+      "x": 1378,
+      "y": 5125
     },
     {
       "id": "fit_chart",
       "type": "ChartNode",
       "init": {
-        "label": "Load trucks",
+        "label": "Kg per truck",
         "op": "column"
       },
       "stringLiterals": {
         "options": "xlabel=Truck; ylabel=Kg; ymax=1000"
       },
-      "x": 1706,
-      "y": 5130
+      "x": 1707,
+      "y": 5177
     },
     {
       "id": "nofit",
       "type": "GreedyQueueNode",
       "init": {
-        "label": "Load trucks, no skipping",
+        "label": "Truck loading (no skipping)",
         "mode": "stop",
         "orderDir": "desc"
       },
@@ -318,35 +305,35 @@
         "orderColumn": "Kg",
         "costColumn": "Kg"
       },
-      "x": 1048,
-      "y": 5564
+      "x": 1049,
+      "y": 5611
     },
     {
       "id": "nofit_kg",
       "type": "GroupByFrameNode",
       "init": {
-        "label": "Load trucks, no skipping: kg a truck",
+        "label": "Kg per truck (no skipping)",
         "agg": "sum"
       },
       "stringLiterals": {
         "keys": "Picked",
         "column": "Kg"
       },
-      "x": 1377,
-      "y": 5823
+      "x": 1378,
+      "y": 5910
     },
     {
       "id": "nofit_chart",
       "type": "ChartNode",
       "init": {
-        "label": "Load trucks, no skipping",
+        "label": "Kg per truck (no skipping)",
         "op": "column"
       },
       "stringLiterals": {
         "options": "xlabel=Truck; ylabel=Kg; ymax=1000"
       },
-      "x": 1706,
-      "y": 5884
+      "x": 1707,
+      "y": 5962
     },
     {
       "id": "stops",
@@ -355,8 +342,8 @@
         "label": "Stops",
         "frameText": "[{\"name\":\"Stop\",\"type\":\"string\",\"cells\":[\"Stop 1\",\"Stop 2\",\"Stop 3\",\"Stop 4\",\"Stop 5\",\"Stop 6\",\"Stop 7\",\"Stop 8\",\"Stop 9\",\"Stop 10\",\"Stop 11\",\"Stop 12\",\"Stop 13\",\"Stop 14\",\"Stop 15\",\"Stop 16\"]},{\"name\":\"Latitude\",\"type\":\"number\",\"cells\":[\"36.2979\",\"36.2225\",\"36.2589\",\"35.8822\",\"35.915\",\"35.7414\",\"35.6719\",\"35.9952\",\"35.7721\",\"35.6641\",\"35.8001\",\"35.9193\",\"35.7081\",\"35.7022\",\"36.0153\",\"36.3051\"]},{\"name\":\"Longitude\",\"type\":\"number\",\"cells\":[\"-84.2811\",\"-83.9476\",\"-83.4295\",\"-83.9574\",\"-84.3212\",\"-84.3253\",\"-83.483\",\"-83.8488\",\"-83.4857\",\"-83.584\",\"-84.357\",\"-84.0385\",\"-84.0479\",\"-83.5229\",\"-83.9591\",\"-84.0718\"]}]"
       },
-      "x": 2118,
-      "y": 5004
+      "x": 2119,
+      "y": 5030
     },
     {
       "id": "depot",
@@ -365,127 +352,128 @@
         "label": "Depot",
         "frameText": "[{\"name\":\"Stop\",\"type\":\"string\",\"cells\":[\"Depot\"]},{\"name\":\"Latitude\",\"type\":\"number\",\"cells\":[\"35.96\"]},{\"name\":\"Longitude\",\"type\":\"number\",\"cells\":[\"-83.92\"]}]"
       },
-      "x": 2118,
-      "y": 4810
+      "x": 2119,
+      "y": 4836
     },
     {
       "id": "km",
       "type": "LambdaNode",
       "init": {
-        "label": "Km from the last stop",
+        "label": "Leg km",
         "params": "Latitude, Longitude, last_Latitude, last_Longitude",
         "expr": "2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))"
       },
-      "x": 2397,
-      "y": 5004
+      "x": 2398,
+      "y": 5030
     },
     {
       "id": "nearest",
       "type": "GreedyQueueNode",
       "init": {
-        "label": "Nearest next"
+        "label": "Nearest next",
+        "orderBy": "cost"
       },
       "stringLiterals": {},
-      "x": 2917,
-      "y": 5239
+      "x": 2919,
+      "y": 5265
     },
     {
       "id": "nearest_sum",
       "type": "RoundNNode",
       "init": {
-        "label": "Nearest next: km",
+        "label": "Route km (nearest next)",
         "op": "round"
       },
       "literals": {
         "digits": 1
       },
-      "x": 3295,
-      "y": 5848
+      "x": 3297,
+      "y": 5874
     },
     {
       "id": "nearest_chart",
       "type": "ChartNode",
       "init": {
-        "label": "Nearest next",
+        "label": "Route (nearest next)",
         "op": "xyline"
       },
       "stringLiterals": {
         "options": "x=Longitude; y=Latitude; annotate=Stop; aspect=equal"
       },
-      "x": 3295,
-      "y": 5496
+      "x": 3297,
+      "y": 5522
     },
     {
       "id": "listed",
       "type": "GreedyQueueNode",
       "init": {
-        "label": "In the listed order"
+        "label": "Listed order"
       },
       "stringLiterals": {},
-      "x": 2917,
-      "y": 6144
+      "x": 2919,
+      "y": 6183
     },
     {
       "id": "listed_sum",
       "type": "RoundNNode",
       "init": {
-        "label": "In the listed order: km",
+        "label": "Route km (listed order)",
         "op": "round"
       },
       "literals": {
         "digits": 1
       },
-      "x": 3254,
-      "y": 6641
+      "x": 3256,
+      "y": 6701
     },
     {
       "id": "listed_chart",
       "type": "ChartNode",
       "init": {
-        "label": "In the listed order",
+        "label": "Route (listed order)",
         "op": "xyline"
       },
       "stringLiterals": {
         "options": "x=Longitude; y=Latitude; annotate=Stop; aspect=equal"
       },
-      "x": 3254,
-      "y": 6289
+      "x": 3256,
+      "y": 6349
     },
     {
       "id": "route_better",
       "type": "LocalSearchNode",
       "init": {
-        "label": "Nearest next, improved",
+        "label": "Improved route",
         "stuck": "look"
       },
-      "x": 3362,
-      "y": 4810
+      "x": 3364,
+      "y": 4836
     },
     {
       "id": "route_better_sum",
       "type": "RoundNNode",
       "init": {
-        "label": "Improved: km",
+        "label": "Route km (improved)",
         "op": "round"
       },
       "literals": {
         "digits": 1
       },
-      "x": 3733,
-      "y": 5304
+      "x": 3735,
+      "y": 5325
     },
     {
       "id": "route_better_chart",
       "type": "ChartNode",
       "init": {
-        "label": "Nearest next, improved",
+        "label": "Route (improved)",
         "op": "xyline"
       },
       "stringLiterals": {
         "options": "x=Longitude; y=Latitude; annotate=Stop; aspect=equal"
       },
-      "x": 3733,
-      "y": 4952
+      "x": 3735,
+      "y": 4973
     },
     {
       "id": "note_read",
@@ -497,7 +485,7 @@
         "height": 150
       },
       "x": 0,
-      "y": 4752
+      "y": 4778
     },
     {
       "id": "note_jobs",
@@ -509,13 +497,13 @@
         "height": 150
       },
       "x": 243,
-      "y": 7893
+      "y": 7981
     },
     {
       "id": "grp_jobs",
       "type": "GroupNode",
       "init": {
-        "label": "Job shop: the jobs and machines",
+        "label": "Job shop",
         "members": [
           "note_jobs",
           "jobs",
@@ -527,13 +515,13 @@
         "height": 477
       },
       "x": 0,
-      "y": 7835
+      "y": 7923
     },
     {
       "id": "grp_jobs_weak",
       "type": "GroupNode",
       "init": {
-        "label": "Job shop, not optimized: shortest job first",
+        "label": "Job shop, not optimized",
         "members": [
           "by_short",
           "by_short_late",
@@ -542,16 +530,16 @@
         ],
         "color": "amber",
         "width": 1219,
-        "height": 923
+        "height": 951
       },
-      "x": 712,
-      "y": 6874
+      "x": 714,
+      "y": 6934
     },
     {
       "id": "grp_jobs_good",
       "type": "GroupNode",
       "init": {
-        "label": "Job shop, optimized: earliest due first, then improved",
+        "label": "Job shop, optimized",
         "members": [
           "by_due",
           "by_due_late",
@@ -564,15 +552,14 @@
           "jobs_scored_sum",
           "jobs_better",
           "jobs_better_pen",
-          "jobs_better_sum",
-          "jobs_better_chart"
+          "jobs_better_sum"
         ],
         "color": "green",
-        "width": 1393,
-        "height": 2041
+        "width": 1324,
+        "height": 2065
       },
-      "x": 712,
-      "y": 7835
+      "x": 714,
+      "y": 7923
     },
     {
       "id": "note_trucks",
@@ -584,13 +571,13 @@
         "height": 150
       },
       "x": 598,
-      "y": 5187
+      "y": 5224
     },
     {
       "id": "grp_trucks",
       "type": "GroupNode",
       "init": {
-        "label": "Loading trucks: the boxes",
+        "label": "Truck loading",
         "members": [
           "note_trucks",
           "boxes",
@@ -601,13 +588,13 @@
         "height": 477
       },
       "x": 355,
-      "y": 5129
+      "y": 5166
     },
     {
       "id": "grp_trucks_weak",
       "type": "GroupNode",
       "init": {
-        "label": "Loading trucks, not optimized: stop at the first box that won't fit",
+        "label": "Truck loading, not optimized",
         "members": [
           "nofit",
           "nofit_kg",
@@ -615,16 +602,16 @@
         ],
         "color": "amber",
         "width": 1050,
-        "height": 716
+        "height": 747
       },
-      "x": 1024,
-      "y": 5506
+      "x": 1025,
+      "y": 5553
     },
     {
       "id": "grp_trucks_good",
       "type": "GroupNode",
       "init": {
-        "label": "Loading trucks, optimized: skip boxes that won't fit",
+        "label": "Truck loading, optimized",
         "members": [
           "fit",
           "fit_kg",
@@ -632,10 +619,10 @@
         ],
         "color": "green",
         "width": 1050,
-        "height": 716
+        "height": 737
       },
-      "x": 1024,
-      "y": 4752
+      "x": 1025,
+      "y": 4778
     },
     {
       "id": "note_route",
@@ -646,14 +633,14 @@
         "width": 320,
         "height": 150
       },
-      "x": 2397,
-      "y": 4810
+      "x": 2398,
+      "y": 4836
     },
     {
       "id": "grp_route",
       "type": "GroupNode",
       "init": {
-        "label": "Delivery route: the stops",
+        "label": "Delivery route",
         "members": [
           "note_route",
           "stops",
@@ -664,14 +651,14 @@
         "width": 647,
         "height": 510
       },
-      "x": 2094,
-      "y": 4752
+      "x": 2095,
+      "y": 4778
     },
     {
       "id": "grp_route_weak",
       "type": "GroupNode",
       "init": {
-        "label": "Delivery route, not optimized: the stops in listed order",
+        "label": "Delivery route, not optimized",
         "members": [
           "listed",
           "listed_sum",
@@ -679,16 +666,16 @@
         ],
         "color": "amber",
         "width": 729,
-        "height": 768
+        "height": 789
       },
-      "x": 2893,
-      "y": 6086
+      "x": 2895,
+      "y": 6125
     },
     {
       "id": "grp_route_good",
       "type": "GroupNode",
       "init": {
-        "label": "Delivery route, optimized: nearest stop next, then improved",
+        "label": "Delivery route, optimized",
         "members": [
           "nearest",
           "nearest_sum",
@@ -699,10 +686,10 @@
         ],
         "color": "green",
         "width": 1208,
-        "height": 1296
+        "height": 1309
       },
-      "x": 2893,
-      "y": 4752
+      "x": 2895,
+      "y": 4778
     }
   ],
   "connections": [
@@ -863,12 +850,6 @@
       "targetInput": "list"
     },
     {
-      "source": "jobs_better",
-      "sourceOutput": "history",
-      "target": "jobs_better_chart",
-      "targetInput": "values"
-    },
-    {
       "source": "boxes",
       "sourceOutput": "frame",
       "target": "fit",
@@ -933,12 +914,6 @@
       "sourceOutput": "result",
       "target": "nearest",
       "targetInput": "cost"
-    },
-    {
-      "source": "km",
-      "sourceOutput": "result",
-      "target": "nearest",
-      "targetInput": "order"
     },
     {
       "source": "nearest",

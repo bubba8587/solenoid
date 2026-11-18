@@ -280,7 +280,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("GetColumnNode", "name", Empty::Fallback(Fill::Text(""))),
     ("GreedyQueueNode", "costColumn", Empty::Behavior("none")),
     ("GreedyQueueNode", "group", Empty::Behavior("one group")),
-    ("GreedyQueueNode", "orderColumn", Empty::Behavior("first come, first served")),
+    ("GreedyQueueNode", "orderColumn", Empty::Behavior("none")),
     ("GreedyQueueNode", "step", Empty::Behavior("all at step 1")),
     ("GroupByFrameNode", "column", Empty::Fallback(Fill::Text(""))),
     ("GroupByFrameNode", "keys", Empty::Fallback(Fill::Text(""))),

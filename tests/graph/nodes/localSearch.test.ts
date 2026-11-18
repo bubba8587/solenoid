@@ -32,7 +32,7 @@ describe("Local Search", () => {
     expect(rows(out.history)[0]).toMatchObject({ Change: 0, Kind: "start", Total: 50 });
     expect(out.total).toBe(30);
     expect(rows(out.plan).map((r) => r.Position)).toEqual([1, 2, 3, 4]);
-    expect(rows(out.plan)[3].At).toBe(30);
+    expect(rows(out.plan)[3]["So Far"]).toBe(30);
   });
 
   it("comes back to the Start row when set to, a round trip", () => {

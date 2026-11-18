@@ -4,7 +4,7 @@
    "id": "blends",
    "type": "FrameInputNode",
    "init": {
-    "label": "Blends, per kg roasted"
+    "label": "Blends (per kg)"
    },
    "frame": [
     {
@@ -88,7 +88,7 @@
    "id": "stock",
    "type": "FrameInputNode",
    "init": {
-    "label": "This week's limits"
+    "label": "Weekly limits"
    },
    "frame": [
     {
@@ -163,7 +163,7 @@
    "id": "mix",
    "type": "SolverNode",
    "init": {
-    "label": "Most profitable roast"
+    "label": "Roast plan"
    },
    "stringLiterals": {
     "objective": "Profit"
@@ -173,7 +173,7 @@
    "id": "mix_units",
    "type": "ColumnsNode",
    "init": {
-    "label": "Kg to roast"
+    "label": "Kg per blend"
    },
    "stringLiterals": {
     "columns": "Blend, Amount"
@@ -183,7 +183,7 @@
    "id": "mix_chart",
    "type": "ChartNode",
    "init": {
-    "label": "Kg to roast",
+    "label": "Kg per blend",
     "op": "column"
    },
    "stringLiterals": {
@@ -194,7 +194,7 @@
    "id": "mix_room",
    "type": "ColumnsNode",
    "init": {
-    "label": "What each limit is worth"
+    "label": "Sensitivity"
    },
    "stringLiterals": {
     "columns": "Resource, Used, Slack, Shadow Price"
@@ -204,7 +204,7 @@
    "id": "projects",
    "type": "FrameInputNode",
    "init": {
-    "label": "Candidate projects"
+    "label": "Projects"
    },
    "frame": [
     {
@@ -311,7 +311,7 @@
    "id": "budget",
    "type": "FrameInputNode",
    "init": {
-    "label": "Budget and team"
+    "label": "Portfolio limits"
    },
    "frame": [
     {
@@ -374,7 +374,7 @@
    "id": "portfolio",
    "type": "SolverNode",
    "init": {
-    "label": "Best portfolio"
+    "label": "Portfolio"
    },
    "stringLiterals": {
     "objective": "Value"
@@ -384,7 +384,7 @@
    "id": "portfolio_pick",
    "type": "ColumnsNode",
    "init": {
-    "label": "Chosen (1) or not (0)"
+    "label": "Projects chosen"
    },
    "stringLiterals": {
     "columns": "Project, Area, Value, Amount"
@@ -394,7 +394,7 @@
    "id": "hours",
    "type": "FrameInputNode",
    "init": {
-    "label": "Hours each crew would need"
+    "label": "Crew hours"
    },
    "frame": [
     {
@@ -474,14 +474,14 @@
    "id": "crews",
    "type": "AssignmentNode",
    "init": {
-    "label": "Fewest total hours"
+    "label": "Crew assignment"
    }
   },
   {
    "id": "roads",
    "type": "FrameInputNode",
    "init": {
-    "label": "Roads (minutes)"
+    "label": "Roads"
    },
    "frame": [
     {
@@ -560,7 +560,7 @@
    "id": "reach",
    "type": "ShortestPathNode",
    "init": {
-    "label": "Minutes from the depot"
+    "label": "Depot distances"
    },
    "stringLiterals": {
     "cost": "Minutes",
@@ -572,7 +572,7 @@
    "id": "reach_chart",
    "type": "ChartNode",
    "init": {
-    "label": "Minutes from the depot",
+    "label": "Minutes from depot",
     "op": "bar"
    },
    "stringLiterals": {
@@ -583,7 +583,7 @@
    "id": "reach_cols",
    "type": "ColumnsNode",
    "init": {
-    "label": "Place and minutes"
+    "label": "Minutes by place"
    },
    "stringLiterals": {
     "columns": "Place, Distance"
@@ -651,7 +651,7 @@
    "id": "front",
    "type": "ParetoNode",
    "init": {
-    "label": "Plans worth weighing"
+    "label": "Efficient plans"
    },
    "stringLiterals": {
     "lower": "Drive hours, Mean wait, Overtime hours",
@@ -662,7 +662,7 @@
    "id": "front_chart",
    "type": "ChartNode",
    "init": {
-    "label": "Drive hours against wait",
+    "label": "Drive hours vs wait",
     "op": "scatter"
    },
    "stringLiterals": {
@@ -673,7 +673,7 @@
    "id": "calls",
    "type": "ValueInputNode",
    "init": {
-    "label": "Calls an hour",
+    "label": "Calls per hour",
     "value": "42"
    }
   },
@@ -681,7 +681,7 @@
    "id": "call_min",
    "type": "ValueInputNode",
    "init": {
-    "label": "Minutes a call",
+    "label": "Minutes per call",
     "value": "6"
    }
   },
@@ -697,7 +697,7 @@
    "id": "answer_share",
    "type": "ValueInputNode",
    "init": {
-    "label": "Share answered in time",
+    "label": "Answered in time",
     "value": "0.8"
    }
   },
@@ -705,35 +705,35 @@
    "id": "desk",
    "type": "StaffingNode",
    "init": {
-    "label": "Dispatchers on shift"
+    "label": "Dispatch staffing"
    }
   },
   {
    "id": "desk_cols",
    "type": "ColumnsNode",
    "init": {
-    "label": "Answered in time, by dispatchers"
+    "label": "In time by staff level"
    },
    "stringLiterals": {
-    "columns": "Servers, Within Target"
+    "columns": "Staff, In Time"
    }
   },
   {
    "id": "desk_chart",
    "type": "ChartNode",
    "init": {
-    "label": "Answered in time, by dispatchers",
+    "label": "In time by staff level",
     "op": "column"
    },
    "stringLiterals": {
-    "options": "xlabel=Dispatchers; ylabel=Share answered in time; ymax=1"
+    "options": "xlabel=Dispatchers; ylabel=Answered in time; ymax=1"
    }
   },
   {
    "id": "grp_mix",
    "type": "GroupNode",
    "init": {
-    "label": "Product mix: what to roast this week",
+    "label": "Roast mix",
     "members": [
      "blends",
      "stock",
@@ -749,7 +749,7 @@
    "id": "grp_portfolio",
    "type": "GroupNode",
    "init": {
-    "label": "Project portfolio: the best set within budget",
+    "label": "Project portfolio",
     "members": [
      "projects",
      "budget",
@@ -763,7 +763,7 @@
    "id": "grp_crews",
    "type": "GroupNode",
    "init": {
-    "label": "Crew assignment: who takes which job",
+    "label": "Crew assignment",
     "members": [
      "hours",
      "crews"
@@ -775,7 +775,7 @@
    "id": "grp_route",
    "type": "GroupNode",
    "init": {
-    "label": "Shortest route: the road network",
+    "label": "Road route",
     "members": [
      "roads",
      "route",
@@ -790,7 +790,7 @@
    "id": "grp_front",
    "type": "GroupNode",
    "init": {
-    "label": "Comparing plans: the real tradeoffs",
+    "label": "Plan trade-offs",
     "members": [
      "plans",
      "front",
@@ -803,7 +803,7 @@
    "id": "grp_desk",
    "type": "GroupNode",
    "init": {
-    "label": "Staffing: dispatchers on shift",
+    "label": "Dispatch staffing",
     "members": [
      "calls",
      "call_min",

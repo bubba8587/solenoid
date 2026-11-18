@@ -139,6 +139,10 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
   work adds rules: walk `python3 tools/dte.py tree` and ratify node by
   node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
 
+## From the 2026-11-18 UI pass (each needs the author's call)
+
+- [ ] **Get Column reads its text field as a name or a 1-based position** (`card_column`, `nodes/frames.rs`; the catalog says "by name or 1-based number"). A name match wins, so a column named "4" is found, but "2" typed where no column is named "2" quietly means the second column, and renaming a column to "2" quietly changes which column an existing card reads. One text socket shouldn't carry two meanings: the position belongs on its own number input (or an option), the text field reading names only. Changing it moves answers a saved graph gives (a card typed "2" today reads position 2).
+
 ## From the 2026-11-12 hardening run (each needs the author's call)
 - [ ] **`ISNUMBER(SEARCH("a", "b"))` is `#VALUE!` in a formula, Excel's is FALSE (found 2026-11-17)**: an error operand is the cell's answer before the function runs (formula-language.md § Broadcast, rule 1), so ISNUMBER, ISTEXT, ISBLANK, ISLOGICAL and ISNONTEXT pass an error through, where Excel's answer FALSE (ISNONTEXT TRUE); ISERROR, ISERR and ISNA already test it. It breaks Excel's commonest "contains" idiom (`ISNUMBER(SEARCH(...))`) and isn't in excel-divergences.md; the Is Test card is in SEES_ERRORS and may already differ from its formula twin. Moving it changes answers saved graphs give, so it waits; `NOT(ISERROR(SEARCH(...)))` works today.
 - [ ] **Wrap as Composite over cards a path leaves and comes back to makes a loop**: in the Fluids example, wrapping `ValueInput_3`, `Expression_4`, `Expression_5`, `Expression_1` and `Expression_2` leaves `Expression_3` outside between them, so the new card both feeds it and is fed by it and everything downstream reads `#CIRC!` (found by `graphEditReach.test.ts`). `tree/specs/computation/composite-nodes.md` § Make a composite from a selection says nothing of it. Refuse with a notice naming the card between, take the cards between in, or leave it.
