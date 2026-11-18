@@ -218,7 +218,7 @@ export function RulesItem({ index, onRemove, removeLabel, sentence, clauses, add
       <div className="sol-rules__line">{sentence}</div>
       <RemoveButton onClick={onRemove} label={removeLabel} />
       {(clauses.length > 0 || adding) && (
-        <div className="sol-rules__clauses">
+        <div className={`sol-rules__clauses${clauses.length === 0 ? " sol-rules__clauses--none" : ""}`}>
           {clauses.map((c) => (
             <div key={c.key} className="sol-rules__clause">
               <div className="sol-rules__line">{c.content}</div>

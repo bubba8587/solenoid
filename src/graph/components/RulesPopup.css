@@ -201,6 +201,8 @@
   padding: 2px 0 2px 12px;
   border-left: 1px solid var(--border);
 }
+/* No clause yet: the Add condition button alone, no guide line to group nothing. */
+.sol-rules__clauses--none { border-left-color: transparent; }
 .sol-rules__clause {
   display: grid;
   grid-template-columns: 1fr auto;
