@@ -1,0 +1,748 @@
+{
+ "nodes": [
+  {
+   "id": "blends",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Blends (kg of beans a kg)"
+   },
+   "frame": [
+    {
+     "name": "Blend",
+     "cells": [
+      "House",
+      "Espresso",
+      "Breakfast",
+      "Ethiopia single origin"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Profit",
+     "cells": [
+      6,
+      9,
+      7,
+      12
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Brazil",
+     "cells": [
+      0.6,
+      0.5,
+      0.3,
+      0
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Colombia",
+     "cells": [
+      0.4,
+      0.2,
+      0.5,
+      0
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Ethiopia",
+     "cells": [
+      0,
+      0.3,
+      0.2,
+      1
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Roaster hours",
+     "cells": [
+      0.02,
+      0.03,
+      0.02,
+      0.025
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Max",
+     "cells": [
+      600,
+      400,
+      350,
+      200
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "stock",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "This week's limits"
+   },
+   "frame": [
+    {
+     "name": "Resource",
+     "cells": [
+      "Brazil beans (kg)",
+      "Colombia beans (kg)",
+      "Ethiopia beans (kg)",
+      "Roaster (hours)",
+      "Espresso for café contracts (kg)"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Sum of",
+     "cells": [
+      "Brazil",
+      "Colombia",
+      "Ethiopia",
+      "Roaster hours",
+      ""
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Where",
+     "cells": [
+      "",
+      "",
+      "",
+      "",
+      "Blend"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Is",
+     "cells": [
+      "",
+      "",
+      "",
+      "",
+      "Espresso"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Sign",
+     "cells": [
+      "<=",
+      "<=",
+      "<=",
+      "<=",
+      ">="
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Limit",
+     "cells": [
+      500,
+      350,
+      250,
+      30,
+      150
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "mix",
+   "type": "SolverNode",
+   "init": {
+    "label": "Most profitable roast"
+   },
+   "stringLiterals": {
+    "objective": "Profit"
+   }
+  },
+  {
+   "id": "mix_units",
+   "type": "ColumnsNode",
+   "init": {
+    "label": "Kg to roast"
+   },
+   "stringLiterals": {
+    "columns": "Blend, Amount"
+   }
+  },
+  {
+   "id": "mix_chart",
+   "type": "ChartNode",
+   "init": {
+    "label": "Kg to roast",
+    "op": "column"
+   },
+   "stringLiterals": {
+    "options": "xlabel=Blend; ylabel=Kg"
+   }
+  },
+  {
+   "id": "mix_room",
+   "type": "ColumnsNode",
+   "init": {
+    "label": "What each limit is worth"
+   },
+   "stringLiterals": {
+    "columns": "Resource, Used, Slack, Shadow Price"
+   }
+  },
+  {
+   "id": "projects",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Candidate projects"
+   },
+   "frame": [
+    {
+     "name": "Project",
+     "cells": [
+      "CRM upgrade",
+      "New warehouse",
+      "Solar roof",
+      "Fleet telematics",
+      "Training program",
+      "Web store",
+      "Robot cell",
+      "Data warehouse"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Area",
+     "cells": [
+      "IT",
+      "Ops",
+      "Facilities",
+      "Ops",
+      "People",
+      "IT",
+      "Ops",
+      "IT"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Value",
+     "cells": [
+      120,
+      260,
+      90,
+      110,
+      60,
+      150,
+      210,
+      130
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Cost",
+     "cells": [
+      80,
+      220,
+      70,
+      60,
+      25,
+      90,
+      180,
+      100
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Staff",
+     "cells": [
+      3,
+      5,
+      1,
+      2,
+      2,
+      4,
+      4,
+      3
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Max",
+     "cells": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Whole",
+     "cells": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ],
+     "type": "logical"
+    }
+   ]
+  },
+  {
+   "id": "budget",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Budget and team"
+   },
+   "frame": [
+    {
+     "name": "Rule",
+     "cells": [
+      "Budget ($k)",
+      "People",
+      "At most two IT projects"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Sum of",
+     "cells": [
+      "Cost",
+      "Staff",
+      ""
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Where",
+     "cells": [
+      "",
+      "",
+      "Area"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Is",
+     "cells": [
+      "",
+      "",
+      "IT"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Sign",
+     "cells": [
+      "<=",
+      "<=",
+      "<="
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Limit",
+     "cells": [
+      400,
+      12,
+      2
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "portfolio",
+   "type": "SolverNode",
+   "init": {
+    "label": "Best portfolio"
+   },
+   "stringLiterals": {
+    "objective": "Value"
+   }
+  },
+  {
+   "id": "portfolio_pick",
+   "type": "ColumnsNode",
+   "init": {
+    "label": "Chosen (1) or not (0)"
+   },
+   "stringLiterals": {
+    "columns": "Project, Area, Value, Amount"
+   }
+  },
+  {
+   "id": "hours",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Hours each crew would need"
+   },
+   "frame": [
+    {
+     "name": "Crew",
+     "cells": [
+      "North",
+      "South",
+      "East",
+      "West",
+      "Central"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Substation A",
+     "cells": [
+      6,
+      8,
+      5,
+      9,
+      7
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Line repair B",
+     "cells": [
+      4,
+      null,
+      6,
+      5,
+      6
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Meter swap C",
+     "cells": [
+      3,
+      4,
+      3,
+      5,
+      2
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Transformer D",
+     "cells": [
+      9,
+      7,
+      null,
+      8,
+      10
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Inspection E",
+     "cells": [
+      2,
+      3,
+      4,
+      2,
+      3
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "crews",
+   "type": "AssignmentNode",
+   "init": {
+    "label": "Fewest total hours"
+   }
+  },
+  {
+   "id": "roads",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Roads (minutes)"
+   },
+   "frame": [
+    {
+     "name": "From",
+     "cells": [
+      "Depot",
+      "Depot",
+      "Depot",
+      "Halls",
+      "Halls",
+      "Powell",
+      "Powell",
+      "Bearden",
+      "Bearden",
+      "Downtown",
+      "Downtown",
+      "Sequoyah",
+      "Farragut"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "To",
+     "cells": [
+      "Halls",
+      "Powell",
+      "Downtown",
+      "Powell",
+      "Fountain City",
+      "Bearden",
+      "Fountain City",
+      "Farragut",
+      "Sequoyah",
+      "Sequoyah",
+      "Fountain City",
+      "Maryville",
+      "Maryville"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Minutes",
+     "cells": [
+      12,
+      15,
+      9,
+      8,
+      7,
+      14,
+      10,
+      11,
+      6,
+      8,
+      9,
+      22,
+      18
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "route",
+   "type": "ShortestPathNode",
+   "init": {
+    "label": "Depot to Maryville"
+   },
+   "stringLiterals": {
+    "cost": "Minutes",
+    "from": "Depot",
+    "to": "Maryville"
+   }
+  },
+  {
+   "id": "reach",
+   "type": "ShortestPathNode",
+   "init": {
+    "label": "Minutes from the depot"
+   },
+   "stringLiterals": {
+    "cost": "Minutes",
+    "from": "Depot",
+    "to": ""
+   }
+  },
+  {
+   "id": "reach_chart",
+   "type": "ChartNode",
+   "init": {
+    "label": "Minutes from the depot",
+    "op": "bar"
+   },
+   "stringLiterals": {
+    "options": "xlabel=Minutes"
+   }
+  },
+  {
+   "id": "reach_cols",
+   "type": "ColumnsNode",
+   "init": {
+    "label": "Place and minutes"
+   },
+   "stringLiterals": {
+    "columns": "Place, Distance"
+   }
+  },
+  {
+   "id": "plans",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Territory plans"
+   },
+   "frame": [
+    {
+     "name": "Plan",
+     "cells": [
+      "Baseline",
+      "Plan B",
+      "Pooled",
+      "Ten crews",
+      "Weekend shift",
+      "Split Houston"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Drive hours",
+     "cells": [
+      2344,
+      2234,
+      3500,
+      2290,
+      2410,
+      2180
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Mean wait (days)",
+     "cells": [
+      1.6,
+      1.6,
+      0.4,
+      1.9,
+      1.1,
+      1.7
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Overtime hours",
+     "cells": [
+      120,
+      110,
+      40,
+      160,
+      300,
+      130
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "front",
+   "type": "ParetoNode",
+   "init": {
+    "label": "Plans worth weighing"
+   },
+   "stringLiterals": {
+    "lower": "Drive hours, Mean wait (days), Overtime hours",
+    "higher": ""
+   }
+  },
+  {
+   "id": "front_chart",
+   "type": "ChartNode",
+   "init": {
+    "label": "Drive hours against wait",
+    "op": "scatter"
+   },
+   "stringLiterals": {
+    "options": "x=Drive hours; y=Mean wait (days); annotate=Plan"
+   }
+  },
+  {
+   "id": "grp_mix",
+   "type": "GroupNode",
+   "init": {
+    "label": "Product mix: what to roast this week",
+    "members": [
+     "blends",
+     "stock",
+     "mix",
+     "mix_units",
+     "mix_chart",
+     "mix_room"
+    ],
+    "color": "teal"
+   }
+  },
+  {
+   "id": "grp_portfolio",
+   "type": "GroupNode",
+   "init": {
+    "label": "Project portfolio: the best set within budget",
+    "members": [
+     "projects",
+     "budget",
+     "portfolio",
+     "portfolio_pick"
+    ],
+    "color": "blue"
+   }
+  },
+  {
+   "id": "grp_crews",
+   "type": "GroupNode",
+   "init": {
+    "label": "Crew assignment: who takes which job",
+    "members": [
+     "hours",
+     "crews"
+    ],
+    "color": "amber"
+   }
+  },
+  {
+   "id": "grp_route",
+   "type": "GroupNode",
+   "init": {
+    "label": "Shortest route: the road network",
+    "members": [
+     "roads",
+     "route",
+     "reach",
+     "reach_cols",
+     "reach_chart"
+    ],
+    "color": "green"
+   }
+  },
+  {
+   "id": "grp_front",
+   "type": "GroupNode",
+   "init": {
+    "label": "Comparing plans: the real tradeoffs",
+    "members": [
+     "plans",
+     "front",
+     "front_chart"
+    ],
+    "color": "violet"
+   }
+  }
+ ],
+ "cables": [
+  "blends.frame -> mix.options",
+  "stock.frame -> mix.limits",
+  "mix.plan -> mix_units.frame",
+  "mix_units.frame -> mix_chart.values",
+  "mix.limits -> mix_room.frame",
+  "projects.frame -> portfolio.options",
+  "budget.frame -> portfolio.limits",
+  "portfolio.plan -> portfolio_pick.frame",
+  "hours.frame -> crews.costs",
+  "roads.frame -> route.links",
+  "roads.frame -> reach.links",
+  "reach.path -> reach_cols.frame",
+  "reach_cols.frame -> reach_chart.values",
+  "plans.frame -> front.options",
+  "front.all -> front_chart.values"
+ ]
+}
