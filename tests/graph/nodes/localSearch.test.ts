@@ -25,6 +25,25 @@ const DIST = "IF(ISBLANK(last_X), 0, ABS(X - last_X) + ABS(Y - last_Y))";
 const dist = lambda("X, Y, last_X, last_Y", DIST);
 
 describe("Local Search", () => {
+  it("orders jobs by one-way changeovers, matching a chosen column and reading a chosen number", () => {
+    // A paint line from clean white: going darker takes 10 minutes a shade, lighter 45. Light to dark is best: 30.
+    const shades = ["White", "Yellow", "Red", "Black"];
+    const changeovers = frame(shades.flatMap((a, i) => shades.filter((b) => b !== a).map((b, _j) => {
+      const k = shades.indexOf(b);
+      return { From: a, To: b, Cost: 99, Minutes: k > i ? 10 * (k - i) : 45 * (i - k) };
+    })));
+    const jobs = frame([{ Job: "J1", Color: "Black" }, { Job: "J2", Color: "White" }, { Job: "J3", Color: "Red" }, { Job: "J4", Color: "Yellow" }]);
+    const line = frame([{ Job: "Start", Color: "White" }]);
+    const legs = { legsDirection: "one" as const, legsMatch: "Color", legsOf: "Minutes" };
+    const out = run(new LocalSearchNode({ ...legs, stuck: "look" }), { items: jobs, start: line, legs: changeovers });
+    expect(rows(out.plan).map((r) => r.Color)).toEqual(["White", "Yellow", "Red", "Black"]);
+    expect(out.total).toBe(30);
+    // Read both ways, each pair costs its cheaper direction, so the plan no longer has to run light to dark.
+    expect(run(new LocalSearchNode({ ...legs, legsDirection: "both" }), { items: jobs, start: line, legs: changeovers }).total).toBe(30);
+    // The settings save.
+    expect(extractInit(new LocalSearchNode(legs))).toMatchObject(legs);
+  });
+
   it("prices each leg from a table of drive times between named places, no formula", () => {
     // A bakery van: four stops and the minutes between each pair, as a person has them. Nearest next, then improved
     // and back to the bakery: 43 minutes, the best of all 24 orders.
@@ -48,7 +67,7 @@ describe("Local Search", () => {
     expect(chain.total).toBe(62);
     // A place no road reaches, or one Legs never names, says which.
     const cut = frame([{ From: "Bakery", To: "School", Minutes: 10 }, { From: "Hotel", To: "Hospital", Minutes: 6 }, { From: "Market", To: "Hospital", Minutes: 7 }]);
-    expect(JSON.stringify(q.data({ items: [stops], start: [bakery], legs: [cut] }).total)).toMatch(/no way between/);
+    expect(JSON.stringify(q.data({ items: [stops], start: [bakery], legs: [cut] }).total)).toMatch(/no way from/);
     const short = frame([{ From: "Bakery", To: "School", Minutes: 10 }]);
     expect(JSON.stringify(q.data({ items: [stops], start: [bakery], legs: [short] }).total)).toMatch(/never names/);
   });

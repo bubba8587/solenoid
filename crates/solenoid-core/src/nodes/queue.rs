@@ -228,10 +228,11 @@ fn take(
     crew.last = Last::Item(it.row);
 }
 
-/// A table of legs between named places (`frame-verbs.md` § Greedy Queue, Legs): From, To and its first other number
-/// column (minutes, km), each road either way round. Two places with no road between them are as far apart as the
-/// fastest way through the others, so a road network serves as well as a table of every pair. An item's place is its
-/// first text column; a Start row's, the Start column of that name, else Start's first text column.
+/// A table of legs between named places or things (`frame-verbs.md` § Greedy Queue, Legs): From, To and a number column
+/// (minutes, km, a changeover's minutes), each road either way round or only From to To. Two places with no road
+/// between them are as far apart as the fastest way through the others, so a road network serves as well as a table of
+/// every pair. An item's place is the column Match places by names, else its first text column; a Start row's, the Start
+/// column of that name, else Start's first text column.
 pub(super) struct Legs {
     /// Each place's index, by its key.
     at: HashMap<String, usize>,
@@ -250,15 +251,27 @@ pub(super) fn legs_in(c: &Call, items: &Frame, start: Option<&Frame>) -> Result<
     let (Some(from), Some(to)) = (position(&t, "From"), position(&t, "To")) else {
         return Err(err(ErrorCode::Ref, "Legs needs a From column and a To column"));
     };
-    let Some(v) =
-        (0..t.columns.len()).find(|&j| j != from && j != to && t.columns[j].ty == crate::frame::FrameColType::Number)
-    else {
-        return Err(err(ErrorCode::Ref, "Legs needs a number column: the time or distance of each leg"));
+    // The number a leg adds: the column Leg number names, else the first number column besides From and To.
+    let of = trim_space(c.field_str("legsOf", "")).to_string();
+    let v = if of.is_empty() {
+        let first = (0..t.columns.len())
+            .find(|&j| j != from && j != to && t.columns[j].ty == crate::frame::FrameColType::Number);
+        first.ok_or_else(|| err(ErrorCode::Ref, "Legs needs a number column: the time or distance of each leg"))?
+    } else {
+        position(&t, &of).ok_or_else(|| err(ErrorCode::Ref, format!("Legs has no column \"{of}\"")))?
     };
+    // The items' place: the column Match places by names, else their first text column.
     let text_col = |f: &Frame| f.columns.iter().position(|c| c.ty == crate::frame::FrameColType::String);
-    let Some(place) = text_col(items) else {
-        return Err(err(ErrorCode::Ref, "Legs finds items by name: the items need a text column naming each place"));
+    let matched = trim_space(c.field_str("legsMatch", "")).to_string();
+    let place = if matched.is_empty() {
+        text_col(items).ok_or_else(|| {
+            err(ErrorCode::Ref, "Legs finds items by name: the items need a text column naming each place")
+        })?
+    } else {
+        position(items, &matched)
+            .ok_or_else(|| err(ErrorCode::Ref, format!("The items have no column \"{matched}\"")))?
     };
+    let one_way = c.field_str("legsDirection", "both") == "one";
     let start_place = start.and_then(|s| position(s, &items.columns[place].name).or_else(|| text_col(s)));
     let mut at: HashMap<String, usize> = HashMap::new();
     let mut roads = Vec::new();
@@ -287,7 +300,9 @@ pub(super) fn legs_in(c: &Call, items: &Frame, start: Option<&Frame>) -> Result<
     }
     for (a, b, w) in roads {
         far[a][b] = far[a][b].min(w);
-        far[b][a] = far[b][a].min(w);
+        if !one_way {
+            far[b][a] = far[b][a].min(w);
+        }
     }
     for k in 0..n {
         for i in 0..n {
@@ -307,7 +322,7 @@ pub(super) fn legs_in(c: &Call, items: &Frame, start: Option<&Frame>) -> Result<
 }
 
 impl Legs {
-    /// The leg between two places, either way round; a place to itself is 0.
+    /// The leg from one place to another, either way round unless the roads run one way; a place to itself is 0.
     fn between(&self, a: &str, b: &str) -> Result<f64, V> {
         if key(a) == key(b) {
             return Ok(0.0);
@@ -320,7 +335,7 @@ impl Legs {
         if d.is_finite() {
             Ok(d)
         } else {
-            Err(err(ErrorCode::Value, format!("Legs has no way between {a} and {b}")))
+            Err(err(ErrorCode::Value, format!("Legs has no way from {a} to {b}")))
         }
     }
 

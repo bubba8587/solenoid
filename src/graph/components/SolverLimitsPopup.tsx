@@ -8,14 +8,8 @@ import { notifyGraphChanged, processGraph } from "../process";
 import { appThemeStore } from "../appTheme";
 import { SOLVER_MEASURE_OPTIONS, SOLVER_SIGN_OPTIONS, type SolverLimit, type SolverMeasure, type SolverNode, type SolverSign } from "../nodes/optimize";
 import { isFrameValue } from "../frame";
-import { PopupShell, popupCardVars } from "./PopupShell";
-import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import { useFeedShape } from "./ColumnPickerField";
-import { CloseIcon } from "./CloseIcon";
-import "./PivotEditorPopup.css";
-import "./SolverLimitsPopup.css";
-
-const stop = (e: { stopPropagation(): void }) => e.stopPropagation();
+import { RulesPopup, RulesSection, RulesItem, RulesLine, RulesWord, RulesColumn, RulesChoice, RulesNumber, RulesText } from "./RulesPopup";
 
 const measureOf = (l: SolverLimit): SolverMeasure => l.measure ?? "total";
 /** A share is a fraction, shown and typed as a percent. */
@@ -45,45 +39,6 @@ export function limitSummary(l: SolverLimit): string {
   const by = l.by?.trim() && m !== "each" ? ` for each ${l.by.trim()}` : "";
   const where = l.where?.trim() ? ` where ${l.where.trim()} is ${l.is?.trim() || "blank"}` : "";
   return `${head}${by} ${limitRule(l)}${where}`;
-}
-
-/** The number field: commits on Enter or blur; a blank commits no number, anything else that isn't one is refused. */
-function LimitNumber({ value, percent, onChange }: { value: number | null; percent: boolean; onChange: (n: number | null) => void }) {
-  const field = useDraftCommit<number | null>(
-    value,
-    (v) => (v == null ? "" : percent ? pct(v) : String(v)),
-    (t) => {
-      const s = t.replace(/,/g, "").trim();
-      if (s === "") return null;
-      const n = Number(s.replace(/%$/, ""));
-      if (!Number.isFinite(n)) return INVALID_DRAFT;
-      return percent ? n / 100 : n;
-    },
-    onChange,
-  );
-  return (
-    <input className="solver-limits__num" value={field.draft} inputMode="decimal" placeholder={percent ? "percent" : "number"}
-      onChange={(e) => field.setDraft(e.target.value)} onBlur={field.onBlur} onKeyDown={field.onKeyDown} onPointerDown={stop} />
-  );
-}
-
-function LimitText({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
-  const field = useDraftCommit(value, (t) => t, (t) => t, onChange);
-  return (
-    <input className="solver-limits__text" value={field.draft} placeholder={placeholder}
-      onChange={(e) => field.setDraft(e.target.value)} onBlur={field.onBlur} onKeyDown={field.onKeyDown} onPointerDown={stop} />
-  );
-}
-
-function ColumnSelect({ value, columns, blank, prefix = "", onChange }: { value: string; columns: string[]; blank: string; prefix?: string; onChange: (v: string) => void }) {
-  // A saved name the input lacks right now stays listed, so the select never shows another in its place.
-  const names = value && !columns.includes(value) ? [...columns, value] : columns;
-  return (
-    <select className="pivot-ctl" value={value} onChange={(e) => onChange(e.target.value)} onPointerDown={stop}>
-      <option value="">{blank}</option>
-      {names.map((c) => <option key={c} value={c}>{prefix}{c}</option>)}
-    </select>
-  );
 }
 
 /** The Options columns, name and type: the wired feed's, else the last plan's without its Amount. */
@@ -129,63 +84,50 @@ export function SolverLimitsPopup() {
   const close = () => solverLimits.close();
 
   return (
-    <PopupShell title={state.title} onClose={close} cardClassName="solver-limits" resizable={{ min: { w: 380, h: 220 } }} cardStyle={popupCardVars(state)}>
-      <div className="solver-limits__body">
-        {list.length === 0 && <div className="solver-limits__empty">No limits yet</div>}
+    <RulesPopup title={state.title} accent={state.accent} onClose={close}>
+      <RulesSection title="The plan must keep" action={{ label: "+ Add limit", onClick: add }}>
+        {list.length === 0 && <div className="sol-rules__empty">No limits: every option may take any amount within its Min and Max.</div>}
         {list.map((l, i) => {
           const m = measureOf(l);
           const grouped = l.by !== undefined && m !== "each";
           // A group's own number can come from a column; so can each option's.
           const perGroup = grouped || m === "each";
+          const more = [
+            ...(!grouped && m !== "each" ? [{ label: "+ For each", onClick: () => patch(i, { by: "" }) }] : []),
+            ...(l.where === undefined ? [{ label: "+ Count only where", onClick: () => patch(i, { where: "", is: "" }) }] : []),
+          ];
           return (
-            <div key={i} className="solver-limits__limit">
-              <div className="solver-limits__line">
-                <select className="pivot-ctl" value={m} onChange={(e) => pickMeasure(i, e.target.value as SolverMeasure)} onPointerDown={stop}>
-                  {SOLVER_MEASURE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+            <RulesItem key={i} index={i + 1} onRemove={() => remove(i)} removeLabel="Remove limit" more={more}>
+              <RulesLine>
+                <RulesChoice label="Measure" value={m} options={SOLVER_MEASURE_OPTIONS} onChange={(v) => pickMeasure(i, v)} />
                 {m !== "used" && (
-                  <ColumnSelect value={l.of} columns={columns} blank={m === "average" ? "choose a column" : "Amount"} onChange={(v) => patch(i, { of: v })} />
+                  <RulesColumn label="Column" value={l.of} columns={columns} blank={m === "average" ? "choose a column" : "Amount"} onChange={(v) => patch(i, { of: v })} />
                 )}
-                <span className="solver-limits__word">must be</span>
-                <select className="pivot-ctl" value={l.sign} onChange={(e) => patch(i, { sign: e.target.value as SolverSign })} onPointerDown={stop}>
-                  {SOLVER_SIGN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-                {!l.limitColumn && <LimitNumber value={l.limit} percent={m === "share"} onChange={(n) => patch(i, { limit: n })} />}
+                <RulesWord>must be</RulesWord>
+                <RulesChoice label="Rule" value={l.sign} options={SOLVER_SIGN_OPTIONS} onChange={(v: SolverSign) => patch(i, { sign: v })} />
+                {!l.limitColumn && <RulesNumber label="Limit" value={l.limit} percent={m === "share"} onChange={(n) => patch(i, { limit: n })} />}
                 {perGroup && (
-                  <ColumnSelect value={l.limitColumn ?? ""} columns={columns} blank={l.limitColumn ? "a number" : "or its…"} prefix="its " onChange={(v) => patch(i, { limitColumn: v || undefined })} />
+                  <RulesColumn label="Limit from a column" value={l.limitColumn ?? ""} columns={columns} blank={l.limitColumn ? "a number" : "or its…"} prefix="its " onChange={(v) => patch(i, { limitColumn: v || undefined })} />
                 )}
-                <button className="pivot-chip__x solver-limits__x" onClick={() => remove(i)} aria-label="Remove limit" title="Remove limit"><CloseIcon size={10} /></button>
-              </div>
+              </RulesLine>
               {grouped && (
-                <div className="solver-limits__line solver-limits__line--where">
-                  <span className="solver-limits__word">for each</span>
-                  <ColumnSelect value={l.by ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { by: v })} />
-                  <button className="pivot-chip__x solver-limits__x" onClick={() => patch(i, { by: undefined, limitColumn: undefined })} aria-label="Once for all options" title="Once for all options"><CloseIcon size={10} /></button>
-                </div>
+                <RulesLine onRemove={() => patch(i, { by: undefined, limitColumn: undefined })} removeLabel="Once for all options">
+                  <RulesWord>for each</RulesWord>
+                  <RulesColumn label="For each" value={l.by ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { by: v })} />
+                </RulesLine>
               )}
               {l.where !== undefined && (
-                <div className="solver-limits__line solver-limits__line--where">
-                  <span className="solver-limits__word">counting only where</span>
-                  <ColumnSelect value={l.where ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { where: v })} />
-                  <span className="solver-limits__word">is</span>
-                  <LimitText value={l.is ?? ""} placeholder="value" onChange={(v) => patch(i, { is: v })} />
-                  <button className="pivot-chip__x solver-limits__x" onClick={() => patch(i, { where: undefined, is: undefined })} aria-label="Count every option" title="Count every option"><CloseIcon size={10} /></button>
-                </div>
+                <RulesLine onRemove={() => patch(i, { where: undefined, is: undefined })} removeLabel="Count every option">
+                  <RulesWord>counting only where</RulesWord>
+                  <RulesColumn label="Where" value={l.where ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { where: v })} />
+                  <RulesWord>is</RulesWord>
+                  <RulesText label="Is" value={l.is ?? ""} placeholder="value" onChange={(v) => patch(i, { is: v })} />
+                </RulesLine>
               )}
-              {(!grouped && m !== "each") || l.where === undefined ? (
-                <div className="solver-limits__links">
-                  {!grouped && m !== "each" && <button className="solver-limits__link" onClick={() => patch(i, { by: "" })}>For each…</button>}
-                  {l.where === undefined && <button className="solver-limits__link" onClick={() => patch(i, { where: "", is: "" })}>Count only where…</button>}
-                </div>
-              ) : null}
-            </div>
+            </RulesItem>
           );
         })}
-      </div>
-      <div className="pivot-editor__footer solver-limits__footer">
-        <button className="solver-limits__add" onClick={add}>Add limit</button>
-        <button className="pivot-editor__done" onClick={close}>Done</button>
-      </div>
-    </PopupShell>
+      </RulesSection>
+    </RulesPopup>
   );
 }

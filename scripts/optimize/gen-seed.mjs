@@ -108,6 +108,22 @@ keep("feed_kg", "Kg in a tonne", "Ingredient, Amount");
 keep("feed_check", "Blend check", "Limit, Bound, Used");
 wire("feeds.frame -> feed.options", "feed.plan -> feed_kg.frame", "feed.limits -> feed_check.frame");
 
+// ── 2e. A paint line: changing to a darker color is quick, to a lighter one a full clean. Legs read one way, matched by
+// Color, so the jobs run light to dark. ──
+table("paint_jobs", "Paint jobs", {
+  Job: ["Fence posts", "Mailboxes", "Gates", "Railings", "Planters", "Benches"],
+  Color: ["Black", "White", "Red", "Yellow", "White", "Red"],
+});
+const shades = ["White", "Yellow", "Red", "Black"];
+const pairs = shades.flatMap((a, i) => shades.filter((b) => b !== a).map((b) => [a, b, shades.indexOf(b) > i ? 10 * (shades.indexOf(b) - i) : 45 * (i - shades.indexOf(b))]));
+table("changeovers", "Changeovers (min)", { From: pairs.map((p) => p[0]), To: pairs.map((p) => p[1]), "Minutes (min)": pairs.map((p) => p[2]) });
+table("paint_start", "Line starts", { Job: ["Clean line"], Color: ["White"] });
+const paintLegs = { legsDirection: "one", legsMatch: "Color" };
+add("paint_first", "GreedyQueueNode", { label: "Quickest change next", orderBy: "cost", ...paintLegs }, { stringLiterals: {} });
+add("paint", "LocalSearchNode", { label: "Paint order", stuck: "look", ...paintLegs }, { stringLiterals: {} });
+wire("paint_jobs.frame -> paint_first.items", "paint_start.frame -> paint_first.start", "changeovers.frame -> paint_first.legs",
+  "paint_first.picks -> paint.items", "paint_start.frame -> paint.start", "changeovers.frame -> paint.legs");
+
 // ── 3. Crew assignment: who takes which job, hours each would need (blank: not certified) ──
 table("hours", "Crew hours", {
   Crew: ["North", "South", "East", "West", "Central"],
@@ -168,6 +184,7 @@ const groups = [
   ["grp_ads", "Ad budget", ["channels", "ad_reach", "ads", "ads_spend", "ads_chart"], "pink"],
   ["grp_ship", "Shipping plan", ["lanes", "ship", "ship_grid"], "gold"],
   ["grp_feed", "Feed blend", ["feeds", "feed", "feed_kg", "feed_check"], "lime"],
+  ["grp_paint", "Paint line", ["paint_jobs", "changeovers", "paint_start", "paint_first", "paint"], "purple"],
   ["grp_crews", "Crew assignment", ["hours", "crews"], "amber"],
   ["grp_route", "Road route", ["roads", "route", "reach", "reach_cols", "reach_chart", "visits", "home", "tour_first", "tour"], "green"],
   ["grp_front", "Plan trade-offs", ["plans", "front", "front_chart"], "violet"],

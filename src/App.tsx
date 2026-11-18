@@ -24,6 +24,7 @@ import { ElementPicker } from "./graph/components/ElementPicker";
 import { FilePicker } from "./graph/components/FilePicker";
 import { PivotEditorPopup } from "./graph/components/PivotEditorPopup";
 import { SolverLimitsPopup } from "./graph/components/SolverLimitsPopup";
+import { QueueRulesPopup } from "./graph/components/QueueRulesPopup";
 import { CategorizePopup } from "./graph/components/CategorizePopup";
 import { ShortcutsOverlay } from "./graph/ShortcutsOverlay";
 import { Settings } from "./graph/Settings";
@@ -144,6 +145,7 @@ function MainApp() {
       <FilePicker />
       <PivotEditorPopup />
       <SolverLimitsPopup />
+      <QueueRulesPopup />
       <CategorizePopup />
       <ShortcutsOverlay />
       <HelpDialogs />

@@ -15,6 +15,7 @@ import { ElementPicker } from "../components/ElementPicker";
 import { FilePicker } from "../components/FilePicker";
 import { PivotEditorPopup } from "../components/PivotEditorPopup";
 import { SolverLimitsPopup } from "../components/SolverLimitsPopup";
+import { QueueRulesPopup } from "../components/QueueRulesPopup";
 import "./NodeShowcase.css";
 
 
@@ -170,6 +171,7 @@ function LoadedShowcase({ initialType }: { initialType: string }) {
       <FilePicker />
       <PivotEditorPopup />
       <SolverLimitsPopup />
+      <QueueRulesPopup />
     </div>
   );
 }

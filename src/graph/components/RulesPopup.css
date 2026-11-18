@@ -1,0 +1,220 @@
+/* The rules popups (Solver's Limits, Greedy Queue's and Local Search's rules): a card's settings asked as questions.
+   Chrome is PopupShell's (the card's accent header); the body is Settings' grammar (a section per question under a
+   small caption, hairline between sections, a row a label with its help on the left and its control on the right);
+   the footer is the Pivot editor's. Selected states take the card's accent ([[DESIGN]] Nearest-Accent Rule). */
+.sol-rules {
+  width: 540px;
+  max-width: 94vw;
+  max-height: 84vh;
+  max-height: 84dvh;
+  display: flex;
+  flex-direction: column;
+}
+.sol-rules__body {
+  padding: 2px 16px;
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sol-rules__section {
+  padding: 12px 0 10px;
+  border-bottom: 1px solid var(--panel-border);
+}
+.sol-rules__section:last-child { border-bottom: none; }
+.sol-rules__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  min-height: 22px;
+}
+.sol-rules__title {
+  flex: 1 1 auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+/* A section's own action ("Add limit"), where the Pivot editor puts "add field". */
+.sol-rules__action {
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  border: 1px solid var(--btn-border, var(--border));
+  background: var(--btn-bg, var(--surface));
+  color: var(--text);
+  cursor: pointer;
+}
+.sol-rules__action:hover { border-color: var(--border-strong); }
+.sol-rules__action:focus-visible { outline: 1px solid var(--node-accent, var(--accent)); outline-offset: 1px; }
+
+.sol-rules__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+}
+.sol-rules__row--top { align-items: flex-start; }
+.sol-rules__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.sol-rules__label { font-size: 13px; color: var(--text); }
+.sol-rules__help { font-size: 11.5px; line-height: 1.4; color: var(--text-muted); }
+/* A row the rest of the rules leave without effect stays, dimmed, its help saying why. */
+.sol-rules__row--idle .sol-rules__label { color: var(--text-muted); }
+.sol-rules__control { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* Settings' segmented control, the selected segment in the card's accent. */
+.sol-rules__seg {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--btn-border, var(--border));
+  border-radius: 6px;
+  overflow: hidden;
+}
+.sol-rules__segbtn {
+  height: 26px;
+  padding: 0 11px;
+  background: var(--btn-bg, var(--surface-sunken));
+  border: none;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sol-rules__segbtn + .sol-rules__segbtn { border-left: 1px solid var(--btn-border, var(--border)); }
+.sol-rules__segbtn:hover:not(.sol-rules__segbtn--on) { color: var(--text); }
+.sol-rules__segbtn--on {
+  background: var(--node-accent, var(--accent));
+  color: var(--node-accent-ink, var(--accent-ink));
+}
+
+/* Fields: recessed boxes, the card's accent on focus. */
+.sol-rules__select,
+.sol-rules__input {
+  height: 28px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background-color: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  outline: none;
+}
+.sol-rules__select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding: 0 24px 0 8px;
+  max-width: 180px;
+  field-sizing: content;
+  min-width: 64px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 9px 5px;
+  cursor: pointer;
+}
+.sol-rules__input { padding: 0 8px; width: 96px; }
+.sol-rules__input--num { font-variant-numeric: tabular-nums; text-align: right; }
+.sol-rules__select:hover,
+.sol-rules__input:hover { border-color: var(--border-strong); }
+.sol-rules__select:focus-visible,
+.sol-rules__input:focus { border-color: var(--node-accent, var(--accent)); }
+
+/* A list of items (limits): numbered as the card's step list numbers them, each a sentence of fields. */
+.sol-rules__item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  column-gap: 8px;
+  row-gap: 6px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border-subtle, var(--border));
+}
+.sol-rules__head + .sol-rules__item { border-top: none; }
+.sol-rules__num {
+  grid-row: 1;
+  align-self: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.sol-rules__line {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sol-rules__word { font-size: 12.5px; color: var(--text-dim); }
+.sol-rules__remove {
+  grid-column: 3;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.sol-rules__remove:hover { color: var(--text); background: var(--btn-hover, var(--surface-raised)); }
+.sol-rules__more { grid-column: 2; display: flex; gap: 14px; }
+.sol-rules__link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.sol-rules__link:hover,
+.sol-rules__link:focus-visible { color: var(--node-accent, var(--accent)); outline: none; }
+.sol-rules__empty { font-size: 12px; color: var(--text-muted); padding: 6px 0 8px; }
+
+.sol-rules__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+}
+.sol-rules__note { margin-right: auto; font-size: 11.5px; color: var(--text-muted); }
+.sol-rules__done {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 14px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--node-accent, var(--accent));
+  color: var(--node-accent-ink, var(--accent-ink, #fff));
+  cursor: pointer;
+}
+.sol-rules__done:hover { filter: brightness(1.06); }
+
+@media (max-width: 640px) {
+  .sol-rules__row { flex-wrap: wrap; gap: 8px; }
+}
+@media (pointer: coarse) {
+  .sol-rules__segbtn { height: 34px; font-size: 13px; }
+  .sol-rules__select, .sol-rules__input { height: 34px; font-size: 13px; }
+  .sol-rules__remove { width: 32px; height: 32px; }
+  .sol-rules__done { font-size: 13px; padding: 9px 16px; }
+}

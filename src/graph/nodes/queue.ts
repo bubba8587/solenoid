@@ -51,6 +51,20 @@ export const QUEUE_TURNS_OPTIONS: { value: QueueTurns; label: string }[] = [
 ];
 export const QUEUE_TURNS_ASK = "Who picks next";
 
+/** How a Legs table's roads count: either way round, or only From to To (a one-way street, a changeover). */
+export type LegsDirection = "both" | "one";
+export const LEGS_DIRECTION_OPTIONS: { value: LegsDirection; label: string }[] = [
+  { value: "both", label: "Both ways" },
+  { value: "one", label: "From → To only" },
+];
+
+type LegsInit = { legsDirection?: LegsDirection; legsMatch?: string; legsOf?: string };
+const initLegs = (n: { legsDirection: LegsDirection; legsMatch: string; legsOf: string }, init?: LegsInit) => {
+  if (init?.legsDirection === "one") n.legsDirection = "one";
+  if (typeof init?.legsMatch === "string") n.legsMatch = init.legsMatch;
+  if (typeof init?.legsOf === "string") n.legsOf = init.legsOf;
+};
+
 export class GreedyQueueNode extends GraphNode {
   /** A Budget arrives with its unit, which the costs must share ([[C25]] firstClassUnits). */
   unitAware = true;
@@ -68,7 +82,7 @@ export class GreedyQueueNode extends GraphNode {
     orderColumn: "With no column and no Order formula, items go in the order they're listed.",
     order: "A LAMBDA, lowest first. It sets the order when no column does, and breaks ties when one does.",
     cost: "A LAMBDA added to each item's Cost, such as the drive from the last item.",
-    legs: "A table of legs between named places (From, To and a number such as Minutes), read either way round. Each item's leg from the one before, matched by the items' first text column, is added to its cost.",
+    legs: "A table of roads or changeovers between named places or things (From, To and a number such as Minutes). Each item's leg from the one before is added to its cost.",
     allowed: "A LAMBDA that gives TRUE when this group may take this item now.",
     picks: "Every pick in order, with its step, wait and cost.",
   };
@@ -87,6 +101,11 @@ export class GreedyQueueNode extends GraphNode {
   literals: Record<string, number> = {};
   orderDir: QueueOrderDir = "asc";
   orderBy: QueueOrderBy = "column";
+  legsDirection: LegsDirection = "both";
+  /** The items' column naming each place for Legs; empty, the first text column. */
+  legsMatch = "";
+  /** The Legs column a leg adds; empty, its first number column. */
+  legsOf = "";
   stringLiterals: Record<string, string> = { group: "", step: "", orderColumn: "", costColumn: "" };
   cachedResult: FrameValue | SolError | null = null;
   cachedLeft: FrameValue | SolError | null = null;
@@ -95,9 +114,10 @@ export class GreedyQueueNode extends GraphNode {
   cachedOver: number | null = null;
   width = 280; height = 300;
 
-  constructor(init?: { label?: string; stepStart?: QueueStepStart; mode?: QueueFit; turns?: QueueTurns; orderDir?: QueueOrderDir; orderBy?: QueueOrderBy }) {
+  constructor(init?: { label?: string; stepStart?: QueueStepStart; mode?: QueueFit; turns?: QueueTurns; orderDir?: QueueOrderDir; orderBy?: QueueOrderBy } & LegsInit) {
     super("GreedyQueue");
     this.label = init?.label ?? "Greedy Queue";
+    initLegs(this, init);
     if (init?.orderDir === "desc") this.orderDir = "desc";
     if (init?.orderBy === "cost") this.orderBy = "cost";
     if (init?.stepStart === "start") this.stepStart = "start";
@@ -190,7 +210,7 @@ export class LocalSearchNode extends GraphNode {
     start: "One row per group. Formulas read its columns as group_ columns, and only groups listed here can take items.",
     group: "Empty: one group, reordered only.",
     cost: "A LAMBDA added to each item's Cost. It can read before, the cost so far, and position.",
-    legs: "A table of legs between named places (From, To and a number such as Minutes), read either way round. Each item's leg from the one before, matched by the items' first text column, is added to its cost.",
+    legs: "A table of roads or changeovers between named places or things (From, To and a number such as Minutes). Each item's leg from the one before is added to its cost.",
     penalty: "A LAMBDA added to the total, such as a charge for lateness. It can read at, the cost through this item.",
     allowed: "A LAMBDA that gives TRUE when this item may go here. A plan with fewer refusals always wins.",
     history: "One row per change made.",
@@ -206,6 +226,9 @@ export class LocalSearchNode extends GraphNode {
   reach: SearchReach = "across";
   ends: SearchEnds = "open";
   stuck: SearchStuck = "stop";
+  legsDirection: LegsDirection = "both";
+  legsMatch = "";
+  legsOf = "";
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { group: "", costColumn: "" };
   cachedResult: FrameValue | SolError | null = null;
@@ -213,9 +236,10 @@ export class LocalSearchNode extends GraphNode {
   cachedHistory: FrameValue | SolError | null = null;
   width = 280; height = 280;
 
-  constructor(init?: { label?: string; reach?: SearchReach; ends?: SearchEnds; stuck?: SearchStuck }) {
+  constructor(init?: { label?: string; reach?: SearchReach; ends?: SearchEnds; stuck?: SearchStuck } & LegsInit) {
     super("LocalSearch");
     this.label = init?.label ?? "Local Search";
+    initLegs(this, init);
     if (init?.reach === "within") this.reach = "within";
     if (init?.ends === "return") this.ends = "return";
     if (init?.stuck === "look") this.stuck = "look";

@@ -51,8 +51,8 @@ import type {
   HeaderOp,
   BlankRowMode,
 } from "../nodeClasses";
-import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS, SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS,
-  SOLVER_GOAL_OPTIONS, ASSIGN_GOAL_OPTIONS, QUEUE_ORDER_OPTIONS, PATH_DIRECTION_OPTIONS, QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK, SEARCH_STUCK_OPTIONS } from "../nodeClasses";
+import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META,
+  SOLVER_GOAL_OPTIONS, ASSIGN_GOAL_OPTIONS, PATH_DIRECTION_OPTIONS } from "../nodeClasses";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType, LocalSearchNode as LocalSearchNodeType, SolverNode as SolverNodeType,
   AssignmentNode as AssignmentNodeType, ShortestPathNode as ShortestPathNodeType, ParetoNode as ParetoNodeType, StaffingNode as StaffingNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
@@ -85,6 +85,8 @@ import { reconcileTypesAfterEdit, retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
 import { solverLimits } from "../solverLimitsStore";
+import { queueRules } from "../queueRulesStore";
+import { queueRuleSteps } from "./QueueRulesPopup";
 import { limitSummary, limitSubject, limitRule } from "./SolverLimitsPopup";
 import { InlineInputs, InlineTextField, useConnectedInputs } from "./inlineInput";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -98,7 +100,7 @@ import { ResultDisplay } from "./ResultDisplay";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ArrayChip } from "./ArrayChip";
 import { readChipPopupStyle } from "./chipStyle";
-import { NodeShell, ValueDisplay, OpSelect, ArgSelect, AskSelect, useNodeField, MarkdownDiv, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, ValueDisplay, OpSelect, ArgSelect, useNodeField, MarkdownDiv, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
 import { CardSection, useRowsInUse } from "./CardSection";
@@ -1313,63 +1315,11 @@ const WINDOW_FN_OPTIONS = (Object.keys(WINDOW_FN_META) as WindowFn[]).map((f) =>
 export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeType>) {
   const left = previewed(() => data.cachedLeft);
   const count = left && isFrameValue(left) ? frameRowCount(left) : null;
-  const [stepStart, setStepStart] = useNodeField(data, "stepStart");
-  const [fit, setFit] = useNodeField(data, "mode");
-  const [turns, setTurns] = useNodeField(data, "turns");
-  const [dir, setDir] = useNodeField(data, "orderDir");
-  const [orderBy, setOrderBy] = useNodeField(data, "orderBy");
-  const connected = useConnectedInputs(data.id);
-  // One toggle: the Order by column either way, or Cheapest first, its own cost, where the column steps aside unless wired.
-  const byColumn = orderBy !== "cost" || connected.has("orderColumn");
-  const order = orderBy === "cost" ? "cost" : dir;
-  const setOrder = (v: string) => {
-    if (v === "cost") { setOrderBy("cost"); return; }
-    setOrderBy("column");
-    setDir(v as typeof dir);
-  };
-  // Each pick says something only where it can change the run: the step start with a Start wired, the fit with a budget.
-  const hasStart = connected.has("start") || stepStart !== "continue";
-  const hasBudget = connected.has("budget") || data.literals.budget != null || fit !== "stop";
-  // A simple run (a route, a sort with a cost) needs only the first three rows; each section opens once it is used.
-  const groupsUsed = useRowsInUse(data, QUEUE_GROUP_KEYS) || stepStart !== "continue" || turns !== "rotate";
-  const stepsUsed = useRowsInUse(data, QUEUE_STEP_KEYS);
-  const budgetUsed = useRowsInUse(data, QUEUE_BUDGET_KEYS) || fit !== "stop";
-  // The card reads as the questions a plan answers, top to bottom: which item next, what it costs, who takes it, when,
-  // and how much fits a step. A section's heading asks the question, so its rows name only what they hold, and a
-  // formula's row says what it adds: the whole order where nothing else decides, a tie-break where something does.
-  const decided = orderBy === "cost" || connected.has("orderColumn") || !!data.stringLiterals.orderColumn;
-  const label = (key: string): string =>
-    ({
-      orderColumn: "Of column",
-      order: decided ? "Ties by" : "By formula",
-      costColumn: "Column",
-      cost: "Formula",
-      budget: "Budget",
-      perStep: "Most picks",
-    } as Record<string, string>)[key] ?? data.inputs[key]?.label ?? key;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["items"]} fullWiredKeys={QUEUE_WHOLE} />
-      <CardSection label="Next item">
-        <SegToggle value={order} options={QUEUE_ORDER_OPTIONS} onChange={setOrder} />
-        {byColumn && <InlineInputs node={data} emit={emit} keys={["orderColumn"]} labelFor={label} fullWiredKeys={QUEUE_WHOLE} />}
-        <InlineInputs node={data} emit={emit} keys={["order"]} labelFor={label} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
-      </CardSection>
-      <CardSection label="Cost of an item">
-        <InlineInputs node={data} emit={emit} keys={["costColumn", "cost", "legs"]} labelFor={label} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
-      </CardSection>
-      <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: QUEUE_GROUP_KEYS }}>
-        <InlineInputs node={data} emit={emit} keys={QUEUE_GROUP_KEYS} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
-        {hasStart && <AskSelect label={QUEUE_STEP_START_ASK} value={stepStart} options={QUEUE_STEP_START_OPTIONS} onChange={setStepStart} />}
-        {(connected.has("group") || !!data.stringLiterals.group || turns !== "rotate") && <AskSelect label={QUEUE_TURNS_ASK} value={turns} options={QUEUE_TURNS_OPTIONS} onChange={setTurns} />}
-      </CardSection>
-      <CardSection label="Steps" collapsible defaultOpen={stepsUsed} sockets={{ node: data, emit, keys: QUEUE_STEP_KEYS }}>
-        <InlineInputs node={data} emit={emit} keys={QUEUE_STEP_KEYS} fullWiredKeys={QUEUE_WHOLE} />
-      </CardSection>
-      <CardSection label="Budget per step" collapsible defaultOpen={budgetUsed} sockets={{ node: data, emit, keys: QUEUE_BUDGET_KEYS }}>
-        <InlineInputs node={data} emit={emit} keys={QUEUE_BUDGET_KEYS} labelFor={label} fullWiredKeys={QUEUE_WHOLE} />
-        {hasBudget && <AskSelect label={QUEUE_FIT_ASK} value={fit} options={QUEUE_FIT_OPTIONS} onChange={setFit} />}
-      </CardSection>
+      <InlineInputs node={data} emit={emit} keys={QUEUE_TABLES} fullWiredKeys={QUEUE_WHOLE} />
+      <QueueCardRules data={data} emit={emit} formulas={["order", "cost", "allowed"]} numbers={["budget", "perStep", "steps"]}
+        columns={["orderColumn", "costColumn", "group", "step"]} whole={QUEUE_WHOLE} />
       <MeasuredSocketRow side="output" socketKey="picks" nodeId={data.id} emit={emit} payload={data.outputs.picks!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
@@ -1390,10 +1340,50 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
     </NodeShell>
   );
 }
-const QUEUE_LAMBDA_KEYS = new Set(["order", "cost", "allowed"]);
-const QUEUE_GROUP_KEYS = ["group", "start", "allowed"];
-const QUEUE_STEP_KEYS = ["step", "steps"];
-const QUEUE_BUDGET_KEYS = ["budget", "perStep"];
+/** Greedy Queue's and Local Search's face below their tables (frame-verbs.md § The rules popups): folded sections of
+ *  their formulas, numbers and column sockets (each open once one is used), the Edit Rules button and the rules they
+ *  run by, one plain line each. Every setting is asked in the rules popup. */
+const QUEUE_TABLES = ["items", "start", "legs"];
+function QueueCardRules({ data, emit, formulas, numbers, columns, whole }: {
+  data: GreedyQueueNodeType | LocalSearchNodeType;
+  emit: NodeProps<GreedyQueueNodeType>["emit"];
+  formulas: string[];
+  numbers: string[];
+  columns: string[];
+  whole: Set<string>;
+}) {
+  useSyncExternalStore(queueRules.subscribe, queueRules.version);
+  const connected = useConnectedInputs(data.id);
+  const formulasUsed = formulas.some((k) => connected.has(k));
+  const numbersUsed = useRowsInUse(data, numbers);
+  const columnsWired = columns.some((k) => connected.has(k));
+  const steps = queueRuleSteps(data, connected);
+  return (
+    <>
+      <CardSection label="Formulas" collapsible defaultOpen={formulasUsed} sockets={{ node: data, emit, keys: formulas }}>
+        <InlineInputs node={data} emit={emit} keys={formulas} cableOnlyKeys={new Set(formulas)} fullWiredKeys={whole} />
+      </CardSection>
+      <CardSection label="Numbers" collapsible defaultOpen={numbersUsed} sockets={{ node: data, emit, keys: numbers }}>
+        <InlineInputs node={data} emit={emit} keys={numbers} fullWiredKeys={whole} />
+      </CardSection>
+      <CardSection label="Columns" collapsible defaultOpen={columnsWired} sockets={{ node: data, emit, keys: columns }}>
+        <InlineInputs node={data} emit={emit} keys={columns} cableOnlyKeys={new Set(columns)} fullWiredKeys={whole} />
+      </CardSection>
+      <CardOpenButton label="Edit Rules" onOpen={(el) => queueRules.open({ node: data, title: `${nodeDisplayName(data)}: Rules`, accent: readChipPopupStyle(el).accent })} />
+      <div className="solenoid-pipeline">
+        <div className="solenoid-pipeline__list nowheel">
+          {steps.map((st, i) => (
+            <div key={st.name} className="solenoid-pipeline__step solenoid-edit-frame__edit" title={`${st.name}: ${st.value}`}>
+              <span className="solenoid-pipeline__num">{i + 1}</span>
+              <span className="solenoid-pipeline__name">{st.name}</span>
+              <span className="solenoid-edit-frame__value">{st.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
 // Every input shows the wired card's whole name: a card named "Hours a machine works a day" says what the Budget means.
 const QUEUE_WHOLE = new Set(["items", "orderColumn", "order", "costColumn", "cost", "legs", "start", "allowed", "group", "step", "steps", "budget", "perStep"]);
 
@@ -1402,31 +1392,11 @@ const QUEUE_WHOLE = new Set(["items", "orderColumn", "order", "costColumn", "cos
 export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeType>) {
   const history = previewed(() => data.cachedHistory);
   const moves = history && isFrameValue(history) ? Math.max(0, frameRowCount(history) - 1) : null;
-  const [reach, setReach] = useNodeField(data, "reach");
-  const [ends, setEnds] = useNodeField(data, "ends");
-  const [stuck, setStuck] = useNodeField(data, "stuck");
-  const connected = useConnectedInputs(data.id);
-  const hasStart = connected.has("start") || ends !== "open";
-  const groupsUsed = useRowsInUse(data, SEARCH_GROUP_KEYS) || reach !== "across" || ends !== "open";
-  // Under "Cost of an item" each row names what it adds; the penalty counts toward the total, not the running cost.
-  const label = (key: string): string =>
-    ({ costColumn: "Column", cost: "Formula", penalty: "Penalty", passes: "Most rounds" } as Record<string, string>)[key]
-      ?? data.inputs[key]?.label ?? key;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["items"]} fullWiredKeys={SEARCH_WHOLE} />
-      <CardSection label="Cost of an item">
-        <InlineInputs node={data} emit={emit} keys={["costColumn", "cost", "legs", "penalty"]} labelFor={label} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
-      </CardSection>
-      <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: SEARCH_GROUP_KEYS }}>
-        <InlineInputs node={data} emit={emit} keys={SEARCH_GROUP_KEYS} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
-        {groupsUsed && <AskSelect label={SEARCH_REACH_ASK} value={reach} options={SEARCH_REACH_OPTIONS} onChange={setReach} />}
-        {hasStart && <AskSelect label={SEARCH_ENDS_ASK} value={ends} options={SEARCH_ENDS_OPTIONS} onChange={setEnds} />}
-      </CardSection>
-      <CardSection label="Search">
-        <SegToggle value={stuck} options={SEARCH_STUCK_OPTIONS} onChange={setStuck} />
-        <InlineInputs node={data} emit={emit} keys={["passes"]} labelFor={label} fullWiredKeys={SEARCH_WHOLE} />
-      </CardSection>
+      <InlineInputs node={data} emit={emit} keys={QUEUE_TABLES} fullWiredKeys={SEARCH_WHOLE} />
+      <QueueCardRules data={data} emit={emit as unknown as NodeProps<GreedyQueueNodeType>["emit"]} formulas={["cost", "penalty", "allowed"]} numbers={["passes"]}
+        columns={["costColumn", "group"]} whole={SEARCH_WHOLE} />
       <MeasuredSocketRow side="output" socketKey="plan" nodeId={data.id} emit={emit} payload={data.outputs.plan!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
@@ -1441,8 +1411,6 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
     </NodeShell>
   );
 }
-const SEARCH_LAMBDA_KEYS = new Set(["cost", "penalty", "allowed"]);
-const SEARCH_GROUP_KEYS = ["group", "start", "allowed"];
 
 // The plan is the card's table; the best total and the limits, with their slack and shadow prices, ride below it.
 export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {

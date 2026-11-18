@@ -891,6 +891,10 @@
   ]
  },
  "GreedyQueueNode": {
+  "legsDirection": [
+   "both",
+   "one"
+  ],
   "mode": [
    "skip",
    "stop"
@@ -1077,6 +1081,10 @@
   "ends": [
    "open",
    "return"
+  ],
+  "legsDirection": [
+   "both",
+   "one"
   ],
   "reach": [
    "across",

@@ -607,6 +607,148 @@
    }
   },
   {
+   "id": "paint_jobs",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Paint jobs"
+   },
+   "frame": [
+    {
+     "name": "Job",
+     "cells": [
+      "Fence posts",
+      "Mailboxes",
+      "Gates",
+      "Railings",
+      "Planters",
+      "Benches"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Color",
+     "cells": [
+      "Black",
+      "White",
+      "Red",
+      "Yellow",
+      "White",
+      "Red"
+     ],
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "id": "changeovers",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Changeovers (min)"
+   },
+   "frame": [
+    {
+     "name": "From",
+     "cells": [
+      "White",
+      "White",
+      "White",
+      "Yellow",
+      "Yellow",
+      "Yellow",
+      "Red",
+      "Red",
+      "Red",
+      "Black",
+      "Black",
+      "Black"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "To",
+     "cells": [
+      "Yellow",
+      "Red",
+      "Black",
+      "White",
+      "Red",
+      "Black",
+      "White",
+      "Yellow",
+      "Black",
+      "White",
+      "Yellow",
+      "Red"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Minutes",
+     "cells": [
+      10,
+      20,
+      30,
+      45,
+      10,
+      20,
+      90,
+      45,
+      10,
+      135,
+      90,
+      45
+     ],
+     "type": "number",
+     "unit": "min"
+    }
+   ]
+  },
+  {
+   "id": "paint_start",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Line starts"
+   },
+   "frame": [
+    {
+     "name": "Job",
+     "cells": [
+      "Clean line"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Color",
+     "cells": [
+      "White"
+     ],
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "id": "paint_first",
+   "type": "GreedyQueueNode",
+   "init": {
+    "label": "Quickest change next",
+    "orderBy": "cost",
+    "legsDirection": "one",
+    "legsMatch": "Color"
+   },
+   "stringLiterals": {}
+  },
+  {
+   "id": "paint",
+   "type": "LocalSearchNode",
+   "init": {
+    "label": "Paint order",
+    "stuck": "look",
+    "legsDirection": "one",
+    "legsMatch": "Color"
+   },
+   "stringLiterals": {}
+  },
+  {
    "id": "hours",
    "type": "FrameInputNode",
    "init": {
@@ -1077,6 +1219,21 @@
    }
   },
   {
+   "id": "grp_paint",
+   "type": "GroupNode",
+   "init": {
+    "label": "Paint line",
+    "members": [
+     "paint_jobs",
+     "changeovers",
+     "paint_start",
+     "paint_first",
+     "paint"
+    ],
+    "color": "purple"
+   }
+  },
+  {
    "id": "grp_crews",
    "type": "GroupNode",
    "init": {
@@ -1154,6 +1311,12 @@
   "feeds.frame -> feed.options",
   "feed.plan -> feed_kg.frame",
   "feed.limits -> feed_check.frame",
+  "paint_jobs.frame -> paint_first.items",
+  "paint_start.frame -> paint_first.start",
+  "changeovers.frame -> paint_first.legs",
+  "paint_first.picks -> paint.items",
+  "paint_start.frame -> paint.start",
+  "changeovers.frame -> paint.legs",
   "hours.frame -> crews.costs",
   "roads.frame -> route.links",
   "roads.frame -> reach.links",
