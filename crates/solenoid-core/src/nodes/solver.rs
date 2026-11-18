@@ -23,7 +23,12 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     }
 }
 
-/// A program larger than this many options or limits is refused: the dense engine is for tables, not models.
+/// The dense engine is for tables, not models: at most this many options and limits, and a tableau of at most this many
+/// cells (25 million, 200 MB).
+const MAX_OPTIONS: usize = 5000;
+const MAX_LIMITS: usize = 2000;
+const MAX_CELLS: usize = 25_000_000;
+/// Assignment's grid, and Pareto's options, at most this many a side.
 const MAX_SIZE: usize = 1500;
 const PLAN_ADDED: [&str; 1] = ["Amount"];
 const LIMIT_ADDED: [&str; 3] = ["Used", "Slack", "Shadow Price"];
@@ -97,10 +102,10 @@ fn solver(c: &mut Call) -> Answer {
     };
     let minimize = c.field_str("goal", "max") == "min";
     let rows = f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0);
-    if rows > MAX_SIZE || lim.as_ref().is_some_and(|l| l.columns.first().map_or(0, |c| c.values.len()) > MAX_SIZE) {
+    if rows > MAX_OPTIONS || lim.as_ref().is_some_and(|l| l.columns.first().map_or(0, |c| c.values.len()) > MAX_LIMITS) {
         return fail(
             c,
-            err(ErrorCode::Domain, format!("The Solver takes at most {MAX_SIZE} options and {MAX_SIZE} limits")),
+            err(ErrorCode::Domain, format!("The Solver takes at most {MAX_OPTIONS} options and {MAX_LIMITS} limits")),
         );
     }
     let col = |fr: &Frame, name: &str| position(fr, name);
@@ -232,6 +237,11 @@ fn solver(c: &mut Call) -> Answer {
     }
 
     let sense = if minimize { -1.0 } else { 1.0 };
+    // The dense tableau: a row per limit and per bounded option, a column per option and per row.
+    let tableau_rows = prog_rows.len() + hi.iter().filter(|h| h.is_finite()).count();
+    if tableau_rows.saturating_mul(rows + 2 * tableau_rows) > MAX_CELLS {
+        return fail(c, err(ErrorCode::Domain, "Too large for the Solver: fewer options, fewer limits, or fewer Max bounds"));
+    }
     let program = Program { c: obj.iter().map(|v| v * sense).collect(), rows: prog_rows.clone(), lo, hi, whole };
     let (x, total, duals, stopped) = match solve(&program) {
         Outcome::Best { x, total, duals, stopped } => (x, total * sense, duals, stopped),
