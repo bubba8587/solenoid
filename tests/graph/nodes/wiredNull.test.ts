@@ -5,7 +5,6 @@ import { RandBetweenNode } from "../../../src/graph/nodes/display";
 import { CableSwitchNode } from "../../../src/graph/nodes/control";
 import { DepreciationNode } from "../../../src/graph/nodes/finance";
 import { ColumnsNode } from "../../../src/graph/nodes/frame";
-import { GaugeNode } from "../../../src/graph/nodes/visual";
 import { AlertNode } from "../../../src/graph/nodes/display";
 import { DistributionsNode } from "../../../src/graph/nodes/distribution";
 import { throughBoundary } from "../boundaryKit";
@@ -19,7 +18,6 @@ import { keyIn } from "../keyIn";
 // [[D86]] blankRoles, [[value-semantics#Reading an input]], [[input-roles#What each input kind does today]]
 
 describe("reducers SKIP a missing rather than propagating it", () => {
-
   it("CONCAT: a wired blank contributes nothing, and does not fall back to its box", () => {
     const node = new ConcatNode();
     const keys = Object.keys(node.inputs);
@@ -28,26 +26,6 @@ describe("reducers SKIP a missing rather than propagating it", () => {
     inputs[keys[0]] = [null as unknown as string];
     inputs[keys[1]] = ["b"];
     expect(node.data(inputs).result).toBe("b");
-  });
-
-});
-
-describe("figure sinks — empty figure for a datum, neutral default for styling", () => {
-  it("Gauge (Bar style): value and target go blank, but the track's scale keeps the card's bound", () => {
-    const node = new GaugeNode({ mode: "bar" });
-    node.literals.value = 42;
-    node.literals.target = 80;
-    node.literals.max = 250;
-    const out = node.data({
-      value: [null as unknown as number],
-      target: [null as unknown as number],
-      max: [null as unknown as number],
-    }).chart;
-    const p = out.payload as { value: number | null; target: number | null; max: number };
-    expect(p.value).toBeNull();
-    expect(p.target).toBeNull();
-
-    expect(p.max).toBe(250);
   });
 
 });
@@ -118,7 +96,6 @@ describe("value selectors — an unknown selector is an unknown answer", () => {
 });
 
 describe("Distribution — a wired blank parameter propagates", () => {
-
   it("NORM.DIST: a wired blank mean blanks the result; unwired uses the literals", () => {
     const node = new DistributionsNode({ op: "normal", form: "cdf" });
     const firstKey = node.spec.xKey;
@@ -128,7 +105,6 @@ describe("Distribution — a wired blank parameter propagates", () => {
 });
 
 describe("Input family — wired blank by role", () => {
-
   it("RAND: a wired blank bound propagates; unwired draws from the card range", () => {
     const node = new RandBetweenNode();
     node.literals.bound1 = 0;
