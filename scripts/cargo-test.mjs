@@ -97,11 +97,12 @@ child.stdout.on("data", (d) => {
   buf += d;
   const lines = buf.split("\n");
   buf = lines.pop();
-  lines.forEach(line);
+  // CI colors cargo's own lines (CARGO_TERM_COLOR); the color codes go before a line is read.
+  lines.map((l) => l.replace(/\x1b\[[0-9;]*m/g, "")).forEach(line);
 });
 
 child.on("close", (code) => {
-  if (buf) line(buf);
+  if (buf) line(buf.replace(/\x1b\[[0-9;]*m/g, ""));
   const shown = bins.filter((b) => b.result && (b.result.passed || b.failed.length || !b.result.ok));
   const bad = shown.filter((b) => !b.result.ok);
   const head = broke
