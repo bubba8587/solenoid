@@ -301,6 +301,89 @@
    }
   },
   {
+   "id": "channels",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Channels"
+   },
+   "frame": [
+    {
+     "name": "Channel",
+     "cells": [
+      "Search",
+      "Social",
+      "Radio",
+      "Billboards"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Reach",
+     "cells": [
+      40000,
+      65000,
+      30000,
+      22000
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Scale",
+     "cells": [
+      3000,
+      6000,
+      2500,
+      4000
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "ad_reach",
+   "type": "LambdaNode",
+   "init": {
+    "label": "People reached",
+    "params": "Reach, Scale, amount",
+    "expr": "Reach * (1 - EXP(-amount / Scale))"
+   }
+  },
+  {
+   "id": "ads",
+   "type": "SolverNode",
+   "init": {
+    "label": "Ad budget split",
+    "limitList": [
+     {
+      "of": "",
+      "sign": "le",
+      "limit": 12000
+     }
+    ]
+   }
+  },
+  {
+   "id": "ads_spend",
+   "type": "ColumnsNode",
+   "init": {
+    "label": "Spend per channel"
+   },
+   "stringLiterals": {
+    "columns": "Channel, Amount"
+   }
+  },
+  {
+   "id": "ads_chart",
+   "type": "ChartNode",
+   "init": {
+    "label": "Spend per channel",
+    "op": "bar"
+   },
+   "stringLiterals": {
+    "options": "xlabel=Dollars"
+   }
+  },
+  {
    "id": "hours",
    "type": "FrameInputNode",
    "init": {
@@ -668,6 +751,21 @@
    }
   },
   {
+   "id": "grp_ads",
+   "type": "GroupNode",
+   "init": {
+    "label": "Ad budget",
+    "members": [
+     "channels",
+     "ad_reach",
+     "ads",
+     "ads_spend",
+     "ads_chart"
+    ],
+    "color": "pink"
+   }
+  },
+  {
    "id": "grp_crews",
    "type": "GroupNode",
    "init": {
@@ -732,6 +830,10 @@
   "mix.limits -> mix_room.frame",
   "projects.frame -> portfolio.options",
   "portfolio.plan -> portfolio_pick.frame",
+  "channels.frame -> ads.options",
+  "ad_reach.result -> ads.goalFormula",
+  "ads.plan -> ads_spend.frame",
+  "ads_spend.frame -> ads_chart.values",
   "hours.frame -> crews.costs",
   "roads.frame -> route.links",
   "roads.frame -> reach.links",

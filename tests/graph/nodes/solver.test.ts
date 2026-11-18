@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { SolverNode, type SolverLimit } from "../../../src/graph/nodes/optimize";
 import { extractInit } from "../../../src/graph/nodeInit";
+import { LambdaNode } from "../../../src/graph/nodes/lambda";
 import { isSolError } from "../../../src/graph/errorValue";
 
 type Row = Record<string, unknown>;
@@ -17,9 +18,10 @@ const rows = (f: unknown): Row[] => {
   return (cols[0]?.values ?? []).map((_, i) => Object.fromEntries(cols.map((c) => [c.name, c.values[i]])));
 };
 type Out = { plan: unknown; best: unknown; limits: unknown };
-const solve = (options: unknown, limitList: SolverLimit[], goalColumn: string, goal: "max" | "min" = "max") => {
+const lambda = (params: string, expr: string) => new LambdaNode({ params, expr }).data({}).result;
+const solve = (options: unknown, limitList: SolverLimit[], goalColumn: string, goal: "max" | "min" = "max", goalFormula?: unknown) => {
   const n = new SolverNode({ goal, limitList });
-  const inputs = { options };
+  const inputs = goalFormula ? { options, goalFormula } : { options };
   n.stringLiterals.objective = goalColumn;
   return { n, out: n.data(Object.fromEntries(Object.entries(inputs).map(([k, v]) => [k, [v]]))) as Out };
 };
@@ -58,6 +60,43 @@ describe("Solver", () => {
     expect(rows(out.plan).map((r) => r.Amount)).toEqual([0, 1, 0, 1]);
     expect(out.best).toBe(21);
     expect(rows(out.limits)[0]["Shadow Price"]).toBe(null);
+  });
+
+  it("totals a goal formula over each option's amount: diminishing returns share the beans", () => {
+    // Revenue Price × amount − 0.05 × amount²: the best split of 100 kg makes each blend's next kg earn the same.
+    const options = frame([{ Blend: "A", Price: 10, Beans: 1 }, { Blend: "B", Price: 12, Beans: 1 }]);
+    const curve = lambda("Price, amount", "Price * amount - 0.05 * amount ^ 2");
+    const even = solve(frame([{ Blend: "A", Price: 10, Beans: 1 }, { Blend: "B", Price: 10, Beans: 1 }]), [{ of: "Beans", sign: "le", limit: 100 }], "", "max", curve);
+    expect(rows(even.out.plan).map((r) => r.Amount)).toEqual([50, 50]);
+    expect(even.out.best).toBe(750);
+    expect(even.n.cachedStatus).toBe("Optimal");
+    const { out } = solve(options, [{ of: "Beans", sign: "le", limit: 100 }], "", "max", curve);
+    const [a, b] = rows(out.plan).map((r) => r.Amount as number);
+    expect(a + b).toBeCloseTo(100, 6);
+    expect(Math.abs(a - 40)).toBeLessThan(0.1);
+    expect(out.best as number).toBeCloseTo(860, 3);
+  });
+
+  it("finds the best plan when the formula jumps: a setup cost and a bulk discount", () => {
+    // B earns 9 a kg less a 200 setup once it runs at all; A earns 5 a kg. All 100 kg go to B.
+    const options = frame([{ Blend: "A", Profit: 5, Beans: 1 }, { Blend: "B", Profit: 0, Beans: 1 }]);
+    const setup = lambda("Blend, amount", 'IF(AND(Blend = "B", amount > 0), 9 * amount - 200, 0)');
+    const made = solve(options, [{ of: "Beans", sign: "le", limit: 100 }], "Profit", "max", setup);
+    expect(rows(made.out.plan).map((r) => r.Amount)).toEqual([0, 100]);
+    expect(made.out.best).toBe(700);
+    expect(made.n.cachedStatus).toMatch(/searched in steps/);
+    // 10 a unit, 8 past the first 50: buying 80 from one supplier beats splitting it, 740 against 800.
+    const suppliers = frame([{ Supplier: "North", Units: 1 }, { Supplier: "South", Units: 1 }]);
+    const tiered = lambda("amount", "IF(amount <= 50, 10 * amount, 500 + 8 * (amount - 50))");
+    const bought = solve(suppliers, [{ of: "Units", sign: "ge", limit: 80 }, { of: "Units", sign: "le", limit: 200 }], "", "min", tiered);
+    expect(rows(bought.out.plan).map((r) => r.Amount).sort()).toEqual([0, 80]);
+    expect(bought.out.best).toBe(740);
+  });
+
+  it("asks for a range when nothing limits an option a goal formula reads", () => {
+    const { out } = solve(frame([{ Item: "x", Gain: 1 }]), [], "", "max", lambda("amount", "amount"));
+    expect(isSolError(out.best)).toBe(true);
+    expect(JSON.stringify(out.best)).toMatch(/give it a Max/);
   });
 
   it("says when no plan fits, when the goal is unbounded, and when a limit is misread", () => {

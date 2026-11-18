@@ -1338,13 +1338,12 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
   // and how much fits a step. A section's heading asks the question, so its rows name only what they hold, and a
   // formula's row says what it adds: the whole order where nothing else decides, a tie-break where something does.
   const decided = orderBy === "cost" || connected.has("orderColumn") || !!data.stringLiterals.orderColumn;
-  const hasCostColumn = connected.has("costColumn") || !!data.stringLiterals.costColumn;
   const label = (key: string): string =>
     ({
       orderColumn: "Of column",
       order: decided ? "Ties by" : "By formula",
       costColumn: "Column",
-      cost: hasCostColumn ? "Plus formula" : "Formula",
+      cost: "Formula",
       budget: "Budget",
       perStep: "Most picks",
     } as Record<string, string>)[key] ?? data.inputs[key]?.label ?? key;
@@ -1410,9 +1409,8 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
   const hasStart = connected.has("start") || ends !== "open";
   const groupsUsed = useRowsInUse(data, SEARCH_GROUP_KEYS) || reach !== "across" || ends !== "open";
   // Under "Cost of an item" each row names what it adds; the penalty counts toward the total, not the running cost.
-  const hasCostColumn = connected.has("costColumn") || !!data.stringLiterals.costColumn;
   const label = (key: string): string =>
-    ({ costColumn: "Column", cost: hasCostColumn ? "Plus formula" : "Formula", penalty: "Plus penalty", passes: "Most rounds" } as Record<string, string>)[key]
+    ({ costColumn: "Column", cost: "Formula", penalty: "Plus penalty", passes: "Most rounds" } as Record<string, string>)[key]
       ?? data.inputs[key]?.label ?? key;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
@@ -1463,7 +1461,7 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
       <InlineInputs node={data} emit={emit} keys={["options"]} fullWiredKeys={SOLVER_WHOLE} />
       <CardSection label="Goal">
         <SegToggle value={goal} options={SOLVER_GOAL_OPTIONS} onChange={setGoal} />
-        <InlineInputs node={data} emit={emit} keys={["objective"]} labelFor={() => "Of column"} fullWiredKeys={SOLVER_WHOLE} />
+        <InlineInputs node={data} emit={emit} keys={["objective", "goalFormula"]} labelFor={(k) => (k === "objective" ? "Total of column" : "Total of formula")} cableOnlyKeys={SOLVER_LAMBDA} fullWiredKeys={SOLVER_WHOLE} />
       </CardSection>
       <CardSection label="Limits">
         <CardOpenButton label="Edit Limits" onOpen={(el) => solverLimits.open({ node: data, title: `${nodeDisplayName(data)}: Limits`, accent: readChipPopupStyle(el).accent })} />
@@ -1511,7 +1509,8 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
     </NodeShell>
   );
 }
-const SOLVER_WHOLE = new Set(["options", "objective"]);
+const SOLVER_WHOLE = new Set(["options", "objective", "goalFormula"]);
+const SOLVER_LAMBDA = new Set(["goalFormula"]);
 
 export function AssignmentComponent({ data, emit }: NodeProps<AssignmentNodeType>) {
   const [goal, setGoal] = useNodeField(data, "goal");

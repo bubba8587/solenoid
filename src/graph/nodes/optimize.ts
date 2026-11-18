@@ -2,7 +2,7 @@
 // (tree/specs/computation/frame-verbs.md § Solver).
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { frameIn, frameOut, strIn, strListIn, numIn, numOut } from "./shared";
+import { frameIn, frameOut, strIn, strListIn, numIn, numOut, lambdaIn } from "./shared";
 import type { FrameValue } from "../frame";
 import type { SolError } from "../errorValue";
 import type { FrameHint } from "../frameHint";
@@ -35,6 +35,7 @@ export const SOLVER_SIGN_OPTIONS: { value: SolverSign; label: string }[] = [
 export class SolverNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     options: "One row per decision. Optional Min, Max and Whole columns bound each amount.",
+    goalFormula: "A LAMBDA run for each option at its amount, reading its columns by name and amount, such as a price that drops past 100 units. The goal adds up its answers.",
   };
   static frameHints: Record<string, FrameHint> = {
     options: { columns: [
@@ -61,6 +62,7 @@ export class SolverNode extends GraphNode {
     if (Array.isArray(init?.limitList)) this.limitList = init.limitList.map((l) => ({ ...l }));
     this.addInput("options", frameIn("Options"));
     this.addInput("objective", strIn("Goal"));
+    this.addInput("goalFormula", lambdaIn("Goal formula"));
     this.addOutput("plan", frameOut("Plan"));
     this.addOutput("best", numOut("Best"));
     this.addOutput("limits", frameOut("Limits"));

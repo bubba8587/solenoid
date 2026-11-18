@@ -4,10 +4,12 @@
 //! optionally where a column is a value, at most, at least or exactly a number. The engine is `crate::lp`.
 
 use super::frames::{frame_in, frame_v, num_column, str_input, trimmed};
+use super::matrix::wired_lambda;
 use super::measure::{meet, Measure};
-use super::queue::{key, position, taken};
+use super::queue::{key, keys, position, taken};
 use super::{err, Answer, Call, Column, Cv, Frame};
 use crate::error_value::ErrorCode;
+use crate::eval::Eval;
 use crate::excel_functions::{value_text, V};
 use crate::frame::FrameColType;
 use crate::lp::{solve, Outcome, Program, Sign, MAX_NODES};
@@ -121,6 +123,168 @@ fn cell(fr: &Frame, j: usize, r: usize) -> Option<&V> {
     fr.columns[j].values.get(r)
 }
 
+/// Points a goal formula is first read at across each option's range, and the rounds that each read more points near
+/// the last answer, at half the spacing of the round before.
+const CURVE_STEPS: usize = 16;
+const CURVE_ROUNDS: usize = 8;
+
+struct Curved {
+    x: Vec<f64>,
+    duals: Option<Vec<f64>>,
+    stopped: bool,
+    /// Some option's curve isn't the shape a plain LP fills in order, so whole-number switches chose its pieces.
+    bumpy: bool,
+}
+
+/// The Solver with a goal formula: separable programming. Each option's formula, read at points across its range, is
+/// a line through them; one variable per piece, in order, carries the amount (Dantzig 1960). Where the pieces' slopes
+/// fall (rise, minimizing) the LP fills them in order by itself; elsewhere a whole-number switch per piece makes it,
+/// and branch and bound picks the pieces. Each later round reads more points near the last answer. `program` is the
+/// linear Solver (its goal column, already signed for maximizing); `value` is the formula's answer for option i at an
+/// amount.
+fn curved(program: &Program, value: &dyn Fn(usize, f64) -> Result<f64, V>, sense: f64) -> Result<Curved, V> {
+    let n = program.c.len();
+    // Each option's range: Min to Max, or to the most the limits let it reach.
+    let mut lo = program.lo.clone();
+    let mut hi = program.hi.clone();
+    for i in 0..n {
+        if hi[i].is_finite() {
+            continue;
+        }
+        let mut c = vec![0.0; n];
+        c[i] = 1.0;
+        let reach =
+            Program { c, rows: program.rows.clone(), lo: lo.clone(), hi: program.hi.clone(), whole: vec![false; n] };
+        hi[i] = match solve(&reach) {
+            Outcome::Best { x, .. } => x[i],
+            Outcome::Infeasible => return Err(err(ErrorCode::Solve, "No plan meets every limit")),
+            Outcome::Unbounded => {
+                return Err(err(
+                    ErrorCode::Solve,
+                    format!(
+                        "Nothing limits option row {}: give it a Max or a limit, so the formula has a range",
+                        i + 1
+                    ),
+                ))
+            }
+        };
+    }
+    for i in 0..n {
+        if program.whole[i] {
+            lo[i] = lo[i].ceil();
+            hi[i] = hi[i].floor();
+        }
+    }
+    let points = |i: usize, near: &[f64]| -> Vec<f64> {
+        let (a, b) = (lo[i], hi[i]);
+        let mut p: Vec<f64> = if program.whole[i] && b - a <= (2 * CURVE_STEPS) as f64 {
+            (0..=(b - a) as usize).map(|k| a + k as f64).collect()
+        } else {
+            (0..=CURVE_STEPS).map(|k| a + (b - a) * k as f64 / CURVE_STEPS as f64).collect()
+        };
+        p.extend(near.iter().map(|&t| t.clamp(a, b)));
+        if program.whole[i] {
+            p.iter_mut().for_each(|t| *t = t.round());
+        }
+        p.sort_by(f64::total_cmp);
+        p.dedup_by(|x, y| (*x - *y).abs() <= 1e-9 * (1.0 + y.abs()));
+        p
+    };
+    let mut near: Vec<Vec<f64>> = vec![Vec::new(); n];
+    let mut last = None;
+    for round in 0..CURVE_ROUNDS {
+        // Variables: the amounts, then each option's pieces, then the switches of the options that need them.
+        let mut c = program.c.clone();
+        let (mut vlo, mut vhi, mut whole) = (lo.clone(), hi.clone(), program.whole.clone());
+        let mut rows: Vec<(Vec<f64>, Sign, f64)> = Vec::new();
+        let mut pieces: Vec<(usize, Vec<(usize, f64)>)> = Vec::new();
+        let mut bumpy = false;
+        for i in 0..n {
+            let p = points(i, &near[i]);
+            let ys = p.iter().map(|&t| value(i, t)).collect::<Result<Vec<f64>, V>>()?;
+            let first = c.len();
+            let mut list = Vec::new();
+            let mut slopes = Vec::new();
+            for k in 1..p.len() {
+                let w = p[k] - p[k - 1];
+                let slope = (ys[k] - ys[k - 1]) / w * sense;
+                c.push(slope);
+                vlo.push(0.0);
+                vhi.push(w);
+                whole.push(false);
+                list.push((first + k - 1, w));
+                slopes.push(slope);
+            }
+            bumpy |= slopes.windows(2).any(|s| s[1] > s[0] + 1e-9 * (1.0 + s[0].abs()));
+            pieces.push((i, list));
+        }
+        let fill_in_order = !bumpy;
+        // Switch k says pieces up to k are full: piece k is full when it is on, piece k+1 is empty when it is off.
+        let mut switches: Vec<(usize, usize, usize, f64, f64)> = Vec::new();
+        if !fill_in_order {
+            for (_, list) in &pieces {
+                for k in 0..list.len().saturating_sub(1) {
+                    let z = c.len();
+                    c.push(0.0);
+                    vlo.push(0.0);
+                    vhi.push(1.0);
+                    whole.push(true);
+                    switches.push((z, list[k].0, list[k + 1].0, list[k].1, list[k + 1].1));
+                }
+            }
+        }
+        let width = c.len();
+        let pad = |mut r: Vec<f64>| {
+            r.resize(width, 0.0);
+            r
+        };
+        for (a, s, b) in &program.rows {
+            rows.push((pad(a.clone()), *s, *b));
+        }
+        let limits = rows.len();
+        for (i, list) in &pieces {
+            let mut r = vec![0.0; width];
+            r[*i] = 1.0;
+            for (j, _) in list {
+                r[*j] = -1.0;
+            }
+            rows.push((r, Sign::Eq, lo[*i]));
+        }
+        for &(z, this, next, w, w_next) in &switches {
+            let mut r = vec![0.0; width];
+            r[this] = -1.0;
+            r[z] = w;
+            rows.push((r, Sign::Le, 0.0));
+            let mut r = vec![0.0; width];
+            r[next] = 1.0;
+            r[z] = -w_next;
+            rows.push((r, Sign::Le, 0.0));
+        }
+        if rows.len().saturating_mul(width + 2 * rows.len()) > MAX_CELLS {
+            return Err(err(
+                ErrorCode::Domain,
+                "Too large for the Solver with a goal formula: fewer options or limits",
+            ));
+        }
+        match solve(&Program { c, rows, lo: vlo, hi: vhi, whole }) {
+            Outcome::Best { x, duals, stopped, .. } => {
+                // Only the points around this answer are kept for the next round, so a round's work stays the same.
+                for (i, nr) in near.iter_mut().enumerate() {
+                    let step = (hi[i] - lo[i]) / CURVE_STEPS as f64 / f64::from(2u32 << round.min(30));
+                    let step = if program.whole[i] { step.max(1.0).round() } else { step };
+                    nr.clear();
+                    nr.extend((1..=2).flat_map(|j| [x[i] - step * j as f64, x[i] + step * j as f64]));
+                    nr.push(x[i]);
+                }
+                last = Some(Curved { x: x[..n].to_vec(), duals: duals.map(|d| d[..limits].to_vec()), stopped, bumpy });
+            }
+            Outcome::Infeasible => return Err(err(ErrorCode::Solve, "No plan meets every limit")),
+            Outcome::Unbounded => return Err(err(ErrorCode::Solve, "The goal grows without end: a limit is missing")),
+        }
+    }
+    Ok(last.expect("one round"))
+}
+
 fn solver(c: &mut Call) -> Answer {
     let out = |c: &mut Call, plan: Cv, best: V, limits: Cv, status: V| {
         c.show("cachedResult", plan.clone());
@@ -146,8 +310,17 @@ fn solver(c: &mut Call) -> Answer {
         );
     }
     let col = |fr: &Frame, name: &str| position(fr, name);
-    // The objective: the goal column's number per option, blank 0; empty goal, every option counts 1.
-    let mut obj = vec![1.0; rows];
+    // The goal's formula, run per option over its columns by name and its `amount`.
+    let mut vars: Vec<String> = f.columns.iter().map(|c| c.name.clone()).collect();
+    vars.push("amount".into());
+    let var_refs: Vec<&str> = vars.iter().map(String::as_str).collect();
+    let formula = match wired_lambda(c, "goalFormula", &var_refs) {
+        Ok(b) => b,
+        Err(e) => return fail(c, V::Err(e.into())),
+    };
+    // The objective: the goal column's number per option, blank 0; with neither a goal column nor a formula, every
+    // option counts 1.
+    let mut obj = vec![if formula.is_some() { 0.0 } else { 1.0 }; rows];
     let mut goal_m = Measure::none();
     if !goal.is_empty() {
         let Some(g) = col(&f, &goal) else {
@@ -272,10 +445,38 @@ fn solver(c: &mut Call) -> Answer {
         );
     }
     let program = Program { c: obj.iter().map(|v| v * sense).collect(), rows: prog_rows.clone(), lo, hi, whole };
-    let (x, total, duals, stopped) = match solve(&program) {
-        Outcome::Best { x, total, duals, stopped } => (x, total * sense, duals, stopped),
-        Outcome::Infeasible => return fail(c, err(ErrorCode::Solve, "No plan meets every limit")),
-        Outcome::Unbounded => return fail(c, err(ErrorCode::Solve, "The goal grows without end: a limit is missing")),
+    let mut sampled = false;
+    let (x, total, duals, stopped) = match &formula {
+        None => match solve(&program) {
+            Outcome::Best { x, total, duals, stopped } => (x, total * sense, duals, stopped),
+            Outcome::Infeasible => return fail(c, err(ErrorCode::Solve, "No plan meets every limit")),
+            Outcome::Unbounded => {
+                return fail(c, err(ErrorCode::Solve, "The goal grows without end: a limit is missing"))
+            }
+        },
+        Some(body) => {
+            let ev = Eval::default();
+            let ncols = f.columns.len();
+            let value = |i: usize, t: f64| -> Result<f64, V> {
+                let args = |j: usize| if j < ncols { cell(&f, j, i).cloned().unwrap_or(V::Null) } else { V::Num(t) };
+                let k = keys(Some(body), &ev, &args, "goal formula", i)?;
+                Ok(k.iter().sum())
+            };
+            match curved(&program, &value, sense) {
+                Ok(Curved { x, duals, stopped, bumpy }) => {
+                    sampled = bumpy;
+                    let mut total: f64 = obj.iter().zip(&x).map(|(o, v)| o * v).sum();
+                    for (i, &xi) in x.iter().enumerate() {
+                        match value(i, xi) {
+                            Ok(v) => total += v,
+                            Err(e) => return fail(c, e),
+                        }
+                    }
+                    (x, total, duals, stopped)
+                }
+                Err(e) => return fail(c, e),
+            }
+        }
     };
 
     let clean = |v: f64| if v.abs() < 1e-9 { 0.0 } else { (v * 1e9).round() / 1e9 };
@@ -321,7 +522,13 @@ fn solver(c: &mut Call) -> Answer {
         }
         None => Cv::NULL,
     };
-    let status = if stopped { format!("Best found: stopped after {MAX_NODES} branches") } else { "Optimal".into() };
+    let status = if stopped {
+        format!("Best found: stopped after {MAX_NODES} branches")
+    } else if sampled {
+        "Best found: the goal formula rises and falls, so it was searched in steps".into()
+    } else {
+        "Optimal".into()
+    };
     out(c, frame_v(plan_cols), goal_m.value(goal_m.base(clean(total))), limits, V::str(&status))
 }
 

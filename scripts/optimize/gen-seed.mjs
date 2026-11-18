@@ -63,6 +63,18 @@ wire("projects.frame -> portfolio.options");
 keep("portfolio_pick", "Projects chosen", "Project, Area, Value, Amount");
 wire("portfolio.plan -> portfolio_pick.frame");
 
+// ── 2b. An ad budget: each channel reaches fewer new people per dollar the more it gets, so the best split is uneven ──
+table("channels", "Channels", {
+  Channel: ["Search", "Social", "Radio", "Billboards"],
+  Reach: [40000, 65000, 30000, 22000],
+  Scale: [3000, 6000, 2500, 4000],
+});
+add("ad_reach", "LambdaNode", { label: "People reached", params: "Reach, Scale, amount", expr: "Reach * (1 - EXP(-amount / Scale))" });
+add("ads", "SolverNode", { label: "Ad budget split", limitList: [{ of: "", sign: "le", limit: 12000 }] });
+keep("ads_spend", "Spend per channel", "Channel, Amount");
+chart("ads_chart", "Spend per channel", "bar", "xlabel=Dollars");
+wire("channels.frame -> ads.options", "ad_reach.result -> ads.goalFormula", "ads.plan -> ads_spend.frame", "ads_spend.frame -> ads_chart.values");
+
 // ── 3. Crew assignment: who takes which job, hours each would need (blank: not certified) ──
 table("hours", "Crew hours", {
   Crew: ["North", "South", "East", "West", "Central"],
@@ -112,6 +124,7 @@ wire("calls.value -> desk.arrivals", "call_min.value -> desk.minutes", "answer_m
 const groups = [
   ["grp_mix", "Roast mix", ["blends", "mix", "mix_units", "mix_chart", "mix_room"], "teal"],
   ["grp_portfolio", "Project portfolio", ["projects", "portfolio", "portfolio_pick"], "blue"],
+  ["grp_ads", "Ad budget", ["channels", "ad_reach", "ads", "ads_spend", "ads_chart"], "pink"],
   ["grp_crews", "Crew assignment", ["hours", "crews"], "amber"],
   ["grp_route", "Road route", ["roads", "route", "reach", "reach_cols", "reach_chart"], "green"],
   ["grp_front", "Plan trade-offs", ["plans", "front", "front_chart"], "violet"],

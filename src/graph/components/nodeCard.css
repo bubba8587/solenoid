@@ -913,6 +913,8 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   align-items: baseline;
   gap: 6px;
   width: 100%;
+  /* Its padding inside the 100%, or every step is 8px wider than its list and the list scrolls sideways. */
+  box-sizing: border-box;
   padding: 3px 4px;
   border: 0;
   border-radius: 3px;
