@@ -43,7 +43,7 @@ export const INIT_FIELD_ORDER = [
   "scope",
   "stepStart",
   "turns",
-  "reach", "ends", "orderDir", "stuck",
+  "reach", "ends", "orderDir", "stuck", "goal", "direction",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

@@ -33,9 +33,9 @@ export const QUEUE_FIT_ASK = "If an item won't fit";
 
 /** Which way the Order by column runs: its smallest value first, or its largest. */
 export type QueueOrderDir = "asc" | "desc";
-export const QUEUE_ORDER_DIR_OPTIONS: { value: QueueOrderDir; label: string; title: string }[] = [
-  { value: "asc", label: "Smallest first", title: "The lowest value goes first: the earliest due day, the shortest job." },
-  { value: "desc", label: "Largest first", title: "The highest value goes first: the heaviest box, the most severe incident." },
+export const QUEUE_ORDER_DIR_OPTIONS: { value: QueueOrderDir; label: string }[] = [
+  { value: "asc", label: "Smallest first" },
+  { value: "desc", label: "Largest first" },
 ];
 
 /** Who picks next: the groups in turn, one pick each a round; or the best group and item pair anywhere. */
@@ -53,21 +53,15 @@ export class GreedyQueueNode extends GraphNode {
     steps: setting(LEFT_OUT, "until done"),
   };
   static socketDocs: Record<string, string> = {
-    items: "The things to hand out, a row per item: jobs, stops, boxes. Formulas use its columns by name, and last_ plus a name for the item the group did just before.",
-    start: "One row per group, such as a crew, a machine or a truck, with the group column to match. Formulas read its columns as group_ plus the name, such as group_Skill. A column with the same name as one of the items' is where the group starts, like a home address.",
-    group: "The column saying which group each item belongs to. An item left blank can go to any group. Left empty, there is one group.",
-    step: "The column saying when each item becomes available, such as a day number. Left empty, everything is available from the start.",
-    perStep: "The most items a group takes each step. Left empty, one, or as many as fit the budget.",
-    budget: "How much a group can use each step, such as 8 hours a day or 1,000 kg a truck. Each item's Cost counts against it. A step's first item always goes, even if it is over, and the card counts those.",
-    steps: "How many steps to run. Left empty, it keeps going until every item is taken.",
-    orderColumn: "The column that decides which waiting item goes next, such as a due day or a weight. Left empty, first come, first served.",
-    order: "A LAMBDA card for an order the columns don't hold, such as the distance from the group's last item: the lowest number goes first. After an Order by column it breaks ties.",
-    costColumn: "The column holding what one item uses up: hours of work, kilograms.",
-    cost: "A LAMBDA card for a cost worked out each time, such as drive minutes from the last stop. It adds to the Cost column. Costs add up to the total cost.",
-    allowed: "A formula answering TRUE or FALSE: can this group take this item now? Use it for skills, opening hours or limits.",
-    picks: "Every item taken, in the order taken, with the group that took it, the step, how long it waited and its cost.",
-    left: "The items nobody took before the run ended.",
-    total: "Every item's cost added up.",
+    items: "One row per item. Formulas read its columns by name, and last_ columns for the group's previous item.",
+    start: "One row per group. Formulas read its columns as group_ columns.",
+    group: "A blank cell lets any group take the item.",
+    step: "When each item becomes available. Empty: all at once.",
+    budget: "Each item's cost counts against it. A step's first item always goes.",
+    order: "A LAMBDA, lowest first. After an Order by column, it breaks ties.",
+    cost: "A LAMBDA added to the Cost column, such as the drive from the last item.",
+    allowed: "A LAMBDA: TRUE if this group may take this item now.",
+    picks: "In pick order, with the step, wait and cost.",
   };
   static frameHints: Record<string, FrameHint> = {
     items: { columns: [
@@ -172,7 +166,7 @@ export const SEARCH_ENDS_ASK = "At the end";
 export type SearchStuck = "stop" | "look";
 export const SEARCH_STUCK_OPTIONS: { value: SearchStuck; label: string; title?: string }[] = [
   { value: "stop", label: "Quick" },
-  { value: "look", label: "Thorough", title: "Keeps looking past the first plan no single change improves, for up to ten times as long, and keeps the best plan found. Never worse, often a few percent better." },
+  { value: "look", label: "Thorough", title: "Searches past dead ends, up to 10× longer. Never worse." },
 ];
 export const SEARCH_STUCK_ASK = "Search";
 
@@ -181,17 +175,13 @@ export class LocalSearchNode extends GraphNode {
     passes: setting(LEFT_OUT, "until done"),
   };
   static socketDocs: Record<string, string> = {
-    items: "A plan to improve: a row per item, each group's items in the order they are done. Greedy Queue's picks work as they are. Formulas use its columns by name, and last_ plus a name for the item just before.",
-    start: "One row per group, with the group column to match. Formulas read its columns as group_ plus the name. A column with the same name as one of the items' is where the group starts. A group listed here can take items even if it has none yet.",
-    group: "The column saying which group each item belongs to. Left empty, there is one group and the search only reorders.",
-    costColumn: "The column holding what one item adds, such as a job's hours.",
-    cost: "A LAMBDA card for a cost worked out from where the item sits, such as the drive from the stop before. It can read before, the group's cost so far, and position, the item's place in line. It adds to the Cost column.",
-    penalty: "A formula for an extra charge on top of the cost, such as for finishing late. It can read at, the group's cost so far including this item.",
-    allowed: "A formula answering TRUE or FALSE: can this item go here? A plan that breaks fewer of these always wins, then the one with the lower total.",
-    passes: "How many rounds of trying every item in every place. Left empty, until a round finds nothing better.",
-    plan: "The improved plan: each group's items in order, with the position, the cost, the running cost at, the penalty and whether it is allowed.",
-    total: "Every cost and penalty added up. This is what the search makes smaller.",
-    history: "One row per change made, starting from the plan as it came in: the kind of change and the total after it.",
+    items: "Each group's items in order, such as Greedy Queue's picks.",
+    start: "One row per group, read as group_ columns. A group listed here can take items.",
+    group: "Empty: one group, reordered only.",
+    cost: "A LAMBDA added to the Cost column. It can read before, the cost so far, and position.",
+    penalty: "A LAMBDA added to the total, such as lateness. It can read at, the cost through this item.",
+    allowed: "A LAMBDA: TRUE if this item may go here. Fewer refusals always win.",
+    history: "One row per change made.",
   };
   static frameHints: Record<string, FrameHint> = {
     items: { columns: [

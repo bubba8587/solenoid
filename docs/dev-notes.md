@@ -42,6 +42,11 @@ specific item.
   `Body::call_by` builds only the names a LAMBDA reads, walking formulas keep answers by their place, a changed
   walk stops where it rejoins the old one, and don't-look bits skip settled items: 1.4 s. **Search: Quick /
   Thorough** (guided local search, bounded at 10x the Quick work) is never worse; a choice because it costs time.
+- **An Optimize category** (Frames): Greedy Queue, Local Search, and four new cards. **Solver** (`nodes/solver.rs`,
+  engine `crate::lp`): Excel's Simplex LP from an Options table (Min, Max, Whole by name) and a Limits table read as
+  SUMIFS (Sum of, Where, Is, Sign, Limit), with Used, Slack and Shadow Price; branch and bound for Whole.
+  **Assignment** (Hungarian), **Shortest Path** (Dijkstra; From/To columns by name), **Pareto Front**. A csv field
+  reads through `Call::csv_text`, not `unwired` (which answers Undef for it).
 - **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
   per run (sites × days, a draw each, then the Greedy Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
   a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common

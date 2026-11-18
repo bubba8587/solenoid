@@ -1292,6 +1292,36 @@ A pick on either card is led by the question it answers (`AskSelect`, `nodeKit.t
 
 Tests: `localSearch.test.ts` (a route uncrossed, the round trip, jobs moved between machines by a lateness penalty with a release time, refusals put first, improving Greedy Queue's route, links and walks agreeing, the refusals, the save).
 
+### Solver
+
+`solver` (`nodes/solver.rs`) is Excel's Solver (Simplex LP) as a card: the amounts of each option that maximize or minimize a goal within limits. Its engine is `crate::lp`: a dense two-phase simplex (Dantzig's rule, Bland's after 50 degenerate pivots so it can't cycle) with each row's dual value, and depth-first branch and bound on the most fractional whole-number option, the branch nearer the relaxation's value first, pruned by the relaxation's bound, at most 20,000 sub-problems.
+
+- **Options** is a frame, a row per decision. **Goal** (a column picker; Behavior: the amounts) is the column whose total, each option's number times its amount, is made as large (**Maximize**, `goal: max`) or as small (**Minimize**) as possible. Columns read by name: **Min** (blank 0, Excel's non-negative default), **Max** (blank, no limit), **Whole** (TRUE, 1 or yes: a whole amount).
+- **Limits** is a frame, a row per constraint, read as SUMIFS reads its criteria: **Sum of** an Options column (blank: the amounts themselves), over the options **Where** a column **Is** a value (both blank: every option; numbers compare by value, text ignoring case), then **Sign** (`<=`, `≤`, at most; `>=`, `≥`, at least; `=`, exactly) and **Limit**. Sign and Limit are required columns. A coefficient is a cell's number, blank 0. Any other column (a name) rides along.
+- **Out:** Plan, the Options with **Amount** after; **Best**, the goal's total; Limits, with **Used**, **Slack** (room left, 0 on =) and **Shadow Price** (the Best's change for one more unit of the Limit; blank when whole numbers are involved, where it has no meaning). Values within 1e-9 of 0 read 0. The card shows a status only when it isn't Optimal: "Best found: stopped after 20000 branches".
+- **Refusals:** a column the tables lack is `#REF!`; a Sign, Limit or coefficient that isn't one is `#VALUE!` naming the row; no plan within every limit is `#SOLVE!` "No plan meets every limit"; a goal that grows without end is `#SOLVE!` saying a limit is missing; more than 1,500 options or limits is `#DOMAIN!`.
+
+Tests: `lp.rs` (Wyndor's mix and its duals, a diet at least cost, equalities and bounds, infeasible and unbounded, a knapsack by branch and bound); `solver.test.ts` (the mix with slack and shadow prices, a transport plan by Where and Is, a project set with Whole and Max, the refusals, the save).
+
+### Assignment
+
+`assignment` (`nodes/solver.rs`) pairs each row of a cost grid with at most one column, each column with at most one row, for the least total (**Least total**, `goal: min`) or the greatest (**Greatest total**, `max`). Exact, by the Hungarian method with potentials (Kuhn 1955, Munkres 1957; `lp::assign`, O(rows² × columns)), on the grid or its transpose so the shorter side is assigned.
+
+- **Costs** is a frame: the first column names the rows when it holds text; every column holding a number is a job. A blank cell is a pair that can't be made: priced above any plan, it is taken only where nothing else fits, and then left unassigned. A cell that is neither a number nor blank is `#VALUE!` naming it.
+- **Out:** Pairs, a row per input row (the name column, **Assigned**, the job's column name or blank, and **Cost**), and **Total**, the assigned cells added up. More rows than jobs leaves the extra rows blank.
+
+### Shortest Path
+
+`shortest_path` (`nodes/solver.rs`) is Dijkstra's algorithm over a table of links. **Links** needs columns named **From** and **To** (rows with either blank are skipped); **Cost** is a column picker (Behavior: 1 a link, so a path counts its links), a cost below 0 or not a number being `#VALUE!`. Each link goes **Both ways** (`direction: both`) or **From → To only** (`one`). Places match ignoring case; the first spelling names one.
+
+- **From** names the start (empty: no answer yet); a place no link names is `#REF!`. With **To**, Path is the way step by step (**Step** from 0, **Place**, **Leg**, **So Far**) and **Total** its cost; no way there is `#SOLVE!`. With To empty (Behavior: every place), Path is every place reached, nearest first (**Place**, **Distance**, **Via**, the place before it), Total blank. A tie keeps the first way found.
+
+### Pareto Front
+
+`pareto` (`nodes/solver.rs`) keeps the options no other option beats: at least as good on every measure and better on one. **Lower is better** and **Higher is better** are column lists (comma-separated, read with `Call::csv_text`, or wired lists); with neither, no answer. A measure cell that isn't a number is `#VALUE!` naming the row; a column Options lacks, `#REF!`. **Out:** Front, the options on it in input order; All, every option with **On Front** and **Beaten By** (how many options beat it). O(options² × measures), at most 5,000 options.
+
+Tests: `networks.test.ts` (least and greatest assignment, blank pairs and extra rows; a path both ways and one way, link counting, every place's distance, the refusals, the save; a front over two measures and with one turned to higher is better).
+
 ### Group Cost Settle
 
 The Group Cost Settle card answers who pays whom in the fewest transfers, with no solver. Its kernels are the core's `planners.rs`, and both modes feed one greedy core, `min_transfers(balances)`:

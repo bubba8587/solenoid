@@ -58,3 +58,4 @@ export * from "./nodes/tornado";
 export * from "./nodes/composite";
 export * from "./nodes/probability";
 export * from "./nodes/queue";
+export * from "./nodes/optimize";

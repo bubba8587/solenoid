@@ -35,6 +35,7 @@ mod queue;
 pub mod refs;
 mod scalar;
 mod sched;
+mod solver;
 mod stats;
 mod text;
 pub(crate) mod units;
@@ -414,6 +415,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| qr::run(kind, c))
         .or_else(|| queue::run(kind, c))
         .or_else(|| improve::run(kind, c))
+        .or_else(|| solver::run(kind, c))
 }
 
 /// The classes whose `data()` is their body here and nothing else (for `OFF_CORE`, that and handing on what the core
@@ -432,6 +434,7 @@ pub const DIRECT: &[&str] = &[
     "AppendNode",
     "ArgMinMaxNode",
     "ArithmeticNode",
+    "AssignmentNode",
     "AwgNode",
     "BaseConvertNode",
     "BesselNode",
@@ -604,6 +607,7 @@ pub const DIRECT: &[&str] = &[
     "PadNode",
     "PadTextNode",
     "ParallelCombineNode",
+    "ParetoNode",
     "PaymentBreakdownNode",
     "PayoffPlannerNode",
     "PcaNode",
@@ -648,6 +652,7 @@ pub const DIRECT: &[&str] = &[
     "SetsNode",
     "SettleNode",
     "ShiftNode",
+    "ShortestPathNode",
     "ShuffleNode",
     "SliceNode",
     "SlicerNode",
@@ -655,6 +660,7 @@ pub const DIRECT: &[&str] = &[
     "SmoothNode",
     "SolarPositionNode",
     "SolidNode",
+    "SolverNode",
     "SortFrameNode",
     "SortNode",
     "SparklineNode",

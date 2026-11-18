@@ -52,8 +52,9 @@ import type {
   BlankRowMode,
 } from "../nodeClasses";
 import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS, SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS,
-  QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_ORDER_DIR_OPTIONS, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK, SEARCH_STUCK_OPTIONS, SEARCH_STUCK_ASK } from "../nodeClasses";
-import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType, LocalSearchNode as LocalSearchNodeType } from "../nodeClasses";
+  SOLVER_GOAL_OPTIONS, ASSIGN_GOAL_OPTIONS, PATH_DIRECTION_OPTIONS, QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_ORDER_DIR_OPTIONS, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK, SEARCH_STUCK_OPTIONS, SEARCH_STUCK_ASK } from "../nodeClasses";
+import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType, LocalSearchNode as LocalSearchNodeType, SolverNode as SolverNodeType,
+  AssignmentNode as AssignmentNodeType, ShortestPathNode as ShortestPathNodeType, ParetoNode as ParetoNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import type { FilterCondConfig, SettleMode } from "../nodes/frame";
@@ -1349,7 +1350,7 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
         {count !== null && <span className="solenoid-node__io-wired">{count}</span>}
       </MeasuredSocketRow>
       {!!data.cachedOver && (
-        <div className="solenoid-node__io-row" title="Each was over the budget on its own. A step's first pick always goes, so an item too big for any step still gets picked.">
+        <div className="solenoid-node__io-row" title="Picks over the budget on their own.">
           <span className="solenoid-node__io-label">Over budget</span>
           <span className="solenoid-node__io-wired">{data.cachedOver}</span>
         </div>
@@ -1405,6 +1406,87 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
 }
 const SEARCH_LAMBDA_KEYS = new Set(["cost", "penalty", "allowed"]);
 const SEARCH_GROUP_KEYS = ["group", "start", "allowed"];
+
+// The plan is the card's table; the best total and the limits, with their slack and shadow prices, ride below it.
+export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
+  const [goal, setGoal] = useNodeField(data, "goal");
+  const limits = previewed(() => data.cachedLimits);
+  const count = limits && isFrameValue(limits) ? frameRowCount(limits) : null;
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} keys={["options", "objective"]} fullWiredKeys={SOLVER_WHOLE} />
+      <SegToggle value={goal} options={SOLVER_GOAL_OPTIONS} onChange={setGoal} />
+      <InlineInputs node={data} emit={emit} keys={["limits"]} fullWiredKeys={SOLVER_WHOLE} />
+      <MeasuredSocketRow side="output" socketKey="plan" nodeId={data.id} emit={emit} payload={data.outputs.plan!.socket} hero>
+        <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="best" nodeId={data.id} emit={emit} payload={data.outputs.best!.socket}>
+        <span className="solenoid-node__io-label">Best</span>
+        <ValueDisplay value={data.cachedBest} />
+      </MeasuredSocketRow>
+      {data.cachedStatus && data.cachedStatus !== "Optimal" && (
+        <div className="solenoid-node__io-row"><span className="solenoid-node__io-wired">{data.cachedStatus}</span></div>
+      )}
+      <MeasuredSocketRow side="output" socketKey="limits" nodeId={data.id} emit={emit} payload={data.outputs.limits!.socket}>
+        <span className="solenoid-node__io-label">Limits</span>
+        {count !== null && <span className="solenoid-node__io-wired">{count}</span>}
+      </MeasuredSocketRow>
+    </NodeShell>
+  );
+}
+const SOLVER_WHOLE = new Set(["options", "objective", "limits"]);
+
+export function AssignmentComponent({ data, emit }: NodeProps<AssignmentNodeType>) {
+  const [goal, setGoal] = useNodeField(data, "goal");
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} keys={["costs"]} fullWiredKeys={OPT_WHOLE} />
+      <SegToggle value={goal} options={ASSIGN_GOAL_OPTIONS} onChange={setGoal} />
+      <MeasuredSocketRow side="output" socketKey="pairs" nodeId={data.id} emit={emit} payload={data.outputs.pairs!.socket} hero>
+        <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="total" nodeId={data.id} emit={emit} payload={data.outputs.total!.socket}>
+        <span className="solenoid-node__io-label">Total</span>
+        <ValueDisplay value={data.cachedTotal} />
+      </MeasuredSocketRow>
+    </NodeShell>
+  );
+}
+
+export function ShortestPathComponent({ data, emit }: NodeProps<ShortestPathNodeType>) {
+  const [direction, setDirection] = useNodeField(data, "direction");
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} keys={["links", "cost", "from", "to"]} fullWiredKeys={OPT_WHOLE} />
+      <SegToggle value={direction} options={PATH_DIRECTION_OPTIONS} onChange={setDirection} />
+      <MeasuredSocketRow side="output" socketKey="path" nodeId={data.id} emit={emit} payload={data.outputs.path!.socket} hero>
+        <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="total" nodeId={data.id} emit={emit} payload={data.outputs.total!.socket}>
+        <span className="solenoid-node__io-label">Total</span>
+        <ValueDisplay value={data.cachedTotal} />
+      </MeasuredSocketRow>
+    </NodeShell>
+  );
+}
+
+export function ParetoComponent({ data, emit }: NodeProps<ParetoNodeType>) {
+  const all = previewed(() => data.cachedAll);
+  const count = all && isFrameValue(all) ? frameRowCount(all) : null;
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} keys={["options", "lower", "higher"]} fullWiredKeys={OPT_WHOLE} />
+      <MeasuredSocketRow side="output" socketKey="front" nodeId={data.id} emit={emit} payload={data.outputs.front!.socket} hero>
+        <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="all" nodeId={data.id} emit={emit} payload={data.outputs.all!.socket}>
+        <span className="solenoid-node__io-label">All</span>
+        {count !== null && <span className="solenoid-node__io-wired">{count}</span>}
+      </MeasuredSocketRow>
+    </NodeShell>
+  );
+}
+const OPT_WHOLE = new Set(["costs", "links", "cost", "from", "to", "options", "lower", "higher"]);
 const SEARCH_WHOLE = new Set(["items", "costColumn", "cost", "penalty", "group", "start", "allowed", "passes"]);
 
 export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {

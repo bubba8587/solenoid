@@ -2085,7 +2085,7 @@ fn shown_value(c: &mut Call, v: impl Into<Cv>) -> Answer {
 // ─── Nest, Unnest ───────────────────────────────────────────────────────────────
 
 /// The names a text list holds, null where it reads blank.
-fn column_list(c: &Call, key: &str) -> Option<Vec<String>> {
+pub(super) fn column_list(c: &Call, key: &str) -> Option<Vec<String>> {
     match c.read_input(key, list(Vec::new())) {
         V::Null => None,
         v => Some(
