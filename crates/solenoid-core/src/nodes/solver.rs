@@ -13,7 +13,7 @@ use crate::error_value::ErrorCode;
 use crate::eval::Eval;
 use crate::excel_functions::{value_text, V};
 use crate::frame::FrameColType;
-use crate::lp::{solve, Outcome, Program, Sign, MAX_NODES};
+use crate::lp::{solve, solve_scaled, Outcome, Program, Sign, MAX_NODES};
 use serde_json::Value as Json;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
@@ -181,6 +181,7 @@ struct Curved {
 /// amount.
 fn curved(
     program: &Program,
+    scale: &[f64],
     n_opt: usize,
     value: &dyn Fn(usize, f64) -> Result<f64, V>,
     sense: f64,
@@ -238,6 +239,7 @@ fn curved(
         // Variables: the amounts, then each option's pieces, then the switches of the options that need them.
         let mut c = program.c.clone();
         let (mut vlo, mut vhi, mut whole) = (lo.clone(), hi.clone(), program.whole.clone());
+        let mut vscale = scale.to_vec();
         let mut rows: Vec<(Vec<f64>, Sign, f64)> = Vec::new();
         let mut pieces: Vec<(usize, Vec<(usize, f64)>)> = Vec::new();
         let mut bumpy = false;
@@ -254,6 +256,7 @@ fn curved(
                 vlo.push(0.0);
                 vhi.push(w);
                 whole.push(false);
+                vscale.push(1.0);
                 list.push((first + k - 1, w));
                 slopes.push(slope);
             }
@@ -271,6 +274,7 @@ fn curved(
                     vlo.push(0.0);
                     vhi.push(1.0);
                     whole.push(true);
+                    vscale.push(list[k].1.max(list[k + 1].1));
                     switches.push((z, list[k].0, list[k + 1].0, list[k].1, list[k + 1].1));
                 }
             }
@@ -302,13 +306,15 @@ fn curved(
             r[z] = -w_next;
             rows.push((r, Sign::Le, 0.0));
         }
-        if rows.len().saturating_mul(width + 2 * rows.len()) > MAX_CELLS {
+        // The tableau's rows: these, and one for each variable with an upper bound (every piece and switch has one).
+        let tableau = rows.len() + vhi.iter().filter(|h| h.is_finite()).count();
+        if tableau.saturating_mul(width + 2 * tableau) > MAX_CELLS {
             return Err(err(
                 ErrorCode::Domain,
                 "Too large for the Solver with a goal formula: fewer options or limits",
             ));
         }
-        match solve(&Program { c, rows, lo: vlo, hi: vhi, whole }) {
+        match solve_scaled(&Program { c, rows, lo: vlo, hi: vhi, whole }, Some(&vscale)) {
             Outcome::Best { x, duals, stopped, .. } => {
                 // Only the points around this answer are kept for the next round, so a round's work stays the same.
                 for (i, nr) in near.iter_mut().enumerate() {
@@ -340,6 +346,7 @@ const SEARCH_STEPS: usize = 200;
 /// whether branch and bound stopped short in some step.
 fn search(
     program: &Program,
+    scale: &[f64],
     n_opt: usize,
     goal: &dyn Fn(&[f64]) -> Result<f64, V>,
     sense: f64,
@@ -381,7 +388,7 @@ fn search(
     let mut starts = Vec::new();
     for k in 0..SEARCH_STARTS {
         let c: Vec<f64> = if k == 0 { program.c.clone() } else { (0..n).map(|_| rand() * 2.0 - 1.0).collect() };
-        if let Outcome::Best { x, .. } = solve(&Program { c, ..program.clone() }) {
+        if let Outcome::Best { x, .. } = solve_scaled(&Program { c, ..program.clone() }, Some(scale)) {
             starts.push(x);
         }
     }
@@ -400,13 +407,15 @@ fn search(
             }
             // The slope in each option's amount, by central differences inside its range.
             let mut grad = vec![0.0; n];
+            // Read inside the option's range only, one-sided at a bound: a formula may not exist past it (SQRT at -h).
             for i in 0..n_opt {
                 let h = 1e-6 * span[i];
                 let mut up = x.clone();
                 let mut down = x.clone();
-                up[i] += h;
-                down[i] -= h;
-                grad[i] = (goal(&up)? - goal(&down)?) / (2.0 * h) * sense;
+                up[i] = (x[i] + h).min(program.hi[i]);
+                down[i] = (x[i] - h).max(program.lo[i]);
+                let width = up[i] - down[i];
+                grad[i] = if width > 0.0 { (goal(&up)? - goal(&down)?) / width * sense } else { 0.0 };
             }
             let lo: Vec<f64> = (0..n)
                 .map(|i| if i < n_opt { (x[i] - radius * span[i]).max(program.lo[i]) } else { program.lo[i] })
@@ -417,7 +426,7 @@ fn search(
             let (lo, hi): (Vec<f64>, Vec<f64>) =
                 (0..n).map(|i| if program.whole[i] { (lo[i].ceil(), hi[i].floor()) } else { (lo[i], hi[i]) }).unzip();
             let step = Program { c: grad, rows: program.rows.clone(), lo, hi, whole: program.whole.clone() };
-            match solve(&step) {
+            match solve_scaled(&step, Some(scale)) {
                 Outcome::Best { x: next, stopped: s, .. } => {
                     stopped |= s;
                     let fnext = goal(&next)? * sense;
@@ -534,7 +543,7 @@ fn solver(c: &mut Call) -> Answer {
     };
 
     // The limits, each spec built into one or more rows: per group with For each, per option with Each.
-    let built = match build_limits(&f, &specs, rows, &numbers, &option_name) {
+    let built = match build_limits(&f, &specs, rows, &lo, &numbers, &option_name) {
         Ok(b) => b,
         Err(e) => return fail(c, e),
     };
@@ -553,6 +562,23 @@ fn solver(c: &mut Call) -> Answer {
     }
     switched.sort_unstable();
     switched.dedup();
+    // A switch counts an option as used or not from 0 up, so an option it counts can't go below 0.
+    if let Some(&r) = switched.iter().find(|&&r| lo[r] < 0.0) {
+        return fail(
+            c,
+            err(
+                ErrorCode::Value,
+                format!("{} has a Min below 0, but Number used and Min If Used count amounts from 0", option_name(r)),
+            ),
+        );
+    }
+    // A Min If Used option's Min is 0: it may go unused.
+    let mut lo = lo;
+    for &r in &switched {
+        if if_used[r] > 0.0 {
+            lo[r] = 0.0;
+        }
+    }
     let linear_rows: Vec<(Vec<f64>, Sign, f64)> = built
         .iter()
         .filter_map(|b| match &b.report {
@@ -628,7 +654,8 @@ fn solver(c: &mut Call) -> Answer {
         } else if whole[r] {
             1.0
         } else {
-            1e-6 * reach[k].max(1.0)
+            // A sliver, absolute: a share of the reach would make "used" mean 10 of a reach of 10 million.
+            1e-6
         };
         let mut a = vec![0.0; width];
         a[r] = 1.0;
@@ -640,11 +667,6 @@ fn solver(c: &mut Call) -> Answer {
     let mut plo = lo.clone();
     let mut phi = hi.clone();
     let mut pwhole = whole.clone();
-    for &r in &switched {
-        if if_used[r] > 0.0 {
-            plo[r] = 0.0;
-        }
-    }
     plo.extend(switched.iter().map(|_| 0.0));
     phi.extend(switched.iter().map(|_| 1.0));
     pwhole.extend(switched.iter().map(|_| true));
@@ -675,11 +697,16 @@ fn solver(c: &mut Call) -> Answer {
             err(ErrorCode::Domain, "Too large for the Solver: fewer options, fewer limits, or fewer Max bounds"),
         );
     }
+    // Each switch is whole only when what it lets through is negligible, its reach being its scale.
+    let mut scale = vec![1.0; width];
+    for (k, &r) in reach.iter().enumerate() {
+        scale[rows + k] = r.max(1.0);
+    }
     let program = Program { c: cvec, rows: prog_rows, lo: plo, hi: phi, whole: pwhole };
     let mut sampled = false;
     let mut searched: Option<usize> = None;
     let (x, total, duals, stopped) = match &formula {
-        None => match solve(&program) {
+        None => match solve_scaled(&program, Some(&scale)) {
             Outcome::Best { x, total, duals, stopped } => (x, total * sense, duals, stopped),
             Outcome::Infeasible => return fail(c, err(ErrorCode::Solve, "No plan meets every limit")),
             Outcome::Unbounded => {
@@ -717,7 +744,7 @@ fn solver(c: &mut Call) -> Answer {
                     }
                     Ok(g)
                 };
-                match search(&program, rows, &whole_goal, sense) {
+                match search(&program, &scale, rows, &whole_goal, sense) {
                     Ok((x, total, starts, stopped)) => {
                         searched = Some(starts);
                         (x, total, None, stopped)
@@ -727,7 +754,7 @@ fn solver(c: &mut Call) -> Answer {
             } else {
                 let zero = vec![0.0; ncols + 1];
                 let value = |i: usize, t: f64| at(i, t, &zero);
-                match curved(&program, rows, &value, sense) {
+                match curved(&program, &scale, rows, &value, sense) {
                     Ok(Curved { x, duals, stopped, bumpy }) => {
                         sampled = bumpy;
                         let mut total: f64 = obj.iter().zip(&x).map(|(o, v)| o * v).sum();
@@ -844,6 +871,7 @@ fn build_limits(
     f: &Frame,
     specs: &[LimitSpec],
     rows: usize,
+    lo: &[f64],
     numbers: &dyn Fn(usize) -> Result<Vec<f64>, V>,
     option_name: &dyn Fn(usize) -> String,
 ) -> Result<Vec<Built>, V> {
@@ -879,6 +907,25 @@ fn build_limits(
         };
         if s.measure == Measured::Share && s.filter.is_empty() && s.by.is_empty() {
             return Err(err(ErrorCode::Value, format!("{what}: a share needs Count only where or For each")));
+        }
+        // An average or a share is held as a sum against 0, which keeps its sense only while what it divides by can't
+        // go below 0: amounts from 0 up, and for a share a column that isn't negative.
+        if matches!(s.measure, Measured::Average | Measured::Share) {
+            if let Some(&r) = counted.iter().find(|&&r| lo[r] < 0.0) {
+                return Err(err(
+                    ErrorCode::Value,
+                    format!(
+                        "{what}: {} has a Min below 0, and an average or a share needs amounts from 0",
+                        option_name(r)
+                    ),
+                ));
+            }
+            if let Some(r) = (0..rows).find(|&r| s.measure == Measured::Share && coef[r] < 0.0) {
+                return Err(err(
+                    ErrorCode::Value,
+                    format!("{what}: a share of {of_name} needs it 0 or more, and {} has {}", option_name(r), coef[r]),
+                ));
+            }
         }
         // Without For each, one group of every option: a share's whole is then the plan, the rest count `counted`.
         let groups: Vec<(String, Vec<usize>)> = if s.by.is_empty() || s.measure == Measured::Each {

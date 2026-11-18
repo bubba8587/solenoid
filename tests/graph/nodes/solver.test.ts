@@ -177,6 +177,62 @@ describe("Solver", () => {
     expect(rows(more.out.plan).map((r) => r.Amount)).toEqual([50, 0]);
   });
 
+  it("a switch that counts an option unused leaves it at 0, however far the option could reach", () => {
+    // The relaxation can set a switch to 1e-7 and pass a whole number's check while a reach of 10 million lets 1
+    // through: Number used must still hold.
+    const opts = frame([
+      { Name: "A", Gain: 1, Fat: 10, G: 1, Max: null }, { Name: "B", Gain: 1, Fat: 10, G: 2, Max: null },
+      { Name: "C1", Gain: 0, Fat: 0, G: 1, Max: 1 }, { Name: "C2", Gain: 0, Fat: 0, G: 2, Max: 1 },
+    ]);
+    const limits: SolverLimit[] = [
+      { of: "", sign: "le", limit: 1e7 },
+      { measure: "average", of: "Fat", where: "G", is: "1", sign: "le", limit: 5 },
+      { measure: "average", of: "Fat", where: "G", is: "2", sign: "le", limit: 5 },
+      { measure: "used", of: "", where: "Fat", is: "10", sign: "le", limit: 1 },
+    ];
+    const { out } = solve(opts, limits, "Gain");
+    expect(out.best).toBe(1);
+    expect(rows(out.limits)[3]).toMatchObject({ Used: 1 });
+    // Min If Used: 1 of A can't slip under its minimum of 50 the same way.
+    const lots = frame([{ Name: "A", Gain: 1, Fat: 10, "Min If Used": 50, Max: null }, { Name: "B", Gain: 0, Fat: 0, "Min If Used": 0, Max: 1 }]);
+    const min = solve(lots, [{ of: "", sign: "le", limit: 1e7 }, { measure: "average", of: "Fat", sign: "le", limit: 5 }], "Gain");
+    expect(rows(min.out.plan).map((r) => r.Amount)).toEqual([0, 0]);
+  });
+
+  it("a Min If Used option's Min is 0 for every other option's reach too", () => {
+    const opts = frame([{ Name: "A", Gain: 1, Min: 10, "Min If Used": 10 }, { Name: "B", Gain: 2, "Min If Used": 1 }]);
+    const { out } = solve(opts, [{ of: "", sign: "le", limit: 20 }], "Gain");
+    expect(rows(out.plan).map((r) => r.Amount)).toEqual([0, 20]);
+    expect(out.best).toBe(40);
+    const alone = solve(frame([{ Name: "A", Gain: 1, Min: 10, "Min If Used": 10 }]), [{ of: "", sign: "le", limit: 5 }], "Gain");
+    expect(rows(alone.out.plan).map((r) => r.Amount)).toEqual([0]);
+  });
+
+  it("refuses a negative amount where a count, an average or a share needs amounts from 0", () => {
+    const opts = frame([{ Name: "A", Gain: -1, Min: -10, Max: 10, Fat: 1 }]);
+    expect(solve(opts, [], "Gain").out.best).toBe(10);
+    const used = solve(opts, [{ measure: "used", of: "", sign: "le", limit: 2 }], "Gain");
+    expect(JSON.stringify(used.out.best)).toMatch(/Min below 0/);
+    const avg = solve(opts, [{ measure: "average", of: "Fat", sign: "le", limit: 2 }], "Gain");
+    expect(JSON.stringify(avg.out.best)).toMatch(/Min below 0/);
+  });
+
+  it("refuses a goal formula too large for the engine instead of stopping it", () => {
+    // A thousand options each read at 17 points: tens of thousands of bounded pieces, past the tableau's limit.
+    const many = frame(Array.from({ length: 1000 }, (_, i) => ({ Item: `I${i}`, P: 1 + (i % 7), Max: 10 })));
+    const { out } = solve(many, [{ of: "", sign: "le", limit: 500 }], "", "max", lambda("P, amount", "P * amount - 0.05 * amount ^ 2"));
+    expect(JSON.stringify(out.best)).toMatch(/Too large/);
+  });
+
+  it("searches without reading a formula past an option's range", () => {
+    // SQRT exists only from 0: the search's slopes are read one-sided at a bound.
+    const goods = frame([{ Good: "A", Max: 100 }, { Good: "B", Max: 100 }]);
+    const f = lambda("amount, total_amount", "SQRT(amount) * (20 - 0.01 * total_amount)");
+    const { out } = solve(goods, [], "", "max", f);
+    expect(isSolError(out.best)).toBe(false);
+    expect(out.best as number).toBeGreaterThan(0);
+  });
+
   it("says when no plan fits, when the goal is unbounded, and when a limit is misread", () => {
     const options = frame([{ Item: "x", Gain: 1 }]);
     const err = (o: Out) => isSolError(o.best);

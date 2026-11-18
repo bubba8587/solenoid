@@ -119,6 +119,9 @@ export function SolverLimitsPopup() {
     const p: Partial<SolverLimit> = { measure: m };
     if (m === "average" && !l.of) p.of = numeric[0] ?? "";
     if (m === "share" && l.where === undefined && !l.by) { p.where = ""; p.is = ""; }
+    // Only Each and For each read a limit's number from a column; leaving Each for a measure without For each drops it,
+    // or the column would hold the limit with neither field showing it.
+    if (m !== "each" && !l.by && l.limitColumn) p.limitColumn = undefined;
     patch(i, p);
   };
   const remove = (i: number) => commit(list.filter((_, j) => j !== i));

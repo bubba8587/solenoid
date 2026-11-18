@@ -43,6 +43,13 @@ const MAX_PIVOTS: usize = 50_000;
 /// Solves the program: the relaxation by simplex, then whole-number variables by depth-first branch and bound on the
 /// most fractional one, pruning by the relaxation's bound.
 pub fn solve(p: &Program) -> Outcome {
+    solve_scaled(p, None)
+}
+
+/// `solve`, where a whole variable j counts as whole only when its distance from a whole number times `scale[j]` is
+/// negligible too: a switch that bounds an amount (amount ≤ reach × switch) passes its reach, so a switch at 1e-7
+/// holding 1 of a reach of 10 million isn't taken for off.
+pub fn solve_scaled(p: &Program, scale: Option<&[f64]>) -> Outcome {
     let first = simplex(p);
     if !p.whole.iter().any(|&w| w) {
         return first;
@@ -66,7 +73,7 @@ pub fn solve(p: &Program) -> Outcome {
         let frac = (0..x.len())
             .filter(|&j| p.whole[j])
             .map(|j| (j, (x[j] - x[j].round()).abs()))
-            .filter(|&(_, f)| f > 1e-6)
+            .filter(|&(j, f)| f > 1e-6 || scale.is_some_and(|s| f * s[j] > 1e-7))
             .max_by(|a, b| a.1.total_cmp(&b.1));
         match frac {
             None => {
