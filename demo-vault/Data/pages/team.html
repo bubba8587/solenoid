@@ -7,7 +7,7 @@
     <dl class="stats">
       <div><dt>People</dt><dd>{{ crew | length }}</dd></div>
       <div><dt>Remote</dt><dd>{{ crew | where: "Remote", true | length }}</dd></div>
-      <div><dt>Sold this year</dt><dd>${{ crew | map: "Sales YTD" | sum | number_format }}</dd></div>
+      <div><dt>Sold this year</dt><dd>${{ sold | number_format }}</dd></div>
       <div><dt>Top seller</dt><dd>{{ top["First Name"] }} {{ top["Last Name"] }}</dd></div>
     </dl>
   </header>

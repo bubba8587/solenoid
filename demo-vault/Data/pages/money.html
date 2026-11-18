@@ -1,8 +1,6 @@
 <!doctype html>
 <html><head><title>Money letter</title></head>
 <body>
-  {% set income = tx | where: "Category", "Income" | map: "Amount" | sum %}
-  {% set net = tx | map: "Amount" | sum %}
   <div class="letter">
     <p class="date">First quarter, 2026</p>
     <h1>Your money, <em>quarterly</em></h1>

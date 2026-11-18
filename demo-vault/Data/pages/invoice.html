@@ -2,7 +2,6 @@
 <html><head><title>Invoice</title></head>
 <body>
   <div class="sheet">
-    {% set unpaid = lines | where: "Paid", false | length %}
     {% if unpaid == 0 %}<div class="stamp">Paid</div>{% else %}<div class="stamp due">Balance due</div>{% endif %}
     <header>
       <div>

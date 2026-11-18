@@ -262,6 +262,29 @@
       "y": 2250
     },
     {
+      "id": "t_sales",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Sales YTD",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Sales YTD"
+      },
+      "x": 0,
+      "y": 2630
+    },
+    {
+      "id": "t_sold",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Sold this year",
+        "op": "sum"
+      },
+      "x": 0,
+      "y": 2880
+    },
+    {
       "id": "t_prog",
       "type": "ComputedColumnNode",
       "init": {
@@ -334,6 +357,7 @@
         "styleFile": "pages/team.css",
         "sideVars": [
           "crew",
+          "sold",
           "by_team"
         ]
       },
@@ -467,6 +491,29 @@
       "y": 3850
     },
     {
+      "id": "i_paid",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Paid",
+        "readAs": "logical"
+      },
+      "stringLiterals": {
+        "name": "Paid"
+      },
+      "x": 1060,
+      "y": 3850
+    },
+    {
+      "id": "i_unpaid",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Awaiting payment",
+        "expr": "COUNTIF(paid, FALSE)"
+      },
+      "x": 1400,
+      "y": 3850
+    },
+    {
       "id": "i_products",
       "type": "LocalFileNode",
       "init": {
@@ -540,10 +587,11 @@
         "fileName": "pages/invoice.html",
         "styleFile": "pages/invoice.css",
         "sideVars": [
-          "lines",
+          "unpaid",
           "number",
           "issued",
           "customer",
+          "lines",
           "subtotal",
           "tax",
           "due"
@@ -561,6 +609,52 @@
       },
       "x": 0,
       "y": 4800
+    },
+    {
+      "id": "m_amt",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Amounts",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Amount"
+      },
+      "x": 0,
+      "y": 5500
+    },
+    {
+      "id": "m_cat",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Categories",
+        "readAs": "text"
+      },
+      "stringLiterals": {
+        "name": "Category"
+      },
+      "x": 0,
+      "y": 5750
+    },
+    {
+      "id": "m_income",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Income",
+        "expr": "SUMIFS(amount, category, \"Income\")"
+      },
+      "x": 360,
+      "y": 5500
+    },
+    {
+      "id": "m_net",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Kept",
+        "op": "sum"
+      },
+      "x": 360,
+      "y": 5750
     },
     {
       "id": "m_budgets",
@@ -682,7 +776,8 @@
         "fileName": "pages/money.html",
         "styleFile": "pages/money.css",
         "sideVars": [
-          "tx",
+          "income",
+          "net",
           "categories",
           "split"
         ]
@@ -732,6 +827,29 @@
       "y": 5750
     },
     {
+      "id": "w_mooncol",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Moons",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Moons"
+      },
+      "x": 720,
+      "y": 6130
+    },
+    {
+      "id": "w_total",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Total moons",
+        "op": "sum"
+      },
+      "x": 1060,
+      "y": 6130
+    },
+    {
       "id": "w_pick",
       "type": "PickColumnsNode",
       "init": {
@@ -765,6 +883,7 @@
           "price",
           "progress",
           "planets",
+          "total_moons",
           "moons"
         ]
       },
@@ -829,6 +948,8 @@
         "label": "Team directory",
         "members": [
           "t_crew",
+          "t_sales",
+          "t_sold",
           "t_prog",
           "t_stars",
           "t_sorted",
@@ -839,7 +960,7 @@
         "color": "violet",
         "collapsed": false,
         "width": 2120,
-        "height": 770
+        "height": 1020
       },
       "x": -30,
       "y": 2190
@@ -875,6 +996,8 @@
           "i_number",
           "i_issued",
           "i_mine",
+          "i_paid",
+          "i_unpaid",
           "i_products",
           "i_lines",
           "i_total",
@@ -898,6 +1021,10 @@
         "label": "Money letter",
         "members": [
           "m_tx",
+          "m_amt",
+          "m_cat",
+          "m_income",
+          "m_net",
           "m_budgets",
           "m_bycat",
           "m_join",
@@ -912,7 +1039,7 @@
         "color": "teal",
         "collapsed": false,
         "width": 2120,
-        "height": 1050
+        "height": 1340
       },
       "x": -30,
       "y": 4740
@@ -927,6 +1054,8 @@
           "w_price",
           "w_progress",
           "w_planets",
+          "w_mooncol",
+          "w_total",
           "w_pick",
           "w_chart",
           "w_page"
@@ -934,7 +1063,7 @@
         "color": "sky",
         "collapsed": false,
         "width": 2120,
-        "height": 730
+        "height": 770
       },
       "x": -30,
       "y": 5690
@@ -1314,12 +1443,6 @@
       "targetInput": "values"
     },
     {
-      "source": "m_tx",
-      "sourceOutput": "frame",
-      "target": "m_page",
-      "targetInput": "tx"
-    },
-    {
       "source": "m_bar",
       "sourceOutput": "frame",
       "target": "m_page",
@@ -1372,6 +1495,102 @@
       "sourceOutput": "value",
       "target": "w_page",
       "targetInput": "progress"
+    },
+    {
+      "source": "m_tx",
+      "sourceOutput": "frame",
+      "target": "m_amt",
+      "targetInput": "frame"
+    },
+    {
+      "source": "m_tx",
+      "sourceOutput": "frame",
+      "target": "m_cat",
+      "targetInput": "frame"
+    },
+    {
+      "source": "m_cat",
+      "sourceOutput": "values",
+      "target": "m_income",
+      "targetInput": "category"
+    },
+    {
+      "source": "m_amt",
+      "sourceOutput": "values",
+      "target": "m_income",
+      "targetInput": "amount"
+    },
+    {
+      "source": "m_amt",
+      "sourceOutput": "values",
+      "target": "m_net",
+      "targetInput": "list"
+    },
+    {
+      "source": "m_income",
+      "sourceOutput": "result",
+      "target": "m_page",
+      "targetInput": "income"
+    },
+    {
+      "source": "m_net",
+      "sourceOutput": "result",
+      "target": "m_page",
+      "targetInput": "net"
+    },
+    {
+      "source": "t_crew",
+      "sourceOutput": "frame",
+      "target": "t_sales",
+      "targetInput": "frame"
+    },
+    {
+      "source": "t_sales",
+      "sourceOutput": "values",
+      "target": "t_sold",
+      "targetInput": "list"
+    },
+    {
+      "source": "t_sold",
+      "sourceOutput": "result",
+      "target": "t_page",
+      "targetInput": "sold"
+    },
+    {
+      "source": "i_mine",
+      "sourceOutput": "frame",
+      "target": "i_paid",
+      "targetInput": "frame"
+    },
+    {
+      "source": "i_paid",
+      "sourceOutput": "values",
+      "target": "i_unpaid",
+      "targetInput": "paid"
+    },
+    {
+      "source": "i_unpaid",
+      "sourceOutput": "result",
+      "target": "i_page",
+      "targetInput": "unpaid"
+    },
+    {
+      "source": "w_planets",
+      "sourceOutput": "frame",
+      "target": "w_mooncol",
+      "targetInput": "frame"
+    },
+    {
+      "source": "w_mooncol",
+      "sourceOutput": "values",
+      "target": "w_total",
+      "targetInput": "list"
+    },
+    {
+      "source": "w_total",
+      "sourceOutput": "result",
+      "target": "w_page",
+      "targetInput": "total_moons"
     }
   ]
 }

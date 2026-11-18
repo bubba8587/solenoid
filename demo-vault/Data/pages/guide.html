@@ -29,7 +29,7 @@
 
   <section id="loops">
     <h2><span class="n">2</span> Loops and ifs build the markup</h2>
-    <p>A Frame wired in is rows to loop over; each column is a field. Knap's <code>where</code>, <code>sort</code>, <code>map</code>, <code>sum</code> and <code>length</code> work on it too: these {{ planets | length }} planets have {{ planets | map: "Moons" | sum }} moons between them.</p>
+    <p>A Frame wired in is rows to loop over; each column is a field. Knap's <code>sort</code>, <code>where</code> and <code>unique</code> choose what the page shows and in what order. A total is an answer, not layout, so it comes from a card you can check: these {{ planets | length }} planets have {{ total_moons }} moons between them, summed by an Aggregate card.</p>
     <div class="planets">
       {% for p in planets | sort: "Moons" | reverse %}
       <div class="planet {% if p.Moons > 20 %}many{% endif %}" style="--d: {{ p.AU }}">
@@ -72,6 +72,7 @@
   <section id="rules">
     <h2><span class="n">6</span> The rules</h2>
     <ul>
+      <li>Keep the logic in the graph. A total, a filter that decides something, a rate: each is a card a person can see and change. The page formats, loops and places.</li>
       <li>Scripts never run: a page is a document, not an app.</li>
       <li>Nothing reaches the web. Pictures and fonts come from the data folder, up to 8 MB each.</li>
       <li>A link to <code>#id</code> scrolls the page. Print saves it as a PDF.</li>
