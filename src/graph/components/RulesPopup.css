@@ -175,31 +175,26 @@
 }
 .sol-rules__remove:hover { color: var(--text); background: var(--btn-hover, var(--surface-raised)); }
 .sol-rules__more { grid-column: 2; display: flex; gap: 8px; }
-/* "+ Add condition": a menu packaged as a small secondary button (the section action's look, with the Pivot editor's
-   caret), its choices each opening a line of the item. */
+/* "+ Add condition": a plain secondary button (the section action's look), its choices in the app's popup menu
+   opening from its left edge. */
 .sol-rules__add {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  field-sizing: content;
   height: 24px;
   box-sizing: border-box;
-  padding: 0 22px 0 9px;
+  padding: 0 9px;
   font-family: inherit;
   font-size: 11.5px;
   color: var(--text-dim);
-  background-color: var(--btn-bg, var(--surface));
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 7px center;
-  background-size: 9px 5px;
+  background: var(--btn-bg, var(--surface));
   border: 1px solid var(--btn-border, var(--border));
   border-radius: 5px;
   cursor: pointer;
   outline: none;
 }
-.sol-rules__add:hover { color: var(--text); border-color: var(--border-strong); }
+.sol-rules__add:hover,
+.sol-rules__add[aria-expanded="true"] { color: var(--text); border-color: var(--border-strong); }
 .sol-rules__add:focus-visible { border-color: var(--node-accent, var(--accent)); }
+/* Above the popup's card in its overlay. */
+.sol-rules__menu-list { z-index: 10; }
 .sol-rules__empty { font-size: 12px; color: var(--text-muted); padding: 6px 0 8px; }
 
 .sol-rules__footer {

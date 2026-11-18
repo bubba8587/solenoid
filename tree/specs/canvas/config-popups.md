@@ -65,9 +65,11 @@ Built on the kit (`RulesPopup`), except PIVOTBY's, whose drag zones are its own:
   Budget on the card", "Not used by Cheapest first"). Nothing hides because a cable arrived or a choice changed (the
   author, 2026-11-18).
 - **A list** (limits) is numbered items, each a sentence of fields with a remove ×; an optional clause is a line of its
-  own with its own ×, opened from the item's one **+ Add condition** menu (the Pivot editor's "add field" select,
-  packaged as a small secondary button; its choices are the clauses not yet on the item, and it goes once none are
-  left; the author, 2026-11-18: loose text links weren't acceptable button design); the section's action ("+ Add limit") sits on its
+  own with its own ×, opened from the item's one **+ Add condition** button: a plain secondary button with no caret,
+  since it isn't a dropdown (the author, 2026-11-18), that opens the app's popup menu (`sol-popup-menu`) of the clauses
+  not yet on the item, even when one is left, so the button always does the same thing; it goes once none are left.
+  The menu sits in the popup's overlay, placed from the button, so the body's scroll never clips it, and opens upward
+  without room below (loose text links weren't acceptable button design, the author, 2026-11-18); the section's action ("+ Add limit") sits on its
   caption row, where the Pivot editor puts "add field". An empty list says what having none means.
 - **Footer:** a muted note on the left when the card holds something the popup doesn't ("Formulas and numbers are wired
   on the card."), then the accent **Done**.

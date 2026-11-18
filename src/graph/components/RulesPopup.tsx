@@ -1,7 +1,9 @@
 // [[B19]] spreadsheetHabits: the rules popups' kit (tree/specs/canvas/config-popups.md). A card
 // whose settings outgrow its face keeps its wired inputs and outputs there and asks the rest here, a section per
 // question, in PopupShell's chrome with the card's accent.
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useEscapeLayer } from "./escapeLayers";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import { CloseIcon } from "./CloseIcon";
@@ -139,8 +141,56 @@ export function RulesText({ value, onChange, placeholder, label }: { value: stri
   );
 }
 
-/** One numbered item of a list (a limit): its lines of fields, a remove button, and an "Add condition" menu (the Pivot
- *  editor's "add field" select, styled as a button) whose choices each open a line. */
+/** A button that opens a menu of what it can add (the app's popup menu, `sol-popup-menu`), each choice one click. The
+ *  menu sits in the popup's overlay, placed from the button, so the body's scroll never clips it; it opens upward when
+ *  there's no room below. */
+function RulesAddMenu({ label, options }: { label: string; options: { label: string; onPick: () => void }[] }) {
+  const [at, setAt] = useState<{ host: Element; style: CSSProperties } | null>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const open = at !== null;
+  useEscapeLayer(open, () => setAt(null));
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      const t = (e.composedPath()[0] ?? e.target) as Node;
+      if (!button.current?.contains(t) && !list.current?.contains(t)) setAt(null);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [open]);
+  const toggle = () => {
+    const b = button.current;
+    if (open || !b) { setAt(null); return; }
+    const host = b.closest(".sol-popup-overlay") ?? document.body;
+    const r = b.getBoundingClientRect();
+    const h = host.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom > 28 * options.length + 24;
+    setAt({ host, style: below
+      ? { position: "absolute", left: r.left - h.left, top: r.bottom - h.top + 4, right: "auto" }
+      : { position: "absolute", left: r.left - h.left, bottom: h.bottom - r.top + 4, top: "auto", right: "auto" } });
+  };
+  return (
+    <>
+      <button ref={button} type="button" className="sol-rules__add" aria-haspopup="menu" aria-expanded={open} onPointerDown={stop} onClick={toggle}>
+        {label}
+      </button>
+      {at && createPortal(
+        <div ref={list} className="sol-popup-menu__list sol-rules__menu-list" role="menu" style={at.style}>
+          {options.map((o) => (
+            <button key={o.label} type="button" role="menuitem" className="sol-popup-menu__item" onClick={() => { setAt(null); o.onPick(); }}>
+              {o.label}
+            </button>
+          ))}
+        </div>,
+        at.host,
+      )}
+    </>
+  );
+}
+
+/** One numbered item of a list (a limit): its lines of fields, a remove button, and an Add condition button whose menu
+ *  offers the clauses not yet on it, each opening a line. */
 export function RulesItem({ index, onRemove, removeLabel, add, children }: {
   index: number;
   onRemove: () => void;
@@ -157,11 +207,7 @@ export function RulesItem({ index, onRemove, removeLabel, add, children }: {
       </button>
       {add && add.options.length > 0 && (
         <div className="sol-rules__more">
-          <select className="sol-rules__add" aria-label={add.label} value="" onPointerDown={stop}
-            onChange={(e) => { add.options[Number(e.target.value)]?.onPick(); e.currentTarget.value = ""; }}>
-            <option value="" disabled hidden>{add.label}</option>
-            {add.options.map((o, k) => <option key={o.label} value={k}>{o.label}</option>)}
-          </select>
+          <RulesAddMenu label={add.label} options={add.options} />
         </div>
       )}
     </div>
