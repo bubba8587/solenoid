@@ -25,7 +25,7 @@ const added = (shape: Shape, cols: { name: string; type: "number" | "logical" }[
 export class SolverNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     options: "One row per decision. Optional Min, Max and Whole columns bound each amount.",
-    limits: "One row per limit: Sum of a column, Where a column Is a value, then Sign and Limit.",
+    limits: "One row per limit. Each row adds up a column, optionally only where another column has a given value, and keeps that sum under, over or at its Limit.",
   };
   static frameHints: Record<string, FrameHint> = {
     options: { columns: [
@@ -87,7 +87,7 @@ export const ASSIGN_GOAL_OPTIONS: { value: AssignGoal; label: string }[] = [
 
 export class AssignmentNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    costs: "A row per person, a column per job. A blank cell: that pair can't be made.",
+    costs: "A row per person and a column per job. An empty cell means that person can't take that job.",
   };
   static frameHints: Record<string, FrameHint> = {
     costs: { columns: [
@@ -181,7 +181,7 @@ export class ShortestPathNode extends GraphNode {
 export class ParetoNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     front: "The options no other option beats on every measure.",
-    all: "Every option, with On Front and how many options beat it.",
+    all: "Every option, marked whether it's on the front, with how many other options beat it.",
   };
   static frameHints: Record<string, FrameHint> = {
     options: { columns: [
@@ -226,7 +226,7 @@ export class StaffingNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     target: "Empty: at once.",
     share: "Such as 0.8, for 80%.",
-    options: "A row per staff level, from the fewest that keep up.",
+    options: "A row per staff level, starting from the fewest people who can keep up.",
   };
 
   label: string;

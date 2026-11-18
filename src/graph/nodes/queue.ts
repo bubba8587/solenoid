@@ -60,16 +60,16 @@ export class GreedyQueueNode extends GraphNode {
     steps: setting(LEFT_OUT, "until done"),
   };
   static socketDocs: Record<string, string> = {
-    items: "One row per item. Formulas read its columns by name, and last_ columns for the group's previous item.",
+    items: "One row per item. Formulas read its columns by name, and the group's previous item as last_ columns.",
     start: "One row per group. Formulas read its columns as group_ columns.",
-    group: "A blank cell lets any group take the item.",
-    step: "When each item becomes available. Empty: all at once.",
-    budget: "Each item's cost counts against it. A step's first item always goes.",
-    orderColumn: "Neither this nor an Order formula: first in line.",
-    order: "A LAMBDA, lowest first: the order where no Order by column is set, otherwise a tie-break.",
-    cost: "A LAMBDA added to the Cost column, such as the drive from the last item.",
-    allowed: "A LAMBDA: TRUE if this group may take this item now.",
-    picks: "In pick order, with the step, wait and cost.",
+    group: "An empty cell lets any group take the item.",
+    step: "The step when each item becomes available. Left empty, every item is available from the start.",
+    budget: "Each item's cost counts against this. The first item of a step always goes, even if it's over.",
+    orderColumn: "With no column and no Order formula, items go in the order they're listed.",
+    order: "A LAMBDA, lowest first. It sets the order when no column does, and breaks ties when one does.",
+    cost: "A LAMBDA added to each item's Cost, such as the drive from the last item.",
+    allowed: "A LAMBDA that gives TRUE when this group may take this item now.",
+    picks: "Every pick in order, with its step, wait and cost.",
   };
   static frameHints: Record<string, FrameHint> = {
     items: { columns: [
@@ -176,7 +176,7 @@ export const SEARCH_ENDS_ASK = "Each group ends";
 export type SearchStuck = "stop" | "look";
 export const SEARCH_STUCK_OPTIONS: { value: SearchStuck; label: string; title?: string }[] = [
   { value: "stop", label: "Quick" },
-  { value: "look", label: "Thorough", title: "Searches past dead ends, up to 10× longer. Never worse." },
+  { value: "look", label: "Thorough", title: "Keeps searching past dead ends. Takes up to 10× longer and is never worse than Quick." },
 ];
 
 export class LocalSearchNode extends GraphNode {
@@ -185,11 +185,11 @@ export class LocalSearchNode extends GraphNode {
   };
   static socketDocs: Record<string, string> = {
     items: "Each group's items in order, such as Greedy Queue's picks.",
-    start: "One row per group, read as group_ columns. A group listed here can take items.",
+    start: "One row per group. Formulas read its columns as group_ columns, and only groups listed here can take items.",
     group: "Empty: one group, reordered only.",
-    cost: "A LAMBDA added to the Cost column. It can read before, the cost so far, and position.",
-    penalty: "A LAMBDA added to the total, such as lateness. It can read at, the cost through this item.",
-    allowed: "A LAMBDA: TRUE if this item may go here. Fewer refusals always win.",
+    cost: "A LAMBDA added to each item's Cost. It can read before, the cost so far, and position.",
+    penalty: "A LAMBDA added to the total, such as a charge for lateness. It can read at, the cost through this item.",
+    allowed: "A LAMBDA that gives TRUE when this item may go here. A plan with fewer refusals always wins.",
     history: "One row per change made.",
   };
   static frameHints: Record<string, FrameHint> = {
