@@ -14,6 +14,7 @@ import { ChartPopup } from "../components/ChartPopup";
 import { ElementPicker } from "../components/ElementPicker";
 import { FilePicker } from "../components/FilePicker";
 import { PivotEditorPopup } from "../components/PivotEditorPopup";
+import { SolverLimitsPopup } from "../components/SolverLimitsPopup";
 import "./NodeShowcase.css";
 
 
@@ -168,6 +169,7 @@ function LoadedShowcase({ initialType }: { initialType: string }) {
       <ElementPicker />
       <FilePicker />
       <PivotEditorPopup />
+      <SolverLimitsPopup />
     </div>
   );
 }

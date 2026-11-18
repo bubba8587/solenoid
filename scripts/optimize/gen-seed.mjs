@@ -30,19 +30,18 @@ table("blends", "Blends (per kg)", {
   "Roaster (h)": [0.02, 0.03, 0.02, 0.025],
   Max: [600, 400, 350, 200],
 });
-table("stock", "Weekly limits", {
-  Resource: ["Brazil beans", "Colombia beans", "Ethiopia beans", "Roaster time", "Espresso for café contracts"],
-  "Sum of": ["Brazil", "Colombia", "Ethiopia", "Roaster", ""],
-  Where: ["", "", "", "", "Blend"],
-  Is: ["", "", "", "", "Espresso"],
-  Sign: ["<=", "<=", "<=", "<=", ">="],
-  Limit: [500, 350, 250, 30, 150],
-});
-add("mix", "SolverNode", { label: "Roast plan" }, { stringLiterals: { objective: "Profit" } });
-wire("blends.frame -> mix.options", "stock.frame -> mix.limits");
+// Each limit reads as a sentence in the card's Limits popup: total Brazil must be at most 500 (kg, the column's unit).
+add("mix", "SolverNode", { label: "Roast plan", limitList: [
+  { of: "Brazil", sign: "le", limit: 500 },
+  { of: "Colombia", sign: "le", limit: 350 },
+  { of: "Ethiopia", sign: "le", limit: 250 },
+  { of: "Roaster", sign: "le", limit: 30 },
+  { of: "", where: "Blend", is: "Espresso", sign: "ge", limit: 150 },
+] }, { stringLiterals: { objective: "Profit" } });
+wire("blends.frame -> mix.options");
 keep("mix_units", "Kg per blend", "Blend, Amount");
 chart("mix_chart", "Kg per blend", "column", "xlabel=Blend; ylabel=Kg");
-keep("mix_room", "Sensitivity", "Resource, Used, Slack, Shadow Price");
+keep("mix_room", "Sensitivity", "Total of, Where, Is, Limit, Used, Slack, Shadow Price");
 wire("mix.plan -> mix_units.frame", "mix_units.frame -> mix_chart.values", "mix.limits -> mix_room.frame");
 
 // ── 2. A project portfolio: which projects fit the budget and the team ──
@@ -55,18 +54,26 @@ table("projects", "Projects", {
   Max: [1, 1, 1, 1, 1, 1, 1, 1],
   Whole: [true, true, true, true, true, true, true, true],
 });
-table("budget", "Portfolio limits", {
-  Rule: ["Budget ($k)", "People", "At most two IT projects"],
-  "Sum of": ["Cost", "Staff", ""],
-  Where: ["", "", "Area"],
-  Is: ["", "", "IT"],
-  Sign: ["<=", "<=", "<="],
-  Limit: [400, 12, 2],
-});
-add("portfolio", "SolverNode", { label: "Portfolio" }, { stringLiterals: { objective: "Value" } });
-wire("projects.frame -> portfolio.options", "budget.frame -> portfolio.limits");
+add("portfolio", "SolverNode", { label: "Portfolio", limitList: [
+  { of: "Cost", sign: "le", limit: 400 },
+  { of: "Staff", sign: "le", limit: 12 },
+  { of: "", where: "Area", is: "IT", sign: "le", limit: 2 },
+] }, { stringLiterals: { objective: "Value" } });
+wire("projects.frame -> portfolio.options");
 keep("portfolio_pick", "Projects chosen", "Project, Area, Value, Amount");
 wire("portfolio.plan -> portfolio_pick.frame");
+
+// ── 2b. An ad budget: each channel reaches fewer new people per dollar the more it gets, so the best split is uneven ──
+table("channels", "Channels", {
+  Channel: ["Search", "Social", "Radio", "Billboards"],
+  Reach: [40000, 65000, 30000, 22000],
+  Scale: [3000, 6000, 2500, 4000],
+});
+add("ad_reach", "LambdaNode", { label: "People reached", params: "Reach, Scale, amount", expr: "Reach * (1 - EXP(-amount / Scale))" });
+add("ads", "SolverNode", { label: "Ad budget split", limitList: [{ of: "", sign: "le", limit: 12000 }] });
+keep("ads_spend", "Spend per channel", "Channel, Amount");
+chart("ads_chart", "Spend per channel", "bar", "xlabel=Dollars");
+wire("channels.frame -> ads.options", "ad_reach.result -> ads.goalFormula", "ads.plan -> ads_spend.frame", "ads_spend.frame -> ads_chart.values");
 
 // ── 3. Crew assignment: who takes which job, hours each would need (blank: not certified) ──
 table("hours", "Crew hours", {
@@ -115,8 +122,9 @@ wire("calls.value -> desk.arrivals", "call_min.value -> desk.minutes", "answer_m
   "desk.options -> desk_cols.frame", "desk_cols.frame -> desk_chart.values");
 
 const groups = [
-  ["grp_mix", "Roast mix", ["blends", "stock", "mix", "mix_units", "mix_chart", "mix_room"], "teal"],
-  ["grp_portfolio", "Project portfolio", ["projects", "budget", "portfolio", "portfolio_pick"], "blue"],
+  ["grp_mix", "Roast mix", ["blends", "mix", "mix_units", "mix_chart", "mix_room"], "teal"],
+  ["grp_portfolio", "Project portfolio", ["projects", "portfolio", "portfolio_pick"], "blue"],
+  ["grp_ads", "Ad budget", ["channels", "ad_reach", "ads", "ads_spend", "ads_chart"], "pink"],
   ["grp_crews", "Crew assignment", ["hours", "crews"], "amber"],
   ["grp_route", "Road route", ["roads", "route", "reach", "reach_cols", "reach_chart"], "green"],
   ["grp_front", "Plan trade-offs", ["plans", "front", "front_chart"], "violet"],

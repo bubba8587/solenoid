@@ -85,85 +85,39 @@
    ]
   },
   {
-   "id": "stock",
-   "type": "FrameInputNode",
-   "init": {
-    "label": "Weekly limits"
-   },
-   "frame": [
-    {
-     "name": "Resource",
-     "cells": [
-      "Brazil beans",
-      "Colombia beans",
-      "Ethiopia beans",
-      "Roaster time",
-      "Espresso for café contracts"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Sum of",
-     "cells": [
-      "Brazil",
-      "Colombia",
-      "Ethiopia",
-      "Roaster",
-      ""
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Where",
-     "cells": [
-      "",
-      "",
-      "",
-      "",
-      "Blend"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Is",
-     "cells": [
-      "",
-      "",
-      "",
-      "",
-      "Espresso"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Sign",
-     "cells": [
-      "<=",
-      "<=",
-      "<=",
-      "<=",
-      ">="
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Limit",
-     "cells": [
-      500,
-      350,
-      250,
-      30,
-      150
-     ],
-     "type": "number"
-    }
-   ]
-  },
-  {
    "id": "mix",
    "type": "SolverNode",
    "init": {
-    "label": "Roast plan"
+    "label": "Roast plan",
+    "limitList": [
+     {
+      "of": "Brazil",
+      "sign": "le",
+      "limit": 500
+     },
+     {
+      "of": "Colombia",
+      "sign": "le",
+      "limit": 350
+     },
+     {
+      "of": "Ethiopia",
+      "sign": "le",
+      "limit": 250
+     },
+     {
+      "of": "Roaster",
+      "sign": "le",
+      "limit": 30
+     },
+     {
+      "of": "",
+      "where": "Blend",
+      "is": "Espresso",
+      "sign": "ge",
+      "limit": 150
+     }
+    ]
    },
    "stringLiterals": {
     "objective": "Profit"
@@ -197,7 +151,7 @@
     "label": "Sensitivity"
    },
    "stringLiterals": {
-    "columns": "Resource, Used, Slack, Shadow Price"
+    "columns": "Total of, Where, Is, Limit, Used, Slack, Shadow Price"
    }
   },
   {
@@ -308,73 +262,29 @@
    ]
   },
   {
-   "id": "budget",
-   "type": "FrameInputNode",
-   "init": {
-    "label": "Portfolio limits"
-   },
-   "frame": [
-    {
-     "name": "Rule",
-     "cells": [
-      "Budget ($k)",
-      "People",
-      "At most two IT projects"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Sum of",
-     "cells": [
-      "Cost",
-      "Staff",
-      ""
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Where",
-     "cells": [
-      "",
-      "",
-      "Area"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Is",
-     "cells": [
-      "",
-      "",
-      "IT"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Sign",
-     "cells": [
-      "<=",
-      "<=",
-      "<="
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Limit",
-     "cells": [
-      400,
-      12,
-      2
-     ],
-     "type": "number"
-    }
-   ]
-  },
-  {
    "id": "portfolio",
    "type": "SolverNode",
    "init": {
-    "label": "Portfolio"
+    "label": "Portfolio",
+    "limitList": [
+     {
+      "of": "Cost",
+      "sign": "le",
+      "limit": 400
+     },
+     {
+      "of": "Staff",
+      "sign": "le",
+      "limit": 12
+     },
+     {
+      "of": "",
+      "where": "Area",
+      "is": "IT",
+      "sign": "le",
+      "limit": 2
+     }
+    ]
    },
    "stringLiterals": {
     "objective": "Value"
@@ -388,6 +298,89 @@
    },
    "stringLiterals": {
     "columns": "Project, Area, Value, Amount"
+   }
+  },
+  {
+   "id": "channels",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Channels"
+   },
+   "frame": [
+    {
+     "name": "Channel",
+     "cells": [
+      "Search",
+      "Social",
+      "Radio",
+      "Billboards"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Reach",
+     "cells": [
+      40000,
+      65000,
+      30000,
+      22000
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Scale",
+     "cells": [
+      3000,
+      6000,
+      2500,
+      4000
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "ad_reach",
+   "type": "LambdaNode",
+   "init": {
+    "label": "People reached",
+    "params": "Reach, Scale, amount",
+    "expr": "Reach * (1 - EXP(-amount / Scale))"
+   }
+  },
+  {
+   "id": "ads",
+   "type": "SolverNode",
+   "init": {
+    "label": "Ad budget split",
+    "limitList": [
+     {
+      "of": "",
+      "sign": "le",
+      "limit": 12000
+     }
+    ]
+   }
+  },
+  {
+   "id": "ads_spend",
+   "type": "ColumnsNode",
+   "init": {
+    "label": "Spend per channel"
+   },
+   "stringLiterals": {
+    "columns": "Channel, Amount"
+   }
+  },
+  {
+   "id": "ads_chart",
+   "type": "ChartNode",
+   "init": {
+    "label": "Spend per channel",
+    "op": "bar"
+   },
+   "stringLiterals": {
+    "options": "xlabel=Dollars"
    }
   },
   {
@@ -736,7 +729,6 @@
     "label": "Roast mix",
     "members": [
      "blends",
-     "stock",
      "mix",
      "mix_units",
      "mix_chart",
@@ -752,11 +744,25 @@
     "label": "Project portfolio",
     "members": [
      "projects",
-     "budget",
      "portfolio",
      "portfolio_pick"
     ],
     "color": "blue"
+   }
+  },
+  {
+   "id": "grp_ads",
+   "type": "GroupNode",
+   "init": {
+    "label": "Ad budget",
+    "members": [
+     "channels",
+     "ad_reach",
+     "ads",
+     "ads_spend",
+     "ads_chart"
+    ],
+    "color": "pink"
    }
   },
   {
@@ -819,13 +825,15 @@
  ],
  "cables": [
   "blends.frame -> mix.options",
-  "stock.frame -> mix.limits",
   "mix.plan -> mix_units.frame",
   "mix_units.frame -> mix_chart.values",
   "mix.limits -> mix_room.frame",
   "projects.frame -> portfolio.options",
-  "budget.frame -> portfolio.limits",
   "portfolio.plan -> portfolio_pick.frame",
+  "channels.frame -> ads.options",
+  "ad_reach.result -> ads.goalFormula",
+  "ads.plan -> ads_spend.frame",
+  "ads_spend.frame -> ads_chart.values",
   "hours.frame -> crews.costs",
   "roads.frame -> route.links",
   "roads.frame -> reach.links",

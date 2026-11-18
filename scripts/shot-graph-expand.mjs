@@ -15,7 +15,8 @@ export function expand(raw) {
     const init = { ...(rest.init ?? {}) };
     if (frame) {
       init.frameText = JSON.stringify(frame.map((c) => {
-        const cells = (c.cells ?? []).map(String);
+        // A blank cell stays blank (null, as a saved table keeps it), never the text "null".
+        const cells = (c.cells ?? []).map((v) => (v == null ? null : String(v)));
         return { name: c.name, type: c.type ?? (c.expr ? "number" : inferType(cells)), cells, ...(c.unit ? { unit: c.unit } : {}), ...(c.expr ? { expr: c.expr } : {}) };
       }));
     }

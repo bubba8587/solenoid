@@ -1,0 +1,64 @@
+/* The Solver's Limits popup: a limit a block, each line a sentence of selects and fields. */
+.solver-limits { width: min(560px, 96vw); }
+.solver-limits__body {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.solver-limits__limit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-sunken);
+}
+.solver-limits__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.solver-limits__line--where { padding-left: 12px; }
+.solver-limits__word { color: var(--text-muted); }
+.solver-limits__num,
+.solver-limits__text {
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+}
+.solver-limits__num { width: 7em; font-variant-numeric: tabular-nums; }
+.solver-limits__text { width: 9em; }
+.solver-limits__x { margin-left: auto; }
+.solver-limits__link {
+  align-self: flex-start;
+  font-size: 11px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.solver-limits__empty { font-size: 12px; color: var(--text-muted); padding: 8px 0; }
+.solver-limits__footer { justify-content: space-between; }
+.solver-limits__add {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+@media (max-width: 640px) {
+  .solver-limits__num, .solver-limits__text { font-size: 13px; padding: 6px 8px; }
+}

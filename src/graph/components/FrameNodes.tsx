@@ -75,7 +75,7 @@ function FrameOrCubeDisplay({ value, label }: { value: FrameValue | CubeValue | 
     ? <CubeDisplay cube={value} label={label} />
     : <FrameDisplay frame={value} label={label} />;
 }
-import { processGraph, processEdited } from "../process";
+import { notifyGraphChanged, processGraph, processEdited } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { scheduleAutosave } from "../persistence";
 import { getOwningEditor, getOwningView } from "../activeGraph";
@@ -84,6 +84,8 @@ import { cableGhostStore } from "../cableState";
 import { reconcileTypesAfterEdit, retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
+import { solverLimits } from "../solverLimitsStore";
+import { limitSummary, limitSubject, limitRule } from "./SolverLimitsPopup";
 import { InlineInputs, InlineTextField, useConnectedInputs } from "./inlineInput";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { ExtensibleInputs } from "./ExtensibleInputs";
@@ -1336,13 +1338,12 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
   // and how much fits a step. A section's heading asks the question, so its rows name only what they hold, and a
   // formula's row says what it adds: the whole order where nothing else decides, a tie-break where something does.
   const decided = orderBy === "cost" || connected.has("orderColumn") || !!data.stringLiterals.orderColumn;
-  const hasCostColumn = connected.has("costColumn") || !!data.stringLiterals.costColumn;
   const label = (key: string): string =>
     ({
       orderColumn: "Of column",
       order: decided ? "Ties by" : "By formula",
       costColumn: "Column",
-      cost: hasCostColumn ? "Plus formula" : "Formula",
+      cost: "Formula",
       budget: "Budget",
       perStep: "Most picks",
     } as Record<string, string>)[key] ?? data.inputs[key]?.label ?? key;
@@ -1408,9 +1409,8 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
   const hasStart = connected.has("start") || ends !== "open";
   const groupsUsed = useRowsInUse(data, SEARCH_GROUP_KEYS) || reach !== "across" || ends !== "open";
   // Under "Cost of an item" each row names what it adds; the penalty counts toward the total, not the running cost.
-  const hasCostColumn = connected.has("costColumn") || !!data.stringLiterals.costColumn;
   const label = (key: string): string =>
-    ({ costColumn: "Column", cost: hasCostColumn ? "Plus formula" : "Formula", penalty: "Plus penalty", passes: "Most rounds" } as Record<string, string>)[key]
+    ({ costColumn: "Column", cost: "Formula", penalty: "Plus penalty", passes: "Most rounds" } as Record<string, string>)[key]
       ?? data.inputs[key]?.label ?? key;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
@@ -1447,6 +1447,13 @@ const SEARCH_GROUP_KEYS = ["group", "start", "allowed"];
 // The plan is the card's table; the best total and the limits, with their slack and shadow prices, ride below it.
 export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
   const [goal, setGoal] = useNodeField(data, "goal");
+  const [, bump] = useState(0);
+  const removeLimit = (i: number) => {
+    data.limitList = data.limitList.filter((_, j) => j !== i);
+    bump((n) => n + 1);
+    notifyGraphChanged();
+    void processGraph(data.id);
+  };
   const limits = previewed(() => data.cachedLimits);
   const count = limits && isFrameValue(limits) ? frameRowCount(limits) : null;
   return (
@@ -1454,9 +1461,37 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
       <InlineInputs node={data} emit={emit} keys={["options"]} fullWiredKeys={SOLVER_WHOLE} />
       <CardSection label="Goal">
         <SegToggle value={goal} options={SOLVER_GOAL_OPTIONS} onChange={setGoal} />
-        <InlineInputs node={data} emit={emit} keys={["objective"]} labelFor={() => "Of column"} fullWiredKeys={SOLVER_WHOLE} />
+        <InlineInputs node={data} emit={emit} keys={["objective", "goalFormula"]} labelFor={(k) => (k === "objective" ? "Total of column" : "Total of formula")} cableOnlyKeys={SOLVER_LAMBDA} fullWiredKeys={SOLVER_WHOLE} />
       </CardSection>
-      <InlineInputs node={data} emit={emit} keys={["limits"]} fullWiredKeys={SOLVER_WHOLE} />
+      <CardSection label="Limits">
+        <CardOpenButton label="Edit Limits" onOpen={(el) => solverLimits.open({ node: data, title: `${nodeDisplayName(data)}: Limits`, accent: readChipPopupStyle(el).accent })} />
+        <div className="solenoid-pipeline">
+          {data.limitList.length === 0
+            ? <div className="solenoid-node__text-empty">no limits</div>
+            : (
+              <div className="solenoid-pipeline__list nowheel">
+                {data.limitList.map((l, i) => (
+                  <div key={i} className="solenoid-pipeline__step solenoid-edit-frame__edit" title={limitSummary(l)}>
+                    <span className="solenoid-pipeline__num">{i + 1}</span>
+                    <span className="solenoid-pipeline__name">{limitSubject(l)}</span>
+                    <span className="solenoid-edit-frame__value solver-limit-rule">{limitRule(l)}</span>
+                    <button
+                      type="button"
+                      className="solenoid-edit-frame__remove"
+                      title="Remove this limit"
+                      aria-label="Remove this limit"
+                      onPointerDown={stopDragStart}
+                      onMouseDown={stopDragStart}
+                      onClick={(ev) => { ev.stopPropagation(); removeLimit(i); }}
+                    >
+                      <CloseIcon size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+        </div>
+      </CardSection>
       <MeasuredSocketRow side="output" socketKey="plan" nodeId={data.id} emit={emit} payload={data.outputs.plan!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
@@ -1474,7 +1509,8 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
     </NodeShell>
   );
 }
-const SOLVER_WHOLE = new Set(["options", "objective", "limits"]);
+const SOLVER_WHOLE = new Set(["options", "objective", "goalFormula"]);
+const SOLVER_LAMBDA = new Set(["goalFormula"]);
 
 export function AssignmentComponent({ data, emit }: NodeProps<AssignmentNodeType>) {
   const [goal, setGoal] = useNodeField(data, "goal");

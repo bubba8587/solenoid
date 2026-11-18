@@ -2,7 +2,7 @@
 // (tree/specs/computation/frame-verbs.md § Solver).
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { frameIn, frameOut, strIn, strListIn, numIn, numOut } from "./shared";
+import { frameIn, frameOut, strIn, strListIn, numIn, numOut, lambdaIn } from "./shared";
 import type { FrameValue } from "../frame";
 import type { SolError } from "../errorValue";
 import type { FrameHint } from "../frameHint";
@@ -22,10 +22,20 @@ const added = (shape: Shape, cols: { name: string; type: "number" | "logical" }[
   return { ...shape, columns: [...shape.columns.filter((c) => !taken.has(c.name.trim().toLowerCase())), ...cols] };
 };
 
+/** A Solver limit: the total of an Options column (blank: of the amounts), optionally only where a column is a value,
+ *  at most, at least or exactly `limit`. */
+export interface SolverLimit { of: string; where?: string; is?: string; sign: SolverSign; limit: number | null }
+export type SolverSign = "le" | "ge" | "eq";
+export const SOLVER_SIGN_OPTIONS: { value: SolverSign; label: string }[] = [
+  { value: "le", label: "at most" },
+  { value: "ge", label: "at least" },
+  { value: "eq", label: "exactly" },
+];
+
 export class SolverNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     options: "One row per decision. Optional Min, Max and Whole columns bound each amount.",
-    limits: "One row per limit: Sum of a column, Where a column Is a value, then Sign and Limit.",
+    goalFormula: "A LAMBDA run for each option at its amount, reading its columns by name and amount, such as a price that drops past 100 units. The goal adds up its answers.",
   };
   static frameHints: Record<string, FrameHint> = {
     options: { columns: [
@@ -33,15 +43,11 @@ export class SolverNode extends GraphNode {
       { name: "Profit", type: "number", cells: [45, 80, 110] },
       { name: "Wood", type: "number", cells: [2, 5, 6] },
     ] },
-    limits: { columns: [
-      { name: "Sum of", type: "string", cells: ["Wood", "Labor", ""] },
-      { name: "Sign", type: "string", cells: ["<=", "<=", ">="] },
-      { name: "Limit", type: "number", cells: [300, 330, 10] },
-    ] },
   };
 
   label: string;
   goal: SolverGoal = "max";
+  limitList: SolverLimit[] = [];
   stringLiterals: Record<string, string> = { objective: "" };
   cachedResult: FrameValue | SolError | null = null;
   cachedBest: number | SolError | null = null;
@@ -49,13 +55,14 @@ export class SolverNode extends GraphNode {
   cachedStatus: string | null = null;
   width = 260; height = 260;
 
-  constructor(init?: { label?: string; goal?: SolverGoal }) {
+  constructor(init?: { label?: string; goal?: SolverGoal; limitList?: SolverLimit[] }) {
     super("Solver");
     this.label = init?.label ?? "Solver";
     if (init?.goal === "min") this.goal = "min";
+    if (Array.isArray(init?.limitList)) this.limitList = init.limitList.map((l) => ({ ...l }));
     this.addInput("options", frameIn("Options"));
     this.addInput("objective", strIn("Goal"));
-    this.addInput("limits", frameIn("Limits"));
+    this.addInput("goalFormula", lambdaIn("Goal formula"));
     this.addOutput("plan", frameOut("Plan"));
     this.addOutput("best", numOut("Best"));
     this.addOutput("limits", frameOut("Limits"));
@@ -63,14 +70,20 @@ export class SolverNode extends GraphNode {
 
   columnPickers(): ColumnPickerSpec[] { return [{ key: "objective", frameInput: "options" }]; }
 
-  /** The plan is Options with Amount after; the limits gain Used, Slack and Shadow Price. */
+  /** The plan is Options with Amount after; the limits table is the saved limits with Used, Slack and Shadow Price. */
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
     if (outKey === "plan") {
       const s = ctx.inputShape("options");
       return s && added(s, [{ name: "Amount", type: "number" }]);
     }
-    const s = ctx.inputShape("limits");
-    return s && added(s, [{ name: "Used", type: "number" }, { name: "Slack", type: "number" }, { name: "Shadow Price", type: "number" }]);
+    if (!this.limitList.length) return null;
+    const filters = this.limitList.some((l) => l.where?.trim());
+    return { columns: [
+      { name: "Total of", type: "string" },
+      ...(filters ? [{ name: "Where", type: "string" as const }, { name: "Is", type: "string" as const }] : []),
+      { name: "Must Be", type: "string" }, { name: "Limit", type: "number" },
+      { name: "Used", type: "number" }, { name: "Slack", type: "number" }, { name: "Shadow Price", type: "number" },
+    ] };
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
@@ -87,7 +100,7 @@ export const ASSIGN_GOAL_OPTIONS: { value: AssignGoal; label: string }[] = [
 
 export class AssignmentNode extends GraphNode {
   static socketDocs: Record<string, string> = {
-    costs: "A row per person, a column per job. A blank cell: that pair can't be made.",
+    costs: "A row per person and a column per job. An empty cell means that person can't take that job.",
   };
   static frameHints: Record<string, FrameHint> = {
     costs: { columns: [
@@ -181,7 +194,7 @@ export class ShortestPathNode extends GraphNode {
 export class ParetoNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     front: "The options no other option beats on every measure.",
-    all: "Every option, with On Front and how many options beat it.",
+    all: "Every option, marked whether it's on the front, with how many other options beat it.",
   };
   static frameHints: Record<string, FrameHint> = {
     options: { columns: [
@@ -226,7 +239,7 @@ export class StaffingNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     target: "Empty: at once.",
     share: "Such as 0.8, for 80%.",
-    options: "A row per staff level, from the fewest that keep up.",
+    options: "A row per staff level, starting from the fewest people who can keep up.",
   };
 
   label: string;
