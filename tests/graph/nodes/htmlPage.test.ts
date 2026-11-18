@@ -26,6 +26,17 @@ describe("an HTML Page's CSS", () => {
     expect(out).not.toContain(`${S} from`);
   });
 
+  it("follows the app's light or dark for prefers-color-scheme, at no extra specificity", () => {
+    const dark = `:where(html[data-theme="dark"]) ${S}`;
+    const out = scopeCss(":root { --ink: #222 } @media (prefers-color-scheme: dark) { :root { --ink: #eee } h1 { color: white } }");
+    expect(out).toContain(`${S} { --ink: #222 }`);
+    expect(out).toContain(`${dark} { --ink: #eee }`);
+    expect(out).toContain(`${dark} h1 { color: white }`);
+    expect(out).not.toContain("prefers-color-scheme");
+    const both = scopeCss("@media (prefers-color-scheme: light) and (max-width: 600px) { p { margin: 0 } }");
+    expect(both).toBe(`@media (max-width: 600px) { :where(html[data-theme="light"]) ${S} p { margin: 0 } }`);
+  });
+
   it("keeps nothing that fetches: @import goes, a url() that isn't an inline image is none", () => {
     const out = scopeCss('@import url("https://x.test/a.css"); .hero { background: url(https://x.test/b.png) } .dot { background: url(data:image/png;base64,AA) }');
     expect(out).not.toContain("@import");

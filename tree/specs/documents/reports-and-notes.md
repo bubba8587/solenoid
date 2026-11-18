@@ -588,7 +588,8 @@ figure reads its styling from where it draws, not from the app's root: each slot
 `chartCore.ts`), so an SVG chart's axis, grid and series colors (`--text-dim`, `--border-strong`, `--chart-1` to
 `--chart-12` over the palette's series colors; a one-series chart takes `--chart-1`) and a canvas chart's face (read from its own canvas) follow the page, or one
 box's own rule (`[data-sol-ref="trend"] { --chart-1: #c2410c }`). `--chart-font-scale` multiplies a chart's text over its
-Format Controller's scale. Outside a page nothing sets a scope, so every other surface reads the app's as before.
+Format Controller's scale. A page's `@media (prefers-color-scheme: …)` follows the app's light or dark, not the system's
+(its rules scoped under `:where(html[data-theme="…"])`, no extra specificity), so a page can carry both themes. Outside a page nothing sets a scope, so every other surface reads the app's as before.
 
 **Names a page styles.** A figure's box is `.sol-box`, its name bar `.sol-box__label`, its value `.sol-box__value` and a
 figure's own title `.sol-box__title`, so a page that heads a figure itself hides the label and title

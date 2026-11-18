@@ -47,8 +47,10 @@ export function attributeSlots(rendered: string): string[] {
   return [...out];
 }
 
-/** A selector list under the page's scope: `html`, `body` and `:root` name the page itself. */
-function scopeSelectors(list: string): string {
+/** A selector list under the page's scope: `html`, `body` and `:root` name the page itself. `theme` limits it to the
+ *  app's light or dark, at no extra specificity. */
+function scopeSelectors(list: string, theme = ""): string {
+  const scope = theme ? `:where(html[data-theme="${theme}"]) .${PAGE_SCOPE}` : `.${PAGE_SCOPE}`;
   return list
     .split(",")
     .map((raw) => {
@@ -57,15 +59,18 @@ function scopeSelectors(list: string): string {
       const self = /^(?::root|html|body)(?=$|[\s.#:[>+~])/i;
       if (self.test(sel)) {
         const rest = sel.replace(self, "").replace(/^\s*(html|body)(?=$|[\s.#:[>+~])/i, "");
-        return `.${PAGE_SCOPE}${rest}`;
+        return `${scope}${rest}`;
       }
-      return `.${PAGE_SCOPE} ${sel}`;
+      return `${scope} ${sel}`;
     })
     .join(", ");
 }
 
+const SCHEME_RE = /\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/i;
+
 /** The page's CSS with every rule scoped to the page, so it styles nothing else on screen, and nothing that fetches:
- *  `@import` goes, and a `url()` that isn't an inline image or font (a local file the card read is inline by now). */
+ *  `@import` goes, and a `url()` that isn't an inline image or font (a local file the card read is inline by now).
+ *  `prefers-color-scheme` follows the app's light or dark, not the system's: the page sits in the app. */
 export function scopeCss(css: string): string {
   const src = css
     .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -73,6 +78,7 @@ export function scopeCss(css: string): string {
     .replace(/url\((?!\s*['"]?\s*data:(?:image|font)\/)\s*(['"]?)[^)]*\1\s*\)/gi, "none");
   let out = "";
   let i = 0;
+  let theme = "";
   const block = (depth: number): void => {
     while (i < src.length) {
       const open = src.indexOf("{", i);
@@ -87,7 +93,15 @@ export function scopeCss(css: string): string {
       const head = src.slice(i, open);
       const at = head.trim();
       i = open + 1;
-      if (/^@(media|supports|container|layer)\b/i.test(at)) {
+      const scheme = /^@media\b/i.test(at) ? SCHEME_RE.exec(at) : null;
+      if (scheme) {
+        const rest = at.replace(/^@media\s*/i, "").replace(SCHEME_RE, "").replace(/^\s*and\s+|\s+and\s*$/gi, "").replace(/\band\s+and\b/gi, "and").trim();
+        const outer = theme;
+        theme = scheme[1].toLowerCase();
+        if (rest) { out += `${head.match(/^\s*/)?.[0] ?? ""}@media ${rest} {`; block(depth + 1); }
+        else { block(depth + 1); out = out.replace(/\}$/, ""); }
+        theme = outer;
+      } else if (/^@(media|supports|container|layer)\b/i.test(at)) {
         out += `${head}{`;
         block(depth + 1);
       } else if (at.startsWith("@")) {
@@ -97,7 +111,7 @@ export function scopeCss(css: string): string {
         i = end + 1;
       } else {
         const lead = head.match(/^\s*/)?.[0] ?? "";
-        out += `${lead}${scopeSelectors(at)} {`;
+        out += `${lead}${scopeSelectors(at, theme)} {`;
         const end = src.indexOf("}", i);
         out += src.slice(i, end === -1 ? src.length : end + 1);
         i = end === -1 ? src.length : end + 1;
