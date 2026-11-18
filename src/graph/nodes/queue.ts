@@ -33,15 +33,13 @@ export const QUEUE_FIT_ASK = "If an item won't fit";
 
 /** Which way the Order by column runs: its smallest value first, or its largest. */
 export type QueueOrderDir = "asc" | "desc";
-export const QUEUE_ORDER_DIR_OPTIONS: { value: QueueOrderDir; label: string }[] = [
-  { value: "asc", label: "Smallest first" },
-  { value: "desc", label: "Largest first" },
-];
 
 /** What decides the next item: a column (with an Order formula after it), or the item's own cost, cheapest first. */
 export type QueueOrderBy = "column" | "cost";
-export const QUEUE_ORDER_BY_OPTIONS: { value: QueueOrderBy; label: string }[] = [
-  { value: "column", label: "By a column" },
+/** The card's one order toggle: the Order by column either way, or the item's own cost. */
+export const QUEUE_ORDER_OPTIONS: { value: QueueOrderDir | "cost"; label: string }[] = [
+  { value: "asc", label: "Smallest first" },
+  { value: "desc", label: "Largest first" },
   { value: "cost", label: "Cheapest first" },
 ];
 
