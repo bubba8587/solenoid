@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head><title>Project brief</title></head>
+<body>
+  <div class="brief">
+    <div class="top">
+      <h1>{{ project }}</h1>
+      {% if status == "On track" %}<span class="badge ok">On track</span>{% elseif status == "At risk" %}<span class="badge warn">At risk</span>{% else %}<span class="badge late">{{ status }}</span>{% endif %}
+    </div>
+    <p class="summary">{{ summary }}</p>
+
+    <dl class="numbers">
+      <div><dt>Budget</dt><dd>{{ budget }}</dd></div>
+      <div><dt>Spent</dt><dd>{{ spent }}</dd></div>
+      <div><dt>Left</dt><dd>{{ left }}</dd></div>
+    </dl>
+
+    <h2>Milestones</h2>
+    <ol class="timeline">
+      {% for m in milestones %}
+      <li class="{% if m.Done %}done{% endif %}">
+        <span class="when">{{ m.Due }}</span>
+        <span class="what">{{ m.Milestone }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+
+    <h2>Spend against plan</h2>
+    {{ burn }}
+  </div>
+</body>
+</html>

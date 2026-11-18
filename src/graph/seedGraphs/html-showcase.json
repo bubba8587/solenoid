@@ -1,0 +1,407 @@
+{
+  "v": 2,
+  "order": 425,
+  "label": "HTML showcase",
+  "group": "Charts & reports",
+  "nodes": [
+    {
+      "id": "q_company",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Company",
+        "value": "Northwind Supply",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "q_quarter",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Quarter",
+        "value": "Q3 2026",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 170
+    },
+    {
+      "id": "q_ledger",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Bookings ledger",
+        "frameText": "[{\"name\":\"Month\",\"type\":\"string\",\"cells\":[\"Jan\",\"Feb\",\"Mar\",\"Apr\",\"May\",\"Jun\"]},{\"name\":\"Bookings\",\"type\":\"number\",\"cells\":[\"210\",\"245\",\"238\",\"262\",\"281\",\"296\"]}]"
+      },
+      "x": 360,
+      "y": 0
+    },
+    {
+      "id": "q_col",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Bookings",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Bookings"
+      },
+      "x": 720,
+      "y": 0
+    },
+    {
+      "id": "q_total",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Total bookings",
+        "op": "sum"
+      },
+      "x": 1060,
+      "y": 0
+    },
+    {
+      "id": "q_growth",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Growth",
+        "expr": "TEXT(total / 1350 - 1, \"0.0%\")"
+      },
+      "x": 1400,
+      "y": 0
+    },
+    {
+      "id": "q_chart",
+      "type": "ChartNode",
+      "init": {
+        "label": "Bookings by month",
+        "op": "column"
+      },
+      "stringLiterals": {
+        "options": "color=#c2410c"
+      },
+      "x": 1060,
+      "y": 250
+    },
+    {
+      "id": "q_regions",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Regions",
+        "frameText": "[{\"name\":\"Region\",\"type\":\"string\",\"cells\":[\"North\",\"South\",\"West\"]},{\"name\":\"Owner\",\"type\":\"string\",\"cells\":[\"Ana\",\"Ben\",\"Chidi\"]},{\"name\":\"Bookings\",\"type\":\"number\",\"cells\":[\"412\",\"388\",\"732\"]}]"
+      },
+      "x": 0,
+      "y": 510
+    },
+    {
+      "id": "q_best",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Best region",
+        "value": "West",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 340
+    },
+    {
+      "id": "q_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Quarterly one-pager",
+        "fileName": "pages/quarterly.html",
+        "styleFile": "pages/quarterly.css",
+        "sideVars": [
+          "company",
+          "quarter",
+          "total",
+          "growth",
+          "best",
+          "regions",
+          "trend",
+          "ledger"
+        ]
+      },
+      "x": 1760,
+      "y": 0
+    },
+    {
+      "id": "p_project",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Project",
+        "value": "Warehouse move",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 1050
+    },
+    {
+      "id": "p_status",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Status",
+        "value": "At risk",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 1220
+    },
+    {
+      "id": "p_summary",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Summary",
+        "value": "Racking arrives two weeks late; the go-live date holds if the forklift training moves up.",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 1390
+    },
+    {
+      "id": "p_budget",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Budget",
+        "value": "250000"
+      },
+      "x": 0,
+      "y": 1620
+    },
+    {
+      "id": "p_spend",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Spend by month",
+        "frameText": "[{\"name\":\"Month\",\"type\":\"string\",\"cells\":[\"Jul\",\"Aug\",\"Sep\",\"Oct\",\"Nov\",\"Dec\"]},{\"name\":\"Plan\",\"type\":\"number\",\"cells\":[\"30000\",\"45000\",\"50000\",\"45000\",\"40000\",\"40000\"]},{\"name\":\"Actual\",\"type\":\"number\",\"cells\":[\"28000\",\"51000\",\"58000\",\"\",\"\",\"\"]}]"
+      },
+      "x": 360,
+      "y": 1050
+    },
+    {
+      "id": "p_actual",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Actual",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Actual"
+      },
+      "x": 720,
+      "y": 1050
+    },
+    {
+      "id": "p_spent",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Spent",
+        "op": "sum"
+      },
+      "x": 1060,
+      "y": 1050
+    },
+    {
+      "id": "p_left",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Left",
+        "expr": "budget - spent"
+      },
+      "x": 1400,
+      "y": 1050
+    },
+    {
+      "id": "p_burn",
+      "type": "ChartNode",
+      "init": {
+        "label": "Spend against plan",
+        "op": "line"
+      },
+      "x": 720,
+      "y": 1300
+    },
+    {
+      "id": "p_milestones",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Milestones",
+        "frameText": "[{\"name\":\"Milestone\",\"type\":\"string\",\"cells\":[\"Lease signed\",\"Racking ordered\",\"Racking installed\",\"Forklift training\",\"Go-live\"]},{\"name\":\"Due\",\"type\":\"date\",\"cells\":[\"2026-07-01\",\"2026-08-15\",\"2026-10-20\",\"2026-11-10\",\"2026-12-01\"]},{\"name\":\"Done\",\"type\":\"logical\",\"cells\":[\"TRUE\",\"TRUE\",\"FALSE\",\"FALSE\",\"FALSE\"]}]"
+      },
+      "x": 0,
+      "y": 1800
+    },
+    {
+      "id": "p_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Project brief",
+        "fileName": "pages/project-brief.html",
+        "styleFile": "pages/project-brief.css",
+        "sideVars": [
+          "project",
+          "status",
+          "summary",
+          "budget",
+          "spent",
+          "left",
+          "milestones",
+          "burn"
+        ]
+      },
+      "x": 1760,
+      "y": 1050
+    }
+  ],
+  "connections": [
+    {
+      "source": "q_ledger",
+      "sourceOutput": "frame",
+      "target": "q_col",
+      "targetInput": "frame"
+    },
+    {
+      "source": "q_col",
+      "sourceOutput": "values",
+      "target": "q_total",
+      "targetInput": "list"
+    },
+    {
+      "source": "q_ledger",
+      "sourceOutput": "frame",
+      "target": "q_chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "q_total",
+      "sourceOutput": "result",
+      "target": "q_growth",
+      "targetInput": "total"
+    },
+    {
+      "source": "q_company",
+      "sourceOutput": "value",
+      "target": "q_page",
+      "targetInput": "company"
+    },
+    {
+      "source": "q_quarter",
+      "sourceOutput": "value",
+      "target": "q_page",
+      "targetInput": "quarter"
+    },
+    {
+      "source": "q_total",
+      "sourceOutput": "result",
+      "target": "q_page",
+      "targetInput": "total"
+    },
+    {
+      "source": "q_growth",
+      "sourceOutput": "result",
+      "target": "q_page",
+      "targetInput": "growth"
+    },
+    {
+      "source": "q_best",
+      "sourceOutput": "value",
+      "target": "q_page",
+      "targetInput": "best"
+    },
+    {
+      "source": "q_regions",
+      "sourceOutput": "frame",
+      "target": "q_page",
+      "targetInput": "regions"
+    },
+    {
+      "source": "q_chart",
+      "sourceOutput": "chart",
+      "target": "q_page",
+      "targetInput": "trend"
+    },
+    {
+      "source": "q_ledger",
+      "sourceOutput": "frame",
+      "target": "q_page",
+      "targetInput": "ledger"
+    },
+    {
+      "source": "p_spend",
+      "sourceOutput": "frame",
+      "target": "p_actual",
+      "targetInput": "frame"
+    },
+    {
+      "source": "p_actual",
+      "sourceOutput": "values",
+      "target": "p_spent",
+      "targetInput": "list"
+    },
+    {
+      "source": "p_budget",
+      "sourceOutput": "value",
+      "target": "p_left",
+      "targetInput": "budget"
+    },
+    {
+      "source": "p_spent",
+      "sourceOutput": "result",
+      "target": "p_left",
+      "targetInput": "spent"
+    },
+    {
+      "source": "p_spend",
+      "sourceOutput": "frame",
+      "target": "p_burn",
+      "targetInput": "values"
+    },
+    {
+      "source": "p_project",
+      "sourceOutput": "value",
+      "target": "p_page",
+      "targetInput": "project"
+    },
+    {
+      "source": "p_status",
+      "sourceOutput": "value",
+      "target": "p_page",
+      "targetInput": "status"
+    },
+    {
+      "source": "p_summary",
+      "sourceOutput": "value",
+      "target": "p_page",
+      "targetInput": "summary"
+    },
+    {
+      "source": "p_budget",
+      "sourceOutput": "value",
+      "target": "p_page",
+      "targetInput": "budget"
+    },
+    {
+      "source": "p_spent",
+      "sourceOutput": "result",
+      "target": "p_page",
+      "targetInput": "spent"
+    },
+    {
+      "source": "p_left",
+      "sourceOutput": "result",
+      "target": "p_page",
+      "targetInput": "left"
+    },
+    {
+      "source": "p_milestones",
+      "sourceOutput": "frame",
+      "target": "p_page",
+      "targetInput": "milestones"
+    },
+    {
+      "source": "p_burn",
+      "sourceOutput": "chart",
+      "target": "p_page",
+      "targetInput": "burn"
+    }
+  ]
+}

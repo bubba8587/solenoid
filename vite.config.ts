@@ -179,7 +179,7 @@ function devGraphMirror(): Plugin {
  *  `GET /__demo-vault` lists the vault-relative paths; `?p=<rel>` returns one file. */
 function devDemoVault(): Plugin {
   const ROOT = path.resolve("demo-vault");
-  const EXT = /\.(md|base|yaml|csv|xlsx|xlsm)$/;
+  const EXT = /\.(md|base|yaml|csv|html|css|xlsx|xlsm)$/;
   const BINARY = /\.(xlsx|xlsm)$/;
   const SETTINGS = new Set([".obsidian/types.json", ".obsidian/daily-notes.json"]);
   async function list(dir: string, rel: string, out: string[]): Promise<void> {

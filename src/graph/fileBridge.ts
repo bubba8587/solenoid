@@ -188,15 +188,20 @@ async function listFilesByExt(folder: string, extensions: string | string[]): Pr
 
 /** Every CSV and Parquet file under the data folder, its subfolders included, relative to it: what Local File can
  *  pick, so a file a folder down lists as there. */
-export function listLocalFiles(folder: string): Promise<string[]> {
-  return listLocalFilesMatching(folder, "**/*");
+const DATA_FILES = ["csv", "parquet", "xlsx", "xlsm"];
+
+/** The files under the data folder with one of `extensions` (by default the tables Local File reads), relative to it. */
+export function listLocalFiles(folder: string, extensions: readonly string[] = DATA_FILES): Promise<string[]> {
+  return listLocalFilesMatching(folder, "**/*", extensions);
 }
 
-/** The CSV, Parquet and Excel files under the data folder a pattern names (`fileGlob.ts`), relative to it. */
-export async function listLocalFilesMatching(folder: string, pattern: string): Promise<string[]> {
+/** The files under the data folder a pattern names (`fileGlob.ts`), relative to it: by default the CSV, Parquet and
+ *  Excel ones. */
+export async function listLocalFilesMatching(folder: string, pattern: string, extensions: readonly string[] = DATA_FILES): Promise<string[]> {
   if (!folder || !canReadRoot(folder)) return [];
   const readDir = async (rel: string) => fs().readDir(rel === "" ? folder : await fs().join(folder, ...rel.split("/")));
-  return (await matchFiles(pattern, readDir)).filter((p) => /\.(csv|parquet|xlsx|xlsm)$/i.test(p));
+  const ext = new RegExp(`\\.(${extensions.join("|")})$`, "i");
+  return (await matchFiles(pattern, readDir)).filter((p) => ext.test(p));
 }
 
 export async function readFileBytes(folder: string, name: string): Promise<Uint8Array> {

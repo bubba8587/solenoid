@@ -1,0 +1,42 @@
+:root {
+  --ink: #1f2430;
+  --muted: #6b7280;
+  --paper: #fbf8f3;
+  --accent: #c2410c;
+  --card: #ffffff;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  max-width: 980px;
+  margin: 0 auto;
+}
+.masthead { border-bottom: 3px solid var(--ink); padding-bottom: 20px; margin-bottom: 28px; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px; color: var(--accent); margin: 0 0 8px; font-family: system-ui, sans-serif; }
+h1 { font-size: 40px; line-height: 1.1; margin: 0 0 10px; }
+.lede { font-size: 19px; color: var(--muted); margin: 0; }
+.regions { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.region { background: var(--card); border: 1px solid #e7e1d6; border-radius: 10px; padding: 16px 18px; }
+.region h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; margin: 0; color: var(--muted); font-family: system-ui, sans-serif; }
+.region .figure { font-size: 34px; font-weight: 700; margin: 6px 0 2px; color: var(--accent); }
+.region .owner { font-size: 13px; color: var(--muted); margin: 0; }
+.split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+.panel h3 { font-family: system-ui, sans-serif; font-size: 14px; margin: 0 0 8px; }
+footer { margin-top: 32px; padding-top: 14px; border-top: 1px solid #e7e1d6; font-size: 13px; color: var(--muted); font-style: italic; }
+@media (max-width: 720px) {
+  h1 { font-size: 30px; }
+  .split { grid-template-columns: 1fr; }
+}
+/* The app's own colors, set for this page: the chart and the table boxes follow. */
+:root {
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f3efe8;
+  --border: #e7e1d6;
+  --text: #1f2430;
+  --text-bright: #1f2430;
+  --text-dim: #4b5563;
+  --text-muted: #6b7280;
+}
+.dashboard-box { border-radius: 10px; }

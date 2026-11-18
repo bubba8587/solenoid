@@ -4,7 +4,7 @@ import type { Emit } from "./components/nodeKit";
 import { GraphNode } from "./graphModel";
 import type { JSXElementConstructor } from "react";
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, DelayedPassNode, NoteNode, ReportNode, DashboardNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, DelayedPassNode, NoteNode, ReportNode, DashboardNode, HtmlPageNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
   SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ValueInputNode, DateRangeNode, XYPadNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, UsMapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -80,7 +80,7 @@ import {
   TornadoNode,
 } from "./nodeClasses";
 import {
-  AngleDialComponent, SlicerComponent, CableSwitchComponent, DelayedPassComponent, NoteComponent, ReportComponent, DashboardComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
+  AngleDialComponent, SlicerComponent, CableSwitchComponent, DelayedPassComponent, NoteComponent, ReportComponent, DashboardComponent, HtmlPageComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
   SparklineComponent, ChartComponent, MergePlotsComponent, ConditionalRegionsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
   WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, UsMapComponent, QuiverComponent, RecordComponent, CardsComponent, GanttComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
@@ -179,6 +179,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [NoteNode,        comp(NoteComponent)],
   [ReportNode,      comp(ReportComponent)],
   [DashboardNode,   comp(DashboardComponent)],
+  [HtmlPageNode,    comp(HtmlPageComponent)],
   [SessionHistoryNode, comp(SessionHistoryComponent)],
   [PresentationNode, comp(PresentationComponent)],
   [ImageNode,       comp(ImageComponent)],

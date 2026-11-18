@@ -6,7 +6,7 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-11-18b: the optimization suite's UI, the Solver in depth, a recalc leak, Plan C; cloud session)
+### SESSION DIGEST (2026-11-18b: the optimization suite's UI, the Solver in depth, a recalc leak, Plan C, HTML Page; cloud session)
 **Solver** ([[frame-verbs#Solver]], pinned in `solver.test.ts` against exact answers)
 - Limits are a saved `limitList`, edited in a PIVOTBY-style popup a sentence each and listed on the card in the pipeline
   stepper. A limit measures a Total, weighted Average, Share, Number used or Each option's, once or **for each** group,
@@ -59,6 +59,13 @@ review; it holds 0 again. Ships with the next plugin release (version and What's
 **Also:** sockets re-measure when a late row moves them (`flow/remeasure.ts`); Shortest Path's every-place view writes
 each Route out and totals it; the optimize seed gained an ad budget, a shipping plan and a feed blend; fourteen
 plain-language asks from an agent with no Solenoid context were built end to end and checked against brute force.
+
+**HTML Page** ([[reports-and-notes#HTML pages]], `nodes/htmlPage.ts`, the author's idea): a page from an `.html` and a
+`.css` in the data folder, each `{{ name }}` an input, shown full screen like a Dashboard, a figure wired in drawn as a
+Dashboard box. The CSS is scoped to the page and can't fetch; each tag's print is escaped after its filters
+(`renderKnapHtml`; escaping the inputs first broke `upper` and `length`); scripts never run. A page sets the app's color
+variables to dress its boxes and charts. The HTML Showcase example renders two pages from `demo-vault/Data/pages/`, which
+the web build now bundles (`.html` and `.css` joined the demo vault's text files).
 
 **Open, the author's call:** the Monte Carlo composite mode varies only inputs marked uncertain, so the seed's RAND-inside
 simulation can't use it (Data Table over a Run index stands in); Staffing's In Time column could read On Time; the

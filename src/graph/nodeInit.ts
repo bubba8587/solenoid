@@ -44,6 +44,7 @@ export const INIT_FIELD_ORDER = [
   "stepStart",
   "turns",
   "reach", "ends", "orderDir", "stuck", "goal", "direction", "orderBy", "transitionsDirection", "transitionsMatch", "transitionsOf", "transitionsUnlisted",
+  "styleFile",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

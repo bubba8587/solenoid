@@ -1,0 +1,34 @@
+body {
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.brief { max-width: 760px; margin: 0 auto; }
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+h1 { font-size: 30px; margin: 0; letter-spacing: -0.01em; }
+.badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+.badge.ok { background: #14532d; color: #86efac; }
+.badge.warn { background: #713f12; color: #fde68a; }
+.badge.late { background: #7f1d1d; color: #fecaca; }
+.summary { color: #94a3b8; font-size: 16px; margin: 10px 0 24px; }
+.numbers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 0 28px; }
+.numbers div { background: #1e293b; border-radius: 10px; padding: 14px 16px; }
+.numbers dt { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
+.numbers dd { margin: 4px 0 0; font-size: 24px; font-weight: 700; }
+h2 { font-size: 15px; color: #cbd5e1; margin: 26px 0 10px; }
+.timeline { list-style: none; padding: 0; margin: 0; border-left: 2px solid #334155; }
+.timeline li { position: relative; padding: 6px 0 10px 18px; display: flex; gap: 14px; }
+.timeline li::before { content: ""; position: absolute; left: -7px; top: 11px; width: 12px; height: 12px; border-radius: 50%; background: #334155; border: 2px solid #0f172a; }
+.timeline li.done::before { background: #22c55e; }
+.timeline .when { color: #94a3b8; font-variant-numeric: tabular-nums; min-width: 96px; }
+.timeline li.done .what { color: #94a3b8; text-decoration: line-through; }
+[data-sol-ref="burn"] .dashboard-box { height: 260px; }
+/* The app's own colors, set for this page: the chart box follows. */
+:root {
+  --surface: #1e293b;
+  --surface-sunken: #0f172a;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text-bright: #f8fafc;
+  --text-muted: #94a3b8;
+}

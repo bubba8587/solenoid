@@ -1,0 +1,34 @@
+/* An HTML Page: the page scrolls under the board's header on the page's own ground; its own CSS, scoped to
+   .sol-htmlpage__doc, styles everything inside. A figure's box is a Dashboard box (DashboardOverlay.css). */
+.sol-htmlpage__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface);
+  color: var(--text);
+}
+.sol-htmlpage__doc {
+  padding: 24px clamp(16px, 4vw, 48px) 48px;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+.sol-htmlpage__slot--box {
+  display: block;
+  margin: 12px 0;
+}
+/* A chart fills its box, so the box has a height; a table, document or cards keep their own up to a scroll. */
+.sol-htmlpage__box { height: 320px; }
+.sol-htmlpage__box--flow { height: auto; max-height: 480px; }
+/* A box sized by its content can't contain its own size (that would make it zero high). */
+.sol-htmlpage__box--flow .dashboard-box__value { container-type: inline-size; }
+/* A value in the page's text reads in the page's own type and ink; only an error keeps its red. */
+.sol-htmlpage__doc .solenoid-ref-inline:not(.solenoid-ref-inline--error) {
+  font: inherit;
+  color: inherit;
+}
+.sol-htmlpage__empty {
+  padding: 32px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.sol-htmlpage__code { color: var(--sol-error); font-weight: 600; }

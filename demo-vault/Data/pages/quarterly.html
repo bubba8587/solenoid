@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <title>Quarterly one-pager</title>
+</head>
+<body>
+  <header class="masthead">
+    <p class="eyebrow">{{ company }} · {{ quarter }}</p>
+    <h1>Bookings came in at {{ total }}</h1>
+    <p class="lede">Up {{ growth }} on the quarter before, led by the {{ best }} region.</p>
+  </header>
+
+  <section class="regions">
+    {% for r in regions %}
+    <article class="region">
+      <h2>{{ r.Region }}</h2>
+      <p class="figure">{{ r.Bookings }}</p>
+      <p class="owner">Owned by {{ r.Owner }}</p>
+    </article>
+    {% endfor %}
+  </section>
+
+  <section class="split">
+    <div class="panel">
+      <h3>Bookings by month</h3>
+      {{ trend }}
+    </div>
+    <div class="panel">
+      <h3>The ledger</h3>
+      {{ ledger }}
+    </div>
+  </section>
+
+  <footer>Figures are unaudited. Every number on this page is live from the graph.</footer>
+</body>
+</html>

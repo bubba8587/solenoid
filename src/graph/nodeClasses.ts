@@ -23,6 +23,7 @@ export * from "./nodes/taskNotes";
 export * from "./nodes/annotation";
 export * from "./nodes/report";
 export * from "./nodes/dashboard";
+export * from "./nodes/htmlPage";
 export * from "./nodes/history";
 export * from "./nodes/presentation";
 export * from "./nodes/tableLambda";

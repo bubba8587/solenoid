@@ -508,6 +508,74 @@ Each change on the board is one undo step. Layout changes are recorded when the 
 
 `dashboard-showcase.json` (Charts & reports, beside the Report showcase) is a live model: monthly sales, channel shares, pipeline stages and an annual target feed formulas for the total, the margin, the last two months, the share of target and a status read from the margin. Its board shows formatted numbers, a KPI card, text, a line chart, a target gauge, a channel treemap, a deal funnel, the monthly table, a paged Record and a live Report.
 
+## HTML pages
+
+An **HTML Page** (`HtmlPageNode`, `nodes/htmlPage.ts`) is a page a person designs in HTML and CSS, filled from the graph
+and shown full screen as a Dashboard is. It is a sink, as a Dashboard is: no outputs, its card ending on a Page chip
+that opens it. What it shares with the Report: Knap ([[C68]] knapIsTheDocumentSyntax) and its variable inputs; with the
+Dashboard: its board's chrome and its boxes.
+
+```mermaid
+flowchart LR
+    files["page.html + page.css<br>in the data folder"] --> parts["the body, its style blocks<br>(pageParts)"]
+    parts --> vars["one input per variable,<br>first-use order"]
+    vars --> knap["Knap, each tag's print<br>escaped (renderKnapHtml)"]
+    knap --> slots["a bare tag: a slot"]
+    parts --> css["CSS scoped to the page,<br>no fetches (scopeCss)"]
+    slots --> view["the overlay: sanitized,<br>a slot per value"]
+    css --> view
+```
+
+**Files.** It persists `label`, `fileName` (the page's `.html`), `styleFile` (its `.css`, optional), `sideVars` and
+`collapsed`. Both files are named relative to the data folder (Settings ▸ Data), as Local File's are, and read through
+the same file bridge: the desktop app's folder, the headless runner's, or on the web the demo vault, whose `.html` and
+`.css` files the build bundles (`demoVaultData.ts`). The card picks each with the data folder's file picker, which lists
+only that kind. The files are read once per name, folder and Refresh (the board's refresh button, or Refresh All
+Connections), not every compute. A file that can't be read is `#REF!` naming it; the inputs stay.
+
+**The page.** A whole document gives its `<body>` and every `<style>` block in it; a fragment is its own body. Scripts,
+event handlers and anything else the note sanitizer refuses never reach the screen ([[#What is sanitized, and where]]),
+so a page can't run code: it is a document, not an app.
+
+**Inputs.** Every root variable of the body's Knap is one `trueany` input named as the page spells it, in first-use
+order; departing inputs lose their cables first ([[input-cable-pruning#The ordering rule]]), and `sideVars` keeps the
+names so a saved cable finds its socket before the files are read. `HtmlPageNode` is in the graph core's `SEES_ERRORS`,
+so an error reaches its slot as a value.
+
+**The render.** A bare `{{ name }}` on a wired input becomes a slot (`embedBareVariables`, then `slotsFor`: a
+`<span data-sol-ref="name">`), drawn on screen by the shared renderer (`InlineRefValue`) in the input's format, so a
+Format Controller formats it here as in a Report. Every other tag prints through Knap, with what it prints escaped as
+HTML after its own filters (`renderKnapHtml` appends an escape filter to each tag's chain), so `{{ title | upper }}` of
+`Q<3` reads `Q<3`, never markup, and `{% for r in sales %}{{ r.Region }}{% endfor %}` loops over a Frame's rows. A tag
+naming an input left unwired stays as written, so the page shows what it still needs. A Knap error is `#SYNTAX!` with its
+lines.
+
+**The stylesheet.** The style blocks and the CSS file are one stylesheet, scoped to the page (`scopeCss`): every rule's
+selectors under `.sol-htmlpage__doc`, `html`, `body` and `:root` naming the page itself, rules in `@media`, `@supports`,
+`@container` and `@layer` scoped the same, `@keyframes` and `@font-face` left as they are. So a page styles nothing else
+on screen, and the app's look reaches the page only where the page leaves it unset. Nothing in it fetches: `@import`
+goes, and so does every `url()` that isn't an inline image (it reads `none`).
+
+**On screen** (`HtmlPageOverlay.tsx`, open state in `htmlPageStore.ts`): the Dashboard board's chrome (the header with
+the card's title, a Refresh that reads the files again and Close; Esc closes; the canvas under it stops painting) over
+the page on the surface color, sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
+Report's preview is, with each slot's value portalled in. A number, text, a date, a list or an error draws inline in
+the page's text. A **figure** (a chart, a Frame, a Cube, a diagram, a picture, an SVG or a document) draws as a Dashboard
+box (`dashboard-box`): its name as the label, its value `rich` and `fill`. A chart, diagram or picture's box is 320 px
+high and fills it; a table, cube or document keeps its own height up to 480 px and scrolls. A page sizes or hides a box
+by its slot (`[data-sol-ref="sales"] .dashboard-box { height: 200px }`), its rule scoped like the rest. A value in the
+page's text takes the page's font and ink, an error keeping its red.
+
+**The page's palette.** The app's colors are CSS variables, so a page that sets them (`:root { --surface: #fff;
+--text: #1f2430; --border: #e7e1d6 }`, scoped to the page like every rule) dresses its boxes, tables and charts in its
+own palette; a page that doesn't gets the app's, light or dark. On a phone the page opens under the app's accent bar, as
+a Dashboard does, and a page's own `@media` rules answer the screen's width.
+
+Tests: `tests/graph/nodes/htmlPage.test.ts`: the CSS scoped (page selectors, lists, `@media`, `@keyframes` left alone) and
+kept from fetching; a document split into its body and styles; a bare tag's slot; the card's inputs in first-use order;
+a render over its inputs (a slot per bare tag, a filtered tag escaped, a loop over a Frame's rows); an unwired tag left as
+written; a missing file named; the save round-trip with its sockets. The demo pages render in the HTML Showcase example.
+
 ## What is sanitized, and where
 
 A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each guard sits at one seam ([[engineering#Untrusted content]]).
@@ -516,6 +584,7 @@ A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each
 |---|---|
 | Note card read view, and a text value shown as markdown | `sanitizeNoteHtml` (`noteHtml.ts`, DOMPurify plus the network gate: without a grant, a foreign document's web pictures, video and audio, an SVG picture's `href`, a `background`, and any style or `<style>` that can fetch are held back, since loading one is a fetch; which addresses count is [[live-connections#The network gate]]) on every render. Checkboxes are re-enabled after sanitizing, on marked's own `<input>` elements only. |
 | Report preview, Note panel, embedded document, Import Obsidian Note | `sanitizeNoteHtml` on the rendered HTML. |
+| HTML Page | `sanitizeNoteHtml` on the rendered page; each tag's print HTML-escaped first (`renderKnapHtml`); its CSS scoped to the page with `@import` and every non-image `url()` removed (`scopeCss`, [[#HTML pages]]). |
 | Webpage export | each markdown segment passes DOMPurify; the title, embed names, chart labels and every frozen value pass `escapeHtml` after the render; an image source must be `http(s)` or `data:image`; an SVG value's markup passes `sanitizeSvg`. The palette accent is written into the stylesheet, so a palette override loaded from a file must be a `#rrggbb` hex (`palette.ts`). Chart SVG is serialized from the live canvas, where every SVG source was already sanitized at its seam (Pele with links and images off, the SVG Picker's class at intake). |
 | Source highlight | the source is HTML-escaped before any span is added. |
 | Links in rendered markdown | one capture-phase document click guard (`installExternalLinkGuard`, installed by `App.tsx`) opens `http(s)` links to another origin, and `mailto:` links, in the system browser (a new tab on web), and never navigates the app's webview. Same-origin, hash and relative links are left alone. |

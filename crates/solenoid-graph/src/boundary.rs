@@ -45,7 +45,7 @@ pub(crate) const LAZY_FRAME_NODES: [&str; 25] = [
 ];
 
 /// Classes the guard hands an error input to as a value, instead of answering for them.
-pub(crate) const SEES_ERRORS: [&str; 15] = [
+pub(crate) const SEES_ERRORS: [&str; 16] = [
     "IFErrorNode",
     "IsTestNode",
     "IfNode",
@@ -58,6 +58,7 @@ pub(crate) const SEES_ERRORS: [&str; 15] = [
     "NoteNode",
     "ReportNode",
     "DashboardNode",
+    "HtmlPageNode",
     "ChartNode",
     "CompositeNode",
     "CompositeOutputNode",

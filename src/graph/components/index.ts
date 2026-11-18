@@ -145,6 +145,7 @@ export { NoteComponent } from "./NoteNode";
 
 export { ReportComponent } from "./ReportNode";
 export { DashboardComponent } from "./DashboardNode";
+export { HtmlPageComponent } from "./HtmlPageNode";
 
 export { SessionHistoryComponent } from "./SessionHistoryNode";
 

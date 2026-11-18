@@ -1,6 +1,6 @@
 // [[C68]] knapIsTheDocumentSyntax
 import { useSyncExternalStore } from "react";
-import type { ReportNode as ReportNodeType, DashboardNode as DashboardNodeType } from "../nodeClasses";
+import type { ReportNode as ReportNodeType, DashboardNode as DashboardNodeType, HtmlPageNode as HtmlPageNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps, type Emit } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -15,7 +15,7 @@ import { cableValueStore } from "../cableValueStore";
 import "./ReportNode.css";
 
 export function ReportRefRow({ data, emit, refKey, label, value }: {
-  data: ReportNodeType | DashboardNodeType;
+  data: ReportNodeType | DashboardNodeType | HtmlPageNodeType;
   emit: Emit;
   refKey: string;
   label: string;

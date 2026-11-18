@@ -1,5 +1,6 @@
 // [[C68]]
 
+import { escapeHtmlText } from "./htmlPageText";
 import { createEngine, parse, standardFilters, type ASTNode, type Expression, type TemplateError } from "knap";
 
 const TAG_RE = /\{\{|\{%|\{#/;
@@ -161,6 +162,19 @@ export async function renderKnap(body: string, variables: Record<string, unknown
   const { src, held } = holdUnknownTags(body, new Set([...Object.keys(variables), ...templateLocals(body)]));
   const r = await engine.render(src, { variables });
   return { output: r.output.replace(HOLD_RE, (_m, i: string) => held[Number(i)] ?? ""), errors: r.errors };
+}
+
+const ESCAPE = "sol_html_text";
+const htmlEngine = createEngine({ filters: { ...standardFilters, [ESCAPE]: (v: string) => escapeHtmlText(v) } });
+
+/** Knap for an HTML page ([[reports-and-notes#HTML pages]]): what each tag prints is escaped after its own filters ran,
+ *  so a value reads as the text it is, never as markup. A tag naming nothing known stays as written. */
+export async function renderKnapHtml(body: string, variables: Record<string, unknown>): Promise<KnapRender> {
+  if (!hasKnapSyntax(body)) return { output: body, errors: [] };
+  const { src, held } = holdUnknownTags(body, new Set([...Object.keys(variables), ...templateLocals(body)]));
+  const escaped = src.replace(/\{\{(-?)([\s\S]*?)(-?)\}\}/g, (_m, l: string, inner: string, r: string) => `{{${l} ${inner.trim()} | ${ESCAPE} ${r}}}`);
+  const out = await htmlEngine.render(escaped, { variables });
+  return { output: out.output.replace(HOLD_RE, (_m, i: string) => held[Number(i)] ?? ""), errors: out.errors };
 }
 
 export interface KnapPage { name: string; body: string }

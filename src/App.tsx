@@ -12,6 +12,7 @@ import { MobileControls } from "./graph/MobileControls";
 import { FunctionReference } from "./graph/components/FunctionReference";
 import { ReportOverlay } from "./graph/components/ReportOverlay";
 import { DashboardOverlay } from "./graph/components/DashboardOverlay";
+import { HtmlPageOverlay } from "./graph/components/HtmlPageOverlay";
 import { InspectorPanel } from "./graph/components/InspectorPanel";
 import { PresentationOverlay } from "./graph/components/PresentationOverlay";
 import { ConnectionDialog } from "./graph/components/ConnectionDialog";
@@ -132,6 +133,7 @@ function MainApp() {
       <FunctionReference />
       <ReportOverlay />
       <DashboardOverlay />
+      <HtmlPageOverlay />
       <InspectorPanel />
       <FlowCompositeOverlay />
       <PresentationOverlay />
