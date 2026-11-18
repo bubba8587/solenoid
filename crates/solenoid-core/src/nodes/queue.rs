@@ -228,6 +228,147 @@ fn take(
     crew.last = Last::Item(it.row);
 }
 
+/// A table of legs between named places (`frame-verbs.md` § Greedy Queue, Legs): From, To and its first other number
+/// column (minutes, km), each road either way round. Two places with no road between them are as far apart as the
+/// fastest way through the others, so a road network serves as well as a table of every pair. An item's place is its
+/// first text column; a Start row's, the Start column of that name, else Start's first text column.
+pub(super) struct Legs {
+    /// Each place's index, by its key.
+    at: HashMap<String, usize>,
+    /// The fastest way between every two places (Floyd–Warshall), infinite where none.
+    far: Vec<Vec<f64>>,
+    pub(super) measure: Measure,
+    place: usize,
+    start_place: Option<usize>,
+}
+
+/// The most places Legs takes: every pair's fastest way is worked out up front, which grows with the cube.
+const MAX_PLACES: usize = 500;
+
+pub(super) fn legs_in(c: &Call, items: &Frame, start: Option<&Frame>) -> Result<Option<Legs>, V> {
+    let Some(t) = frame_in(c, "legs") else { return Ok(None) };
+    let (Some(from), Some(to)) = (position(&t, "From"), position(&t, "To")) else {
+        return Err(err(ErrorCode::Ref, "Legs needs a From column and a To column"));
+    };
+    let Some(v) =
+        (0..t.columns.len()).find(|&j| j != from && j != to && t.columns[j].ty == crate::frame::FrameColType::Number)
+    else {
+        return Err(err(ErrorCode::Ref, "Legs needs a number column: the time or distance of each leg"));
+    };
+    let text_col = |f: &Frame| f.columns.iter().position(|c| c.ty == crate::frame::FrameColType::String);
+    let Some(place) = text_col(items) else {
+        return Err(err(ErrorCode::Ref, "Legs finds items by name: the items need a text column naming each place"));
+    };
+    let start_place = start.and_then(|s| position(s, &items.columns[place].name).or_else(|| text_col(s)));
+    let mut at: HashMap<String, usize> = HashMap::new();
+    let mut roads = Vec::new();
+    for r in 0..t.columns[from].values.len() {
+        let (a, b) = (text(t.columns[from].values.get(r)), text(t.columns[to].values.get(r)));
+        if trim_space(&a).is_empty() || trim_space(&b).is_empty() {
+            continue;
+        }
+        let n = cell_number(&t, v, r, &t.columns[v].name)?.unwrap_or(0.0);
+        if n < 0.0 {
+            return Err(err(ErrorCode::Value, format!("Legs row {} is below 0", r + 1)));
+        }
+        let mut index = |p: &str| {
+            let k = at.len();
+            *at.entry(key(p)).or_insert(k)
+        };
+        roads.push((index(&a), index(&b), n));
+    }
+    let n = at.len();
+    if n > MAX_PLACES {
+        return Err(err(ErrorCode::Domain, format!("Legs takes at most {MAX_PLACES} places")));
+    }
+    let mut far = vec![vec![f64::INFINITY; n]; n];
+    for (i, row) in far.iter_mut().enumerate() {
+        row[i] = 0.0;
+    }
+    for (a, b, w) in roads {
+        far[a][b] = far[a][b].min(w);
+        far[b][a] = far[b][a].min(w);
+    }
+    for k in 0..n {
+        for i in 0..n {
+            let ik = far[i][k];
+            if !ik.is_finite() {
+                continue;
+            }
+            for j in 0..n {
+                let via = ik + far[k][j];
+                if via < far[i][j] {
+                    far[i][j] = via;
+                }
+            }
+        }
+    }
+    Ok(Some(Legs { at, far, measure: Measure::of_column(&t.columns[v]), place, start_place }))
+}
+
+impl Legs {
+    /// The leg between two places, either way round; a place to itself is 0.
+    fn between(&self, a: &str, b: &str) -> Result<f64, V> {
+        if key(a) == key(b) {
+            return Ok(0.0);
+        }
+        let (Some(&i), Some(&j)) = (self.at.get(&key(a)), self.at.get(&key(b))) else {
+            let missing = if self.at.contains_key(&key(a)) { b } else { a };
+            return Err(err(ErrorCode::Ref, format!("Legs never names {missing}")));
+        };
+        let d = self.far[i][j];
+        if d.is_finite() {
+            Ok(d)
+        } else {
+            Err(err(ErrorCode::Value, format!("Legs has no way between {a} and {b}")))
+        }
+    }
+
+    /// The leg into item `row` from the item `from_item` or Start row `from_start` (neither: the walk's first, 0).
+    pub(super) fn into(
+        &self,
+        items: &Frame,
+        start: Option<&Frame>,
+        row: usize,
+        from_item: Option<usize>,
+        from_start: Option<usize>,
+    ) -> Result<f64, V> {
+        let here = text(items.columns[self.place].values.get(row));
+        let there = match (from_item, from_start) {
+            (Some(r), _) => text(items.columns[self.place].values.get(r)),
+            (None, Some(r)) => match (start, self.start_place) {
+                (Some(s), Some(j)) => text(s.columns[j].values.get(r)),
+                _ => return Ok(0.0),
+            },
+            (None, None) => return Ok(0.0),
+        };
+        self.between(&there, &here)
+    }
+
+    /// The leg from item `row` back to Start row `r`.
+    pub(super) fn home(&self, items: &Frame, start: Option<&Frame>, row: usize, r: usize) -> Result<f64, V> {
+        match (start, self.start_place) {
+            (Some(s), Some(j)) => {
+                self.between(&text(items.columns[self.place].values.get(row)), &text(s.columns[j].values.get(r)))
+            }
+            _ => Ok(0.0),
+        }
+    }
+}
+
+/// The cost column's unit, or the legs' where there is no column; two that differ refuse ([[C25]] firstClassUnits).
+pub(super) fn with_legs(column: Measure, legs: &Option<Legs>) -> Result<Measure, V> {
+    match legs {
+        None => Ok(column),
+        Some(l) if column.plain() => Ok(l.measure.clone()),
+        Some(l) if l.measure.plain() || (l.measure.same(&column) && l.measure.name() == column.name()) => Ok(column),
+        Some(l) => Err(err(
+            ErrorCode::Unit,
+            format!("Legs are in {} and the Cost column in {}: give them one unit", l.measure.name(), column.name()),
+        )),
+    }
+}
+
 fn greedy_queue(c: &mut Call) -> Answer {
     let out = |c: &mut Call, picks: Cv, left: Cv, total: V| {
         if !matches!(total, V::Num(_)) {
@@ -301,8 +442,16 @@ fn greedy_queue(c: &mut Call) -> Answer {
         (Ok(o), Ok(k)) => (o, k),
         (Err(e), _) | (_, Err(e)) => return fail(c, e),
     };
-    // The costs' unit: the Cost column's, a Budget with a unit meeting it as arithmetic would; the budget in it.
-    let column_m = ci.map_or_else(Measure::none, |i| Measure::of_column(&f.columns[i]));
+    let legs = match legs_in(c, &f, start.as_deref()) {
+        Ok(l) => l,
+        Err(e) => return fail(c, e),
+    };
+    // The costs' unit: the Cost column's (or the legs'), a Budget with a unit meeting it as arithmetic would; the budget
+    // in it.
+    let column_m = match with_legs(ci.map_or_else(Measure::none, |i| Measure::of_column(&f.columns[i])), &legs) {
+        Ok(m) => m,
+        Err(e) => return fail(c, e),
+    };
     let (cost_m, budget) = match &budget_in {
         None => (column_m, None),
         Some((n, bm)) => match meet(&column_m, bm, "Budget per step") {
@@ -347,7 +496,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
         Err(e) => return fail(c, V::Err(e.into())),
     };
     // A budget nothing spends from would never stop a group: say so rather than answer as if it did.
-    if budget.is_some() && ci.is_none() && cost.is_none() {
+    if budget.is_some() && ci.is_none() && cost.is_none() && legs.is_none() {
         return fail(
             c,
             err(
@@ -453,8 +602,8 @@ fn greedy_queue(c: &mut Call) -> Answer {
         // A group's choice this pick: its first item by Order by among those Allowed lets it take (a tie goes to the
         // item that opened first, then to the earlier row) that fits its budget, with that item's key and cost.
         type Choice = (Vec<f64>, usize, usize, f64);
-        // An item's cost to a group: its Cost column's number plus the Cost formula's.
-        let spend_of = |row: usize, args: &dyn Fn(usize) -> V| -> Result<f64, V> {
+        // An item's cost to a group: its Cost column's number, the Cost formula's, and its leg from the group's last.
+        let spend_of = |row: usize, last: &Last, args: &dyn Fn(usize) -> V| -> Result<f64, V> {
             let own = match ci {
                 Some(i) => cell_number(&f, i, row, &cost_name)?.unwrap_or(0.0),
                 None => 0.0,
@@ -464,7 +613,15 @@ fn greedy_queue(c: &mut Call) -> Answer {
             } else {
                 0.0
             };
-            Ok(own + extra)
+            let leg = match &legs {
+                None => 0.0,
+                Some(l) => match *last {
+                    Last::None => 0.0,
+                    Last::Item(r) => l.into(&f, start.as_deref(), row, Some(r), None)?,
+                    Last::Start(r) => l.into(&f, start.as_deref(), row, None, Some(r))?,
+                },
+            };
+            Ok(own + extra + leg)
         };
         let choose = |k: usize, crew: &Crew, open: &[Vec<Item>]| -> Result<Option<Choice>, V> {
             let home = start_row.get(&k).copied();
@@ -475,7 +632,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
                     if allowed(allow.as_ref(), &ev, &args, it.row)? {
                         let mut key = Vec::new();
                         if by_cost {
-                            key.push(spend_of(it.row, &args)?);
+                            key.push(spend_of(it.row, &crew.last, &args)?);
                         } else if let Some(i) = oi {
                             // A blank goes last whichever way the column runs.
                             let n = cell_number(&f, i, it.row, &order_name)?;
@@ -495,7 +652,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
             for (key, q, j) in ranked {
                 let it = &open[q][j];
                 let args = |i| scope.var(i, it.row, &crew.last, home, step - it.opens, step, crew.used);
-                let spend = if by_cost { key[0] } else { spend_of(it.row, &args)? };
+                let spend = if by_cost { key[0] } else { spend_of(it.row, &crew.last, &args)? };
                 // A group's first pick of the step always fits, so an item costing more than a step can't wait forever.
                 if budget.is_none_or(|b| crew.picks == 0 || crew.used + spend <= b) {
                     return Ok(Some((key, q, j, spend)));

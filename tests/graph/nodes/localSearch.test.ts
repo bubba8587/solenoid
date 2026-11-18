@@ -25,6 +25,34 @@ const DIST = "IF(ISBLANK(last_X), 0, ABS(X - last_X) + ABS(Y - last_Y))";
 const dist = lambda("X, Y, last_X, last_Y", DIST);
 
 describe("Local Search", () => {
+  it("prices each leg from a table of drive times between named places, no formula", () => {
+    // A bakery van: four stops and the minutes between each pair, as a person has them. Nearest next, then improved
+    // and back to the bakery: 43 minutes, the best of all 24 orders.
+    const legs = frame([
+      ["Bakery", "School", 10], ["Bakery", "Hotel", 15], ["Bakery", "Hospital", 20], ["Bakery", "Market", 12],
+      ["School", "Hotel", 8], ["School", "Hospital", 14], ["School", "Market", 9], ["Hotel", "Hospital", 6],
+      ["Hotel", "Market", 11], ["Hospital", "Market", 7],
+    ].map(([From, To, Minutes]) => ({ From, To, Minutes })));
+    const stops = frame(["School", "Hotel", "Hospital", "Market"].map((Stop) => ({ Stop })));
+    const bakery = frame([{ Stop: "Bakery" }]);
+    const q = new GreedyQueueNode({ orderBy: "cost" });
+    const nearest = q.data({ items: [stops], start: [bakery], legs: [legs] }) as { picks: unknown; total: unknown };
+    expect(rows(nearest.picks).map((r) => r.Stop)).toEqual(["School", "Hotel", "Hospital", "Market"]);
+    expect(nearest.total).toBe(31);
+    const out = run(new LocalSearchNode({ ends: "return" }), { items: nearest.picks, start: bakery, legs });
+    expect(out.total).toBe(43);
+    // Two places with no road between them are as far apart as the fastest way through the others: a network serves.
+    const roads = frame([["Bakery", "School", 10], ["School", "Hotel", 8], ["Hotel", "Hospital", 6], ["Hospital", "Market", 7]]
+      .map(([From, To, Minutes]) => ({ From, To, Minutes })));
+    const chain = run(new LocalSearchNode({ ends: "return" }), { items: stops, start: bakery, legs: roads });
+    expect(chain.total).toBe(62);
+    // A place no road reaches, or one Legs never names, says which.
+    const cut = frame([{ From: "Bakery", To: "School", Minutes: 10 }, { From: "Hotel", To: "Hospital", Minutes: 6 }, { From: "Market", To: "Hospital", Minutes: 7 }]);
+    expect(JSON.stringify(q.data({ items: [stops], start: [bakery], legs: [cut] }).total)).toMatch(/no way between/);
+    const short = frame([{ From: "Bakery", To: "School", Minutes: 10 }]);
+    expect(JSON.stringify(q.data({ items: [stops], start: [bakery], legs: [short] }).total)).toMatch(/never names/);
+  });
+
   it("uncrosses a route, logging each change", () => {
     // The corners of a square visited crosswise: 0,0 → 1,1 → 1,0 → 0,1 is 1+2+... longer than going round.
     const items = frame([{ X: 0, Y: 0 }, { X: 10, Y: 10 }, { X: 10, Y: 0 }, { X: 0, Y: 10 }]);

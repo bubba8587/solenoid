@@ -68,6 +68,7 @@ export class GreedyQueueNode extends GraphNode {
     orderColumn: "With no column and no Order formula, items go in the order they're listed.",
     order: "A LAMBDA, lowest first. It sets the order when no column does, and breaks ties when one does.",
     cost: "A LAMBDA added to each item's Cost, such as the drive from the last item.",
+    legs: "A table of legs between named places (From, To and a number such as Minutes), read either way round. Each item's leg from the one before, matched by the items' first text column, is added to its cost.",
     allowed: "A LAMBDA that gives TRUE when this group may take this item now.",
     picks: "Every pick in order, with its step, wait and cost.",
   };
@@ -108,6 +109,7 @@ export class GreedyQueueNode extends GraphNode {
     this.addInput("order", lambdaIn("Order formula"));
     this.addInput("costColumn", strIn("Cost"));
     this.addInput("cost", lambdaIn("Cost formula"));
+    this.addInput("legs", frameIn("Legs"));
     this.addInput("group", strIn("Group column"));
     this.addInput("start", frameIn("Groups"));
     this.addInput("allowed", lambdaIn("Allowed if"));
@@ -188,6 +190,7 @@ export class LocalSearchNode extends GraphNode {
     start: "One row per group. Formulas read its columns as group_ columns, and only groups listed here can take items.",
     group: "Empty: one group, reordered only.",
     cost: "A LAMBDA added to each item's Cost. It can read before, the cost so far, and position.",
+    legs: "A table of legs between named places (From, To and a number such as Minutes), read either way round. Each item's leg from the one before, matched by the items' first text column, is added to its cost.",
     penalty: "A LAMBDA added to the total, such as a charge for lateness. It can read at, the cost through this item.",
     allowed: "A LAMBDA that gives TRUE when this item may go here. A plan with fewer refusals always wins.",
     history: "One row per change made.",
@@ -219,6 +222,7 @@ export class LocalSearchNode extends GraphNode {
     this.addInput("items", frameIn("Plan"));
     this.addInput("costColumn", strIn("Cost"));
     this.addInput("cost", lambdaIn("Cost formula"));
+    this.addInput("legs", frameIn("Legs"));
     this.addInput("penalty", lambdaIn("Penalty"));
     this.addInput("group", strIn("Group column"));
     this.addInput("start", frameIn("Groups"));

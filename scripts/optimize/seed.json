@@ -715,7 +715,8 @@
       "Downtown",
       "Downtown",
       "Sequoyah",
-      "Farragut"
+      "Farragut",
+      "Maryville"
      ],
      "type": "string"
     },
@@ -734,7 +735,8 @@
       "Sequoyah",
       "Fountain City",
       "Maryville",
-      "Maryville"
+      "Maryville",
+      "Downtown"
      ],
      "type": "string"
     },
@@ -753,7 +755,8 @@
       8,
       9,
       22,
-      18
+      18,
+      25
      ],
      "type": "number",
      "unit": "min"
@@ -804,6 +807,64 @@
    "stringLiterals": {
     "columns": "Place, Distance"
    }
+  },
+  {
+   "id": "visits",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Places to visit"
+   },
+   "frame": [
+    {
+     "name": "Place",
+     "cells": [
+      "Halls",
+      "Powell",
+      "Bearden",
+      "Downtown",
+      "Fountain City",
+      "Sequoyah",
+      "Farragut",
+      "Maryville"
+     ],
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "id": "home",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Start"
+   },
+   "frame": [
+    {
+     "name": "Place",
+     "cells": [
+      "Depot"
+     ],
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "id": "tour_first",
+   "type": "GreedyQueueNode",
+   "init": {
+    "label": "Nearest next",
+    "orderBy": "cost"
+   },
+   "stringLiterals": {}
+  },
+  {
+   "id": "tour",
+   "type": "LocalSearchNode",
+   "init": {
+    "label": "Round trip",
+    "ends": "return",
+    "stuck": "look"
+   },
+   "stringLiterals": {}
   },
   {
    "id": "plans",
@@ -1037,7 +1098,11 @@
      "route",
      "reach",
      "reach_cols",
-     "reach_chart"
+     "reach_chart",
+     "visits",
+     "home",
+     "tour_first",
+     "tour"
     ],
     "color": "green"
    }
@@ -1094,6 +1159,12 @@
   "roads.frame -> reach.links",
   "reach.path -> reach_cols.frame",
   "reach_cols.frame -> reach_chart.values",
+  "visits.frame -> tour_first.items",
+  "home.frame -> tour_first.start",
+  "roads.frame -> tour_first.legs",
+  "tour_first.picks -> tour.items",
+  "home.frame -> tour.start",
+  "roads.frame -> tour.legs",
   "plans.frame -> front.options",
   "front.all -> front_chart.values",
   "calls.value -> desk.arrivals",

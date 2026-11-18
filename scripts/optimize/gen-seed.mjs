@@ -120,17 +120,25 @@ table("hours", "Crew hours", {
 add("crews", "AssignmentNode", { label: "Crew assignment" });
 wire("hours.frame -> crews.costs");
 
-// ── 4. Shortest route: the fastest way through a small road network ──
+// ── 4. Shortest route: the fastest way through a small road network. The last road is listed Maryville to Downtown:
+// both ways it's the fastest way there (34 min); From → To only, it can't be driven toward Maryville (39 min). ──
 table("roads", "Roads", {
-  From: ["Depot", "Depot", "Depot", "Halls", "Halls", "Powell", "Powell", "Bearden", "Bearden", "Downtown", "Downtown", "Sequoyah", "Farragut"],
-  To: ["Halls", "Powell", "Downtown", "Powell", "Fountain City", "Bearden", "Fountain City", "Farragut", "Sequoyah", "Sequoyah", "Fountain City", "Maryville", "Maryville"],
-  "Minutes (min)": [12, 15, 9, 8, 7, 14, 10, 11, 6, 8, 9, 22, 18],
+  From: ["Depot", "Depot", "Depot", "Halls", "Halls", "Powell", "Powell", "Bearden", "Bearden", "Downtown", "Downtown", "Sequoyah", "Farragut", "Maryville"],
+  To: ["Halls", "Powell", "Downtown", "Powell", "Fountain City", "Bearden", "Fountain City", "Farragut", "Sequoyah", "Sequoyah", "Fountain City", "Maryville", "Maryville", "Downtown"],
+  "Minutes (min)": [12, 15, 9, 8, 7, 14, 10, 11, 6, 8, 9, 22, 18, 25],
 });
 add("route", "ShortestPathNode", { label: "Depot to Maryville" }, { stringLiterals: { cost: "Minutes", from: "Depot", to: "Maryville" } });
 add("reach", "ShortestPathNode", { label: "Depot distances" }, { stringLiterals: { cost: "Minutes", from: "Depot", to: "" } });
 chart("reach_chart", "Minutes from depot", "bar", "xlabel=Minutes");
 keep("reach_cols", "Minutes by place", "Place, Distance");
 wire("roads.frame -> route.links", "roads.frame -> reach.links", "reach.path -> reach_cols.frame", "reach_cols.frame -> reach_chart.values");
+// A van that visits every place and comes back: the same roads as Legs, each leg the fastest way through the network.
+table("visits", "Places to visit", { Place: ["Halls", "Powell", "Bearden", "Downtown", "Fountain City", "Sequoyah", "Farragut", "Maryville"] });
+table("home", "Start", { Place: ["Depot"] });
+add("tour_first", "GreedyQueueNode", { label: "Nearest next", orderBy: "cost" }, { stringLiterals: {} });
+add("tour", "LocalSearchNode", { label: "Round trip", ends: "return", stuck: "look" }, { stringLiterals: {} });
+wire("visits.frame -> tour_first.items", "home.frame -> tour_first.start", "roads.frame -> tour_first.legs",
+  "tour_first.picks -> tour.items", "home.frame -> tour.start", "roads.frame -> tour.legs");
 
 // ── 5. Comparing plans: which territory plans are real tradeoffs ──
 table("plans", "Territory plans", {
@@ -161,7 +169,7 @@ const groups = [
   ["grp_ship", "Shipping plan", ["lanes", "ship", "ship_grid"], "gold"],
   ["grp_feed", "Feed blend", ["feeds", "feed", "feed_kg", "feed_check"], "lime"],
   ["grp_crews", "Crew assignment", ["hours", "crews"], "amber"],
-  ["grp_route", "Road route", ["roads", "route", "reach", "reach_cols", "reach_chart"], "green"],
+  ["grp_route", "Road route", ["roads", "route", "reach", "reach_cols", "reach_chart", "visits", "home", "tour_first", "tour"], "green"],
   ["grp_front", "Plan trade-offs", ["plans", "front", "front_chart"], "violet"],
   ["grp_desk", "Dispatch staffing", ["calls", "call_min", "answer_min", "answer_share", "desk", "desk_cols", "desk_chart"], "sky"],
 ];

@@ -50,9 +50,10 @@ describe("Shortest Path", () => {
     expect(isSolError(path(new ShortestPathNode({ direction: "one" }), "C", "Depot").total)).toBe(true);
     expect(path(new ShortestPathNode(), "Depot", "C", "").total).toBe(2);
   });
-  it("gives every place's distance and the place before it with no To", () => {
+  it("gives every place's distance, its route and their sum with no To", () => {
     const out = path(new ShortestPathNode(), "Depot", "");
-    expect(rows(out.path).map((r) => [r.Place, r.Distance, r.Via])).toEqual([["Depot", 0, null], ["A", 4, "Depot"], ["B", 7, "A"], ["C", 9, "B"]]);
+    expect(rows(out.path).map((r) => [r.Place, r.Distance, r.Route])).toEqual([["Depot", 0, "Depot"], ["A", 4, "Depot → A"], ["B", 7, "Depot → A → B"], ["C", 9, "Depot → A → B → C"]]);
+    expect(out.total).toBe(20);
   });
   it("refuses an unknown place and a negative cost", () => {
     expect(isSolError(path(new ShortestPathNode(), "Nowhere", "C").path)).toBe(true);

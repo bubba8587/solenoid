@@ -24,6 +24,14 @@ specific item.
   options, so always 100%) was found by building the feed-blend example, not by the tests: build the example.
 - The optimize seed gained an ad budget (diminishing returns, within $3 of the closed form), a shipping plan (For each,
   pivoted to a From × To grid) and a feed blend (averages and a share). Short-form tables keep blank cells blank.
+- **Fourteen plain-language asks**, written by an agent with no Solenoid context, built end to end and each checked
+  against brute force: 13 right first time; a setup-fee ask exposed a switch on every curve piece (20,000 branches,
+  29 s, $17.50 off), now a switch per kink. A van route from a drive-time table took a SWITCH over every place, so
+  Greedy Queue and Local Search gained **Legs** (a From/To/number table, a road network served by its fastest ways).
+  An independent review of the Solver code found five more (switch tolerance, Min If Used reach, negative amounts, the
+  search reading past a range, an uncounted size check), all fixed and pinned.
+- Shortest Path's every-place view gives each place's **Route** written out (Via didn't say via what) and a **Total**;
+  the seed's road table gained a road listed against the flow so its direction toggle visibly matters.
 - **Pick Columns** is Keep/Drop Columns' family name; Columns stays the menu category holding Rename, Split and the rest.
 - Not done: a limit that is itself a formula (nonlinear constraints); a Solve button for the heavy cards (measured: the
   seed's problems solve at once, so composites keep the only hold); shadow prices for averages, shares and counts.

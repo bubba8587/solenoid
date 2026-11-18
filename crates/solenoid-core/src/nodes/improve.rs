@@ -8,7 +8,7 @@
 use super::frames::{frame_in, frame_v, num_column, str_input, trimmed};
 use super::matrix::{wired_lambda, Body};
 use super::measure::Measure;
-use super::queue::{allowed, cell_number, key, keys, position, setting, taken, text};
+use super::queue::{allowed, cell_number, key, keys, legs_in, position, setting, taken, text, with_legs, Legs};
 use super::{err, Answer, Call, Column, Cv, Frame};
 use crate::error_value::ErrorCode;
 use crate::eval::Eval;
@@ -96,6 +96,8 @@ struct Model<'a> {
     back: bool,
     /// The Cost column, its number added to the Cost formula's.
     cost_col: Option<(usize, String)>,
+    /// The legs between named places, each item's leg from the one before added to its cost.
+    legs: Option<Legs>,
     ev: Eval<'a>,
     memo: [HashMap<(usize, usize, Spot), f64>; 3],
     placed: [HashMap<Placed, f64>; 3],
@@ -160,7 +162,15 @@ impl Model<'_> {
         let args = |i| self.var(i, k, this, last, at);
         let shown = if let Spot::Item(r) = this { r } else { 0 };
         let v = match f {
-            0 => keys(self.cost.as_ref(), &self.ev, &args, "cost", shown)?.first().copied().unwrap_or(0.0),
+            0 => {
+                let leg = match (&self.legs, this, last) {
+                    (Some(l), Spot::Item(r), Spot::Item(q)) => l.into(self.items, self.start, r, Some(q), None)?,
+                    (Some(l), Spot::Item(r), Spot::Start(h)) => l.into(self.items, self.start, r, None, Some(h))?,
+                    (Some(l), Spot::Start(h), Spot::Item(q)) => l.home(self.items, self.start, q, h)?,
+                    _ => 0.0,
+                };
+                keys(self.cost.as_ref(), &self.ev, &args, "cost", shown)?.first().copied().unwrap_or(0.0) + leg
+            }
             1 => keys(self.penalty.as_ref(), &self.ev, &args, "penalty", shown)?.first().copied().unwrap_or(0.0),
             _ => f64::from(u8::from(allowed(self.allow.as_ref(), &self.ev, &args, shown)?)),
         };
@@ -613,7 +623,17 @@ fn local_search(c: &mut Call) -> Answer {
         },
         Err(e) => return fail(c, e),
     };
-    let cost_col_m = cost_col.as_ref().map_or_else(Measure::none, |(i, _)| Measure::of_column(&f.columns[*i]));
+    let legs = match legs_in(c, &f, start.as_deref()) {
+        Ok(l) => l,
+        Err(e) => return fail(c, e),
+    };
+    let cost_col_m = match with_legs(
+        cost_col.as_ref().map_or_else(Measure::none, |(i, _)| Measure::of_column(&f.columns[*i])),
+        &legs,
+    ) {
+        Ok(m) => m,
+        Err(e) => return fail(c, e),
+    };
     let across = c.field_str("reach", "across") == "across";
     let back = c.field_str("ends", "open") == "return";
     let guided = c.field_str("stuck", "stop") == "look";
@@ -719,6 +739,7 @@ fn local_search(c: &mut Call) -> Answer {
         allow,
         back,
         cost_col,
+        legs,
         ev: Eval::default(),
         memo: Default::default(),
         placed: Default::default(),

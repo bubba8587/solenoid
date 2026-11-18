@@ -203,7 +203,7 @@ export class ShortestPathNode extends GraphNode {
   frameShape(): Shape | null {
     return (this.stringLiterals.to ?? "").trim()
       ? { columns: [{ name: "Step", type: "number" }, { name: "Place", type: "string" }, { name: "Leg", type: "number" }, { name: "So Far", type: "number" }] }
-      : { columns: [{ name: "Place", type: "string" }, { name: "Distance", type: "number" }, { name: "Via", type: "string" }] };
+      : { columns: [{ name: "Place", type: "string" }, { name: "Distance", type: "number" }, { name: "Route", type: "string" }] };
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {

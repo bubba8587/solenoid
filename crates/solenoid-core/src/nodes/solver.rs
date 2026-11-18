@@ -1258,12 +1258,22 @@ fn shortest_path(c: &mut Call) -> Answer {
     if end.is_empty() {
         let mut order: Vec<usize> = (0..n).filter(|&i| dist[i].is_finite()).collect();
         order.sort_by(|&a, &b| dist[a].total_cmp(&dist[b]).then(a.cmp(&b)));
+        // Each place's way there, written out: "Depot → Downtown → Sequoyah".
+        let route = |i: usize| {
+            let mut way = vec![i];
+            while let Some(p) = prev[*way.last().expect("a place")] {
+                way.push(p);
+            }
+            way.iter().rev().map(|&j| place[j].as_str()).collect::<Vec<_>>().join(" → ")
+        };
         let cols = vec![
             text_col("Place", order.iter().map(|&i| V::str(&place[i])).collect()),
             cost_m.column("Distance", order.iter().map(|&i| Some(cost_m.base(dist[i])))),
-            text_col("Via", order.iter().map(|&i| prev[i].map_or(V::Null, |p| V::str(&place[p]))).collect()),
+            text_col("Route", order.iter().map(|&i| V::str(&route(i))).collect()),
         ];
-        return out(c, frame_v(cols), V::Null);
+        // Total: every place's distance added up, the figure that compares one start (a depot, a hub) with another.
+        let sum: f64 = order.iter().map(|&i| dist[i]).sum();
+        return out(c, frame_v(cols), cost_m.value(cost_m.base(sum)));
     }
     let Some(&e) = at.get(&key(&end)) else {
         return fail(c, err(ErrorCode::Ref, format!("No link starts or ends at \"{end}\"")));

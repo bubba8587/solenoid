@@ -1356,7 +1356,7 @@ export function GreedyQueueComponent({ data, emit }: NodeProps<GreedyQueueNodeTy
         <InlineInputs node={data} emit={emit} keys={["order"]} labelFor={label} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
       </CardSection>
       <CardSection label="Cost of an item">
-        <InlineInputs node={data} emit={emit} keys={["costColumn", "cost"]} labelFor={label} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
+        <InlineInputs node={data} emit={emit} keys={["costColumn", "cost", "legs"]} labelFor={label} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
       </CardSection>
       <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: QUEUE_GROUP_KEYS }}>
         <InlineInputs node={data} emit={emit} keys={QUEUE_GROUP_KEYS} cableOnlyKeys={QUEUE_LAMBDA_KEYS} fullWiredKeys={QUEUE_WHOLE} />
@@ -1395,7 +1395,7 @@ const QUEUE_GROUP_KEYS = ["group", "start", "allowed"];
 const QUEUE_STEP_KEYS = ["step", "steps"];
 const QUEUE_BUDGET_KEYS = ["budget", "perStep"];
 // Every input shows the wired card's whole name: a card named "Hours a machine works a day" says what the Budget means.
-const QUEUE_WHOLE = new Set(["items", "orderColumn", "order", "costColumn", "cost", "start", "allowed", "group", "step", "steps", "budget", "perStep"]);
+const QUEUE_WHOLE = new Set(["items", "orderColumn", "order", "costColumn", "cost", "legs", "start", "allowed", "group", "step", "steps", "budget", "perStep"]);
 
 // The improved plan is the card's table; the total and the moves made ride below it. Cost, Penalty and Allowed are
 // LAMBDA cards on the canvas, as on Greedy Queue, so the plan it feeds in and the rule both stay in view.
@@ -1416,7 +1416,7 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} keys={["items"]} fullWiredKeys={SEARCH_WHOLE} />
       <CardSection label="Cost of an item">
-        <InlineInputs node={data} emit={emit} keys={["costColumn", "cost", "penalty"]} labelFor={label} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
+        <InlineInputs node={data} emit={emit} keys={["costColumn", "cost", "legs", "penalty"]} labelFor={label} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
       </CardSection>
       <CardSection label="Groups" collapsible defaultOpen={groupsUsed} sockets={{ node: data, emit, keys: SEARCH_GROUP_KEYS }}>
         <InlineInputs node={data} emit={emit} keys={SEARCH_GROUP_KEYS} cableOnlyKeys={SEARCH_LAMBDA_KEYS} fullWiredKeys={SEARCH_WHOLE} />
@@ -1605,7 +1605,7 @@ export function StaffingComponent({ data, emit }: NodeProps<StaffingNodeType>) {
     </NodeShell>
   );
 }
-const SEARCH_WHOLE = new Set(["items", "costColumn", "cost", "penalty", "group", "start", "allowed", "passes"]);
+const SEARCH_WHOLE = new Set(["items", "costColumn", "cost", "legs", "penalty", "group", "start", "allowed", "passes"]);
 
 export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
   const [agg, setAgg] = useNodeField(data, "agg");
