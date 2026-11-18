@@ -114,32 +114,39 @@ enum Last {
 }
 
 impl Scope<'_> {
-    fn args(&self, row: usize, last: &Last, home: Option<usize>, wait: f64, step: f64, used: f64) -> Vec<V> {
+    /// Variable `i` of the names the formulas see, for the item at `row` picked after `last` by the group whose Start
+    /// row is `home`.
+    #[allow(clippy::too_many_arguments)]
+    fn var(&self, i: usize, row: usize, last: &Last, home: Option<usize>, wait: f64, step: f64, used: f64) -> V {
         let n = self.items.columns.len();
-        let mut out = Vec::with_capacity(n * 2 + 3);
-        out.extend(self.items.columns.iter().map(|c| c.values.get(row).cloned().unwrap_or(V::Null)));
-        out.extend((0..n).map(|i| {
-            match last {
-                Last::None => V::Null,
-                Last::Item(r) => self.items.columns[i].values.get(*r).cloned().unwrap_or(V::Null),
-                Last::Start(r) => self.start_cols[i]
-                    .and_then(|j| self.start.and_then(|s| s.columns[j].values.get(*r).cloned()))
-                    .unwrap_or(V::Null),
-            }
-        }));
-        if let Some(s) = self.start {
-            out.extend(s.columns.iter().map(|c| home.and_then(|r| c.values.get(r).cloned()).unwrap_or(V::Null)));
+        let cell = |c: &Column, r: usize| c.values.get(r).cloned().unwrap_or(V::Null);
+        if i < n {
+            return cell(&self.items.columns[i], row);
         }
-        out.extend([V::Num(wait), V::Num(step), V::Num(used)]);
-        out
+        if i < 2 * n {
+            let j = i - n;
+            return match last {
+                Last::None => V::Null,
+                Last::Item(r) => cell(&self.items.columns[j], *r),
+                Last::Start(r) => {
+                    self.start_cols[j].and_then(|c| self.start.map(|s| cell(&s.columns[c], *r))).unwrap_or(V::Null)
+                }
+            };
+        }
+        let s_len = self.start.map_or(0, |s| s.columns.len());
+        if i < 2 * n + s_len {
+            let s = self.start.expect("a Start frame");
+            return home.map_or(V::Null, |r| cell(&s.columns[i - 2 * n], r));
+        }
+        V::Num([wait, step, used].get(i - 2 * n - s_len).copied().unwrap_or(0.0))
     }
 }
 
 /// Whether Allowed lets the group take the item: TRUE or a non-zero number does, FALSE, 0 or a blank doesn't; unwired,
 /// every item is allowed.
-pub(super) fn allowed(body: Option<&Body>, ev: &Eval, args: &[V], row: usize) -> Result<bool, V> {
+pub(super) fn allowed(body: Option<&Body>, ev: &Eval, args: &dyn Fn(usize) -> V, row: usize) -> Result<bool, V> {
     let Some(body) = body else { return Ok(true) };
-    match body.call(ev, args) {
+    match body.call_by(ev, args) {
         V::Bool(b) => Ok(b),
         V::Num(n) => Ok(n != 0.0 && !n.is_nan()),
         V::Null | V::Undef => Ok(false),
@@ -153,7 +160,13 @@ pub(super) fn allowed(body: Option<&Body>, ev: &Eval, args: &[V], row: usize) ->
 
 /// A formula's answer for one candidate as numbers to compare in turn: a number is one key, a list or a table is its
 /// cells in order (sort by this, then this), a blank is 0; anything else not a number stops the run, naming the row.
-pub(super) fn keys(body: Option<&Body>, ev: &Eval, args: &[V], what: &str, row: usize) -> Result<Vec<f64>, V> {
+pub(super) fn keys(
+    body: Option<&Body>,
+    ev: &Eval,
+    args: &dyn Fn(usize) -> V,
+    what: &str,
+    row: usize,
+) -> Result<Vec<f64>, V> {
     let Some(body) = body else { return Ok(vec![0.0]) };
     let mut out = Vec::new();
     fn walk(v: &V, out: &mut Vec<f64>, what: &str, row: usize) -> Result<(), V> {
@@ -172,7 +185,7 @@ pub(super) fn keys(body: Option<&Body>, ev: &Eval, args: &[V], what: &str, row: 
         }
         Ok(())
     }
-    walk(&body.call(ev, args), &mut out, what, row)?;
+    walk(&body.call_by(ev, args), &mut out, what, row)?;
     Ok(out)
 }
 
@@ -420,7 +433,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
             let mut ranked: Vec<(Vec<f64>, usize, usize)> = Vec::new();
             for q in [k, pool] {
                 for (j, it) in open[q].iter().enumerate() {
-                    let args = scope.args(it.row, &crew.last, home, step - it.opens, step, crew.used);
+                    let args = |i| scope.var(i, it.row, &crew.last, home, step - it.opens, step, crew.used);
                     if allowed(allow.as_ref(), &ev, &args, it.row)? {
                         let mut key = Vec::new();
                         if let Some(i) = oi {
@@ -441,7 +454,7 @@ fn greedy_queue(c: &mut Call) -> Answer {
             });
             for (key, q, j) in ranked {
                 let it = &open[q][j];
-                let args = scope.args(it.row, &crew.last, home, step - it.opens, step, crew.used);
+                let args = |i| scope.var(i, it.row, &crew.last, home, step - it.opens, step, crew.used);
                 let own = match ci {
                     Some(i) => cell_number(&f, i, it.row, &cost_name)?.unwrap_or(0.0),
                     None => 0.0,

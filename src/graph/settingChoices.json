@@ -1071,6 +1071,10 @@
   "reach": [
    "across",
    "within"
+  ],
+  "stuck": [
+   "look",
+   "stop"
   ]
  },
  "MakeArrayNode": {

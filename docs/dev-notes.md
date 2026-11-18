@@ -37,6 +37,11 @@ specific item.
   the nearest operator; the outliers were already their nearest's, so moving them saved exactly 0). Each run feeds one
   draw of incidents to both queues, so the saving is paired (common random numbers): 110 h a year ± 6.7, where one
   plan's own total carries ± 23.
+- **CI's Test was red from 11a3e6788** (`graphDelta`, `graphEditReach` timing out at 20 s on the greedy-queue seed: 12.5 s
+  here). The job-shop Local Search ran its formulas in the slow (walking) path with every name built per call. Now
+  `Body::call_by` builds only the names a LAMBDA reads, walking formulas keep answers by their place, a changed
+  walk stops where it rejoins the old one, and don't-look bits skip settled items: 1.4 s. **Search: Quick /
+  Thorough** (guided local search, bounded at 10x the Quick work) is never worse; a choice because it costs time.
 - **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
   per run (sites × days, a draw each, then the Greedy Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
   a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common

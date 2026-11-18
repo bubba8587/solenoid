@@ -167,6 +167,15 @@ export const SEARCH_ENDS_OPTIONS: { value: SearchEnds; label: string }[] = [
 ];
 export const SEARCH_ENDS_ASK = "At the end";
 
+/** How hard the search looks: stop at the first plan no single change improves, or look past it (guided local search),
+ *  for up to ten times as long, keeping the best plan found. Thorough is never worse, only slower. */
+export type SearchStuck = "stop" | "look";
+export const SEARCH_STUCK_OPTIONS: { value: SearchStuck; label: string; title?: string }[] = [
+  { value: "stop", label: "Quick" },
+  { value: "look", label: "Thorough", title: "Keeps looking past the first plan no single change improves, for up to ten times as long, and keeps the best plan found. Never worse, often a few percent better." },
+];
+export const SEARCH_STUCK_ASK = "Search";
+
 export class LocalSearchNode extends GraphNode {
   static inputRoles = {
     passes: setting(LEFT_OUT, "until done"),
@@ -194,6 +203,7 @@ export class LocalSearchNode extends GraphNode {
   label: string;
   reach: SearchReach = "across";
   ends: SearchEnds = "open";
+  stuck: SearchStuck = "stop";
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { group: "", costColumn: "" };
   cachedResult: FrameValue | SolError | null = null;
@@ -201,11 +211,12 @@ export class LocalSearchNode extends GraphNode {
   cachedHistory: FrameValue | SolError | null = null;
   width = 280; height = 280;
 
-  constructor(init?: { label?: string; reach?: SearchReach; ends?: SearchEnds }) {
+  constructor(init?: { label?: string; reach?: SearchReach; ends?: SearchEnds; stuck?: SearchStuck }) {
     super("LocalSearch");
     this.label = init?.label ?? "Local Search";
     if (init?.reach === "within") this.reach = "within";
     if (init?.ends === "return") this.ends = "return";
+    if (init?.stuck === "look") this.stuck = "look";
     this.addInput("items", frameIn("Plan"));
     this.addInput("costColumn", strIn("Cost"));
     this.addInput("cost", lambdaIn("Cost formula"));

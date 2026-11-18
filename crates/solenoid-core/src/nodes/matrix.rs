@@ -480,15 +480,19 @@ impl Body {
     }
 
     pub(crate) fn call(&self, ev: &Eval, args: &[V]) -> V {
+        self.call_by(ev, &|i| args.get(i).cloned().unwrap_or(V::Undef))
+    }
+
+    /// The formula's answer, each variable it reads asked of `get` by its place among the names it was bound over: a
+    /// caller with many names builds only the few a LAMBDA reads (Greedy Queue's and Local Search's inner loops).
+    pub(crate) fn call_by(&self, ev: &Eval, get: &dyn Fn(usize) -> V) -> V {
         let r = match self {
             Body::Lambda(lam, order) => {
-                let argv: Vec<V> =
-                    order.iter().map(|i| i.and_then(|i| args.get(i).cloned()).unwrap_or(V::Undef)).collect();
+                let argv: Vec<V> = order.iter().map(|i| i.map_or(V::Undef, get)).collect();
                 ev.call_lambda(lam, &argv)
             }
             Body::Inline(ast, names) => {
-                let env: Env =
-                    names.iter().cloned().zip(args.iter().cloned().chain(std::iter::repeat(V::Undef))).collect();
+                let env: Env = names.iter().cloned().enumerate().map(|(i, n)| (n, get(i))).collect();
                 return ev.run(ast, &Rc::new(env));
             }
         };

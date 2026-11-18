@@ -94,6 +94,17 @@ describe("Local Search", () => {
     }
   });
 
+  it("searches Thoroughly past a dead end, never ending worse than Quick and here better", () => {
+    let seed = 7;
+    const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const items = frame(Array.from({ length: 60 }, () => ({ X: Math.round(r() * 1000), Y: Math.round(r() * 1000) })));
+    const euclid = lambda("X, Y, last_X, last_Y", "IF(ISBLANK(last_X), 0, SQRT((X - last_X)^2 + (Y - last_Y)^2))");
+    const quick = run(new LocalSearchNode(), { items, cost: euclid });
+    const thorough = run(new LocalSearchNode({ stuck: "look" }), { items, cost: euclid });
+    expect(thorough.total as number).toBeLessThan(quick.total as number);
+    expect(rows(thorough.history).some((h) => h.Kind === "kept looking")).toBe(true);
+  });
+
   it("refuses a Cost reading at, an unknown group column, and a parameter naming nothing", () => {
     const items = frame([{ G: "A", X: 1 }]);
     expect(isSolError(run(new LocalSearchNode(), { items, cost: lambda("at", "at") }).total)).toBe(true);

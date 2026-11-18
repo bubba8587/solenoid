@@ -820,7 +820,8 @@
    "id": "route_better",
    "type": "LocalSearchNode",
    "init": {
-    "label": "Nearest next, improved"
+    "label": "Nearest next, improved",
+    "stuck": "look"
    }
   },
   {

@@ -22,6 +22,18 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     }
 }
 
+/// A formula's answer kept by group, item, the item before, and the cost so far, through it, and the place in line.
+type Placed = (usize, usize, Spot, (u64, u64, usize));
+/// The most answers kept for formulas that read where an item stands, before the store starts over.
+const MAX_PLACED: usize = 400_000;
+/// Guided search stops after this many dead ends in a row that find no better plan.
+const DRY: usize = 2000;
+/// Looking past dead ends takes at most this many times the plain search's work, with a floor for a quick one.
+const GUIDED: u64 = 10;
+const GUIDED_FLOOR: u64 = 200_000;
+/// Guided search: a mark on a link adds this share of the average link's cost (Voudouris & Tsang's alpha; OR-Tools'
+/// default is 0.1).
+const LAMBDA: f64 = 0.1;
 /// The longest run of neighbors moved together (Or-opt's 1, 2 and 3).
 const MAX_RUN: usize = 3;
 /// A search runs at most this many passes over every item.
@@ -85,9 +97,15 @@ struct Model<'a> {
     cost_col: Option<(usize, String)>,
     ev: Eval<'a>,
     memo: [HashMap<(usize, usize, Spot), f64>; 3],
+    placed: [HashMap<Placed, f64>; 3],
     work: u64,
     /// The plan's total as it came, the size a move must beat rounding by.
     scale: f64,
+    /// Guided search: what one mark on a link adds to the total the moves see, and each link's marks.
+    lambda: f64,
+    marked: HashMap<(Spot, usize), u32>,
+    /// Whether any formula reads position, so the same item after the same one at another place can cost otherwise.
+    reads_pos: bool,
 }
 
 impl Model<'_> {
@@ -101,17 +119,21 @@ impl Model<'_> {
         }
     }
 
-    fn args(&self, k: usize, this: Spot, last: Spot, (before, at, pos): Where) -> Vec<V> {
+    /// Variable `i` of the names the formulas see, for item `this` after `last` in group `k`, at `at` in its walk.
+    fn var(&self, i: usize, k: usize, this: Spot, last: Spot, (before, at, pos): Where) -> V {
         let n = self.items.columns.len();
-        let mut out = Vec::with_capacity(n * 2 + 8);
-        out.extend((0..n).map(|i| self.cell(i, this)));
-        out.extend((0..n).map(|i| self.cell(i, last)));
-        if let Some(s) = self.start {
-            let home = self.start_row[k];
-            out.extend(s.columns.iter().map(|c| home.and_then(|r| c.values.get(r).cloned()).unwrap_or(V::Null)));
+        if i < n {
+            return self.cell(i, this);
         }
-        out.extend([V::Num(before), V::Num(at), V::Num(pos as f64)]);
-        out
+        if i < 2 * n {
+            return self.cell(i - n, last);
+        }
+        let s_len = self.start.map_or(0, |s| s.columns.len());
+        if i < 2 * n + s_len {
+            let s = self.start.expect("a Start frame");
+            return self.start_row[k].and_then(|r| s.columns[i - 2 * n].values.get(r).cloned()).unwrap_or(V::Null);
+        }
+        V::Num([before, at, pos as f64].get(i - 2 * n - s_len).copied().unwrap_or(0.0))
     }
 
     /// Formula `f` (0 cost, 1 penalty, 2 allowed) for an item after its last, kept when it reads nothing that moves.
@@ -121,12 +143,20 @@ impl Model<'_> {
             Spot::Start(r) => usize::MAX - r,
             Spot::None => usize::MAX,
         };
+        // A formula that reads where the item stands is kept by that too: the same item after the same one at the same
+        // cost so far comes up again and again as moves are tried.
+        let place = (at.0.to_bits(), at.1.to_bits(), if self.reads_pos { at.2 } else { 0 });
         if !self.moving[f]
             && let Some(&v) = self.memo[f].get(&(k, row, last))
         {
             return Ok(v);
         }
-        let args = self.args(k, this, last, at);
+        if self.moving[f]
+            && let Some(&v) = self.placed[f].get(&(k, row, last, place))
+        {
+            return Ok(v);
+        }
+        let args = |i| self.var(i, k, this, last, at);
         let shown = if let Spot::Item(r) = this { r } else { 0 };
         let v = match f {
             0 => keys(self.cost.as_ref(), &self.ev, &args, "cost", shown)?.first().copied().unwrap_or(0.0),
@@ -135,6 +165,11 @@ impl Model<'_> {
         };
         if !self.moving[f] {
             self.memo[f].insert((k, row, last), v);
+        } else {
+            if self.placed[f].len() >= MAX_PLACED {
+                self.placed[f].clear();
+            }
+            self.placed[f].insert((k, row, last, place), v);
         }
         Ok(v)
     }
@@ -144,6 +179,14 @@ impl Model<'_> {
             Some((i, name)) => Ok(cell_number(self.items, *i, row, name)?.unwrap_or(0.0)),
             None => Ok(0.0),
         }
+    }
+
+    /// What a link's marks add while guided search is looking past a dead end; 0 otherwise.
+    fn mark(&self, from: Spot, to: usize) -> f64 {
+        if self.lambda == 0.0 {
+            return 0.0;
+        }
+        self.lambda * f64::from(self.marked.get(&(from, to)).copied().unwrap_or(0))
     }
 
     fn begin(&self, k: usize) -> Spot {
@@ -160,7 +203,7 @@ impl Model<'_> {
                 let cost = self.own(r)? + self.ask(0, k, this, from, (0.0, 0.0, 0))?;
                 let pen = if self.penalty.is_some() { self.ask(1, k, this, from, (0.0, 0.0, 0))? } else { 0.0 };
                 let ok = self.allow.is_none() || self.ask(2, k, this, from, (0.0, 0.0, 0))? != 0.0;
-                Ok((i64::from(!ok), cost + pen))
+                Ok((i64::from(!ok), cost + pen + self.mark(from, r)))
             }
             None => match (self.back, self.start_row[k], from) {
                 (true, Some(home), Spot::Item(_)) => Ok((0, self.ask(0, k, Spot::Start(home), from, (0.0, 0.0, 0))?)),
@@ -307,7 +350,7 @@ impl Model<'_> {
         for mv in moves {
             let mut d: Delta = (0, 0.0);
             for (k, seq, from) in changes(seqs, a, i, mv) {
-                let then = self.walk(k, &seq, from, marks[k][from], None)?;
+                let then = self.rewalk(k, &seq, from, marks[k][from], (&seqs[k], &marks[k], scores[k]))?;
                 d = plus(d, (i64::from(then.bad) - i64::from(scores[k].bad), then.total - scores[k].total));
             }
             if better(d, best.map(|b| b.0), self.scale) {
@@ -329,6 +372,41 @@ impl Model<'_> {
 
     /// Group `k`'s sequence walked from position `from`, `acc` the walk up to there; with `marks`, the walk before
     /// each position and at the end is written down. With Ends set to return, the leg from the last item back to the Start row.
+    /// A changed sequence walked from `from` as `walk` does, until it is back where the old one was: past the change, the
+    /// same item after the same item at the same cost so far (and the same place in line, where a formula reads it). From
+    /// there on it is the old walk, so its score is the old one's rest added on.
+    fn rewalk(
+        &mut self,
+        k: usize,
+        seq: &[usize],
+        from: usize,
+        mut acc: Acc,
+        old: (&[usize], &[Acc], Score),
+    ) -> Result<Score, V> {
+        let (old_seq, old_marks, old_score) = old;
+        let same_tail = seq.iter().rev().zip(old_seq.iter().rev()).take_while(|(a, b)| a == b).count();
+        let shift = old_seq.len() as isize - seq.len() as isize;
+        for p in from..seq.len() {
+            let q = (p as isize + shift) as usize;
+            if p > from
+                && p >= seq.len() - same_tail
+                && q > 0
+                && seq[p - 1] == old_seq[q - 1]
+                && acc.before.to_bits() == old_marks[q].before.to_bits()
+                && (!self.reads_pos || p == q)
+            {
+                self.work += (p - from) as u64 + 1;
+                let rest = old_score.total - old_marks[q].total;
+                return Ok(Score { bad: acc.bad + (old_score.bad - old_marks[q].bad), total: acc.total + rest });
+            }
+            let leg = self.leg(k, seq, p, acc.before)?;
+            let last = if p == 0 { self.begin(k) } else { Spot::Item(seq[p - 1]) };
+            let total = acc.total + leg.cost + leg.penalty + self.mark(last, seq[p]);
+            acc = Acc { before: leg.at, total, bad: acc.bad + u32::from(!leg.ok) };
+        }
+        self.walk(k, seq, seq.len(), acc, None)
+    }
+
     fn walk(
         &mut self,
         k: usize,
@@ -342,7 +420,9 @@ impl Model<'_> {
                 m.push(acc);
             }
             let leg = self.leg(k, seq, p, acc.before)?;
-            acc = Acc { before: leg.at, total: acc.total + leg.cost + leg.penalty, bad: acc.bad + u32::from(!leg.ok) };
+            let last = if p == 0 { self.begin(k) } else { Spot::Item(seq[p - 1]) };
+            let total = acc.total + leg.cost + leg.penalty + self.mark(last, seq[p]);
+            acc = Acc { before: leg.at, total, bad: acc.bad + u32::from(!leg.ok) };
         }
         if let Some(m) = marks {
             m.push(acc);
@@ -431,6 +511,85 @@ fn better(d: Delta, best: Option<Delta>, scale: f64) -> bool {
     lowers && best.is_none_or(|b| d.0 < b.0 || (d.0 == b.0 && d.1 < b.1))
 }
 
+/// A search under way: each group's sequence, its walk position by position, its score, which items still look for a
+/// move, the passes left, and whether the work limit stopped it.
+struct Search {
+    seqs: Vec<Vec<usize>>,
+    marks: Vec<Vec<Acc>>,
+    scores: Vec<Score>,
+    active: Vec<bool>,
+    passes: usize,
+    stopped: bool,
+}
+
+/// Passes until one changes nothing (each item that finds no move goes quiet until a link beside it changes), a pass
+/// costing one of the passes left. Each move made is written down while no marks are on.
+fn descend(
+    m: &mut Model,
+    st: &mut Search,
+    links: bool,
+    across: bool,
+    history: &mut Vec<(&str, Score)>,
+) -> Result<(), V> {
+    let total = |scores: &[Score]| scores.iter().fold(Score { bad: 0, total: 0.0 }, |a, s| a.add(*s));
+    while st.passes > 0 {
+        st.passes -= 1;
+        let mut changed = false;
+        for a in 0..st.seqs.len() {
+            let mut i = 0;
+            while i < st.seqs[a].len() {
+                if m.work > MAX_WORK {
+                    st.stopped = true;
+                    return Ok(());
+                }
+                let row = st.seqs[a][i];
+                if !st.active[row] {
+                    i += 1;
+                    continue;
+                }
+                let found = if links {
+                    m.best_by_links(&st.seqs, a, i, across)?
+                } else {
+                    m.best_by_walks(&st.seqs, &st.marks, &st.scores, a, i, across)?
+                };
+                let Some(mv) = found else {
+                    st.active[row] = false;
+                    i += 1;
+                    continue;
+                };
+                for (k, seq) in build(&st.seqs, a, i, mv) {
+                    // Every item whose neighbor changed looks again.
+                    let old = &st.seqs[k];
+                    let next_of = |q: &[usize]| -> HashMap<usize, (Option<usize>, Option<usize>)> {
+                        q.iter()
+                            .enumerate()
+                            .map(|(p, &r)| (r, (p.checked_sub(1).map(|x| q[x]), q.get(p + 1).copied())))
+                            .collect()
+                    };
+                    let before = next_of(old);
+                    for (r, around) in next_of(&seq) {
+                        if before.get(&r) != Some(&around) {
+                            st.active[r] = true;
+                        }
+                    }
+                    let mut mk = Vec::new();
+                    st.scores[k] = m.walk(k, &seq, 0, Acc::default(), Some(&mut mk))?;
+                    st.marks[k] = mk;
+                    st.seqs[k] = seq;
+                }
+                if m.lambda == 0.0 {
+                    history.push((mv.kind(), total(&st.scores)));
+                }
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    Ok(())
+}
+
 fn local_search(c: &mut Call) -> Answer {
     let out = |c: &mut Call, plan: Cv, total: V, history: Cv| {
         c.show("cachedResult", plan.clone());
@@ -455,6 +614,7 @@ fn local_search(c: &mut Call) -> Answer {
     };
     let across = c.field_str("reach", "across") == "across";
     let back = c.field_str("ends", "open") == "return";
+    let guided = c.field_str("stuck", "stop") == "look";
     let passes = match setting(c, "passes", 0.0) {
         Ok(p) => p.unwrap_or(MAX_PASSES).min(MAX_PASSES).floor() as usize,
         Err(e) => return fail(c, e),
@@ -559,9 +719,14 @@ fn local_search(c: &mut Call) -> Answer {
         cost_col,
         ev: Eval::default(),
         memo: Default::default(),
+        placed: Default::default(),
         work: 0,
         scale: 0.0,
+        lambda: 0.0,
+        marked: HashMap::new(),
+        reads_pos: false,
     };
+    m.reads_pos = [&m.cost, &m.penalty, &m.allow].iter().any(|b| b.as_ref().is_some_and(|b| b.reads(pos_i)));
 
     // Each group's walk, position by position, so a move walks only from where it changes a sequence.
     let mut marks: Vec<Vec<Acc>> = Vec::with_capacity(gcount);
@@ -578,53 +743,100 @@ fn local_search(c: &mut Call) -> Answer {
     let mut history: Vec<(&str, Score)> = vec![("start", sum(&scores))];
     m.scale = sum(&scores).total;
 
-    // A pass takes each item in turn and makes the best of its moves that lowers the answer: move it to another place
-    // in its group or another's (relocate), trade places with another item (swap), or reverse the run from it to a
-    // later item of its group (2-opt). Passes repeat until one changes nothing. When no formula reads before, at or
-    // position, an item's figures depend only on the item before it, so a move is scored by the few links it changes;
-    // otherwise by walking each changed sequence from where it changes.
+    // A pass takes each item in turn and makes the best of its moves that lowers the answer: move it, or a run of up to
+    // three from it, to another place in its group or another's (relocate, Or-opt), trade places with another item
+    // (swap), or reverse the run from it to a later item of its group (2-opt). An item that finds no move is passed over
+    // until a link beside it changes (don't-look bits); passes repeat until none changes anything. When no formula reads
+    // before, at or position, an item's figures depend only on the item before it, so a move is scored by the few links
+    // it changes; otherwise by walking each changed sequence from where it changes.
     let links = !m.moving.iter().any(|&x| x);
-    let mut stopped = false;
-    'search: for _ in 0..passes {
-        let mut changed = false;
-        for a in 0..gcount {
-            let mut i = 0;
-            while i < seqs[a].len() {
-                if m.work > MAX_WORK {
-                    stopped = true;
-                    break 'search;
-                }
-                let found = if links {
-                    m.best_by_links(&seqs, a, i, across)
-                } else {
-                    m.best_by_walks(&seqs, &marks, &scores, a, i, across)
-                };
-                match found {
-                    Err(e) => return fail(c, e),
-                    Ok(None) => i += 1,
-                    Ok(Some(mv)) => {
-                        for (k, seq) in build(&seqs, a, i, mv) {
-                            let mut mk = Vec::new();
-                            match m.walk(k, &seq, 0, Acc::default(), Some(&mut mk)) {
-                                Ok(s) => scores[k] = s,
-                                Err(e) => return fail(c, e),
-                            }
-                            marks[k] = mk;
-                            seqs[k] = seq;
-                        }
-                        history.push((mv.kind(), sum(&scores)));
-                        changed = true;
-                    }
+    let mut st = Search { seqs, marks, scores, active: vec![true; rows], passes, stopped: false };
+    let truth = |m: &mut Model, seqs: &[Vec<usize>]| -> Result<Score, V> {
+        let lambda = std::mem::replace(&mut m.lambda, 0.0);
+        let mut t = Score { bad: 0, total: 0.0 };
+        for (k, seq) in seqs.iter().enumerate() {
+            t = t.add(m.walk(k, seq, 0, Acc::default(), None)?);
+        }
+        m.lambda = lambda;
+        Ok(t)
+    };
+    if let Err(e) = descend(&mut m, &mut st, links, across, &mut history) {
+        return fail(c, e);
+    }
+    // Guided local search (Voudouris & Tsang): at a dead end, mark the links of the plan whose cost is highest for
+    // the marks they already carry, so the moves see them as dearer and leave them, and search on, keeping the best plan
+    // found. It stops once DRY dead ends in a row find nothing better, at Rounds, or at the work limit.
+    if guided {
+        let mut best = (sum(&st.scores), st.seqs.clone());
+        let mut dry = 0;
+        // Looking past dead ends may take at most GUIDED times the work the plain search took (and some floor for a
+        // plan it finished at once), so the extra time stays a known share of the first.
+        let until = m.work + (m.work * GUIDED).max(GUIDED_FLOOR);
+        while !st.stopped && st.passes > 0 && dry < DRY && m.work < until {
+            let mut worth: Vec<((Spot, usize), f64)> = Vec::new();
+            for (k, seq) in st.seqs.iter().enumerate() {
+                for p in 0..seq.len() {
+                    let last = if p == 0 { m.begin(k) } else { Spot::Item(seq[p - 1]) };
+                    let leg = match m.leg(k, seq, p, st.marks[k][p].before) {
+                        Ok(l) => l,
+                        Err(e) => return fail(c, e),
+                    };
+                    let marks = f64::from(m.marked.get(&(last, seq[p])).copied().unwrap_or(0));
+                    worth.push(((last, seq[p]), (leg.cost + leg.penalty) / (1.0 + marks)));
                 }
             }
+            let top = worth.iter().map(|w| w.1).fold(0.0, f64::max);
+            if top <= 0.0 {
+                break;
+            }
+            if m.lambda == 0.0 {
+                m.lambda = LAMBDA * best.0.total.max(top) / worth.len().max(1) as f64;
+            }
+            for (link, _) in worth.into_iter().filter(|w| w.1 == top) {
+                *m.marked.entry(link).or_insert(0) += 1;
+                for r in [Some(link.1), if let Spot::Item(r) = link.0 { Some(r) } else { None }].into_iter().flatten() {
+                    st.active[r] = true;
+                }
+            }
+            for k in 0..gcount {
+                let mut mk = Vec::new();
+                match m.walk(k, &st.seqs[k], 0, Acc::default(), Some(&mut mk)) {
+                    Ok(s) => st.scores[k] = s,
+                    Err(e) => return fail(c, e),
+                }
+                st.marks[k] = mk;
+            }
+            if let Err(e) = descend(&mut m, &mut st, links, across, &mut history) {
+                return fail(c, e);
+            }
+            let now = match truth(&mut m, &st.seqs) {
+                Ok(t) => t,
+                Err(e) => return fail(c, e),
+            };
+            if now.bad < best.0.bad
+                || (now.bad == best.0.bad && now.total < best.0.total - 1e-9 * best.0.total.abs().max(1.0))
+            {
+                best = (now, st.seqs.clone());
+                history.push(("kept looking", now));
+                dry = 0;
+            } else {
+                dry += 1;
+            }
         }
-        if !changed {
-            break;
+        m.lambda = 0.0;
+        st.seqs = best.1;
+        st.scores = vec![Score { bad: 0, total: 0.0 }; gcount];
+        for k in 0..gcount {
+            match m.walk(k, &st.seqs[k], 0, Acc::default(), None) {
+                Ok(s) => st.scores[k] = s,
+                Err(e) => return fail(c, e),
+            }
         }
     }
-    if stopped {
-        history.push(("time limit", sum(&scores)));
+    if st.stopped {
+        history.push(("time limit", sum(&st.scores)));
     }
+    let (seqs, scores) = (st.seqs, st.scores);
 
     // The plan: each group's items in sequence, in group order, with their figures.
     let base = Frame {

@@ -52,7 +52,7 @@ import type {
   BlankRowMode,
 } from "../nodeClasses";
 import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS, SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS,
-  QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_ORDER_DIR_OPTIONS, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK } from "../nodeClasses";
+  QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_ORDER_DIR_OPTIONS, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK, SEARCH_STUCK_OPTIONS, SEARCH_STUCK_ASK } from "../nodeClasses";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType, LocalSearchNode as LocalSearchNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
@@ -1375,6 +1375,7 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
   const moves = history && isFrameValue(history) ? Math.max(0, frameRowCount(history) - 1) : null;
   const [reach, setReach] = useNodeField(data, "reach");
   const [ends, setEnds] = useNodeField(data, "ends");
+  const [stuck, setStuck] = useNodeField(data, "stuck");
   const connected = useConnectedInputs(data.id);
   const hasStart = connected.has("start") || ends !== "open";
   const groupsUsed = useRowsInUse(data, SEARCH_GROUP_KEYS) || reach !== "across" || ends !== "open";
@@ -1386,6 +1387,7 @@ export function LocalSearchComponent({ data, emit }: NodeProps<LocalSearchNodeTy
         {groupsUsed && <AskSelect label={SEARCH_REACH_ASK} value={reach} options={SEARCH_REACH_OPTIONS} onChange={setReach} />}
         {hasStart && <AskSelect label={SEARCH_ENDS_ASK} value={ends} options={SEARCH_ENDS_OPTIONS} onChange={setEnds} />}
       </CardSection>
+      <AskSelect label={SEARCH_STUCK_ASK} value={stuck} options={SEARCH_STUCK_OPTIONS} onChange={setStuck} />
       <InlineInputs node={data} emit={emit} keys={["passes"]} fullWiredKeys={SEARCH_WHOLE} />
       <MeasuredSocketRow side="output" socketKey="plan" nodeId={data.id} emit={emit} payload={data.outputs.plan!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />

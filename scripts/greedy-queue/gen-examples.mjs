@@ -85,7 +85,7 @@ for (const [id, label, ordered] of [["nearest", "Nearest next", true], ["listed"
   wire(`${id}.total -> ${id}_sum.km`, `${id}.picks -> ${id}_chart.values`);
 }
 // Then improved: 2-opt and relocate on the nearest-next route, by the same km formula.
-add("route_better", "LocalSearchNode", { label: "Nearest next, improved" });
+add("route_better", "LocalSearchNode", { label: "Nearest next, improved", stuck: "look" });
 wire("nearest.picks -> route_better.items", "depot.frame -> route_better.start", "km.result -> route_better.cost");
 sumOf("route_better_sum", "Improved: km", "ROUND(km, 1)");
 add("route_better_chart", "ChartNode", { label: "Nearest next, improved", op: "xyline" }, { stringLiterals: { options: "x=Longitude; y=Latitude; annotate=Stop; aspect=equal" } });
