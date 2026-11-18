@@ -120,7 +120,8 @@ describe("Solver", () => {
     expect(rows(blend.out.limits)[1]).toMatchObject({ Limit: "Average Fat", "Must Be": "at most", Bound: 0.06, Used: 0.06, Slack: 0, "Shadow Price": null });
     // Rich must be at least 40% of the kilos: 40 and 60.
     const share = solve(beans, [{ of: "", sign: "eq", limit: 100 }, { measure: "share", of: "", where: "Bean", is: "Rich", sign: "ge", limit: 0.4 }], "Cost", "max");
-    expect(rows(share.out.plan).map((r) => r.Amount)).toEqual([0, 100]);
+    expect(rows(share.out.plan).map((r) => r.Amount)).toEqual([40, 60]);
+    expect(rows(share.out.limits)[1]).toMatchObject({ Used: 0.4, Slack: 0 });
     const least = solve(beans, [{ of: "", sign: "eq", limit: 100 }, { measure: "share", of: "", where: "Bean", is: "Rich", sign: "ge", limit: 0.4 }], "Cost", "min");
     expect(rows(least.out.plan).map((r) => r.Amount)).toEqual([100, 0]);
     expect(rows(least.out.limits)[1]).toMatchObject({ Limit: "Share of Amount where Bean is Rich", Used: 1 });

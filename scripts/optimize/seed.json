@@ -385,6 +385,228 @@
    }
   },
   {
+   "id": "lanes",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Lanes"
+   },
+   "frame": [
+    {
+     "name": "From",
+     "cells": [
+      "Memphis",
+      "Memphis",
+      "Memphis",
+      "Atlanta",
+      "Atlanta",
+      "Atlanta"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "To",
+     "cells": [
+      "Nashville",
+      "Knoxville",
+      "Chattanooga",
+      "Nashville",
+      "Knoxville",
+      "Chattanooga"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Cost",
+     "cells": [
+      4.1,
+      6.3,
+      5.2,
+      5.6,
+      4.4,
+      2.9
+     ],
+     "type": "number",
+     "unit": "usd"
+    },
+    {
+     "name": "Supply",
+     "cells": [
+      500,
+      500,
+      500,
+      400,
+      400,
+      400
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Demand",
+     "cells": [
+      300,
+      250,
+      280,
+      300,
+      250,
+      280
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "ship",
+   "type": "SolverNode",
+   "init": {
+    "label": "Shipping plan",
+    "goal": "min",
+    "limitList": [
+     {
+      "of": "",
+      "by": "From",
+      "sign": "le",
+      "limit": null,
+      "limitColumn": "Supply"
+     },
+     {
+      "of": "",
+      "by": "To",
+      "sign": "ge",
+      "limit": null,
+      "limitColumn": "Demand"
+     }
+    ]
+   },
+   "stringLiterals": {
+    "objective": "Cost"
+   }
+  },
+  {
+   "id": "ship_grid",
+   "type": "PivotNode",
+   "init": {
+    "label": "Units by lane",
+    "agg": "sum"
+   },
+   "stringLiterals": {
+    "rowFields": "From",
+    "colFields": "To",
+    "values": "Amount"
+   }
+  },
+  {
+   "id": "feeds",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Ingredients (per kg)"
+   },
+   "frame": [
+    {
+     "name": "Ingredient",
+     "cells": [
+      "Corn",
+      "Soybean meal",
+      "Wheat midds",
+      "Fish meal",
+      "Oats"
+     ],
+     "type": "string"
+    },
+    {
+     "name": "Cost",
+     "cells": [
+      0.19,
+      0.44,
+      0.24,
+      1.1,
+      0.26
+     ],
+     "type": "number",
+     "unit": "usd"
+    },
+    {
+     "name": "Protein",
+     "cells": [
+      0.09,
+      0.47,
+      0.15,
+      0.62,
+      0.12
+     ],
+     "type": "number"
+    },
+    {
+     "name": "Fat",
+     "cells": [
+      0.04,
+      0.015,
+      0.045,
+      0.09,
+      0.05
+     ],
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "feed",
+   "type": "SolverNode",
+   "init": {
+    "label": "Feed blend",
+    "goal": "min",
+    "limitList": [
+     {
+      "of": "",
+      "sign": "eq",
+      "limit": 1000
+     },
+     {
+      "measure": "average",
+      "of": "Protein",
+      "sign": "ge",
+      "limit": 0.18
+     },
+     {
+      "measure": "average",
+      "of": "Fat",
+      "sign": "le",
+      "limit": 0.06
+     },
+     {
+      "measure": "share",
+      "of": "",
+      "where": "Ingredient",
+      "is": "Corn",
+      "sign": "le",
+      "limit": 0.5
+     }
+    ]
+   },
+   "stringLiterals": {
+    "objective": "Cost"
+   }
+  },
+  {
+   "id": "feed_kg",
+   "type": "ColumnsNode",
+   "init": {
+    "label": "Kg in a tonne"
+   },
+   "stringLiterals": {
+    "columns": "Ingredient, Amount"
+   }
+  },
+  {
+   "id": "feed_check",
+   "type": "ColumnsNode",
+   "init": {
+    "label": "Blend check"
+   },
+   "stringLiterals": {
+    "columns": "Limit, Bound, Used"
+   }
+  },
+  {
    "id": "hours",
    "type": "FrameInputNode",
    "init": {
@@ -767,6 +989,33 @@
    }
   },
   {
+   "id": "grp_ship",
+   "type": "GroupNode",
+   "init": {
+    "label": "Shipping plan",
+    "members": [
+     "lanes",
+     "ship",
+     "ship_grid"
+    ],
+    "color": "gold"
+   }
+  },
+  {
+   "id": "grp_feed",
+   "type": "GroupNode",
+   "init": {
+    "label": "Feed blend",
+    "members": [
+     "feeds",
+     "feed",
+     "feed_kg",
+     "feed_check"
+    ],
+    "color": "lime"
+   }
+  },
+  {
    "id": "grp_crews",
    "type": "GroupNode",
    "init": {
@@ -835,6 +1084,11 @@
   "ad_reach.result -> ads.goalFormula",
   "ads.plan -> ads_spend.frame",
   "ads_spend.frame -> ads_chart.values",
+  "lanes.frame -> ship.options",
+  "ship.plan -> ship_grid.frame",
+  "feeds.frame -> feed.options",
+  "feed.plan -> feed_kg.frame",
+  "feed.limits -> feed_check.frame",
   "hours.frame -> crews.costs",
   "roads.frame -> route.links",
   "roads.frame -> reach.links",

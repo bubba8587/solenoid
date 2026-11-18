@@ -881,8 +881,9 @@ fn build_limits(
         if s.measure == Measured::Share && s.filter.is_empty() && s.by.is_empty() {
             return Err(err(ErrorCode::Value, format!("{what}: a share needs Count only where or For each")));
         }
+        // Without For each, one group of every option: a share's whole is then the plan, the rest count `counted`.
         let groups: Vec<(String, Vec<usize>)> = if s.by.is_empty() || s.measure == Measured::Each {
-            vec![(String::new(), counted.clone())]
+            vec![(String::new(), (0..rows).collect())]
         } else {
             let j = column(&s.by)?;
             groups_of(f, j, &(0..rows).collect::<Vec<_>>())

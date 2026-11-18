@@ -75,6 +75,39 @@ keep("ads_spend", "Spend per channel", "Channel, Amount");
 chart("ads_chart", "Spend per channel", "bar", "xlabel=Dollars");
 wire("channels.frame -> ads.options", "ad_reach.result -> ads.goalFormula", "ads.plan -> ads_spend.frame", "ads_spend.frame -> ads_chart.values");
 
+// ── 2c. A shipping plan: two warehouses, three stores, a row per lane. "For each" gives each warehouse its supply and
+// each store its demand in one limit apiece, read from the lanes' own columns; the pivot lays the plan out as a grid. ──
+table("lanes", "Lanes", {
+  From: ["Memphis", "Memphis", "Memphis", "Atlanta", "Atlanta", "Atlanta"],
+  To: ["Nashville", "Knoxville", "Chattanooga", "Nashville", "Knoxville", "Chattanooga"],
+  "Cost ($)": [4.1, 6.3, 5.2, 5.6, 4.4, 2.9],
+  Supply: [500, 500, 500, 400, 400, 400],
+  Demand: [300, 250, 280, 300, 250, 280],
+});
+add("ship", "SolverNode", { label: "Shipping plan", goal: "min", limitList: [
+  { of: "", by: "From", sign: "le", limit: null, limitColumn: "Supply" },
+  { of: "", by: "To", sign: "ge", limit: null, limitColumn: "Demand" },
+] }, { stringLiterals: { objective: "Cost" } });
+add("ship_grid", "PivotNode", { label: "Units by lane", agg: "sum" }, { stringLiterals: { rowFields: "From", colFields: "To", values: "Amount" } });
+wire("lanes.frame -> ship.options", "ship.plan -> ship_grid.frame");
+
+// ── 2d. A feed blend: the cheapest tonne that's at least 18% protein and at most 6% fat, corn at most half ──
+table("feeds", "Ingredients (per kg)", {
+  Ingredient: ["Corn", "Soybean meal", "Wheat midds", "Fish meal", "Oats"],
+  "Cost ($)": [0.19, 0.44, 0.24, 1.1, 0.26],
+  Protein: [0.09, 0.47, 0.15, 0.62, 0.12],
+  Fat: [0.04, 0.015, 0.045, 0.09, 0.05],
+});
+add("feed", "SolverNode", { label: "Feed blend", goal: "min", limitList: [
+  { of: "", sign: "eq", limit: 1000 },
+  { measure: "average", of: "Protein", sign: "ge", limit: 0.18 },
+  { measure: "average", of: "Fat", sign: "le", limit: 0.06 },
+  { measure: "share", of: "", where: "Ingredient", is: "Corn", sign: "le", limit: 0.5 },
+] }, { stringLiterals: { objective: "Cost" } });
+keep("feed_kg", "Kg in a tonne", "Ingredient, Amount");
+keep("feed_check", "Blend check", "Limit, Bound, Used");
+wire("feeds.frame -> feed.options", "feed.plan -> feed_kg.frame", "feed.limits -> feed_check.frame");
+
 // ── 3. Crew assignment: who takes which job, hours each would need (blank: not certified) ──
 table("hours", "Crew hours", {
   Crew: ["North", "South", "East", "West", "Central"],
@@ -125,6 +158,8 @@ const groups = [
   ["grp_mix", "Roast mix", ["blends", "mix", "mix_units", "mix_chart", "mix_room"], "teal"],
   ["grp_portfolio", "Project portfolio", ["projects", "portfolio", "portfolio_pick"], "blue"],
   ["grp_ads", "Ad budget", ["channels", "ad_reach", "ads", "ads_spend", "ads_chart"], "pink"],
+  ["grp_ship", "Shipping plan", ["lanes", "ship", "ship_grid"], "gold"],
+  ["grp_feed", "Feed blend", ["feeds", "feed", "feed_kg", "feed_check"], "lime"],
   ["grp_crews", "Crew assignment", ["hours", "crews"], "amber"],
   ["grp_route", "Road route", ["roads", "route", "reach", "reach_cols", "reach_chart"], "green"],
   ["grp_front", "Plan trade-offs", ["plans", "front", "front_chart"], "violet"],
