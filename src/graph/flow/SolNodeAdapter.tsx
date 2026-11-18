@@ -7,6 +7,7 @@ import { withNodeBoundary } from "../components/ErrorBoundary";
 import type { Emit } from "../components/nodeKit";
 import { SolFlowNode } from "./SolFlowNode";
 import type { SolenoidNode } from "../schemes";
+import { queueMeasure, registerCardStore } from "./remeasure";
 
 type FlowNodeData = {
   node: SolenoidNode;
@@ -17,28 +18,6 @@ type FlowNodeData = {
 export type SolFlowNode = Node<FlowNodeData, "sol">;
 
 const stubEmit = (() => {}) as unknown as Emit;
-
-type FlowStore = ReturnType<typeof useReactFlowStoreApi>["optionsStore"];
-type MeasureUpdates = Parameters<ReturnType<FlowStore["getState"]>["updateNodeInternals"]>[0];
-/** Re-measures queued per React Flow instance, flushed together in the next frame, so a pass that re-renders many
- *  cards costs React Flow one store update and React one commit, not one each. */
-const pendingMeasure = new WeakMap<FlowStore, Set<string>>();
-function queueMeasure(store: FlowStore, id: string): void {
-  let ids = pendingMeasure.get(store);
-  if (ids) { ids.add(id); return; }
-  ids = new Set([id]);
-  pendingMeasure.set(store, ids);
-  requestAnimationFrame(() => {
-    pendingMeasure.delete(store);
-    const { domNode, updateNodeInternals } = store.getState();
-    const updates: MeasureUpdates = new Map();
-    for (const nid of ids!) {
-      const nodeElement = domNode?.querySelector<HTMLDivElement>(`.react-flow__node[data-id="${CSS.escape(nid)}"]`);
-      if (nodeElement) updates.set(nid, { id: nid, nodeElement, force: true });
-    }
-    if (updates.size) updateNodeInternals(updates, { triggerFitView: false });
-  });
-}
 
 /** The card's sockets in order: what React Flow's handle bounds depend on beyond the card's size. */
 const socketSignature = (node: SolenoidNode): string =>
@@ -51,6 +30,7 @@ function SolNodeAdapterBase(props: NodeProps<SolFlowNode>) {
   const store = useReactFlowStoreApi().optionsStore;
   // A version bump re-measures the card's handles only when its sockets were added, removed or reordered: a resize
   // already re-measures them (React Flow's own observer), and a new value with the same sockets moves none.
+  useEffect(() => registerCardStore(id, store), [id, store]);
   const measured = useRef<string | null>(null);
   const signature = socketSignature(data.node);
   useEffect(() => {

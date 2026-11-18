@@ -239,7 +239,12 @@ The socket box is always exactly 12×12 ([[#The socket box and its row]]): `disp
 - Vertical placement is measured per row (`MeasuredSocketRow`), never a fixed constant.
 - The dot straddles the card edge with `left: -5` / `right: -5`, positioned against `__content`. Don't make the io-row or `__body` a positioning context.
 - A Conduit's socket tips come from `conduitLaneOffset`, not from the measured handle ([[conduit-lane-faces]]).
-- The card adapter (`SolNodeAdapter`) calls RF's `updateNodeInternals` whenever a card's version bumps, since a bump can mean swapped or retyped sockets. Its `emit` is a stub, because on this surface only `NodeSocket` consumes it and `NodeSocket` renders the socket handle.
+- The card adapter (`SolNodeAdapter`) calls RF's `updateNodeInternals` when a card's sockets are added, removed or reordered; its `emit` is a stub, because on this surface only `NodeSocket` consumes it and `NodeSocket` renders the socket handle.
+
+### Socket anchors
+
+RF re-measures a card's handle boxes when the card resizes (its own observer) or the adapter asks. A socket's row is measured after layout, in a batch written in a microtask (`useRowSocketTop`, `layoutBatch.ts`), so a card that grows (a table preview that fills in once its frame lands) resizes, RF measures, and only then do the sockets below the growth move: the cables kept the old spots, 5 to 10 px above their dots under a preview. So a socket whose measured top changes asks for its card to be measured again (`socketMoved`, `flow/remeasure.ts`), queued with the adapter's own requests into one `updateNodeInternals` a frame for every card that moved.
+
 
 ### The socket box and its row
 

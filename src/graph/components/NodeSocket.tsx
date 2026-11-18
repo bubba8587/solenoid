@@ -1,3 +1,4 @@
+import { socketMoved } from "../flow/remeasure";
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore, useRef, useState, useLayoutEffect, useEffect, type ReactNode } from "react";
 import { presentSocketStore } from "../presentSocketStore";
@@ -169,6 +170,9 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
   };
   useEffect(() => cancelHint, []);
   useLayoutEffect(() => presentSocketStore.mount(nodeId, side, socketKey), [nodeId, side, socketKey]);
+  // A socket placed after React Flow measured the card (a row that grew once its table loaded) would leave its cables
+  // at the old spot: a move re-measures the card.
+  useLayoutEffect(() => { if (top !== undefined) socketMoved(nodeId); }, [nodeId, top]);
 
   const resolvePeekValue = (): { value: unknown; nodeId: string; outKey: string } | null => {
     if (side === "output") return { value: cableValueStore.get(nodeId, socketKey), nodeId, outKey: socketKey };
