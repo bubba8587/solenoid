@@ -50,7 +50,8 @@ specific item.
 - **Pick Columns** is Keep/Drop Columns' family name and class (`PickColumnsNode`, so the header's hover names it);
   Columns stays the menu category holding Rename, Split and the rest.
 - Labels moved to noun phrases on the card faces too: Solver's Column total and Formula total, Pareto's
-  Lower-is-better and Higher-is-better columns, Staffing's On-time share. Greedy Queue's rules list a budget only once
+  Lower-is-better and Higher-is-better columns, Staffing's On-time share, Arrival rate (/h) and Job time (min) (a
+  unit in parentheses is what a plain number is read in; a wired value with any time or rate unit converts). Greedy Queue's rules list a budget only once
   the engine ran with one (`cachedOver` is blank with none in force, a wired blank Budget included).
 - Not done: a limit that is itself a formula (nonlinear constraints); a Solve button for the heavy cards (measured: the
   seed's problems solve at once, so composites keep the only hold); shadow prices for averages, shares and counts.

@@ -45,7 +45,7 @@ Code: `nodes/measure.rs`. Greedy Queue, Local Search, Solver, Assignment, Shorte
 - **Solver:** Best carries the goal column's unit. Each limit's unit is its Column total's, the typed number read in it. Used, Slack and Shadow Price (the goal's unit per the limit's, $/kg) carry a unit only when every limit shares one, a column holding one unit; otherwise each row's numbers are in its own limit's unit.
 - **Assignment:** every job column meets the others (plain ones read in their unit), each cell converts into it, and Cost and Total carry it: a grid of hours beside minutes totals hours, one of hours beside km is `#UNIT!`.
 - **Shortest Path:** Leg, So Far, Distance and Total carry the cost column's unit; counted links are plain.
-- **Staffing:** a time with a unit is read in minutes (`3 min`, `20 s`) and a rate with one in an hour's worth (`100 /h`); a plain number is taken as its label says. Another dimension is `#UNIT!`. Mean Wait is in minutes. The card is `unitAware`.
+- **Staffing:** a time with a unit is read in minutes (`3 min`, `20 s`) and a rate with one in an hour's worth (`100 /h`); a plain number is in the unit its label names in parentheses (Arrival rate (/h), Job time (min), Target wait (min)). Another dimension is `#UNIT!`. Mean Wait is in minutes. The card is `unitAware`.
 
 Tests: `optimizeUnits.test.ts`.
 

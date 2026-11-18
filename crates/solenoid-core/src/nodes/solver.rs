@@ -1384,7 +1384,7 @@ fn staffing(c: &mut Call) -> Answer {
         Ok(vec![("options".into(), table), ("needed".into(), Cv::from(needed))])
     };
     let fail = |c: &mut Call, e: V| out(c, Cv::V(e.clone()), e);
-    // A time with a unit reads in minutes and a rate with one in an hour's worth; a plain number is taken as labeled.
+    // A time with a unit reads in minutes and a rate with one in an hour's worth; a plain number is in the unit its label names.
     let minute = Measure::named("min");
     let read = |c: &Call, k: &str, per_time: bool| -> Result<Option<f64>, V> {
         let v = c.read_input(k, c.unwired(k));
@@ -1422,12 +1422,15 @@ fn staffing(c: &mut Call) -> Answer {
     };
     let (Some(rate), Some(mins)) = (arrivals, minutes) else { return out(c, Cv::NULL, V::Null) };
     if rate <= 0.0 || mins <= 0.0 {
-        return fail(c, err(ErrorCode::Domain, "Arrivals and minutes a job take numbers above 0"));
+        return fail(
+            c,
+            err(ErrorCode::Domain, format!("{} and {} take numbers above 0", c.label("arrivals"), c.label("minutes"))),
+        );
     }
     let target = target.unwrap_or(0.0).max(0.0);
     let share = share.unwrap_or(0.8);
     if !(0.0..1.0).contains(&share) {
-        return fail(c, err(ErrorCode::Domain, "Share within target is a fraction below 1, such as 0.8"));
+        return fail(c, err(ErrorCode::Domain, format!("{} is a fraction below 1, such as 0.8", c.label("share"))));
     }
     // The load in servers' worth of work; c servers keep up only while c > load.
     let load = rate * mins / 60.0;
