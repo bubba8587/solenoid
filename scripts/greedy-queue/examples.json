@@ -336,10 +336,10 @@
   },
   {
    "id": "by_due_sum",
-   "type": "ExpressionNode",
+   "type": "AggregateNode",
    "init": {
     "label": "Earliest due first: days late",
-    "expr": "SUM(late)"
+    "op": "sum"
    }
   },
   {
@@ -379,10 +379,10 @@
   },
   {
    "id": "by_short_sum",
-   "type": "ExpressionNode",
+   "type": "AggregateNode",
    "init": {
     "label": "Shortest first: days late",
-    "expr": "SUM(late)"
+    "op": "sum"
    }
   },
   {
@@ -429,10 +429,10 @@
   },
   {
    "id": "jobs_scored_sum",
-   "type": "ExpressionNode",
+   "type": "AggregateNode",
    "init": {
-    "label": "Before: days late",
-    "expr": "ROUND(SUM(late) / day, 1)"
+    "label": "Before: hours late",
+    "op": "sum"
    }
   },
   {
@@ -458,10 +458,10 @@
   },
   {
    "id": "jobs_better_sum",
-   "type": "ExpressionNode",
+   "type": "AggregateNode",
    "init": {
-    "label": "After: days late",
-    "expr": "ROUND(SUM(late) / day, 1)"
+    "label": "After: hours late",
+    "op": "sum"
    }
   },
   {
@@ -772,10 +772,13 @@
   },
   {
    "id": "nearest_sum",
-   "type": "ExpressionNode",
+   "type": "RoundNNode",
    "init": {
     "label": "Nearest next: km",
-    "expr": "ROUND(km, 1)"
+    "op": "round"
+   },
+   "literals": {
+    "digits": 1
    }
   },
   {
@@ -799,10 +802,13 @@
   },
   {
    "id": "listed_sum",
-   "type": "ExpressionNode",
+   "type": "RoundNNode",
    "init": {
     "label": "In the listed order: km",
-    "expr": "ROUND(km, 1)"
+    "op": "round"
+   },
+   "literals": {
+    "digits": 1
    }
   },
   {
@@ -826,10 +832,13 @@
   },
   {
    "id": "route_better_sum",
-   "type": "ExpressionNode",
+   "type": "RoundNNode",
    "init": {
     "label": "Improved: km",
-    "expr": "ROUND(km, 1)"
+    "op": "round"
+   },
+   "literals": {
+    "digits": 1
    }
   },
   {
@@ -1023,13 +1032,13 @@
   "day.value -> by_due.budget",
   "by_due.picks -> by_due_late.frame",
   "by_due_late.frame -> by_due_col.frame",
-  "by_due_col.values -> by_due_sum.late",
+  "by_due_col.values -> by_due_sum.list",
   "jobs.frame -> by_short.items",
   "machines.frame -> by_short.start",
   "day.value -> by_short.budget",
   "by_short.picks -> by_short_late.frame",
   "by_short_late.frame -> by_short_col.frame",
-  "by_short_col.values -> by_short_sum.late",
+  "by_short_col.values -> by_short_sum.list",
   "day.value -> job_wait.day",
   "day.value -> job_late.day",
   "by_due.picks -> jobs_scored.items",
@@ -1037,15 +1046,13 @@
   "job_wait.result -> jobs_scored.cost",
   "job_late.result -> jobs_scored.penalty",
   "jobs_scored.plan -> jobs_scored_pen.frame",
-  "jobs_scored_pen.values -> jobs_scored_sum.late",
-  "day.value -> jobs_scored_sum.day",
+  "jobs_scored_pen.values -> jobs_scored_sum.list",
   "by_due.picks -> jobs_better.items",
   "machines.frame -> jobs_better.start",
   "job_wait.result -> jobs_better.cost",
   "job_late.result -> jobs_better.penalty",
   "jobs_better.plan -> jobs_better_pen.frame",
-  "jobs_better_pen.values -> jobs_better_sum.late",
-  "day.value -> jobs_better_sum.day",
+  "jobs_better_pen.values -> jobs_better_sum.list",
   "jobs_better.history -> jobs_better_chart.values",
   "boxes.frame -> fit.items",
   "capacity.value -> fit.budget",
@@ -1059,17 +1066,17 @@
   "depot.frame -> nearest.start",
   "km.result -> nearest.cost",
   "km.result -> nearest.order",
-  "nearest.total -> nearest_sum.km",
+  "nearest.total -> nearest_sum.value",
   "nearest.picks -> nearest_chart.values",
   "stops.frame -> listed.items",
   "depot.frame -> listed.start",
   "km.result -> listed.cost",
-  "listed.total -> listed_sum.km",
+  "listed.total -> listed_sum.value",
   "listed.picks -> listed_chart.values",
   "nearest.picks -> route_better.items",
   "depot.frame -> route_better.start",
   "km.result -> route_better.cost",
-  "route_better.total -> route_better_sum.km",
+  "route_better.total -> route_better_sum.value",
   "route_better.plan -> route_better_chart.values"
  ]
 }

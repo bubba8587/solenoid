@@ -2775,9 +2775,9 @@
        "id": "m_cost",
        "type": "LambdaNode",
        "init": {
-        "label": "Drive minutes from the last site",
+        "label": "Drive hours from the last site",
         "params": "Latitude, Longitude, last_Latitude, last_Longitude",
-        "expr": "IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2)) * road / 1.609344 / mph * 60)"
+        "expr": "IF(ISBLANK(last_Latitude), 0, 2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2)) * road / 1.609344 / mph)"
        },
        "x": 1860,
        "y": 560
@@ -2823,21 +2823,11 @@
        "y": 700
       },
       {
-       "id": "m_hours_b",
-       "type": "ExpressionNode",
-       "init": {
-        "label": "Plan B drive hours",
-        "expr": "ROUND(minutes / 60, 1)"
-       },
-       "x": 3140,
-       "y": 700
-      },
-      {
        "id": "m_saved",
-       "type": "ExpressionNode",
+       "type": "ArithmeticNode",
        "init": {
         "label": "Hours Plan B saves",
-        "expr": "ROUND(a - b, 1)"
+        "op": "sub"
        },
        "x": 3140,
        "y": 860
@@ -2897,41 +2887,30 @@
        "y": 320
       },
       {
-       "id": "m_hours",
-       "type": "ExpressionNode",
-       "init": {
-        "label": "Drive hours",
-        "expr": "ROUND(minutes / 60, 1)"
-       },
-       "x": 3140,
-       "y": 0
-      },
-      {
        "id": "m_jobs",
-       "type": "ExpressionNode",
+       "type": "AggregateNode",
        "init": {
         "label": "Jobs served",
-        "expr": "COUNT(m)"
+        "op": "count"
        },
        "x": 3140,
        "y": 160
       },
       {
        "id": "m_meanwait",
-       "type": "ExpressionNode",
+       "type": "AggregateNode",
        "init": {
         "label": "Mean wait (days)",
-        "expr": "ROUND(AVERAGE(w), 2)"
+        "op": "avg"
        },
        "x": 3140,
        "y": 320
       },
       {
        "id": "m_open",
-       "type": "ExpressionNode",
+       "type": "ListLengthNode",
        "init": {
-        "label": "Still open",
-        "expr": "COUNTA(s)"
+        "label": "Still open"
        },
        "x": 3140,
        "y": 480
@@ -3065,26 +3044,20 @@
        "targetInput": "cost"
       },
       {
-       "source": "m_queue_b",
+       "source": "m_queue",
        "sourceOutput": "total",
-       "target": "m_hours_b",
-       "targetInput": "minutes"
-      },
-      {
-       "source": "m_hours",
-       "sourceOutput": "result",
        "target": "m_saved",
        "targetInput": "a"
       },
       {
-       "source": "m_hours_b",
-       "sourceOutput": "result",
+       "source": "m_queue_b",
+       "sourceOutput": "total",
        "target": "m_saved",
        "targetInput": "b"
       },
       {
-       "source": "m_hours_b",
-       "sourceOutput": "result",
+       "source": "m_queue_b",
+       "sourceOutput": "total",
        "target": "o_hours_b",
        "targetInput": "value"
       },
@@ -3137,32 +3110,26 @@
        "targetInput": "frame"
       },
       {
-       "source": "m_queue",
-       "sourceOutput": "total",
-       "target": "m_hours",
-       "targetInput": "minutes"
-      },
-      {
        "source": "m_dmin",
        "sourceOutput": "values",
        "target": "m_jobs",
-       "targetInput": "m"
+       "targetInput": "list"
       },
       {
        "source": "m_wait",
        "sourceOutput": "values",
        "target": "m_meanwait",
-       "targetInput": "w"
+       "targetInput": "list"
       },
       {
        "source": "m_left",
        "sourceOutput": "values",
        "target": "m_open",
-       "targetInput": "s"
+       "targetInput": "list"
       },
       {
-       "source": "m_hours",
-       "sourceOutput": "result",
+       "source": "m_queue",
+       "sourceOutput": "total",
        "target": "o_hours",
        "targetInput": "value"
       },
@@ -3190,60 +3157,100 @@
   },
   {
    "id": "mc_mean",
-   "type": "ExpressionNode",
+   "type": "AggregateNode",
    "init": {
     "label": "Mean drive hours a run",
-    "expr": "ROUND(AVERAGE(h), 1)"
+    "op": "avg"
    },
    "x": 700,
    "y": 960
   },
   {
+   "id": "mc_sd",
+   "type": "AggregateNode",
+   "init": {
+    "label": "Spread between runs",
+    "op": "stdev"
+   },
+   "x": 700,
+   "y": 820
+  },
+  {
+   "id": "mc_n",
+   "type": "AggregateNode",
+   "init": {
+    "label": "Runs",
+    "op": "count"
+   },
+   "x": 700,
+   "y": 680
+  },
+  {
    "id": "b_mean",
-   "type": "ExpressionNode",
+   "type": "AggregateNode",
    "init": {
     "label": "Plan B saves (hours a year)",
-    "expr": "ROUND(AVERAGE(saved), 1)"
+    "op": "avg"
    },
    "x": 1000,
    "y": 1100
   },
   {
+   "id": "b_sd",
+   "type": "AggregateNode",
+   "init": {
+    "label": "Spread of the saving",
+    "op": "stdev"
+   },
+   "x": 1000,
+   "y": 820
+  },
+  {
    "id": "b_ci",
-   "type": "ExpressionNode",
+   "type": "ConfidenceNode",
    "init": {
     "label": "Plan B saving, 95% interval ± hours",
-    "expr": "ROUND(1.96 * STDEV.S(saved) / SQRT(COUNT(saved)), 1)"
+    "op": "norm"
+   },
+   "literals": {
+    "alpha": 0.05
    },
    "x": 1000,
    "y": 1240
   },
   {
    "id": "mc_ci",
-   "type": "ExpressionNode",
+   "type": "ConfidenceNode",
    "init": {
     "label": "95% interval ± hours",
-    "expr": "ROUND(1.96 * STDEV.S(h) / SQRT(COUNT(h)), 1)"
+    "op": "norm"
+   },
+   "literals": {
+    "alpha": 0.05
    },
    "x": 700,
    "y": 1100
   },
   {
    "id": "mc_run",
-   "type": "ExpressionNode",
+   "type": "SeriesNode",
    "init": {
     "label": "Run",
-    "expr": "SEQUENCE(COUNT(h))"
+    "op": "range"
+   },
+   "literals": {
+    "start": 1,
+    "step": 1
    },
    "x": 700,
    "y": 1240
   },
   {
    "id": "mc_running",
-   "type": "ExpressionNode",
+   "type": "RunningNode",
    "init": {
     "label": "Running mean",
-    "expr": "SCAN(0, h, LAMBDA(a, v, a + v)) / SEQUENCE(COUNT(h))"
+    "agg": "avg"
    },
    "x": 700,
    "y": 1380
@@ -3298,17 +3305,22 @@
   "expected.frame -> plan_b.frame",
   "plan_b.frame -> runs.in_sites",
   "days.value -> runs.in_days",
-  "runs.o_hours -> mc_mean.h",
-  "runs.o_hours -> mc_ci.h",
-  "runs.o_hours -> mc_run.h",
-  "runs.o_hours -> mc_running.h",
-  "mc_run.result -> mc_frame.vals0",
+  "runs.o_hours -> mc_mean.list",
+  "runs.o_hours -> mc_sd.list",
+  "runs.o_hours -> mc_n.list",
+  "mc_sd.result -> mc_ci.stdev",
+  "mc_n.result -> mc_ci.n",
+  "mc_n.result -> mc_run.stop",
+  "runs.o_hours -> mc_running.list",
+  "mc_run.list -> mc_frame.vals0",
   "runs.o_hours -> mc_frame.vals1",
   "mc_running.result -> mc_frame.vals2",
   "mc_frame.frame -> mc_chart.values",
   "runs.o_hours -> mc_opts.h",
   "mc_opts.result -> mc_chart.options",
-  "runs.o_saved -> b_mean.saved",
-  "runs.o_saved -> b_ci.saved"
+  "runs.o_saved -> b_mean.list",
+  "runs.o_saved -> b_sd.list",
+  "b_sd.result -> b_ci.stdev",
+  "mc_n.result -> b_ci.n"
  ]
 }

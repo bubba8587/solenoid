@@ -23,7 +23,8 @@ const wire = (...cs) => cables.push(...cs);
 const lambda = (id, label, params, expr) => add(id, "LambdaNode", { label, params, expr });
 const queue = (id, label, extra, strs, lits) =>
   add(id, "GreedyQueueNode", { label, ...extra }, { stringLiterals: strs, ...(lits ? { literals: lits } : {}) });
-const sumOf = (id, label, expr) => add(id, "ExpressionNode", { label, expr });
+const total = (id, label) => add(id, "AggregateNode", { label, op: "sum" });
+const round1 = (id, label) => add(id, "RoundNNode", { label, op: "round" }, { literals: { digits: 1 } });
 const getCol = (id, label, name) => add(id, "GetColumnNode", { label }, { stringLiterals: { name } });
 
 // ── 1. A job shop: three machines, 8 hours a day, jobs arriving with due days ──
@@ -39,8 +40,8 @@ for (const [id, label, column] of [["by_due", "Earliest due first", "Due"], ["by
   wire(`jobs.frame -> ${id}.items`, `machines.frame -> ${id}.start`, `day.value -> ${id}.budget`);
   add(`${id}_late`, "ComputedColumnNode", { label: "Days late", expr: "MAX(0, @Picked - @Due)" }, { stringLiterals: { name: "Late" } });
   getCol(`${id}_col`, "Late", "Late");
-  sumOf(`${id}_sum`, `${label}: days late`, "SUM(late)");
-  wire(`${id}.picks -> ${id}_late.frame`, `${id}_late.frame -> ${id}_col.frame`, `${id}_col.values -> ${id}_sum.late`);
+  total(`${id}_sum`, `${label}: days late`);
+  wire(`${id}.picks -> ${id}_late.frame`, `${id}_late.frame -> ${id}_col.frame`, `${id}_col.values -> ${id}_sum.list`);
 }
 // Then improved: the earliest-due plan as a start, counted by the hour. A job waits for its arrival day, and each hour
 // past its due day's end counts; Local Search moves jobs between machines and reorders them while that helps.
@@ -51,8 +52,8 @@ for (const [id, label, extra] of [["jobs_scored", "Earliest due, as it came", { 
   add(id, "LocalSearchNode", { label }, { stringLiterals: { group: "Machine", costColumn: "Hours" }, ...extra });
   wire(`by_due.picks -> ${id}.items`, `machines.frame -> ${id}.start`, `job_wait.result -> ${id}.cost`, `job_late.result -> ${id}.penalty`);
   getCol(`${id}_pen`, "Penalty", "Penalty");
-  sumOf(`${id}_sum`, id === "jobs_scored" ? "Before: days late" : "After: days late", "ROUND(SUM(late) / day, 1)");
-  wire(`${id}.plan -> ${id}_pen.frame`, `${id}_pen.values -> ${id}_sum.late`, `day.value -> ${id}_sum.day`);
+  total(`${id}_sum`, id === "jobs_scored" ? "Before: hours late" : "After: hours late");
+  wire(`${id}.plan -> ${id}_pen.frame`, `${id}_pen.values -> ${id}_sum.list`);
 }
 add("jobs_better_chart", "ChartNode", { label: "Each change", op: "line" }, { stringLiterals: { options: "x=Change; y=Total; xlabel=Change; ylabel=Hours" } });
 wire("jobs_better.history -> jobs_better_chart.values");
@@ -80,16 +81,16 @@ lambda("km", "Km from the last stop", "Latitude, Longitude, last_Latitude, last_
 for (const [id, label, ordered] of [["nearest", "Nearest next", true], ["listed", "In the listed order", false]]) {
   queue(id, label, {}, {});
   wire(`stops.frame -> ${id}.items`, `depot.frame -> ${id}.start`, `km.result -> ${id}.cost`, ...(ordered ? [`km.result -> ${id}.order`] : []));
-  sumOf(`${id}_sum`, `${label}: km`, "ROUND(km, 1)");
+  round1(`${id}_sum`, `${label}: km`);
   add(`${id}_chart`, "ChartNode", { label, op: "xyline" }, { stringLiterals: { options: "x=Longitude; y=Latitude; annotate=Stop; aspect=equal" } });
-  wire(`${id}.total -> ${id}_sum.km`, `${id}.picks -> ${id}_chart.values`);
+  wire(`${id}.total -> ${id}_sum.value`, `${id}.picks -> ${id}_chart.values`);
 }
 // Then improved: 2-opt and relocate on the nearest-next route, by the same km formula.
 add("route_better", "LocalSearchNode", { label: "Nearest next, improved", stuck: "look" });
 wire("nearest.picks -> route_better.items", "depot.frame -> route_better.start", "km.result -> route_better.cost");
-sumOf("route_better_sum", "Improved: km", "ROUND(km, 1)");
+round1("route_better_sum", "Improved: km");
 add("route_better_chart", "ChartNode", { label: "Nearest next, improved", op: "xyline" }, { stringLiterals: { options: "x=Longitude; y=Latitude; annotate=Stop; aspect=equal" } });
-wire("route_better.total -> route_better_sum.km", "route_better.plan -> route_better_chart.values");
+wire("route_better.total -> route_better_sum.value", "route_better.plan -> route_better_chart.values");
 
 // Each problem is three groups: what both plans share, then the weaker plan and the better. The cards carry the rules;
 // a note says only what no card shows.

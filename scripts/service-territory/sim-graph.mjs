@@ -2,7 +2,7 @@
 // site, each day, an incident with its daily share of the site's yearly rate, a severity of 1 to 5) and runs them
 // through the Greedy Queue card, a queue per operator a day at a time. The dispatch rule is the two LAMBDA cards beside
 // it: Order by the Severity column, largest first, then a LAMBDA for the longest waiting and the nearest to the last stop
-// (the Earth & Sky pack's great-circle formula), and a Cost formula for the drive in minutes. An operator starts at their first job.
+// (the Earth & Sky pack's great-circle formula), and a Cost formula for the drive in hours. An operator starts at their first job.
 
 // The Earth & Sky pack's Great-Circle Distance in km, from the last stop to this incident.
 const KM = "2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(last_Latitude*PI()/180)*COS(Latitude*PI()/180)*SIN((Longitude-last_Longitude)*PI()/360)^2))";
@@ -10,7 +10,6 @@ const KM = "2*6371.0088*ASIN(SQRT(SIN((Latitude-last_Latitude)*PI()/360)^2+COS(l
 const cc = (id, label, name, expr, sideVars = [], addAs = "number") =>
   ({ id, type: "ComputedColumnNode", init: { label, expr, addAs, ...(sideVars.length ? { sideVars } : {}) }, stringLiterals: { name } });
 const getCol = (id, name) => ({ id, type: "GetColumnNode", init: { label: name }, stringLiterals: { name } });
-const expr = (id, label, e) => ({ id, type: "ExpressionNode", init: { label, expr: e } });
 const value = (id, label, v) => ({ id, type: "ValueInputNode", init: { label, value: String(v) } });
 const wire = (source, sourceOutput, target, targetInput) => ({ source, sourceOutput, target, targetInput });
 const at = (n, x, y) => Object.assign(n, { x, y });
@@ -36,26 +35,24 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     at({ id: "m_score", type: "LambdaNode", init: { label: "Then the oldest, then the nearest",
       params: "Day, Latitude, Longitude, last_Latitude, last_Longitude",
       expr: `HSTACK(Day, IF(ISBLANK(last_Latitude), 0, ${KM}))` } }, 1860, 300),
-    at({ id: "m_cost", type: "LambdaNode", init: { label: "Drive minutes from the last site",
+    at({ id: "m_cost", type: "LambdaNode", init: { label: "Drive hours from the last site",
       params: "Latitude, Longitude, last_Latitude, last_Longitude",
-      expr: `IF(ISBLANK(last_Latitude), 0, ${KM} * road / 1.609344 / mph * 60)` } }, 1860, 560),
+      expr: `IF(ISBLANK(last_Latitude), 0, ${KM} * road / 1.609344 / mph)` } }, 1860, 560),
     // ── the year dispatched ──
     at({ id: "m_queue", type: "GreedyQueueNode", init: { label: "Each operator, a day at a time", orderDir: "desc" },
       stringLiterals: { group: "Operator", step: "Day", orderColumn: "Severity" } }, 2180, 0),
     at(value("m_jobs_day", "Jobs an operator does a day", 1), 1860, 820),
     at({ id: "m_queue_b", type: "GreedyQueueNode", init: { label: "Plan B: each operator, a day at a time", orderDir: "desc" },
       stringLiterals: { group: "Plan B Operator", step: "Day", orderColumn: "Severity" } }, 2180, 700),
-    at(expr("m_hours_b", "Plan B drive hours", "ROUND(minutes / 60, 1)"), 3140, 700),
-    at(expr("m_saved", "Hours Plan B saves", "ROUND(a - b, 1)"), 3140, 860),
+    at({ id: "m_saved", type: "ArithmeticNode", init: { label: "Hours Plan B saves", op: "sub" } }, 3140, 860),
     at({ id: "o_hours_b", type: "CompositeOutputNode", init: { label: "Plan B drive hours" } }, 3460, 700),
     at({ id: "o_saved", type: "CompositeOutputNode", init: { label: "Hours Plan B saves" } }, 3460, 860),
     at(getCol("m_dmin", "Cost"), 2820, 0),
     at(getCol("m_wait", "Wait"), 2820, 160),
     at(getCol("m_left", "Site"), 2820, 320),
-    at(expr("m_hours", "Drive hours", "ROUND(minutes / 60, 1)"), 3140, 0),
-    at(expr("m_jobs", "Jobs served", "COUNT(m)"), 3140, 160),
-    at(expr("m_meanwait", "Mean wait (days)", "ROUND(AVERAGE(w), 2)"), 3140, 320),
-    at(expr("m_open", "Still open", "COUNTA(s)"), 3140, 480),
+    at({ id: "m_jobs", type: "AggregateNode", init: { label: "Jobs served", op: "count" } }, 3140, 160),
+    at({ id: "m_meanwait", type: "AggregateNode", init: { label: "Mean wait (days)", op: "avg" } }, 3140, 320),
+    at({ id: "m_open", type: "ListLengthNode", init: { label: "Still open" } }, 3140, 480),
     at({ id: "o_hours", type: "CompositeOutputNode", init: { label: "Drive hours" } }, 3460, 0),
     at({ id: "o_jobs", type: "CompositeOutputNode", init: { label: "Jobs served" } }, 3460, 160),
     at({ id: "o_wait", type: "CompositeOutputNode", init: { label: "Mean wait" } }, 3460, 320),
@@ -77,10 +74,9 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     wire("m_jobs_day", "value", "m_queue_b", "perStep"),
     wire("m_score", "result", "m_queue_b", "order"),
     wire("m_cost", "result", "m_queue_b", "cost"),
-    wire("m_queue_b", "total", "m_hours_b", "minutes"),
-    wire("m_hours", "result", "m_saved", "a"),
-    wire("m_hours_b", "result", "m_saved", "b"),
-    wire("m_hours_b", "result", "o_hours_b", "value"),
+    wire("m_queue", "total", "m_saved", "a"),
+    wire("m_queue_b", "total", "m_saved", "b"),
+    wire("m_queue_b", "total", "o_hours_b", "value"),
     wire("m_saved", "result", "o_saved", "value"),
     wire("m_score", "result", "m_queue", "order"),
     wire("m_cost", "result", "m_queue", "cost"),
@@ -89,11 +85,10 @@ export function runsComposite({ id = "runs", label = "Monte Carlo runs", runs = 
     wire("m_queue", "picks", "m_dmin", "frame"),
     wire("m_queue", "picks", "m_wait", "frame"),
     wire("m_queue", "left", "m_left", "frame"),
-    wire("m_queue", "total", "m_hours", "minutes"),
-    wire("m_dmin", "values", "m_jobs", "m"),
-    wire("m_wait", "values", "m_meanwait", "w"),
-    wire("m_left", "values", "m_open", "s"),
-    wire("m_hours", "result", "o_hours", "value"),
+    wire("m_dmin", "values", "m_jobs", "list"),
+    wire("m_wait", "values", "m_meanwait", "list"),
+    wire("m_left", "values", "m_open", "list"),
+    wire("m_queue", "total", "o_hours", "value"),
     wire("m_jobs", "result", "o_jobs", "value"),
     wire("m_meanwait", "result", "o_wait", "value"),
     wire("m_open", "result", "o_open", "value"),

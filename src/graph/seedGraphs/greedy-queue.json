@@ -12,7 +12,7 @@
         "frameText": "[{\"name\":\"Job\",\"type\":\"string\",\"cells\":[\"J03\",\"J16\",\"J31\",\"J43\",\"J49\",\"J54\",\"J06\",\"J08\",\"J42\",\"J44\",\"J52\",\"J58\",\"J60\",\"J11\",\"J23\",\"J26\",\"J29\",\"J56\",\"J04\",\"J05\",\"J07\",\"J09\",\"J17\",\"J21\",\"J48\",\"J53\",\"J55\",\"J01\",\"J02\",\"J14\",\"J18\",\"J32\",\"J33\",\"J35\",\"J50\",\"J59\",\"J13\",\"J19\",\"J20\",\"J22\",\"J25\",\"J36\",\"J37\",\"J38\",\"J40\",\"J41\",\"J47\",\"J10\",\"J15\",\"J24\",\"J27\",\"J45\",\"J46\",\"J12\",\"J28\",\"J30\",\"J34\",\"J39\",\"J51\",\"J57\"]},{\"name\":\"Arrives\",\"type\":\"number\",\"cells\":[\"1\",\"1\",\"1\",\"1\",\"1\",\"1\",\"2\",\"2\",\"2\",\"2\",\"2\",\"2\",\"2\",\"3\",\"3\",\"3\",\"3\",\"3\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"4\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"5\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"6\",\"7\",\"7\",\"7\",\"7\",\"7\",\"7\",\"8\",\"8\",\"8\",\"8\",\"8\",\"8\",\"8\"]},{\"name\":\"Hours\",\"type\":\"number\",\"cells\":[\"3\",\"1\",\"1\",\"3\",\"1\",\"3\",\"1\",\"4\",\"5\",\"6\",\"4\",\"5\",\"1\",\"1\",\"3\",\"2\",\"3\",\"4\",\"3\",\"5\",\"2\",\"6\",\"3\",\"2\",\"1\",\"3\",\"5\",\"3\",\"6\",\"6\",\"5\",\"3\",\"4\",\"3\",\"5\",\"4\",\"2\",\"1\",\"8\",\"2\",\"4\",\"4\",\"1\",\"8\",\"1\",\"3\",\"1\",\"2\",\"6\",\"1\",\"4\",\"1\",\"4\",\"2\",\"4\",\"2\",\"4\",\"2\",\"8\",\"2\"]},{\"name\":\"Due\",\"type\":\"number\",\"cells\":[\"3\",\"4\",\"3\",\"2\",\"4\",\"2\",\"3\",\"4\",\"3\",\"5\",\"3\",\"3\",\"5\",\"5\",\"4\",\"6\",\"3\",\"4\",\"7\",\"6\",\"6\",\"7\",\"5\",\"4\",\"7\",\"4\",\"5\",\"7\",\"7\",\"5\",\"5\",\"5\",\"8\",\"5\",\"8\",\"5\",\"8\",\"7\",\"7\",\"9\",\"6\",\"9\",\"6\",\"7\",\"7\",\"8\",\"7\",\"9\",\"8\",\"7\",\"8\",\"8\",\"9\",\"8\",\"9\",\"9\",\"10\",\"11\",\"8\",\"9\"]}]"
       },
       "x": 303,
-      "y": 8120
+      "y": 8063
     },
     {
       "id": "machines",
@@ -22,7 +22,7 @@
         "frameText": "[{\"name\":\"Machine\",\"type\":\"string\",\"cells\":[\"Lathe 1\",\"Lathe 2\",\"Mill\"]}]"
       },
       "x": 24,
-      "y": 8120
+      "y": 8063
     },
     {
       "id": "day",
@@ -32,7 +32,7 @@
         "value": "8"
       },
       "x": 24,
-      "y": 7950
+      "y": 7893
     },
     {
       "id": "by_due",
@@ -48,7 +48,7 @@
         "costColumn": "Hours"
       },
       "x": 736,
-      "y": 7950
+      "y": 7893
     },
     {
       "id": "by_due_late",
@@ -61,7 +61,7 @@
         "name": "Late"
       },
       "x": 1132,
-      "y": 8177
+      "y": 8120
     },
     {
       "id": "by_due_col",
@@ -73,17 +73,17 @@
         "name": "Late"
       },
       "x": 1518,
-      "y": 8341
+      "y": 8284
     },
     {
       "id": "by_due_sum",
-      "type": "ExpressionNode",
+      "type": "AggregateNode",
       "init": {
         "label": "Earliest due first: days late",
-        "expr": "SUM(late)"
+        "op": "sum"
       },
       "x": 1897,
-      "y": 8344
+      "y": 8310
     },
     {
       "id": "by_short",
@@ -99,7 +99,7 @@
         "costColumn": "Hours"
       },
       "x": 736,
-      "y": 6988
+      "y": 6932
     },
     {
       "id": "by_short_late",
@@ -112,7 +112,7 @@
         "name": "Late"
       },
       "x": 1065,
-      "y": 7439
+      "y": 7383
     },
     {
       "id": "by_short_col",
@@ -124,17 +124,17 @@
         "name": "Late"
       },
       "x": 1394,
-      "y": 7604
+      "y": 7548
     },
     {
       "id": "by_short_sum",
-      "type": "ExpressionNode",
+      "type": "AggregateNode",
       "init": {
         "label": "Shortest first: days late",
-        "expr": "SUM(late)"
+        "op": "sum"
       },
       "x": 1723,
-      "y": 7617
+      "y": 7573
     },
     {
       "id": "job_wait",
@@ -145,7 +145,7 @@
         "expr": "MAX(0, (Arrives - 1) * day - before)"
       },
       "x": 736,
-      "y": 9212
+      "y": 9155
     },
     {
       "id": "job_late",
@@ -156,7 +156,7 @@
         "expr": "MAX(0, at - Due * day)"
       },
       "x": 736,
-      "y": 9463
+      "y": 9406
     },
     {
       "id": "jobs_scored",
@@ -172,7 +172,7 @@
         "passes": 0
       },
       "x": 1132,
-      "y": 9257
+      "y": 9200
     },
     {
       "id": "jobs_scored_pen",
@@ -184,17 +184,17 @@
         "name": "Penalty"
       },
       "x": 1518,
-      "y": 9604
+      "y": 9547
     },
     {
       "id": "jobs_scored_sum",
-      "type": "ExpressionNode",
+      "type": "AggregateNode",
       "init": {
-        "label": "Before: days late",
-        "expr": "ROUND(SUM(late) / day, 1)"
+        "label": "Before: hours late",
+        "op": "sum"
       },
       "x": 1897,
-      "y": 9614
+      "y": 9572
     },
     {
       "id": "jobs_better",
@@ -207,7 +207,7 @@
         "costColumn": "Hours"
       },
       "x": 1132,
-      "y": 8567
+      "y": 8510
     },
     {
       "id": "jobs_better_pen",
@@ -219,17 +219,17 @@
         "name": "Penalty"
       },
       "x": 1518,
-      "y": 8804
+      "y": 8747
     },
     {
       "id": "jobs_better_sum",
-      "type": "ExpressionNode",
+      "type": "AggregateNode",
       "init": {
-        "label": "After: days late",
-        "expr": "ROUND(SUM(late) / day, 1)"
+        "label": "After: hours late",
+        "op": "sum"
       },
       "x": 1897,
-      "y": 8814
+      "y": 8773
     },
     {
       "id": "jobs_better_chart",
@@ -242,7 +242,7 @@
         "options": "x=Change; y=Total; xlabel=Change; ylabel=Hours"
       },
       "x": 1468,
-      "y": 9013
+      "y": 8956
     },
     {
       "id": "boxes",
@@ -386,17 +386,20 @@
         "label": "Nearest next"
       },
       "stringLiterals": {},
-      "x": 2920,
+      "x": 2917,
       "y": 5239
     },
     {
       "id": "nearest_sum",
-      "type": "ExpressionNode",
+      "type": "RoundNNode",
       "init": {
         "label": "Nearest next: km",
-        "expr": "ROUND(km, 1)"
+        "op": "round"
       },
-      "x": 3298,
+      "literals": {
+        "digits": 1
+      },
+      "x": 3295,
       "y": 5848
     },
     {
@@ -409,7 +412,7 @@
       "stringLiterals": {
         "options": "x=Longitude; y=Latitude; annotate=Stop; aspect=equal"
       },
-      "x": 3298,
+      "x": 3295,
       "y": 5496
     },
     {
@@ -419,18 +422,21 @@
         "label": "In the listed order"
       },
       "stringLiterals": {},
-      "x": 2920,
-      "y": 6181
+      "x": 2917,
+      "y": 6144
     },
     {
       "id": "listed_sum",
-      "type": "ExpressionNode",
+      "type": "RoundNNode",
       "init": {
         "label": "In the listed order: km",
-        "expr": "ROUND(km, 1)"
+        "op": "round"
       },
-      "x": 3258,
-      "y": 6673
+      "literals": {
+        "digits": 1
+      },
+      "x": 3254,
+      "y": 6641
     },
     {
       "id": "listed_chart",
@@ -442,8 +448,8 @@
       "stringLiterals": {
         "options": "x=Longitude; y=Latitude; annotate=Stop; aspect=equal"
       },
-      "x": 3258,
-      "y": 6321
+      "x": 3254,
+      "y": 6289
     },
     {
       "id": "route_better",
@@ -452,18 +458,21 @@
         "label": "Nearest next, improved",
         "stuck": "look"
       },
-      "x": 3365,
+      "x": 3362,
       "y": 4810
     },
     {
       "id": "route_better_sum",
-      "type": "ExpressionNode",
+      "type": "RoundNNode",
       "init": {
         "label": "Improved: km",
-        "expr": "ROUND(km, 1)"
+        "op": "round"
       },
-      "x": 3736,
-      "y": 5295
+      "literals": {
+        "digits": 1
+      },
+      "x": 3733,
+      "y": 5304
     },
     {
       "id": "route_better_chart",
@@ -475,8 +484,8 @@
       "stringLiterals": {
         "options": "x=Longitude; y=Latitude; annotate=Stop; aspect=equal"
       },
-      "x": 3736,
-      "y": 4943
+      "x": 3733,
+      "y": 4952
     },
     {
       "id": "note_read",
@@ -500,7 +509,7 @@
         "height": 150
       },
       "x": 243,
-      "y": 7950
+      "y": 7893
     },
     {
       "id": "grp_jobs",
@@ -518,7 +527,7 @@
         "height": 477
       },
       "x": 0,
-      "y": 7892
+      "y": 7835
     },
     {
       "id": "grp_jobs_weak",
@@ -532,11 +541,11 @@
           "by_short_sum"
         ],
         "color": "amber",
-        "width": 1279,
-        "height": 924
+        "width": 1219,
+        "height": 923
       },
       "x": 712,
-      "y": 6930
+      "y": 6874
     },
     {
       "id": "grp_jobs_good",
@@ -559,11 +568,11 @@
           "jobs_better_chart"
         ],
         "color": "green",
-        "width": 1453,
+        "width": 1393,
         "height": 2041
       },
       "x": 712,
-      "y": 7892
+      "y": 7835
     },
     {
       "id": "note_trucks",
@@ -669,11 +678,11 @@
           "listed_chart"
         ],
         "color": "amber",
-        "width": 730,
-        "height": 787
+        "width": 729,
+        "height": 768
       },
-      "x": 2896,
-      "y": 6123
+      "x": 2893,
+      "y": 6086
     },
     {
       "id": "grp_route_good",
@@ -690,9 +699,9 @@
         ],
         "color": "green",
         "width": 1208,
-        "height": 1333
+        "height": 1296
       },
-      "x": 2896,
+      "x": 2893,
       "y": 4752
     }
   ],
@@ -731,7 +740,7 @@
       "source": "by_due_col",
       "sourceOutput": "values",
       "target": "by_due_sum",
-      "targetInput": "late"
+      "targetInput": "list"
     },
     {
       "source": "jobs",
@@ -767,7 +776,7 @@
       "source": "by_short_col",
       "sourceOutput": "values",
       "target": "by_short_sum",
-      "targetInput": "late"
+      "targetInput": "list"
     },
     {
       "source": "day",
@@ -815,13 +824,7 @@
       "source": "jobs_scored_pen",
       "sourceOutput": "values",
       "target": "jobs_scored_sum",
-      "targetInput": "late"
-    },
-    {
-      "source": "day",
-      "sourceOutput": "value",
-      "target": "jobs_scored_sum",
-      "targetInput": "day"
+      "targetInput": "list"
     },
     {
       "source": "by_due",
@@ -857,13 +860,7 @@
       "source": "jobs_better_pen",
       "sourceOutput": "values",
       "target": "jobs_better_sum",
-      "targetInput": "late"
-    },
-    {
-      "source": "day",
-      "sourceOutput": "value",
-      "target": "jobs_better_sum",
-      "targetInput": "day"
+      "targetInput": "list"
     },
     {
       "source": "jobs_better",
@@ -947,7 +944,7 @@
       "source": "nearest",
       "sourceOutput": "total",
       "target": "nearest_sum",
-      "targetInput": "km"
+      "targetInput": "value"
     },
     {
       "source": "nearest",
@@ -977,7 +974,7 @@
       "source": "listed",
       "sourceOutput": "total",
       "target": "listed_sum",
-      "targetInput": "km"
+      "targetInput": "value"
     },
     {
       "source": "listed",
@@ -1007,7 +1004,7 @@
       "source": "route_better",
       "sourceOutput": "total",
       "target": "route_better_sum",
-      "targetInput": "km"
+      "targetInput": "value"
     },
     {
       "source": "route_better",
