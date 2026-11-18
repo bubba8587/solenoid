@@ -85,85 +85,39 @@
    ]
   },
   {
-   "id": "stock",
-   "type": "FrameInputNode",
-   "init": {
-    "label": "Weekly limits"
-   },
-   "frame": [
-    {
-     "name": "Resource",
-     "cells": [
-      "Brazil beans",
-      "Colombia beans",
-      "Ethiopia beans",
-      "Roaster time",
-      "Espresso for café contracts"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Sum of",
-     "cells": [
-      "Brazil",
-      "Colombia",
-      "Ethiopia",
-      "Roaster",
-      ""
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Where",
-     "cells": [
-      "",
-      "",
-      "",
-      "",
-      "Blend"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Is",
-     "cells": [
-      "",
-      "",
-      "",
-      "",
-      "Espresso"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Sign",
-     "cells": [
-      "<=",
-      "<=",
-      "<=",
-      "<=",
-      ">="
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Limit",
-     "cells": [
-      500,
-      350,
-      250,
-      30,
-      150
-     ],
-     "type": "number"
-    }
-   ]
-  },
-  {
    "id": "mix",
    "type": "SolverNode",
    "init": {
-    "label": "Roast plan"
+    "label": "Roast plan",
+    "limitList": [
+     {
+      "of": "Brazil",
+      "sign": "le",
+      "limit": 500
+     },
+     {
+      "of": "Colombia",
+      "sign": "le",
+      "limit": 350
+     },
+     {
+      "of": "Ethiopia",
+      "sign": "le",
+      "limit": 250
+     },
+     {
+      "of": "Roaster",
+      "sign": "le",
+      "limit": 30
+     },
+     {
+      "of": "",
+      "where": "Blend",
+      "is": "Espresso",
+      "sign": "ge",
+      "limit": 150
+     }
+    ]
    },
    "stringLiterals": {
     "objective": "Profit"
@@ -197,7 +151,7 @@
     "label": "Sensitivity"
    },
    "stringLiterals": {
-    "columns": "Resource, Used, Slack, Shadow Price"
+    "columns": "Total of, Where, Is, Limit, Used, Slack, Shadow Price"
    }
   },
   {
@@ -308,73 +262,29 @@
    ]
   },
   {
-   "id": "budget",
-   "type": "FrameInputNode",
-   "init": {
-    "label": "Portfolio limits"
-   },
-   "frame": [
-    {
-     "name": "Rule",
-     "cells": [
-      "Budget ($k)",
-      "People",
-      "At most two IT projects"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Sum of",
-     "cells": [
-      "Cost",
-      "Staff",
-      ""
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Where",
-     "cells": [
-      "",
-      "",
-      "Area"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Is",
-     "cells": [
-      "",
-      "",
-      "IT"
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Sign",
-     "cells": [
-      "<=",
-      "<=",
-      "<="
-     ],
-     "type": "string"
-    },
-    {
-     "name": "Limit",
-     "cells": [
-      400,
-      12,
-      2
-     ],
-     "type": "number"
-    }
-   ]
-  },
-  {
    "id": "portfolio",
    "type": "SolverNode",
    "init": {
-    "label": "Portfolio"
+    "label": "Portfolio",
+    "limitList": [
+     {
+      "of": "Cost",
+      "sign": "le",
+      "limit": 400
+     },
+     {
+      "of": "Staff",
+      "sign": "le",
+      "limit": 12
+     },
+     {
+      "of": "",
+      "where": "Area",
+      "is": "IT",
+      "sign": "le",
+      "limit": 2
+     }
+    ]
    },
    "stringLiterals": {
     "objective": "Value"
@@ -736,7 +646,6 @@
     "label": "Roast mix",
     "members": [
      "blends",
-     "stock",
      "mix",
      "mix_units",
      "mix_chart",
@@ -752,7 +661,6 @@
     "label": "Project portfolio",
     "members": [
      "projects",
-     "budget",
      "portfolio",
      "portfolio_pick"
     ],
@@ -819,12 +727,10 @@
  ],
  "cables": [
   "blends.frame -> mix.options",
-  "stock.frame -> mix.limits",
   "mix.plan -> mix_units.frame",
   "mix_units.frame -> mix_chart.values",
   "mix.limits -> mix_room.frame",
   "projects.frame -> portfolio.options",
-  "budget.frame -> portfolio.limits",
   "portfolio.plan -> portfolio_pick.frame",
   "hours.frame -> crews.costs",
   "roads.frame -> route.links",

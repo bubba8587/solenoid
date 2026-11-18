@@ -20,17 +20,14 @@ const colOf = (f: unknown, name: string) => (f as { columns: Col[] }).columns.fi
 const unitDisplay = (c: Col) => (c.unit as { display?: string } | undefined)?.display;
 
 describe("units through the optimization cards", () => {
-  it("Solver: Best in the goal's unit, a plain Limit read in its Sum of column's, a mismatched Limit refused", () => {
+  it("Solver: Best in the goal's unit, a typed limit read in its Total of column's", () => {
     const options = frame(col("Blend", ["A", "B"]), col("Profit", [6, 9], "usd"), col("Beans", [1, 1], "kg"));
-    const n = new SolverNode();
+    const n = new SolverNode({ limitList: [{ of: "Beans", sign: "le", limit: 100 }] });
     n.stringLiterals.objective = "Profit";
-    const limits = (unit?: string) => frame(col("Sum of", ["Beans"]), col("Sign", ["<="]), col("Limit", [100], unit));
-    const plain = call<{ best: unknown; limits: unknown }>(n, { options, limits: limits() });
-    expect(display(plain.best)).toBe("usd");
-    expect(unitDisplay(colOf(plain.limits, "Used"))).toBe("kg");
-    const tonnes = call<{ plan: unknown }>(n, { options, limits: frame(col("Sum of", ["Beans"]), col("Sign", ["<="]), col("Limit", [0.1], "t")) });
-    expect(colOf(tonnes.plan, "Amount").values).toEqual([0, 100]);
-    expect(isSolError(call<{ best: unknown }>(n, { options, limits: limits("h") }).best)).toBe(true);
+    const out = call<{ best: unknown; limits: unknown; plan: unknown }>(n, { options });
+    expect(display(out.best)).toBe("usd");
+    expect(unitDisplay(colOf(out.limits, "Used"))).toBe("kg");
+    expect(colOf(out.plan, "Amount").values).toEqual([0, 100]);
   });
 
   it("Greedy Queue: a Budget in tonnes against costs in kg, the costs and total in kg; a Budget in hours refused", () => {

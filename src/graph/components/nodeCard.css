@@ -1439,6 +1439,9 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
+/* The Solver's limits, a line each and never clamped: they are the conditions a reader checks the plan against. */
+.solenoid-node__pivot-summary.solver-limit-lines { display: block; }
+.solver-limit-lines > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* An input card's edit button (Frame Input, Table Input): the full accent fill with its ink, the card's front door. */
 .solenoid-node__open-btn {

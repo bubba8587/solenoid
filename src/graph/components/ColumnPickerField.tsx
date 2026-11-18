@@ -50,7 +50,7 @@ export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeho
 }
 
 /** The static column names of the Frame wired into `frameInput`; empty when unwired or unknown. */
-function useFeedColumns(nodeId: string, frameInput: string): string[] {
+export function useFeedColumns(nodeId: string, frameInput: string): string[] {
   // Resolve once per wiring change or graph pass (an upstream rename reaches the shape only through a pass), so typing never re-walks.
   const connVersion = useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   const passVersion = useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);

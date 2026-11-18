@@ -84,6 +84,8 @@ import { cableGhostStore } from "../cableState";
 import { reconcileTypesAfterEdit, retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
+import { solverLimits } from "../solverLimitsStore";
+import { limitSummary } from "./SolverLimitsPopup";
 import { InlineInputs, InlineTextField, useConnectedInputs } from "./inlineInput";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { ExtensibleInputs } from "./ExtensibleInputs";
@@ -1456,7 +1458,22 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
         <SegToggle value={goal} options={SOLVER_GOAL_OPTIONS} onChange={setGoal} />
         <InlineInputs node={data} emit={emit} keys={["objective"]} labelFor={() => "Of column"} fullWiredKeys={SOLVER_WHOLE} />
       </CardSection>
-      <InlineInputs node={data} emit={emit} keys={["limits"]} fullWiredKeys={SOLVER_WHOLE} />
+      <CardSection label="Limits">
+        <button
+          type="button"
+          className="solenoid-node__pivot-config"
+          onClick={(e) => solverLimits.open({ node: data, title: `${nodeDisplayName(data)}: Limits`, accent: readChipPopupStyle(e.currentTarget).accent })}
+          onPointerDown={stopDragStart}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          Edit limits…
+        </button>
+        {data.limitList.length > 0 && (
+          <div className="solenoid-node__pivot-summary solver-limit-lines">
+            {data.limitList.map((l, i) => <div key={i} title={limitSummary(l)}>{limitSummary(l)}</div>)}
+          </div>
+        )}
+      </CardSection>
       <MeasuredSocketRow side="output" socketKey="plan" nodeId={data.id} emit={emit} payload={data.outputs.plan!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
@@ -1474,7 +1491,7 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
     </NodeShell>
   );
 }
-const SOLVER_WHOLE = new Set(["options", "objective", "limits"]);
+const SOLVER_WHOLE = new Set(["options", "objective"]);
 
 export function AssignmentComponent({ data, emit }: NodeProps<AssignmentNodeType>) {
   const [goal, setGoal] = useNodeField(data, "goal");

@@ -11,30 +11,49 @@
         "label": "Blends (per kg)",
         "frameText": "[{\"name\":\"Blend\",\"type\":\"string\",\"cells\":[\"House\",\"Espresso\",\"Breakfast\",\"Ethiopia single origin\"]},{\"name\":\"Profit\",\"type\":\"number\",\"cells\":[\"6\",\"9\",\"7\",\"12\"],\"unit\":\"usd\"},{\"name\":\"Brazil\",\"type\":\"number\",\"cells\":[\"0.6\",\"0.5\",\"0.3\",\"0\"],\"unit\":\"kg\"},{\"name\":\"Colombia\",\"type\":\"number\",\"cells\":[\"0.4\",\"0.2\",\"0.5\",\"0\"],\"unit\":\"kg\"},{\"name\":\"Ethiopia\",\"type\":\"number\",\"cells\":[\"0\",\"0.3\",\"0.2\",\"1\"],\"unit\":\"kg\"},{\"name\":\"Roaster\",\"type\":\"number\",\"cells\":[\"0.02\",\"0.03\",\"0.02\",\"0.025\"],\"unit\":\"h\"},{\"name\":\"Max\",\"type\":\"number\",\"cells\":[\"600\",\"400\",\"350\",\"200\"]}]"
       },
-      "x": 1380,
-      "y": 5487
-    },
-    {
-      "id": "stock",
-      "type": "FrameInputNode",
-      "init": {
-        "label": "Weekly limits",
-        "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"cells\":[\"Brazil beans\",\"Colombia beans\",\"Ethiopia beans\",\"Roaster time\",\"Espresso for café contracts\"]},{\"name\":\"Sum of\",\"type\":\"string\",\"cells\":[\"Brazil\",\"Colombia\",\"Ethiopia\",\"Roaster\",\"\"]},{\"name\":\"Where\",\"type\":\"string\",\"cells\":[\"\",\"\",\"\",\"\",\"Blend\"]},{\"name\":\"Is\",\"type\":\"string\",\"cells\":[\"\",\"\",\"\",\"\",\"Espresso\"]},{\"name\":\"Sign\",\"type\":\"string\",\"cells\":[\"<=\",\"<=\",\"<=\",\"<=\",\">=\"]},{\"name\":\"Limit\",\"type\":\"number\",\"cells\":[\"500\",\"350\",\"250\",\"30\",\"150\"]}]"
-      },
-      "x": 1380,
-      "y": 5750
+      "x": 24,
+      "y": 4737
     },
     {
       "id": "mix",
       "type": "SolverNode",
       "init": {
-        "label": "Roast plan"
+        "label": "Roast plan",
+        "limitList": [
+          {
+            "of": "Brazil",
+            "sign": "le",
+            "limit": 500
+          },
+          {
+            "of": "Colombia",
+            "sign": "le",
+            "limit": 350
+          },
+          {
+            "of": "Ethiopia",
+            "sign": "le",
+            "limit": 250
+          },
+          {
+            "of": "Roaster",
+            "sign": "le",
+            "limit": 30
+          },
+          {
+            "of": "",
+            "where": "Blend",
+            "is": "Espresso",
+            "sign": "ge",
+            "limit": 150
+          }
+        ]
       },
       "stringLiterals": {
         "objective": "Profit"
       },
-      "x": 1716,
-      "y": 5606
+      "x": 353,
+      "y": 4726
     },
     {
       "id": "mix_units",
@@ -45,8 +64,8 @@
       "stringLiterals": {
         "columns": "Blend, Amount"
       },
-      "x": 2053,
-      "y": 5599
+      "x": 690,
+      "y": 4808
     },
     {
       "id": "mix_chart",
@@ -58,8 +77,8 @@
       "stringLiterals": {
         "options": "xlabel=Blend; ylabel=Kg"
       },
-      "x": 2382,
-      "y": 5607
+      "x": 1019,
+      "y": 4816
     },
     {
       "id": "mix_room",
@@ -68,10 +87,10 @@
         "label": "Sensitivity"
       },
       "stringLiterals": {
-        "columns": "Resource, Used, Slack, Shadow Price"
+        "columns": "Total of, Where, Is, Limit, Used, Slack, Shadow Price"
       },
-      "x": 2053,
-      "y": 5891
+      "x": 690,
+      "y": 5100
     },
     {
       "id": "projects",
@@ -80,30 +99,39 @@
         "label": "Projects",
         "frameText": "[{\"name\":\"Project\",\"type\":\"string\",\"cells\":[\"CRM upgrade\",\"New warehouse\",\"Solar roof\",\"Fleet telematics\",\"Training program\",\"Web store\",\"Robot cell\",\"Data warehouse\"]},{\"name\":\"Area\",\"type\":\"string\",\"cells\":[\"IT\",\"Ops\",\"Facilities\",\"Ops\",\"People\",\"IT\",\"Ops\",\"IT\"]},{\"name\":\"Value\",\"type\":\"number\",\"cells\":[\"120\",\"260\",\"90\",\"110\",\"60\",\"150\",\"210\",\"130\"]},{\"name\":\"Cost\",\"type\":\"number\",\"cells\":[\"80\",\"220\",\"70\",\"60\",\"25\",\"90\",\"180\",\"100\"]},{\"name\":\"Staff\",\"type\":\"number\",\"cells\":[\"3\",\"5\",\"1\",\"2\",\"2\",\"4\",\"4\",\"3\"]},{\"name\":\"Max\",\"type\":\"number\",\"cells\":[\"1\",\"1\",\"1\",\"1\",\"1\",\"1\",\"1\",\"1\"]},{\"name\":\"Whole\",\"type\":\"logical\",\"cells\":[\"true\",\"true\",\"true\",\"true\",\"true\",\"true\",\"true\",\"true\"]}]"
       },
-      "x": 1735,
-      "y": 4896
-    },
-    {
-      "id": "budget",
-      "type": "FrameInputNode",
-      "init": {
-        "label": "Portfolio limits",
-        "frameText": "[{\"name\":\"Rule\",\"type\":\"string\",\"cells\":[\"Budget ($k)\",\"People\",\"At most two IT projects\"]},{\"name\":\"Sum of\",\"type\":\"string\",\"cells\":[\"Cost\",\"Staff\",\"\"]},{\"name\":\"Where\",\"type\":\"string\",\"cells\":[\"\",\"\",\"Area\"]},{\"name\":\"Is\",\"type\":\"string\",\"cells\":[\"\",\"\",\"IT\"]},{\"name\":\"Sign\",\"type\":\"string\",\"cells\":[\"<=\",\"<=\",\"<=\"]},{\"name\":\"Limit\",\"type\":\"number\",\"cells\":[\"400\",\"12\",\"2\"]}]"
-      },
-      "x": 1735,
-      "y": 5159
+      "x": 665,
+      "y": 4165
     },
     {
       "id": "portfolio",
       "type": "SolverNode",
       "init": {
-        "label": "Portfolio"
+        "label": "Portfolio",
+        "limitList": [
+          {
+            "of": "Cost",
+            "sign": "le",
+            "limit": 400
+          },
+          {
+            "of": "Staff",
+            "sign": "le",
+            "limit": 12
+          },
+          {
+            "of": "",
+            "where": "Area",
+            "is": "IT",
+            "sign": "le",
+            "limit": 2
+          }
+        ]
       },
       "stringLiterals": {
         "objective": "Value"
       },
-      "x": 2071,
-      "y": 5011
+      "x": 994,
+      "y": 4161
     },
     {
       "id": "portfolio_pick",
@@ -114,8 +142,8 @@
       "stringLiterals": {
         "columns": "Project, Area, Value, Amount"
       },
-      "x": 2400,
-      "y": 5113
+      "x": 1323,
+      "y": 4330
     },
     {
       "id": "hours",
@@ -125,7 +153,7 @@
         "frameText": "[{\"name\":\"Crew\",\"type\":\"string\",\"cells\":[\"North\",\"South\",\"East\",\"West\",\"Central\"]},{\"name\":\"Substation A\",\"type\":\"number\",\"cells\":[\"6\",\"8\",\"5\",\"9\",\"7\"],\"unit\":\"h\"},{\"name\":\"Line repair B\",\"type\":\"number\",\"cells\":[\"4\",null,\"6\",\"5\",\"6\"],\"unit\":\"h\"},{\"name\":\"Meter swap C\",\"type\":\"number\",\"cells\":[\"3\",\"4\",\"3\",\"5\",\"2\"],\"unit\":\"h\"},{\"name\":\"Transformer D\",\"type\":\"number\",\"cells\":[\"9\",\"7\",null,\"8\",\"10\"],\"unit\":\"h\"},{\"name\":\"Inspection E\",\"type\":\"number\",\"cells\":[\"2\",\"3\",\"4\",\"2\",\"3\"],\"unit\":\"h\"}]"
       },
       "x": 24,
-      "y": 4896
+      "y": 4161
     },
     {
       "id": "crews",
@@ -134,7 +162,7 @@
         "label": "Crew assignment"
       },
       "x": 353,
-      "y": 4931
+      "y": 4196
     },
     {
       "id": "roads",
@@ -144,7 +172,7 @@
         "frameText": "[{\"name\":\"From\",\"type\":\"string\",\"cells\":[\"Depot\",\"Depot\",\"Depot\",\"Halls\",\"Halls\",\"Powell\",\"Powell\",\"Bearden\",\"Bearden\",\"Downtown\",\"Downtown\",\"Sequoyah\",\"Farragut\"]},{\"name\":\"To\",\"type\":\"string\",\"cells\":[\"Halls\",\"Powell\",\"Downtown\",\"Powell\",\"Fountain City\",\"Bearden\",\"Fountain City\",\"Farragut\",\"Sequoyah\",\"Sequoyah\",\"Fountain City\",\"Maryville\",\"Maryville\"]},{\"name\":\"Minutes\",\"type\":\"number\",\"cells\":[\"12\",\"15\",\"9\",\"8\",\"7\",\"14\",\"10\",\"11\",\"6\",\"8\",\"9\",\"22\",\"18\"],\"unit\":\"min\"}]"
       },
       "x": 24,
-      "y": 6462
+      "y": 5701
     },
     {
       "id": "route",
@@ -158,7 +186,7 @@
         "to": "Maryville"
       },
       "x": 369,
-      "y": 6264
+      "y": 5503
     },
     {
       "id": "reach",
@@ -172,7 +200,7 @@
         "to": ""
       },
       "x": 369,
-      "y": 6700
+      "y": 5939
     },
     {
       "id": "reach_chart",
@@ -185,7 +213,7 @@
         "options": "xlabel=Minutes"
       },
       "x": 1027,
-      "y": 6847
+      "y": 6086
     },
     {
       "id": "reach_cols",
@@ -197,7 +225,7 @@
         "columns": "Place, Distance"
       },
       "x": 698,
-      "y": 6839
+      "y": 6078
     },
     {
       "id": "plans",
@@ -206,8 +234,8 @@
         "label": "Territory plans",
         "frameText": "[{\"name\":\"Plan\",\"type\":\"string\",\"cells\":[\"Baseline\",\"Plan B\",\"Pooled\",\"Ten crews\",\"Weekend shift\",\"Split Houston\"]},{\"name\":\"Drive hours\",\"type\":\"number\",\"cells\":[\"2344\",\"2234\",\"3500\",\"2290\",\"2410\",\"2180\"]},{\"name\":\"Mean wait\",\"type\":\"number\",\"cells\":[\"1.6\",\"1.6\",\"0.4\",\"1.9\",\"1.1\",\"1.7\"],\"unit\":\"day\"},{\"name\":\"Overtime hours\",\"type\":\"number\",\"cells\":[\"120\",\"110\",\"40\",\"160\",\"300\",\"130\"]}]"
       },
-      "x": 665,
-      "y": 4896
+      "x": 1635,
+      "y": 4161
     },
     {
       "id": "front",
@@ -219,8 +247,8 @@
         "lower": "Drive hours, Mean wait, Overtime hours",
         "higher": ""
       },
-      "x": 994,
-      "y": 4936
+      "x": 1964,
+      "y": 4201
     },
     {
       "id": "front_chart",
@@ -232,8 +260,8 @@
       "stringLiterals": {
         "options": "x=Drive hours; y=Mean wait; annotate=Plan"
       },
-      "x": 1323,
-      "y": 5008
+      "x": 2293,
+      "y": 4273
     },
     {
       "id": "calls",
@@ -242,8 +270,8 @@
         "label": "Calls per hour",
         "value": "42"
       },
-      "x": 24,
-      "y": 5487
+      "x": 1431,
+      "y": 4726
     },
     {
       "id": "call_min",
@@ -252,8 +280,8 @@
         "label": "Minutes per call",
         "value": "6"
       },
-      "x": 24,
-      "y": 5662
+      "x": 1431,
+      "y": 4901
     },
     {
       "id": "answer_min",
@@ -262,8 +290,8 @@
         "label": "Answer within (min)",
         "value": "1"
       },
-      "x": 24,
-      "y": 5837
+      "x": 1431,
+      "y": 5076
     },
     {
       "id": "answer_share",
@@ -272,8 +300,8 @@
         "label": "Answered in time",
         "value": "0.8"
       },
-      "x": 24,
-      "y": 6025
+      "x": 1431,
+      "y": 5264
     },
     {
       "id": "desk",
@@ -281,8 +309,8 @@
       "init": {
         "label": "Dispatch staffing"
       },
-      "x": 310,
-      "y": 5682
+      "x": 1717,
+      "y": 4921
     },
     {
       "id": "desk_cols",
@@ -293,8 +321,8 @@
       "stringLiterals": {
         "columns": "Staff, In Time"
       },
-      "x": 639,
-      "y": 5803
+      "x": 2046,
+      "y": 5042
     },
     {
       "id": "desk_chart",
@@ -306,8 +334,8 @@
       "stringLiterals": {
         "options": "xlabel=Dispatchers; ylabel=Answered in time; ymax=1"
       },
-      "x": 968,
-      "y": 5811
+      "x": 2375,
+      "y": 5050
     },
     {
       "id": "grp_mix",
@@ -316,18 +344,17 @@
         "label": "Roast mix",
         "members": [
           "blends",
-          "stock",
           "mix",
           "mix_units",
           "mix_chart",
           "mix_room"
         ],
         "color": "teal",
-        "width": 1394,
-        "height": 740
+        "width": 1387,
+        "height": 710
       },
-      "x": 1356,
-      "y": 5429
+      "x": 0,
+      "y": 4668
     },
     {
       "id": "grp_portfolio",
@@ -336,16 +363,15 @@
         "label": "Project portfolio",
         "members": [
           "projects",
-          "budget",
           "portfolio",
           "portfolio_pick"
         ],
         "color": "blue",
-        "width": 957,
-        "height": 571
+        "width": 950,
+        "height": 545
       },
-      "x": 1711,
-      "y": 4838
+      "x": 641,
+      "y": 4103
     },
     {
       "id": "grp_crews",
@@ -361,7 +387,7 @@
         "height": 407
       },
       "x": 0,
-      "y": 4838
+      "y": 4103
     },
     {
       "id": "grp_route",
@@ -380,7 +406,7 @@
         "height": 979
       },
       "x": 0,
-      "y": 6206
+      "y": 5445
     },
     {
       "id": "grp_front",
@@ -396,8 +422,8 @@
         "width": 1050,
         "height": 508
       },
-      "x": 641,
-      "y": 4838
+      "x": 1611,
+      "y": 4103
     },
     {
       "id": "grp_desk",
@@ -417,8 +443,8 @@
         "width": 1336,
         "height": 757
       },
-      "x": 0,
-      "y": 5429
+      "x": 1407,
+      "y": 4668
     }
   ],
   "connections": [
@@ -427,12 +453,6 @@
       "sourceOutput": "frame",
       "target": "mix",
       "targetInput": "options"
-    },
-    {
-      "source": "stock",
-      "sourceOutput": "frame",
-      "target": "mix",
-      "targetInput": "limits"
     },
     {
       "source": "mix",
@@ -457,12 +477,6 @@
       "sourceOutput": "frame",
       "target": "portfolio",
       "targetInput": "options"
-    },
-    {
-      "source": "budget",
-      "sourceOutput": "frame",
-      "target": "portfolio",
-      "targetInput": "limits"
     },
     {
       "source": "portfolio",
