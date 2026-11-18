@@ -1451,8 +1451,11 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
   const count = limits && isFrameValue(limits) ? frameRowCount(limits) : null;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["options", "objective"]} fullWiredKeys={SOLVER_WHOLE} />
-      <SegToggle value={goal} options={SOLVER_GOAL_OPTIONS} onChange={setGoal} />
+      <InlineInputs node={data} emit={emit} keys={["options"]} fullWiredKeys={SOLVER_WHOLE} />
+      <CardSection label="Goal">
+        <SegToggle value={goal} options={SOLVER_GOAL_OPTIONS} onChange={setGoal} />
+        <InlineInputs node={data} emit={emit} keys={["objective"]} labelFor={() => "Of column"} fullWiredKeys={SOLVER_WHOLE} />
+      </CardSection>
       <InlineInputs node={data} emit={emit} keys={["limits"]} fullWiredKeys={SOLVER_WHOLE} />
       <MeasuredSocketRow side="output" socketKey="plan" nodeId={data.id} emit={emit} payload={data.outputs.plan!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
@@ -1478,7 +1481,9 @@ export function AssignmentComponent({ data, emit }: NodeProps<AssignmentNodeType
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} keys={["costs"]} fullWiredKeys={OPT_WHOLE} />
-      <SegToggle value={goal} options={ASSIGN_GOAL_OPTIONS} onChange={setGoal} />
+      <CardSection label="Goal">
+        <SegToggle value={goal} options={ASSIGN_GOAL_OPTIONS} onChange={setGoal} />
+      </CardSection>
       <MeasuredSocketRow side="output" socketKey="pairs" nodeId={data.id} emit={emit} payload={data.outputs.pairs!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
@@ -1494,8 +1499,14 @@ export function ShortestPathComponent({ data, emit }: NodeProps<ShortestPathNode
   const [direction, setDirection] = useNodeField(data, "direction");
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["links", "cost", "from", "to"]} fullWiredKeys={OPT_WHOLE} />
-      <SegToggle value={direction} options={PATH_DIRECTION_OPTIONS} onChange={setDirection} />
+      <InlineInputs node={data} emit={emit} keys={["links"]} fullWiredKeys={OPT_WHOLE} />
+      <CardSection label="Each link">
+        <InlineInputs node={data} emit={emit} keys={["cost"]} labelFor={() => "Cost"} fullWiredKeys={OPT_WHOLE} />
+        <SegToggle value={direction} options={PATH_DIRECTION_OPTIONS} onChange={setDirection} />
+      </CardSection>
+      <CardSection label="Route">
+        <InlineInputs node={data} emit={emit} keys={["from", "to"]} fullWiredKeys={OPT_WHOLE} />
+      </CardSection>
       <MeasuredSocketRow side="output" socketKey="path" nodeId={data.id} emit={emit} payload={data.outputs.path!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
@@ -1512,7 +1523,10 @@ export function ParetoComponent({ data, emit }: NodeProps<ParetoNodeType>) {
   const count = all && isFrameValue(all) ? frameRowCount(all) : null;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["options", "lower", "higher"]} fullWiredKeys={OPT_WHOLE} />
+      <InlineInputs node={data} emit={emit} keys={["options"]} fullWiredKeys={OPT_WHOLE} />
+      <CardSection label="Better when">
+        <InlineInputs node={data} emit={emit} keys={["lower", "higher"]} labelFor={(k) => (k === "lower" ? "Lower" : "Higher")} fullWiredKeys={OPT_WHOLE} />
+      </CardSection>
       <MeasuredSocketRow side="output" socketKey="front" nodeId={data.id} emit={emit} payload={data.outputs.front!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
@@ -1528,7 +1542,12 @@ const OPT_WHOLE = new Set(["costs", "links", "cost", "from", "to", "options", "l
 export function StaffingComponent({ data, emit }: NodeProps<StaffingNodeType>) {
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["arrivals", "minutes", "target", "share"]} fullWiredKeys={OPT_WHOLE} />
+      <CardSection label="Work">
+        <InlineInputs node={data} emit={emit} keys={["arrivals", "minutes"]} fullWiredKeys={OPT_WHOLE} />
+      </CardSection>
+      <CardSection label="Target">
+        <InlineInputs node={data} emit={emit} keys={["target", "share"]} fullWiredKeys={OPT_WHOLE} />
+      </CardSection>
       <MeasuredSocketRow side="output" socketKey="options" nodeId={data.id} emit={emit} payload={data.outputs.options!.socket} hero>
         <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
