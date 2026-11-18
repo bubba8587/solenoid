@@ -22,9 +22,30 @@ const added = (shape: Shape, cols: { name: string; type: "number" | "logical" }[
   return { ...shape, columns: [...shape.columns.filter((c) => !taken.has(c.name.trim().toLowerCase())), ...cols] };
 };
 
-/** A Solver limit: the total of an Options column (blank: of the amounts), optionally only where a column is a value,
- *  at most, at least or exactly `limit`. */
-export interface SolverLimit { of: string; where?: string; is?: string; sign: SolverSign; limit: number | null }
+/** What a Solver limit measures over its options: the total of a column, its average weighted by the amounts, the
+ *  counted options' share of it, how many options are used, or each option's on its own. */
+export type SolverMeasure = "total" | "average" | "share" | "used" | "each";
+export const SOLVER_MEASURE_OPTIONS: { value: SolverMeasure; label: string }[] = [
+  { value: "total", label: "Total" },
+  { value: "average", label: "Average" },
+  { value: "share", label: "Share of" },
+  { value: "used", label: "Number used" },
+  { value: "each", label: "Each option's" },
+];
+
+/** A Solver limit: a measure of an Options column (blank: of the amounts), optionally only where a column is a value
+ *  and once for each value of `by`, at most, at least or exactly `limit` or the group's `limitColumn`. A share's
+ *  limit is a fraction. */
+export interface SolverLimit {
+  measure?: SolverMeasure;
+  of: string;
+  by?: string;
+  where?: string;
+  is?: string;
+  sign: SolverSign;
+  limit: number | null;
+  limitColumn?: string;
+}
 export type SolverSign = "le" | "ge" | "eq";
 export const SOLVER_SIGN_OPTIONS: { value: SolverSign; label: string }[] = [
   { value: "le", label: "at most" },
@@ -36,6 +57,7 @@ export class SolverNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     options: "One row per decision. Optional Min, Max and Whole columns bound each amount.",
     goalFormula: "A LAMBDA run for each option at its amount, reading its columns by name and amount, such as a price that drops past 100 units. The goal adds up its answers.",
+    balance: "Evens the goal out across this column's groups: minimizing makes the largest group's total as small as it can be, maximizing the smallest as large.",
   };
   static frameHints: Record<string, FrameHint> = {
     options: { columns: [
@@ -63,12 +85,13 @@ export class SolverNode extends GraphNode {
     this.addInput("options", frameIn("Options"));
     this.addInput("objective", strIn("Goal"));
     this.addInput("goalFormula", lambdaIn("Goal formula"));
+    this.addInput("balance", strIn("Balance across"));
     this.addOutput("plan", frameOut("Plan"));
     this.addOutput("best", numOut("Best"));
     this.addOutput("limits", frameOut("Limits"));
   }
 
-  columnPickers(): ColumnPickerSpec[] { return [{ key: "objective", frameInput: "options" }]; }
+  columnPickers(): ColumnPickerSpec[] { return [{ key: "objective", frameInput: "options" }, { key: "balance", frameInput: "options" }]; }
 
   /** The plan is Options with Amount after; the limits table is the saved limits with Used, Slack and Shadow Price. */
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
@@ -77,11 +100,8 @@ export class SolverNode extends GraphNode {
       return s && added(s, [{ name: "Amount", type: "number" }]);
     }
     if (!this.limitList.length) return null;
-    const filters = this.limitList.some((l) => l.where?.trim());
     return { columns: [
-      { name: "Total of", type: "string" },
-      ...(filters ? [{ name: "Where", type: "string" as const }, { name: "Is", type: "string" as const }] : []),
-      { name: "Must Be", type: "string" }, { name: "Limit", type: "number" },
+      { name: "Limit", type: "string" }, { name: "Must Be", type: "string" }, { name: "Bound", type: "number" },
       { name: "Used", type: "number" }, { name: "Slack", type: "number" }, { name: "Shadow Price", type: "number" },
     ] };
   }

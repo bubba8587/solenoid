@@ -151,7 +151,7 @@
     "label": "Sensitivity"
    },
    "stringLiterals": {
-    "columns": "Total of, Where, Is, Limit, Used, Slack, Shadow Price"
+    "columns": "Limit, Bound, Used, Slack, Shadow Price"
    }
   },
   {
@@ -278,6 +278,7 @@
       "limit": 12
      },
      {
+      "measure": "used",
       "of": "",
       "where": "Area",
       "is": "IT",

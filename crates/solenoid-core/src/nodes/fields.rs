@@ -455,6 +455,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("SolarPositionNode", "lat", Empty::Fallback(Fill::Num(0.0))),
     ("SolarPositionNode", "lon", Empty::Fallback(Fill::Num(0.0))),
     ("SolverNode", "objective", Empty::Behavior("the amounts")),
+    ("SolverNode", "balance", Empty::Behavior("none")),
     ("SortFrameNode", "column", Empty::Fallback(Fill::Text(""))),
     ("SparklineNode", "values", Empty::Fallback(Fill::Num(0.0))),
     ("SpellNumberNode", "value", Empty::Fallback(Fill::Num(0.0))),

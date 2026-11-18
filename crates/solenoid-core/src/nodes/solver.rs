@@ -1,7 +1,8 @@
 //! [[A1]] visualGraphCalculator. The Solver card: a linear or whole-number program (`tree/specs/computation/frame-verbs.md`
 //! § Solver). Options holds a row per decision and the column to maximize or minimize; the card's saved limits (its
-//! `limitList`, edited in the Limits popup) each read as a SUMIFS: the total of an Options column (or of the amounts),
-//! optionally where a column is a value, at most, at least or exactly a number. The engine is `crate::lp`.
+//! `limitList`, edited in the Limits popup) each measure the options (a total, a weighted average, a share, how many
+//! are used, or each option on its own), optionally only where a column is a value, once or for each group of a
+//! column, at most, at least or exactly a number. The engine is `crate::lp`.
 
 use super::frames::{frame_in, frame_v, num_column, str_input, trimmed};
 use super::matrix::wired_lambda;
@@ -14,7 +15,6 @@ use crate::excel_functions::{value_text, V};
 use crate::frame::FrameColType;
 use crate::lp::{solve, Outcome, Program, Sign, MAX_NODES};
 use serde_json::Value as Json;
-use std::rc::Rc;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     match kind {
@@ -35,7 +35,6 @@ const MAX_CELLS: usize = 25_000_000;
 /// Assignment's grid, and Pareto's options, at most this many a side.
 const MAX_SIZE: usize = 1500;
 const PLAN_ADDED: [&str; 1] = ["Amount"];
-const LIMIT_ADDED: [&str; 3] = ["Used", "Slack", "Shadow Price"];
 
 fn num(v: Option<&V>) -> Option<f64> {
     match v {
@@ -63,15 +62,6 @@ fn truthy(v: Option<&V>) -> bool {
     }
 }
 
-/// A Must Be cell: at most, at least or exactly.
-fn sign(v: Option<&V>) -> Sign {
-    match v {
-        Some(V::Str(s)) if &**s == "at least" => Sign::Ge,
-        Some(V::Str(s)) if &**s == "exactly" => Sign::Eq,
-        _ => Sign::Le,
-    }
-}
-
 /// Whether an Options cell is the Is value a limit names: numbers by value, text ignoring case.
 fn same(a: Option<&V>, b: Option<&V>) -> bool {
     match (num(a), num(b)) {
@@ -80,43 +70,90 @@ fn same(a: Option<&V>, b: Option<&V>) -> bool {
     }
 }
 
-/// The saved limits as a table, a row each: Total of, Where and Is (only when a limit filters), Must Be, Limit. Each
-/// entry is `{ of, where, is, sign, limit }`, `sign` one of `le`, `ge`, `eq`; none saved, no table.
-fn limit_table(c: &Call) -> Option<Rc<Frame>> {
-    let list = match c.field("limitList") {
-        Some(Json::Array(l)) if !l.is_empty() => l,
-        _ => return None,
-    };
-    let text = |e: &Json, k: &str| match e.get(k) {
-        Some(Json::String(s)) if !s.trim().is_empty() => V::str(s.trim()),
-        Some(Json::Number(n)) => V::Num(n.as_f64().unwrap_or(f64::NAN)),
-        _ => V::Null,
-    };
-    let filters = list.iter().any(|e| !matches!(text(e, "where"), V::Null));
-    let mut cols = vec![text_column("Total of", list.iter().map(|e| text(e, "of")).collect())];
-    if filters {
-        cols.push(text_column("Where", list.iter().map(|e| text(e, "where")).collect()));
-        cols.push(Column {
-            ty: FrameColType::String,
-            ..text_column("Is", list.iter().map(|e| text(e, "is")).collect())
-        });
-    }
-    let rule = |e: &Json| match e.get("sign").and_then(Json::as_str) {
-        Some("ge") => "at least",
-        Some("eq") => "exactly",
-        _ => "at most",
-    };
-    cols.push(text_column("Must Be", list.iter().map(|e| V::str(rule(e))).collect()));
-    let limit = |e: &Json| match e.get("limit") {
-        Some(Json::Number(n)) => n.as_f64().map_or(V::Null, V::Num),
-        _ => V::Null,
-    };
-    cols.push(num_column("Limit", list.iter().map(limit).collect()));
-    Some(Rc::new(Frame { columns: cols, ..Frame::default() }))
+/// What a limit measures over its options ([[A1]] visualGraphCalculator; `frame-verbs.md` § Solver).
+#[derive(Clone, Copy, PartialEq)]
+enum Measured {
+    /// Σ column × amount.
+    Total,
+    /// Σ column × amount ÷ Σ amount: the column's average, weighted by the amounts (a blend's fat).
+    Average,
+    /// Σ column × amount over the options counted ÷ the same over every option.
+    Share,
+    /// How many options get any amount.
+    Used,
+    /// Column × amount, for each option on its own.
+    Each,
+}
+
+/// A saved limit: `{ measure, of, by, where, is, sign, limit, limitColumn }`.
+struct LimitSpec {
+    measure: Measured,
+    of: String,
+    by: String,
+    filter: String,
+    is: V,
+    sign: Sign,
+    bound: f64,
+    bound_col: String,
+}
+
+fn limit_specs(c: &Call) -> Vec<LimitSpec> {
+    let Some(Json::Array(list)) = c.field("limitList") else { return Vec::new() };
+    let text = |e: &Json, k: &str| e.get(k).and_then(Json::as_str).map(|s| s.trim().to_string()).unwrap_or_default();
+    list.iter()
+        .map(|e| LimitSpec {
+            measure: match e.get("measure").and_then(Json::as_str) {
+                Some("average") => Measured::Average,
+                Some("share") => Measured::Share,
+                Some("used") => Measured::Used,
+                Some("each") => Measured::Each,
+                _ => Measured::Total,
+            },
+            of: text(e, "of"),
+            by: text(e, "by"),
+            filter: text(e, "where"),
+            is: match e.get("is") {
+                Some(Json::String(s)) if !s.trim().is_empty() => V::str(s.trim()),
+                Some(Json::Number(n)) => V::Num(n.as_f64().unwrap_or(f64::NAN)),
+                _ => V::Null,
+            },
+            sign: match e.get("sign").and_then(Json::as_str) {
+                Some("ge") => Sign::Ge,
+                Some("eq") => Sign::Eq,
+                _ => Sign::Le,
+            },
+            bound: match e.get("limit") {
+                Some(Json::Number(n)) => n.as_f64().unwrap_or(f64::NAN),
+                _ => f64::NAN,
+            },
+            bound_col: text(e, "limitColumn"),
+        })
+        .collect()
 }
 
 fn text_column(name: &str, values: Vec<V>) -> Column {
     Column { name: name.to_string(), ty: FrameColType::String, values, unit: None, format: None, raw: None }
+}
+
+/// How a built limit reports what the plan uses of it.
+enum Report {
+    /// Σ a × amount.
+    Linear(Vec<f64>),
+    /// Σ top × amount ÷ Σ bottom × amount.
+    Ratio(Vec<f64>, Vec<f64>),
+    /// How many of these options get any amount.
+    Count(Vec<usize>),
+}
+
+/// One limit of the program, as the Limits output lists it.
+struct Built {
+    label: String,
+    sign: Sign,
+    bound: f64,
+    report: Report,
+    unit: Measure,
+    /// The row's dual is the goal's change for one more of `bound` (a Total or Each limit); not for a ratio or a count.
+    priced: bool,
 }
 
 fn cell(fr: &Frame, j: usize, r: usize) -> Option<&V> {
@@ -142,12 +179,17 @@ struct Curved {
 /// and branch and bound picks the pieces. Each later round reads more points near the last answer. `program` is the
 /// linear Solver (its goal column, already signed for maximizing); `value` is the formula's answer for option i at an
 /// amount.
-fn curved(program: &Program, value: &dyn Fn(usize, f64) -> Result<f64, V>, sense: f64) -> Result<Curved, V> {
+fn curved(
+    program: &Program,
+    n_opt: usize,
+    value: &dyn Fn(usize, f64) -> Result<f64, V>,
+    sense: f64,
+) -> Result<Curved, V> {
     let n = program.c.len();
     // Each option's range: Min to Max, or to the most the limits let it reach.
     let mut lo = program.lo.clone();
     let mut hi = program.hi.clone();
-    for i in 0..n {
+    for i in 0..n_opt {
         if hi[i].is_finite() {
             continue;
         }
@@ -190,7 +232,7 @@ fn curved(program: &Program, value: &dyn Fn(usize, f64) -> Result<f64, V>, sense
         p.dedup_by(|x, y| (*x - *y).abs() <= 1e-9 * (1.0 + y.abs()));
         p
     };
-    let mut near: Vec<Vec<f64>> = vec![Vec::new(); n];
+    let mut near: Vec<Vec<f64>> = vec![Vec::new(); n_opt];
     let mut last = None;
     for round in 0..CURVE_ROUNDS {
         // Variables: the amounts, then each option's pieces, then the switches of the options that need them.
@@ -199,7 +241,7 @@ fn curved(program: &Program, value: &dyn Fn(usize, f64) -> Result<f64, V>, sense
         let mut rows: Vec<(Vec<f64>, Sign, f64)> = Vec::new();
         let mut pieces: Vec<(usize, Vec<(usize, f64)>)> = Vec::new();
         let mut bumpy = false;
-        for i in 0..n {
+        for i in 0..n_opt {
             let p = points(i, &near[i]);
             let ys = p.iter().map(|&t| value(i, t)).collect::<Result<Vec<f64>, V>>()?;
             let first = c.len();
@@ -295,21 +337,41 @@ fn solver(c: &mut Call) -> Answer {
     };
     let fail = |c: &mut Call, e: V| out(c, Cv::V(e.clone()), e.clone(), Cv::V(e), V::Null);
     let Some(f) = frame_in(c, "options") else { return out(c, Cv::NULL, V::Null, Cv::NULL, V::Null) };
-    let lim = limit_table(c);
+    let specs = limit_specs(c);
     let goal = match trimmed(&str_input(c, "objective", ""), "The goal column") {
+        Ok(g) => g,
+        Err(e) => return fail(c, e),
+    };
+    let balance = match trimmed(&str_input(c, "balance", ""), "The balance column") {
         Ok(g) => g,
         Err(e) => return fail(c, e),
     };
     let minimize = c.field_str("goal", "max") == "min";
     let rows = f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0);
-    if rows > MAX_OPTIONS || lim.as_ref().is_some_and(|l| l.columns.first().map_or(0, |c| c.values.len()) > MAX_LIMITS)
-    {
-        return fail(
-            c,
-            err(ErrorCode::Domain, format!("The Solver takes at most {MAX_OPTIONS} options and {MAX_LIMITS} limits")),
-        );
+    if rows > MAX_OPTIONS {
+        return fail(c, err(ErrorCode::Domain, format!("The Solver takes at most {MAX_OPTIONS} options")));
     }
-    let col = |fr: &Frame, name: &str| position(fr, name);
+    let col = |name: &str| position(&f, name);
+    let named = |name: &str, what: &str| -> Result<usize, V> {
+        col(name).ok_or_else(|| err(ErrorCode::Ref, format!("{what}: Options has no column \"{name}\"")))
+    };
+    // A column's number per option, blank 0.
+    let numbers = |j: usize| -> Result<Vec<f64>, V> {
+        (0..rows)
+            .map(|r| match cell(&f, j, r) {
+                v if blank(v) => Ok(0.0),
+                v => num(v).ok_or_else(|| {
+                    err(ErrorCode::Value, format!("{} in option row {} isn't a number", f.columns[j].name, r + 1))
+                }),
+            })
+            .collect()
+    };
+    // An option's name in a message or a label: its first text cell, else its row.
+    let label_col = f.columns.iter().position(|c| c.ty == FrameColType::String);
+    let option_name = |r: usize| match label_col.and_then(|j| cell(&f, j, r)).filter(|v| !blank(Some(*v))) {
+        Some(v) => value_text(v),
+        None => format!("option row {}", r + 1),
+    };
     // The goal's formula, run per option over its columns by name and its `amount`.
     let mut vars: Vec<String> = f.columns.iter().map(|c| c.name.clone()).collect();
     vars.push("amount".into());
@@ -318,29 +380,26 @@ fn solver(c: &mut Call) -> Answer {
         Ok(b) => b,
         Err(e) => return fail(c, V::Err(e.into())),
     };
+    if formula.is_some() && !balance.is_empty() {
+        return fail(c, err(ErrorCode::Value, "Balance across reads the goal column, not a goal formula"));
+    }
     // The objective: the goal column's number per option, blank 0; with neither a goal column nor a formula, every
     // option counts 1.
     let mut obj = vec![if formula.is_some() { 0.0 } else { 1.0 }; rows];
     let mut goal_m = Measure::none();
     if !goal.is_empty() {
-        let Some(g) = col(&f, &goal) else {
-            return fail(c, err(ErrorCode::Ref, format!("Options has no column \"{goal}\"")));
+        let g = match named(&goal, "The goal") {
+            Ok(g) => g,
+            Err(e) => return fail(c, e),
         };
         goal_m = Measure::of_column(&f.columns[g]);
-        for (r, o) in obj.iter_mut().enumerate() {
-            *o = match cell(&f, g, r) {
-                v if blank(v) => 0.0,
-                v => match num(v) {
-                    Some(n) => n,
-                    None => {
-                        return fail(c, err(ErrorCode::Value, format!("{goal} in option row {} isn't a number", r + 1)))
-                    }
-                },
-            };
-        }
+        obj = match numbers(g) {
+            Ok(o) => o,
+            Err(e) => return fail(c, e),
+        };
     }
     let bound = |name: &str, dflt: f64| -> Result<Vec<f64>, V> {
-        let Some(j) = col(&f, name) else { return Ok(vec![dflt; rows]) };
+        let Some(j) = col(name) else { return Ok(vec![dflt; rows]) };
         (0..rows)
             .map(|r| match cell(&f, j, r) {
                 v if blank(v) => Ok(dflt),
@@ -349,102 +408,158 @@ fn solver(c: &mut Call) -> Answer {
             })
             .collect()
     };
-    let (lo, hi) = match (bound("Min", 0.0), bound("Max", f64::INFINITY)) {
-        (Ok(l), Ok(h)) => (l, h),
-        (Err(e), _) | (_, Err(e)) => return fail(c, e),
+    let (lo, hi, if_used) = match (bound("Min", 0.0), bound("Max", f64::INFINITY), bound("Min If Used", 0.0)) {
+        (Ok(l), Ok(h), Ok(u)) => (l, h, u),
+        (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => return fail(c, e),
     };
-    let whole: Vec<bool> = match col(&f, "Whole") {
+    let whole: Vec<bool> = match col("Whole") {
         Some(j) => (0..rows).map(|r| truthy(cell(&f, j, r))).collect(),
         None => vec![false; rows],
     };
 
-    // Each limit: the total of a column (blank, the amounts themselves) over the options Where a column Is a value.
-    let mut prog_rows = Vec::new();
-    // Each limit's unit: its Total of column's.
-    let mut row_m: Vec<Measure> = Vec::new();
-    if let Some(l) = lim.as_deref() {
-        let n = l.columns.first().map_or(0, |c| c.values.len());
-        let (sum_c, where_c, is_c) = (col(l, "Total of"), col(l, "Where"), col(l, "Is"));
-        let (Some(sign_c), Some(limit_c)) = (col(l, "Must Be"), col(l, "Limit")) else {
-            return out(c, Cv::NULL, V::Null, Cv::NULL, V::Null);
-        };
-        for r in 0..n {
-            let s = sign(cell(l, sign_c, r));
-            let Some(b) = num(cell(l, limit_c, r)) else {
-                return fail(c, err(ErrorCode::Value, format!("Limit {} has no number", r + 1)));
-            };
-            let of = sum_c.map(|j| cell(l, j, r)).filter(|v| !blank(*v)).map(|v| v.map(value_text).unwrap_or_default());
-            let of_col = match &of {
-                Some(name) => match col(&f, name) {
-                    Some(j) => Some(j),
-                    None => {
-                        return fail(
-                            c,
-                            err(ErrorCode::Ref, format!("Limit {}: Options has no column \"{name}\"", r + 1)),
-                        )
-                    }
-                },
-                None => None,
-            };
-            let filter = match where_c.map(|j| cell(l, j, r)).filter(|v| !blank(*v)) {
-                Some(w) => {
-                    let name = w.map(value_text).unwrap_or_default();
-                    match col(&f, &name) {
-                        Some(j) => Some((j, is_c.and_then(|k| cell(l, k, r)))),
-                        None => {
-                            return fail(
-                                c,
-                                err(ErrorCode::Ref, format!("Limit {}: Options has no column \"{name}\"", r + 1)),
-                            )
-                        }
-                    }
-                }
-                None => None,
-            };
-            let mut a = vec![0.0; rows];
-            for (o, ai) in a.iter_mut().enumerate() {
-                if filter.is_some_and(|(j, is)| !same(cell(&f, j, o), is)) {
-                    continue;
-                }
-                *ai = match of_col {
-                    None => 1.0,
-                    Some(j) => match cell(&f, j, o) {
-                        v if blank(v) => 0.0,
-                        v => match num(v) {
-                            Some(x) => x,
-                            None => {
-                                return fail(
-                                    c,
-                                    err(
-                                        ErrorCode::Value,
-                                        format!(
-                                            "{} in option row {} isn't a number",
-                                            of.clone().unwrap_or_default(),
-                                            o + 1
-                                        ),
-                                    ),
-                                )
-                            }
-                        },
-                    },
-                };
-            }
-            // A typed limit is a plain number, read in its Total of column's unit ([[C25]] firstClassUnits).
-            row_m.push(of_col.map_or_else(Measure::none, |j| Measure::of_column(&f.columns[j])));
-            prog_rows.push((a, s, b));
+    // The limits, each spec built into one or more rows: per group with For each, per option with Each.
+    let built = match build_limits(&f, &specs, rows, &numbers, &option_name) {
+        Ok(b) => b,
+        Err(e) => return fail(c, e),
+    };
+    if built.len() > MAX_LIMITS {
+        return fail(c, err(ErrorCode::Domain, format!("The Solver takes at most {MAX_LIMITS} limits")));
+    }
+    let sense = if minimize { -1.0 } else { 1.0 };
+
+    // Variables: the amounts; a used switch for each option a Number used limit counts or Min If Used names; with
+    // Balance across, the balanced total as a positive part less a negative one.
+    let mut switched: Vec<usize> = (0..rows).filter(|&r| if_used[r] > 0.0).collect();
+    for b in &built {
+        if let Report::Count(m) = &b.report {
+            switched.extend(m.iter().copied());
         }
     }
-
-    let sense = if minimize { -1.0 } else { 1.0 };
-    // The dense tableau: a row per limit and per bounded option, a column per option and per row.
-    let tableau_rows = prog_rows.len() + hi.iter().filter(|h| h.is_finite()).count();
-    if tableau_rows.saturating_mul(rows + 2 * tableau_rows) > MAX_CELLS {
+    switched.sort_unstable();
+    switched.dedup();
+    let linear_rows: Vec<(Vec<f64>, Sign, f64)> = built
+        .iter()
+        .filter_map(|b| match &b.report {
+            Report::Linear(a) => Some((a.clone(), b.sign, b.bound)),
+            _ => None,
+        })
+        .collect();
+    // How far a switched option can go: its Max, else the most the plain limits let it reach.
+    let mut reach = Vec::new();
+    for &r in &switched {
+        if hi[r].is_finite() {
+            reach.push(hi[r]);
+            continue;
+        }
+        let mut cr = vec![0.0; rows];
+        cr[r] = 1.0;
+        let p = Program { c: cr, rows: linear_rows.clone(), lo: lo.clone(), hi: hi.clone(), whole: vec![false; rows] };
+        match solve(&p) {
+            Outcome::Best { x, .. } => reach.push(x[r]),
+            Outcome::Infeasible => return fail(c, err(ErrorCode::Solve, "No plan meets every limit")),
+            Outcome::Unbounded => {
+                return fail(
+                    c,
+                    err(
+                        ErrorCode::Solve,
+                        format!("Nothing limits {}: give it a Max, so it can count as used or not", option_name(r)),
+                    ),
+                )
+            }
+        }
+    }
+    let balance_groups = if balance.is_empty() {
+        Vec::new()
+    } else {
+        match named(&balance, "Balance across") {
+            Ok(j) => groups_of(&f, j, &(0..rows).collect::<Vec<_>>()),
+            Err(e) => return fail(c, e),
+        }
+    };
+    let width = rows + switched.len() + if balance_groups.is_empty() { 0 } else { 2 };
+    let pad = |a: &[f64]| {
+        let mut r = a.to_vec();
+        r.resize(width, 0.0);
+        r
+    };
+    let switch_of = |r: usize| rows + switched.binary_search(&r).expect("switched");
+    let mut prog_rows: Vec<(Vec<f64>, Sign, f64)> = Vec::new();
+    for b in &built {
+        match &b.report {
+            Report::Linear(a) => prog_rows.push((pad(a), b.sign, b.bound)),
+            Report::Ratio(top, bottom) => {
+                let a: Vec<f64> = top.iter().zip(bottom).map(|(t, u)| t - b.bound * u).collect();
+                prog_rows.push((pad(&a), b.sign, 0.0));
+            }
+            Report::Count(m) => {
+                let mut a = vec![0.0; width];
+                for &r in m {
+                    a[switch_of(r)] = 1.0;
+                }
+                prog_rows.push((a, b.sign, b.bound));
+            }
+        }
+    }
+    // A switch on means the option is used: some amount, at least its Min If Used, at most its reach.
+    for (k, &r) in switched.iter().enumerate() {
+        let z = rows + k;
+        let mut a = vec![0.0; width];
+        a[r] = 1.0;
+        a[z] = -reach[k];
+        prog_rows.push((a, Sign::Le, 0.0));
+        let least = if if_used[r] > 0.0 {
+            if_used[r]
+        } else if whole[r] {
+            1.0
+        } else {
+            1e-6 * reach[k].max(1.0)
+        };
+        let mut a = vec![0.0; width];
+        a[r] = 1.0;
+        a[z] = -least;
+        prog_rows.push((a, Sign::Ge, 0.0));
+    }
+    let mut cvec: Vec<f64> = obj.iter().map(|v| v * sense).collect();
+    cvec.resize(width, 0.0);
+    let mut plo = lo.clone();
+    let mut phi = hi.clone();
+    let mut pwhole = whole.clone();
+    for &r in &switched {
+        if if_used[r] > 0.0 {
+            plo[r] = 0.0;
+        }
+    }
+    plo.extend(switched.iter().map(|_| 0.0));
+    phi.extend(switched.iter().map(|_| 1.0));
+    pwhole.extend(switched.iter().map(|_| true));
+    if !balance_groups.is_empty() {
+        // Minimizing, every group's total stays under t and t is made small; maximizing, over it and t made large.
+        let (tp, tm) = (width - 2, width - 1);
+        cvec.iter_mut().for_each(|v| *v = 0.0);
+        cvec[tp] = sense;
+        cvec[tm] = -sense;
+        for (_, m) in &balance_groups {
+            let mut a = vec![0.0; width];
+            for &r in m {
+                a[r] = obj[r];
+            }
+            a[tp] = -1.0;
+            a[tm] = 1.0;
+            prog_rows.push((a, if minimize { Sign::Le } else { Sign::Ge }, 0.0));
+        }
+        plo.extend([0.0, 0.0]);
+        phi.extend([f64::INFINITY, f64::INFINITY]);
+        pwhole.extend([false, false]);
+    }
+    // The dense tableau: a row per limit and per bounded variable, a column per variable and per row.
+    let tableau_rows = prog_rows.len() + phi.iter().filter(|h| h.is_finite()).count();
+    if tableau_rows.saturating_mul(width + 2 * tableau_rows) > MAX_CELLS {
         return fail(
             c,
             err(ErrorCode::Domain, "Too large for the Solver: fewer options, fewer limits, or fewer Max bounds"),
         );
     }
-    let program = Program { c: obj.iter().map(|v| v * sense).collect(), rows: prog_rows.clone(), lo, hi, whole };
+    let program = Program { c: cvec, rows: prog_rows, lo: plo, hi: phi, whole: pwhole };
     let mut sampled = false;
     let (x, total, duals, stopped) = match &formula {
         None => match solve(&program) {
@@ -462,11 +577,11 @@ fn solver(c: &mut Call) -> Answer {
                 let k = keys(Some(body), &ev, &args, "goal formula", i)?;
                 Ok(k.iter().sum())
             };
-            match curved(&program, &value, sense) {
+            match curved(&program, rows, &value, sense) {
                 Ok(Curved { x, duals, stopped, bumpy }) => {
                     sampled = bumpy;
                     let mut total: f64 = obj.iter().zip(&x).map(|(o, v)| o * v).sum();
-                    for (i, &xi) in x.iter().enumerate() {
+                    for (i, &xi) in x.iter().take(rows).enumerate() {
                         match value(i, xi) {
                             Ok(v) => total += v,
                             Err(e) => return fail(c, e),
@@ -480,47 +595,70 @@ fn solver(c: &mut Call) -> Answer {
     };
 
     let clean = |v: f64| if v.abs() < 1e-9 { 0.0 } else { (v * 1e9).round() / 1e9 };
+    let amounts = &x[..rows];
     let base = |fr: &Frame, added: &[&str]| Frame {
         columns: fr.columns.iter().filter(|c| !added.iter().any(|a| key(a) == key(&c.name))).cloned().collect(),
         ..Frame::default()
     };
     let mut plan_cols = taken(&base(&f, &PLAN_ADDED), &(0..rows).collect::<Vec<_>>());
-    plan_cols.push(num_column("Amount", x.iter().map(|&v| V::Num(clean(v))).collect()));
-    let limits = match lim.as_deref() {
-        Some(l) => {
-            let n = l.columns.first().map_or(0, |c| c.values.len());
-            let mut cols = taken(&base(l, &LIMIT_ADDED), &(0..n).collect::<Vec<_>>());
-            let used: Vec<f64> = prog_rows.iter().map(|(a, _, _)| a.iter().zip(&x).map(|(p, q)| p * q).sum()).collect();
-            // One unit down a column only when every limit shares it; else each row's numbers in its own Total of unit.
-            let shared = row_m.first().filter(|m| row_m.iter().all(|o| o.same(m) && o.name() == m.name())).cloned();
-            let col_m = shared.clone().unwrap_or_else(Measure::none);
-            let slack: Vec<f64> = prog_rows
-                .iter()
-                .zip(&used)
-                .map(|((_, s, b), u)| match s {
-                    Sign::Le => b - u,
-                    Sign::Ge => u - b,
+    plan_cols.push(num_column("Amount", amounts.iter().map(|&v| V::Num(clean(v))).collect()));
+    let limits = if built.is_empty() {
+        Cv::NULL
+    } else {
+        let used: Vec<Option<f64>> = built
+            .iter()
+            .map(|b| match &b.report {
+                Report::Linear(a) => Some(a.iter().zip(amounts).map(|(p, q)| p * q).sum()),
+                Report::Ratio(top, bottom) => {
+                    let d: f64 = bottom.iter().zip(amounts).map(|(p, q)| p * q).sum();
+                    (d.abs() > 1e-12).then(|| top.iter().zip(amounts).map(|(p, q)| p * q).sum::<f64>() / d)
+                }
+                Report::Count(m) => Some(m.iter().filter(|&&r| amounts[r] > 1e-9).count() as f64),
+            })
+            .collect();
+        // One unit down a column only when every limit shares it; else each row's numbers in its own unit.
+        let shared = built
+            .first()
+            .map(|b| b.unit.clone())
+            .filter(|m| built.iter().all(|o| o.unit.same(m) && o.unit.name() == m.name()));
+        let col_m = shared.clone().unwrap_or_else(Measure::none);
+        let slack: Vec<Option<f64>> = built
+            .iter()
+            .zip(&used)
+            .map(|(b, u)| {
+                u.map(|u| match b.sign {
+                    Sign::Le => b.bound - u,
+                    Sign::Ge => u - b.bound,
                     Sign::Eq => 0.0,
                 })
-                .collect();
-            cols.push(col_m.column("Used", used.iter().map(|&u| Some(col_m.base(clean(u))))));
-            cols.push(col_m.column("Slack", slack.iter().map(|&u| Some(col_m.base(clean(u))))));
-            // A shadow price is the goal's unit per the limit's: dollars a kg.
-            let price_m = shared.as_ref().map_or_else(Measure::none, |m| goal_m.per(m));
-            let prices = (0..n).map(|i| {
-                duals.as_ref().map(|d| {
-                    let per_shown = clean(d[i] * sense);
-                    if shared.is_some() {
-                        goal_m.base(per_shown) / col_m.base(1.0)
-                    } else {
-                        per_shown
-                    }
-                })
-            });
-            cols.push(price_m.column("Shadow Price", prices));
-            frame_v(cols)
-        }
-        None => Cv::NULL,
+            })
+            .collect();
+        let rule = |s: Sign| match s {
+            Sign::Le => "at most",
+            Sign::Ge => "at least",
+            Sign::Eq => "exactly",
+        };
+        let mut cols = vec![
+            text_column("Limit", built.iter().map(|b| V::str(&b.label)).collect()),
+            text_column("Must Be", built.iter().map(|b| V::str(rule(b.sign))).collect()),
+        ];
+        cols.push(col_m.column("Bound", built.iter().map(|b| Some(col_m.base(clean(b.bound))))));
+        cols.push(col_m.column("Used", used.iter().map(|u| u.map(|u| col_m.base(clean(u))))));
+        cols.push(col_m.column("Slack", slack.iter().map(|u| u.map(|u| col_m.base(clean(u))))));
+        // A shadow price is the goal's unit per the limit's: dollars a kg.
+        let price_m = shared.as_ref().map_or_else(Measure::none, |m| goal_m.per(m));
+        let prices = built.iter().enumerate().map(|(i, b)| {
+            duals.as_ref().filter(|_| b.priced && balance_groups.is_empty()).map(|d| {
+                let per_shown = clean(d[i] * sense);
+                if shared.is_some() {
+                    goal_m.base(per_shown) / col_m.base(1.0)
+                } else {
+                    per_shown
+                }
+            })
+        });
+        cols.push(price_m.column("Shadow Price", prices));
+        frame_v(cols)
     };
     let status = if stopped {
         format!("Best found: stopped after {MAX_NODES} branches")
@@ -530,6 +668,172 @@ fn solver(c: &mut Call) -> Answer {
         "Optimal".into()
     };
     out(c, frame_v(plan_cols), goal_m.value(goal_m.base(clean(total))), limits, V::str(&status))
+}
+
+/// The options split by a column's value, in first-seen order, each with its label ("From is A"); a blank is a group.
+fn groups_of(f: &Frame, j: usize, members: &[usize]) -> Vec<(String, Vec<usize>)> {
+    let mut out: Vec<(String, Vec<usize>)> = Vec::new();
+    let mut at: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for &r in members {
+        let v = cell(f, j, r);
+        let text = if blank(v) { String::new() } else { v.map(value_text).unwrap_or_default() };
+        let k = *at.entry(key(&text)).or_insert_with(|| {
+            out.push((text.clone(), Vec::new()));
+            out.len() - 1
+        });
+        out[k].1.push(r);
+    }
+    out
+}
+
+/// Each saved limit as the rows it stands for, in order: one, one per group of For each, or one per option of Each.
+fn build_limits(
+    f: &Frame,
+    specs: &[LimitSpec],
+    rows: usize,
+    numbers: &dyn Fn(usize) -> Result<Vec<f64>, V>,
+    option_name: &dyn Fn(usize) -> String,
+) -> Result<Vec<Built>, V> {
+    let mut out = Vec::new();
+    for (k, s) in specs.iter().enumerate() {
+        let what = format!("Limit {}", k + 1);
+        let column = |name: &str| {
+            position(f, name).ok_or_else(|| err(ErrorCode::Ref, format!("{what}: Options has no column \"{name}\"")))
+        };
+        // The column measured: blank, the amounts themselves.
+        let (coef, unit, of_name) = if s.of.is_empty() {
+            (vec![1.0; rows], Measure::none(), "Amount".to_string())
+        } else {
+            let j = column(&s.of)?;
+            (numbers(j)?, Measure::of_column(&f.columns[j]), f.columns[j].name.clone())
+        };
+        if s.measure == Measured::Average && s.of.is_empty() {
+            return Err(err(ErrorCode::Value, format!("{what}: an average needs a column")));
+        }
+        // The options counted: those where a column is a value, else all.
+        let (counted, where_text): (Vec<usize>, String) = if s.filter.is_empty() {
+            ((0..rows).collect(), String::new())
+        } else {
+            let j = column(&s.filter)?;
+            (
+                (0..rows).filter(|&r| same(cell(f, j, r), Some(&s.is))).collect(),
+                format!(
+                    " where {} is {}",
+                    f.columns[j].name,
+                    if blank(Some(&s.is)) { "blank".into() } else { value_text(&s.is) }
+                ),
+            )
+        };
+        if s.measure == Measured::Share && s.filter.is_empty() && s.by.is_empty() {
+            return Err(err(ErrorCode::Value, format!("{what}: a share needs Count only where or For each")));
+        }
+        let groups: Vec<(String, Vec<usize>)> = if s.by.is_empty() || s.measure == Measured::Each {
+            vec![(String::new(), counted.clone())]
+        } else {
+            let j = column(&s.by)?;
+            groups_of(f, j, &(0..rows).collect::<Vec<_>>())
+                .into_iter()
+                .map(|(g, m)| (format!(" for {} {}", f.columns[j].name, if g.is_empty() { "blank" } else { &g }), m))
+                .collect()
+        };
+        let bound_col = if s.bound_col.is_empty() { None } else { Some(column(&s.bound_col)?) };
+        // The number a group (or an option) is held to: typed, or its column's value, the same down the group.
+        let bound_for = |members: &[usize], label: &str| -> Result<f64, V> {
+            let Some(j) = bound_col else {
+                return if s.bound.is_finite() {
+                    Ok(s.bound)
+                } else {
+                    Err(err(ErrorCode::Value, format!("{what} has no number")))
+                };
+            };
+            let mut seen: Option<f64> = None;
+            for &r in members {
+                let v = cell(f, j, r);
+                if blank(v) {
+                    continue;
+                }
+                let n = num(v).ok_or_else(|| {
+                    err(ErrorCode::Value, format!("{} in option row {} isn't a number", f.columns[j].name, r + 1))
+                })?;
+                match seen {
+                    Some(p) if (p - n).abs() > 1e-9 * (1.0 + p.abs()) => {
+                        return Err(err(
+                            ErrorCode::Value,
+                            format!("{what}: {} differs within{label}, so it can't be one limit", f.columns[j].name),
+                        ))
+                    }
+                    _ => seen = Some(n),
+                }
+            }
+            seen.ok_or_else(|| err(ErrorCode::Value, format!("{what}: {} is blank{label}", f.columns[j].name)))
+        };
+        let in_set = |m: &[usize]| {
+            let mut v = vec![false; rows];
+            m.iter().for_each(|&r| v[r] = true);
+            v
+        };
+        let counted_set = in_set(&counted);
+        let rule_unit = match s.measure {
+            Measured::Total | Measured::Average | Measured::Each => unit.clone(),
+            Measured::Share | Measured::Used => Measure::none(),
+        };
+        if s.measure == Measured::Each {
+            for &r in &counted {
+                let mut a = vec![0.0; rows];
+                a[r] = coef[r];
+                out.push(Built {
+                    label: format!("{of_name} of {}", option_name(r)),
+                    sign: s.sign,
+                    bound: bound_for(&[r], &format!(" for {}", option_name(r)))?,
+                    report: Report::Linear(a),
+                    unit: rule_unit.clone(),
+                    priced: true,
+                });
+            }
+            continue;
+        }
+        for (g, members) in &groups {
+            let group_set = in_set(members);
+            // The options this row measures: counted and in the group.
+            let both: Vec<usize> = (0..rows).filter(|&r| counted_set[r] && group_set[r]).collect();
+            let mask = |set: &dyn Fn(usize) -> bool| (0..rows).map(|r| if set(r) { coef[r] } else { 0.0 }).collect();
+            let (prefix, report, priced) = match s.measure {
+                Measured::Total => ("Total", Report::Linear(mask(&|r| counted_set[r] && group_set[r])), true),
+                Measured::Average => (
+                    "Average",
+                    Report::Ratio(
+                        mask(&|r| counted_set[r] && group_set[r]),
+                        (0..rows).map(|r| if counted_set[r] && group_set[r] { 1.0 } else { 0.0 }).collect(),
+                    ),
+                    false,
+                ),
+                // The share counted of the whole: within its group when Count only where narrows it, else of all.
+                Measured::Share => (
+                    "Share of",
+                    Report::Ratio(
+                        mask(&|r| counted_set[r] && group_set[r]),
+                        mask(&|r| if s.filter.is_empty() { true } else { group_set[r] }),
+                    ),
+                    false,
+                ),
+                Measured::Used => ("Number used", Report::Count(both.clone()), false),
+                Measured::Each => unreachable!(),
+            };
+            let label = match s.measure {
+                Measured::Used => format!("{prefix}{where_text}{g}"),
+                _ => format!("{prefix} {of_name}{where_text}{g}"),
+            };
+            out.push(Built {
+                bound: bound_for(members, g)?,
+                label,
+                sign: s.sign,
+                report,
+                unit: rule_unit.clone(),
+                priced,
+            });
+        }
+    }
+    Ok(out)
 }
 
 /// The Assignment card: a cost grid, a row per person or crew and a column per job, a blank cell where the pair can't

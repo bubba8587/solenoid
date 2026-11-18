@@ -99,6 +99,71 @@ describe("Solver", () => {
     expect(JSON.stringify(out.best)).toMatch(/give it a Max/);
   });
 
+  it("holds a blend's weighted average and a share of it", () => {
+    // Two beans, 12% and 4% fat, 3 and 5 a kg: the cheapest 100 kg averaging at most 6% fat is 25 kg and 75 kg.
+    const beans = frame([{ Bean: "Rich", Fat: 0.12, Cost: 3 }, { Bean: "Lean", Fat: 0.04, Cost: 5 }]);
+    const avg: SolverLimit[] = [{ of: "", sign: "eq", limit: 100 }, { measure: "average", of: "Fat", sign: "le", limit: 0.06 }];
+    const blend = solve(beans, avg, "Cost", "min");
+    expect(rows(blend.out.plan).map((r) => r.Amount)).toEqual([25, 75]);
+    expect(rows(blend.out.limits)[1]).toMatchObject({ Limit: "Average Fat", "Must Be": "at most", Bound: 0.06, Used: 0.06, Slack: 0, "Shadow Price": null });
+    // Rich must be at least 40% of the kilos: 40 and 60.
+    const share = solve(beans, [{ of: "", sign: "eq", limit: 100 }, { measure: "share", of: "", where: "Bean", is: "Rich", sign: "ge", limit: 0.4 }], "Cost", "max");
+    expect(rows(share.out.plan).map((r) => r.Amount)).toEqual([0, 100]);
+    const least = solve(beans, [{ of: "", sign: "eq", limit: 100 }, { measure: "share", of: "", where: "Bean", is: "Rich", sign: "ge", limit: 0.4 }], "Cost", "min");
+    expect(rows(least.out.plan).map((r) => r.Amount)).toEqual([100, 0]);
+    expect(rows(least.out.limits)[1]).toMatchObject({ Limit: "Share of Amount where Bean is Rich", Used: 1 });
+  });
+
+  it("repeats a limit for each group, its number from a column: a transport plan by supply and demand", () => {
+    const routes = [["A", "X", 4, 30, 25], ["A", "Y", 6, 30, 20], ["B", "X", 5, 30, 25], ["B", "Y", 3, 30, 20]]
+      .map(([From, To, Cost, Supply, Demand]) => ({ From, To, Cost, Supply, Demand }));
+    const limits: SolverLimit[] = [
+      { of: "", by: "From", sign: "le", limit: null, limitColumn: "Supply" },
+      { of: "", by: "To", sign: "ge", limit: null, limitColumn: "Demand" },
+    ];
+    const { out } = solve(frame(routes), limits, "Cost", "min");
+    expect(rows(out.plan).map((r) => r.Amount)).toEqual([25, 0, 0, 20]);
+    expect(out.best).toBe(160);
+    expect(rows(out.limits).map((r) => r.Limit)).toEqual(["Total Amount for From A", "Total Amount for From B", "Total Amount for To X", "Total Amount for To Y"]);
+    // A column that differs within a group can't be one limit.
+    const mixed = routes.map((r, i) => ({ ...r, Supply: 30 + i }));
+    expect(isSolError(solve(frame(mixed), limits, "Cost", "min").out.best)).toBe(true);
+  });
+
+  it("counts the options used, holds each option to its own column, and balances a goal across groups", () => {
+    const suppliers = frame([
+      { Name: "P", Price: 3, Cap: 40 }, { Name: "Q", Price: 4, Cap: 60 }, { Name: "R", Price: 5, Cap: 80 },
+    ]);
+    const need: SolverLimit = { of: "", sign: "ge", limit: 100 };
+    const own: SolverLimit = { measure: "each", of: "", sign: "le", limit: null, limitColumn: "Cap" };
+    const free = solve(suppliers, [need, own], "Price", "min");
+    expect(rows(free.out.plan).map((r) => r.Amount)).toEqual([40, 60, 0]);
+    expect(rows(free.out.limits).map((r) => r.Limit)).toEqual(["Total Amount", "Amount of P", "Amount of Q", "Amount of R"]);
+    // At most one supplier, none of which can carry 100 alone: no plan.
+    expect(isSolError(solve(suppliers, [need, own, { measure: "used", of: "", sign: "le", limit: 1 }], "Price", "min").out.best)).toBe(true);
+    // R can, once its Max allows it.
+    const capped = solve(frame([{ Name: "P", Price: 3, Max: 40 }, { Name: "Q", Price: 4, Max: 60 }, { Name: "R", Price: 5, Max: 120 }]),
+      [need, { measure: "used", of: "", sign: "le", limit: 1 }], "Price", "min");
+    expect(rows(capped.out.plan).map((r) => r.Amount)).toEqual([0, 0, 100]);
+    expect(rows(capped.out.limits)[1]).toMatchObject({ Limit: "Number used", Used: 1 });
+    // Six jobs on two machines, hours 5 4 3 3 2 1: balanced, each machine runs 9.
+    const jobs = frame(["5", "4", "3", "3b", "2", "1"].flatMap((j) => ["M1", "M2"].map((m) => ({ Job: j, Machine: m, Hours: Number.parseFloat(j), Max: 1, Whole: true }))));
+    const n = new SolverNode({ goal: "min", limitList: [{ of: "", by: "Job", sign: "eq", limit: 1 }] });
+    n.stringLiterals.objective = "Hours";
+    n.stringLiterals.balance = "Machine";
+    const balanced = n.data({ options: [jobs] }) as Out;
+    expect(balanced.best).toBe(9);
+  });
+
+  it("keeps an option at 0 or at least its Min If Used", () => {
+    const lots = frame([{ Lot: "A", Cost: 2, "Min If Used": 50, Max: 200 }, { Lot: "B", Cost: 3, "Min If Used": 0, Max: 200 }]);
+    const { out } = solve(lots, [{ of: "", sign: "ge", limit: 30 }], "Cost", "min");
+    // 30 from A would break its minimum of 50; 50 from A costs 100, 30 from B 90.
+    expect(rows(out.plan).map((r) => r.Amount)).toEqual([0, 30]);
+    const more = solve(lots, [{ of: "", sign: "ge", limit: 48 }], "Cost", "min");
+    expect(rows(more.out.plan).map((r) => r.Amount)).toEqual([50, 0]);
+  });
+
   it("says when no plan fits, when the goal is unbounded, and when a limit is misread", () => {
     const options = frame([{ Item: "x", Gain: 1 }]);
     const err = (o: Out) => isSolError(o.best);

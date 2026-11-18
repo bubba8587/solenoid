@@ -41,7 +41,7 @@ add("mix", "SolverNode", { label: "Roast plan", limitList: [
 wire("blends.frame -> mix.options");
 keep("mix_units", "Kg per blend", "Blend, Amount");
 chart("mix_chart", "Kg per blend", "column", "xlabel=Blend; ylabel=Kg");
-keep("mix_room", "Sensitivity", "Total of, Where, Is, Limit, Used, Slack, Shadow Price");
+keep("mix_room", "Sensitivity", "Limit, Bound, Used, Slack, Shadow Price");
 wire("mix.plan -> mix_units.frame", "mix_units.frame -> mix_chart.values", "mix.limits -> mix_room.frame");
 
 // ── 2. A project portfolio: which projects fit the budget and the team ──
@@ -57,7 +57,7 @@ table("projects", "Projects", {
 add("portfolio", "SolverNode", { label: "Portfolio", limitList: [
   { of: "Cost", sign: "le", limit: 400 },
   { of: "Staff", sign: "le", limit: 12 },
-  { of: "", where: "Area", is: "IT", sign: "le", limit: 2 },
+  { measure: "used", of: "", where: "Area", is: "IT", sign: "le", limit: 2 },
 ] }, { stringLiterals: { objective: "Value" } });
 wire("projects.frame -> portfolio.options");
 keep("portfolio_pick", "Projects chosen", "Project, Area, Value, Amount");

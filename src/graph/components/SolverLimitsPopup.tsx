@@ -1,11 +1,12 @@
 // [[B19]] spreadsheetHabits: the Solver's Limits popup (tree/specs/computation/frame-verbs.md § Solver).
-// Each limit reads as a sentence: the total of a column must be at most, at least or exactly a number, optionally
-// counting only the options where another column is a value.
+// Each limit reads as a sentence: a measure of a column (its total, average, share, how many options are used, or each
+// option's) must be at most, at least or exactly a number or a column's value, optionally for each group of a column
+// and counting only the options where a column is a value.
 import { useSyncExternalStore } from "react";
 import { solverLimits } from "../solverLimitsStore";
 import { notifyGraphChanged, processGraph } from "../process";
 import { appThemeStore } from "../appTheme";
-import { SOLVER_SIGN_OPTIONS, type SolverLimit, type SolverNode, type SolverSign } from "../nodes/optimize";
+import { SOLVER_MEASURE_OPTIONS, SOLVER_SIGN_OPTIONS, type SolverLimit, type SolverMeasure, type SolverNode, type SolverSign } from "../nodes/optimize";
 import { isFrameValue } from "../frame";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
@@ -16,33 +17,52 @@ import "./SolverLimitsPopup.css";
 
 const stop = (e: { stopPropagation(): void }) => e.stopPropagation();
 
-/** What a limit totals, for the card's step: "Wood", "Amount · Blend is Espresso". */
+const measureOf = (l: SolverLimit): SolverMeasure => l.measure ?? "total";
+/** A share is a fraction, shown and typed as a percent. */
+const pct = (n: number) => `${Math.round(n * 1e6) / 1e4}%`;
+
+/** What a limit measures, for the card's step: "Total Wood", "Share of Amount · Blend is Espresso", "Number used". */
 export function limitSubject(l: SolverLimit): string {
+  const m = measureOf(l);
+  const head = m === "used" ? "Number used" : `${SOLVER_MEASURE_OPTIONS.find((o) => o.value === m)!.label} ${l.of.trim() || "Amount"}`;
+  const by = l.by?.trim() && m !== "each" ? ` for each ${l.by.trim()}` : "";
   const where = l.where?.trim() ? ` · ${l.where.trim()} is ${l.is?.trim() || "blank"}` : "";
-  return `${l.of.trim() || "Amount"}${where}`;
+  return `${head}${by}${where}`;
 }
 
-/** Its rule: "at most 300". */
+/** Its rule: "at most 300", "at least 30%", "at most its Supply". */
 export function limitRule(l: SolverLimit): string {
-  return `${SOLVER_SIGN_OPTIONS.find((o) => o.value === l.sign)?.label ?? "at most"} ${l.limit ?? "?"}`;
+  const sign = SOLVER_SIGN_OPTIONS.find((o) => o.value === l.sign)?.label ?? "at most";
+  if (l.limitColumn?.trim()) return `${sign} its ${l.limitColumn.trim()}`;
+  if (l.limit == null) return `${sign} ?`;
+  return `${sign} ${measureOf(l) === "share" ? pct(l.limit) : l.limit}`;
 }
 
-/** The whole limit as a sentence: "Total Wood at most 300", "Total Amount at least 10 where Kind is Desk". */
+/** The whole limit as a sentence: "Total Wood at most 300", "Share of Amount at least 30% where Blend is Espresso". */
 export function limitSummary(l: SolverLimit): string {
+  const m = measureOf(l);
+  const head = m === "used" ? "Number used" : `${SOLVER_MEASURE_OPTIONS.find((o) => o.value === m)!.label} ${l.of.trim() || "Amount"}`;
+  const by = l.by?.trim() && m !== "each" ? ` for each ${l.by.trim()}` : "";
   const where = l.where?.trim() ? ` where ${l.where.trim()} is ${l.is?.trim() || "blank"}` : "";
-  return `Total ${l.of.trim() || "Amount"} ${limitRule(l)}${where}`;
+  return `${head}${by} ${limitRule(l)}${where}`;
 }
 
 /** The number field: commits on Enter or blur; a blank commits no number, anything else that isn't one is refused. */
-function LimitNumber({ value, onChange }: { value: number | null; onChange: (n: number | null) => void }) {
+function LimitNumber({ value, percent, onChange }: { value: number | null; percent: boolean; onChange: (n: number | null) => void }) {
   const field = useDraftCommit<number | null>(
     value,
-    (v) => (v == null ? "" : String(v)),
-    (t) => { const s = t.replace(/,/g, "").trim(); return s === "" ? null : Number.isFinite(Number(s)) ? Number(s) : INVALID_DRAFT; },
+    (v) => (v == null ? "" : percent ? pct(v) : String(v)),
+    (t) => {
+      const s = t.replace(/,/g, "").trim();
+      if (s === "") return null;
+      const n = Number(s.replace(/%$/, ""));
+      if (!Number.isFinite(n)) return INVALID_DRAFT;
+      return percent ? n / 100 : n;
+    },
     onChange,
   );
   return (
-    <input className="solver-limits__num" value={field.draft} inputMode="decimal" placeholder="number"
+    <input className="solver-limits__num" value={field.draft} inputMode="decimal" placeholder={percent ? "percent" : "number"}
       onChange={(e) => field.setDraft(e.target.value)} onBlur={field.onBlur} onKeyDown={field.onKeyDown} onPointerDown={stop} />
   );
 }
@@ -55,13 +75,13 @@ function LimitText({ value, onChange, placeholder }: { value: string; onChange: 
   );
 }
 
-function ColumnSelect({ value, columns, blank, onChange }: { value: string; columns: string[]; blank: string; onChange: (v: string) => void }) {
+function ColumnSelect({ value, columns, blank, prefix = "", onChange }: { value: string; columns: string[]; blank: string; prefix?: string; onChange: (v: string) => void }) {
   // A saved name the input lacks right now stays listed, so the select never shows another in its place.
   const names = value && !columns.includes(value) ? [...columns, value] : columns;
   return (
     <select className="pivot-ctl" value={value} onChange={(e) => onChange(e.target.value)} onPointerDown={stop}>
       <option value="">{blank}</option>
-      {names.map((c) => <option key={c} value={c}>{c}</option>)}
+      {names.map((c) => <option key={c} value={c}>{prefix}{c}</option>)}
     </select>
   );
 }
@@ -99,20 +119,37 @@ export function SolverLimitsPopup() {
       <div className="solver-limits__body">
         {list.length === 0 && <div className="solver-limits__empty">No limits yet</div>}
         {list.map((l, i) => {
-          const filtering = l.where !== undefined;
+          const m = measureOf(l);
+          const grouped = l.by !== undefined && m !== "each";
+          // A group's own number can come from a column; so can each option's.
+          const perGroup = grouped || m === "each";
           return (
             <div key={i} className="solver-limits__limit">
               <div className="solver-limits__line">
-                <span className="solver-limits__word">Total</span>
-                <ColumnSelect value={l.of} columns={columns} blank="Amount" onChange={(v) => patch(i, { of: v })} />
+                <select className="pivot-ctl" value={m} onChange={(e) => patch(i, { measure: e.target.value as SolverMeasure })} onPointerDown={stop}>
+                  {SOLVER_MEASURE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                {m !== "used" && (
+                  <ColumnSelect value={l.of} columns={columns} blank={m === "average" ? "choose a column" : "Amount"} onChange={(v) => patch(i, { of: v })} />
+                )}
                 <span className="solver-limits__word">must be</span>
                 <select className="pivot-ctl" value={l.sign} onChange={(e) => patch(i, { sign: e.target.value as SolverSign })} onPointerDown={stop}>
                   {SOLVER_SIGN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
-                <LimitNumber value={l.limit} onChange={(n) => patch(i, { limit: n })} />
+                {!l.limitColumn && <LimitNumber value={l.limit} percent={m === "share"} onChange={(n) => patch(i, { limit: n })} />}
+                {perGroup && (
+                  <ColumnSelect value={l.limitColumn ?? ""} columns={columns} blank={l.limitColumn ? "a number" : "or its…"} prefix="its " onChange={(v) => patch(i, { limitColumn: v || undefined })} />
+                )}
                 <button className="pivot-chip__x solver-limits__x" onClick={() => remove(i)} aria-label="Remove limit" title="Remove limit"><CloseIcon size={10} /></button>
               </div>
-              {filtering ? (
+              {grouped && (
+                <div className="solver-limits__line solver-limits__line--where">
+                  <span className="solver-limits__word">for each</span>
+                  <ColumnSelect value={l.by ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { by: v })} />
+                  <button className="pivot-chip__x solver-limits__x" onClick={() => patch(i, { by: undefined, limitColumn: undefined })} aria-label="Once for all options" title="Once for all options"><CloseIcon size={10} /></button>
+                </div>
+              )}
+              {l.where !== undefined && (
                 <div className="solver-limits__line solver-limits__line--where">
                   <span className="solver-limits__word">counting only where</span>
                   <ColumnSelect value={l.where ?? ""} columns={columns} blank="choose a column" onChange={(v) => patch(i, { where: v })} />
@@ -120,9 +157,13 @@ export function SolverLimitsPopup() {
                   <LimitText value={l.is ?? ""} placeholder="value" onChange={(v) => patch(i, { is: v })} />
                   <button className="pivot-chip__x solver-limits__x" onClick={() => patch(i, { where: undefined, is: undefined })} aria-label="Count every option" title="Count every option"><CloseIcon size={10} /></button>
                 </div>
-              ) : (
-                <button className="solver-limits__link" onClick={() => patch(i, { where: "", is: "" })}>Count only where…</button>
               )}
+              {(!grouped && m !== "each") || l.where === undefined ? (
+                <div className="solver-limits__links">
+                  {!grouped && m !== "each" && <button className="solver-limits__link" onClick={() => patch(i, { by: "" })}>For each…</button>}
+                  {l.where === undefined && <button className="solver-limits__link" onClick={() => patch(i, { where: "", is: "" })}>Count only where…</button>}
+                </div>
+              ) : null}
             </div>
           );
         })}

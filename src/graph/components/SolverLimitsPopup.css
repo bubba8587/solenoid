@@ -48,6 +48,7 @@
   text-decoration: underline;
   cursor: pointer;
 }
+.solver-limits__links { display: flex; gap: 12px; }
 .solver-limits__empty { font-size: 12px; color: var(--text-muted); padding: 8px 0; }
 .solver-limits__footer { justify-content: space-between; }
 .solver-limits__add {

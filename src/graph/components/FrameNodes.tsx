@@ -1461,7 +1461,7 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
       <InlineInputs node={data} emit={emit} keys={["options"]} fullWiredKeys={SOLVER_WHOLE} />
       <CardSection label="Goal">
         <SegToggle value={goal} options={SOLVER_GOAL_OPTIONS} onChange={setGoal} />
-        <InlineInputs node={data} emit={emit} keys={["objective", "goalFormula"]} labelFor={(k) => (k === "objective" ? "Total of column" : "Total of formula")} cableOnlyKeys={SOLVER_LAMBDA} fullWiredKeys={SOLVER_WHOLE} />
+        <InlineInputs node={data} emit={emit} keys={["objective", "goalFormula", "balance"]} labelFor={(k) => ({ objective: "Total of column", goalFormula: "Total of formula", balance: "Balance across" } as Record<string, string>)[k] ?? k} cableOnlyKeys={SOLVER_LAMBDA} fullWiredKeys={SOLVER_WHOLE} />
       </CardSection>
       <CardSection label="Limits">
         <CardOpenButton label="Edit Limits" onOpen={(el) => solverLimits.open({ node: data, title: `${nodeDisplayName(data)}: Limits`, accent: readChipPopupStyle(el).accent })} />
@@ -1509,7 +1509,7 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
     </NodeShell>
   );
 }
-const SOLVER_WHOLE = new Set(["options", "objective", "goalFormula"]);
+const SOLVER_WHOLE = new Set(["options", "objective", "goalFormula", "balance"]);
 const SOLVER_LAMBDA = new Set(["goalFormula"]);
 
 export function AssignmentComponent({ data, emit }: NodeProps<AssignmentNodeType>) {
