@@ -10,7 +10,7 @@ import { SOLVER_MEASURE_OPTIONS, SOLVER_SIGN_OPTIONS, type SolverLimit, type Sol
 import { isFrameValue } from "../frame";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
-import { useFeedColumns } from "./ColumnPickerField";
+import { useFeedShape } from "./ColumnPickerField";
 import { CloseIcon } from "./CloseIcon";
 import "./PivotEditorPopup.css";
 import "./SolverLimitsPopup.css";
@@ -86,18 +86,20 @@ function ColumnSelect({ value, columns, blank, prefix = "", onChange }: { value:
   );
 }
 
-/** The Options columns: the wired feed's, else the last plan's without its Amount. */
-function useOptionColumns(node: SolverNode): string[] {
-  const fed = useFeedColumns(node.id, "options");
+/** The Options columns, name and type: the wired feed's, else the last plan's without its Amount. */
+function useOptionColumns(node: SolverNode): { name: string; type: string }[] {
+  const fed = useFeedShape(node.id, "options");
   if (fed.length) return fed;
   const plan = node.cachedResult;
-  return plan && isFrameValue(plan) ? plan.columns.map((c) => c.name).filter((n) => n !== "Amount") : [];
+  return plan && isFrameValue(plan) ? plan.columns.filter((c) => c.name !== "Amount").map((c) => ({ name: c.name, type: c.type })) : [];
 }
 
 export function SolverLimitsPopup() {
   const state = useSyncExternalStore(solverLimits.subscribe, solverLimits.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const columns = useOptionColumns(state?.node ?? ({ id: "", cachedResult: null } as unknown as SolverNode));
+  const shape = useOptionColumns(state?.node ?? ({ id: "", cachedResult: null } as unknown as SolverNode));
+  const columns = shape.map((c) => c.name);
+  const numeric = shape.filter((c) => c.type === "number").map((c) => c.name);
   if (!state) return null;
   const node = state.node;
   const list = node.limitList;
@@ -110,6 +112,15 @@ export function SolverLimitsPopup() {
     solverLimits.open({ ...state! });
   }
   const patch = (i: number, p: Partial<SolverLimit>) => commit(list.map((l, j) => (j === i ? { ...l, ...p } : l)));
+  // A measure that can't stand as it is opens what it needs: an average a column to average, a share the line that
+  // says which options it counts.
+  const pickMeasure = (i: number, m: SolverMeasure) => {
+    const l = list[i];
+    const p: Partial<SolverLimit> = { measure: m };
+    if (m === "average" && !l.of) p.of = numeric[0] ?? "";
+    if (m === "share" && l.where === undefined && !l.by) { p.where = ""; p.is = ""; }
+    patch(i, p);
+  };
   const remove = (i: number) => commit(list.filter((_, j) => j !== i));
   const add = () => commit([...list, { of: columns.find((c) => !list.some((l) => l.of === c)) ?? "", sign: "le", limit: null }]);
   const close = () => solverLimits.close();
@@ -126,7 +137,7 @@ export function SolverLimitsPopup() {
           return (
             <div key={i} className="solver-limits__limit">
               <div className="solver-limits__line">
-                <select className="pivot-ctl" value={m} onChange={(e) => patch(i, { measure: e.target.value as SolverMeasure })} onPointerDown={stop}>
+                <select className="pivot-ctl" value={m} onChange={(e) => pickMeasure(i, e.target.value as SolverMeasure)} onPointerDown={stop}>
                   {SOLVER_MEASURE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 {m !== "used" && (

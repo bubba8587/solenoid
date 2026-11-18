@@ -5,7 +5,7 @@ import { connectionVersionStore } from "../graphSignals";
 import { compositePassStore } from "../compositeEditorStore";
 import { getOwningEditor } from "../activeGraph";
 import { makeFrameShapeResolver } from "../frameShapeResolver";
-import { columnNamesOf } from "../frameShape";
+import type { ShapeColumn } from "../frameShape";
 import { stopDragStart } from "../coarse";
 import { listLiteralItems } from "../listLiterals";
 import { csvField } from "../csvSafety";
@@ -49,20 +49,24 @@ export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeho
   );
 }
 
-/** The static column names of the Frame wired into `frameInput`; empty when unwired or unknown. */
-export function useFeedColumns(nodeId: string, frameInput: string): string[] {
+/** The static columns (name and type) of the Frame wired into `frameInput`; empty when unwired or unknown. */
+export function useFeedShape(nodeId: string, frameInput: string): ShapeColumn[] {
   // Resolve once per wiring change or graph pass (an upstream rename reaches the shape only through a pass), so typing never re-walks.
   const connVersion = useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   const passVersion = useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
-  const columns = useMemo(() => {
+  return useMemo(() => {
     const editor = getOwningEditor(nodeId);
     if (!editor) return [];
     const feed = editor.getConnections().find((c) => c.target === nodeId && c.targetInput === frameInput);
     if (!feed) return [];
-    return columnNamesOf(makeFrameShapeResolver(editor).outShape(feed.source, feed.sourceOutput));
+    return makeFrameShapeResolver(editor).outShape(feed.source, feed.sourceOutput)?.columns ?? [];
   }, [nodeId, frameInput, connVersion, passVersion]);
+}
 
-  return columns;
+/** The static column names of the Frame wired into `frameInput`; empty when unwired or unknown. */
+export function useFeedColumns(nodeId: string, frameInput: string): string[] {
+  const shape = useFeedShape(nodeId, frameInput);
+  return useMemo(() => shape.map((c) => c.name), [shape]);
 }
 
 /** A list of column names: the plain list field, suggesting the feed's columns not yet listed after what is typed. */

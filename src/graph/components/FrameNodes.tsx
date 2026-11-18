@@ -1447,6 +1447,10 @@ const SEARCH_GROUP_KEYS = ["group", "start", "allowed"];
 // The plan is the card's table; the best total and the limits, with their slack and shadow prices, ride below it.
 export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
   const [goal, setGoal] = useNodeField(data, "goal");
+  const connected = useConnectedInputs(data.id);
+  // Balancing reads the goal column alone: with a goal formula wired it stays, under a caption saying it isn't used,
+  // as Chart Builder's options its chart ignores do (DESIGN.md § Card sections).
+  const balanceIdle = connected.has("goalFormula");
   const [, bump] = useState(0);
   const removeLimit = (i: number) => {
     data.limitList = data.limitList.filter((_, j) => j !== i);
@@ -1461,8 +1465,13 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
       <InlineInputs node={data} emit={emit} keys={["options"]} fullWiredKeys={SOLVER_WHOLE} />
       <CardSection label="Goal">
         <SegToggle value={goal} options={SOLVER_GOAL_OPTIONS} onChange={setGoal} />
-        <InlineInputs node={data} emit={emit} keys={["objective", "goalFormula", "balance"]} labelFor={(k) => ({ objective: "Total of column", goalFormula: "Total of formula", balance: "Balance across" } as Record<string, string>)[k] ?? k} cableOnlyKeys={SOLVER_LAMBDA} fullWiredKeys={SOLVER_WHOLE} />
+        <InlineInputs node={data} emit={emit} keys={balanceIdle ? ["objective", "goalFormula"] : ["objective", "goalFormula", "balance"]} labelFor={solverGoalLabel} cableOnlyKeys={SOLVER_LAMBDA} fullWiredKeys={SOLVER_WHOLE} />
       </CardSection>
+      {balanceIdle && (
+        <CardSection label="Not used by a goal formula">
+          <InlineInputs node={data} emit={emit} keys={["balance"]} labelFor={solverGoalLabel} fullWiredKeys={SOLVER_WHOLE} />
+        </CardSection>
+      )}
       <CardSection label="Limits">
         <CardOpenButton label="Edit Limits" onOpen={(el) => solverLimits.open({ node: data, title: `${nodeDisplayName(data)}: Limits`, accent: readChipPopupStyle(el).accent })} />
         <div className="solenoid-pipeline">
@@ -1511,6 +1520,8 @@ export function SolverComponent({ data, emit }: NodeProps<SolverNodeType>) {
 }
 const SOLVER_WHOLE = new Set(["options", "objective", "goalFormula", "balance"]);
 const SOLVER_LAMBDA = new Set(["goalFormula"]);
+const solverGoalLabel = (k: string) =>
+  ({ objective: "Total of column", goalFormula: "Total of formula", balance: "Balance across" } as Record<string, string>)[k] ?? k;
 
 export function AssignmentComponent({ data, emit }: NodeProps<AssignmentNodeType>) {
   const [goal, setGoal] = useNodeField(data, "goal");

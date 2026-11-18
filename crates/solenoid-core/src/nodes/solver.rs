@@ -163,7 +163,7 @@ fn cell(fr: &Frame, j: usize, r: usize) -> Option<&V> {
 /// Points a goal formula is first read at across each option's range, and the rounds that each read more points near
 /// the last answer, at half the spacing of the round before.
 const CURVE_STEPS: usize = 16;
-const CURVE_ROUNDS: usize = 8;
+const CURVE_ROUNDS: usize = 14;
 
 struct Curved {
     x: Vec<f64>,
@@ -497,9 +497,8 @@ fn solver(c: &mut Call) -> Answer {
         Ok(b) => b,
         Err(e) => return fail(c, V::Err(e.into())),
     };
-    if formula.is_some() && !balance.is_empty() {
-        return fail(c, err(ErrorCode::Value, "Balance across reads the goal column, not a goal formula"));
-    }
+    // Balance across reads the goal column alone; the card shows it as not used while a goal formula is wired.
+    let balance = if formula.is_some() { String::new() } else { balance };
     // The objective: the goal column's number per option, blank 0; with neither a goal column nor a formula, every
     // option counts 1.
     let mut obj = vec![if formula.is_some() { 0.0 } else { 1.0 }; rows];

@@ -454,7 +454,7 @@ const EMPTY: &[(&str, &str, Empty)] = &[
     ("SliderInputNode", "step", Empty::Fallback(Fill::Num(1.0))),
     ("SolarPositionNode", "lat", Empty::Fallback(Fill::Num(0.0))),
     ("SolarPositionNode", "lon", Empty::Fallback(Fill::Num(0.0))),
-    ("SolverNode", "objective", Empty::Behavior("the amounts")),
+    ("SolverNode", "objective", Empty::Behavior("the amounts if no formula")),
     ("SolverNode", "balance", Empty::Behavior("none")),
     ("SortFrameNode", "column", Empty::Fallback(Fill::Text(""))),
     ("SparklineNode", "values", Empty::Fallback(Fill::Num(0.0))),
