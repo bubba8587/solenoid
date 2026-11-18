@@ -47,6 +47,12 @@ specific item.
   SUMIFS (Sum of, Where, Is, Sign, Limit), with Used, Slack and Shadow Price; branch and bound for Whole.
   **Assignment** (Hungarian), **Shortest Path** (Dijkstra; From/To columns by name), **Pareto Front**. A csv field
   reads through `Call::csv_text`, not `unwired` (which answers Undef for it).
+- **Staffing (Erlang C)** joins Optimize: arrivals, minutes a job, target wait and share in; a row per server count
+  and the fewest that meet the share out (checked against Erlang C computed directly). The **Optimize seed**
+  (`scripts/optimize/gen-seed.mjs`) has six problems: a roast mix with shadow prices, a project portfolio, crews to
+  jobs, a road route, plans worth weighing, dispatchers on shift. Seeds now use SUM, ROUND, AVERAGE, STDEV.S,
+  CONFIDENCE.NORM, Range and Running cards where they had single-function Expressions. Not done: a Gantt of the
+  job shop (it works in machine hours; the Gantt needs dates, and a job crossing a day's end needs a split).
 - **Service-territory step 2** (`scripts/service-territory/sim-graph.mjs`, in the seed): a Data Table Composite, a pass
   per run (sites × days, a draw each, then the Greedy Queue); 50 runs solve in ~2 s and settle near 2,350 drive hours
   a year, ±0.9 %. Past ~60 passes the core-table leak in `docs/backlog.md` § Performance slows it. Not done: common

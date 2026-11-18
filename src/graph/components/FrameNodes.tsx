@@ -54,7 +54,7 @@ import type {
 import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META, QUEUE_STEP_START_OPTIONS, QUEUE_FIT_OPTIONS, QUEUE_TURNS_OPTIONS, SEARCH_REACH_OPTIONS, SEARCH_ENDS_OPTIONS,
   SOLVER_GOAL_OPTIONS, ASSIGN_GOAL_OPTIONS, PATH_DIRECTION_OPTIONS, QUEUE_STEP_START_ASK, QUEUE_FIT_ASK, QUEUE_ORDER_DIR_OPTIONS, QUEUE_TURNS_ASK, SEARCH_REACH_ASK, SEARCH_ENDS_ASK, SEARCH_STUCK_OPTIONS, SEARCH_STUCK_ASK } from "../nodeClasses";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn, GreedyQueueNode as GreedyQueueNodeType, LocalSearchNode as LocalSearchNodeType, SolverNode as SolverNodeType,
-  AssignmentNode as AssignmentNodeType, ShortestPathNode as ShortestPathNodeType, ParetoNode as ParetoNodeType } from "../nodeClasses";
+  AssignmentNode as AssignmentNodeType, ShortestPathNode as ShortestPathNodeType, ParetoNode as ParetoNodeType, StaffingNode as StaffingNodeType } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import type { FilterCondConfig, SettleMode } from "../nodes/frame";
@@ -1486,7 +1486,22 @@ export function ParetoComponent({ data, emit }: NodeProps<ParetoNodeType>) {
     </NodeShell>
   );
 }
-const OPT_WHOLE = new Set(["costs", "links", "cost", "from", "to", "options", "lower", "higher"]);
+const OPT_WHOLE = new Set(["costs", "links", "cost", "from", "to", "options", "lower", "higher", "arrivals", "minutes", "target", "share"]);
+
+export function StaffingComponent({ data, emit }: NodeProps<StaffingNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} keys={["arrivals", "minutes", "target", "share"]} fullWiredKeys={OPT_WHOLE} />
+      <MeasuredSocketRow side="output" socketKey="options" nodeId={data.id} emit={emit} payload={data.outputs.options!.socket} hero>
+        <FrameOrCubeDisplay value={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="needed" nodeId={data.id} emit={emit} payload={data.outputs.needed!.socket}>
+        <span className="solenoid-node__io-label">Servers needed</span>
+        <ValueDisplay value={data.cachedNeeded} />
+      </MeasuredSocketRow>
+    </NodeShell>
+  );
+}
 const SEARCH_WHOLE = new Set(["items", "costColumn", "cost", "penalty", "group", "start", "allowed", "passes"]);
 
 export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {

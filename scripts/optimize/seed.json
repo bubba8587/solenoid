@@ -658,6 +658,66 @@
    }
   },
   {
+   "id": "calls",
+   "type": "ValueInputNode",
+   "init": {
+    "label": "Calls an hour",
+    "value": "42"
+   }
+  },
+  {
+   "id": "call_min",
+   "type": "ValueInputNode",
+   "init": {
+    "label": "Minutes a call",
+    "value": "6"
+   }
+  },
+  {
+   "id": "answer_min",
+   "type": "ValueInputNode",
+   "init": {
+    "label": "Answer within (min)",
+    "value": "1"
+   }
+  },
+  {
+   "id": "answer_share",
+   "type": "ValueInputNode",
+   "init": {
+    "label": "Share answered in time",
+    "value": "0.8"
+   }
+  },
+  {
+   "id": "desk",
+   "type": "StaffingNode",
+   "init": {
+    "label": "Dispatchers on shift"
+   }
+  },
+  {
+   "id": "desk_cols",
+   "type": "ColumnsNode",
+   "init": {
+    "label": "Answered in time, by dispatchers"
+   },
+   "stringLiterals": {
+    "columns": "Servers, Within Target"
+   }
+  },
+  {
+   "id": "desk_chart",
+   "type": "ChartNode",
+   "init": {
+    "label": "Answered in time, by dispatchers",
+    "op": "column"
+   },
+   "stringLiterals": {
+    "options": "xlabel=Dispatchers; ylabel=Share answered in time; ymax=1"
+   }
+  },
+  {
    "id": "grp_mix",
    "type": "GroupNode",
    "init": {
@@ -726,6 +786,23 @@
     ],
     "color": "violet"
    }
+  },
+  {
+   "id": "grp_desk",
+   "type": "GroupNode",
+   "init": {
+    "label": "Staffing: dispatchers on shift",
+    "members": [
+     "calls",
+     "call_min",
+     "answer_min",
+     "answer_share",
+     "desk",
+     "desk_cols",
+     "desk_chart"
+    ],
+    "color": "sky"
+   }
   }
  ],
  "cables": [
@@ -743,6 +820,12 @@
   "reach.path -> reach_cols.frame",
   "reach_cols.frame -> reach_chart.values",
   "plans.frame -> front.options",
-  "front.all -> front_chart.values"
+  "front.all -> front_chart.values",
+  "calls.value -> desk.arrivals",
+  "call_min.value -> desk.minutes",
+  "answer_min.value -> desk.target",
+  "answer_share.value -> desk.share",
+  "desk.options -> desk_cols.frame",
+  "desk_cols.frame -> desk_chart.values"
  ]
 }

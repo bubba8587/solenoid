@@ -1,5 +1,5 @@
-// Writes src/graph/seedGraphs/optimize.json: one worked problem for each of the Solver, Assignment, Shortest Path and
-// Pareto Front cards, built from plain tables and the existing cards around them. `node scripts/tune-seeds.mjs
+// Writes src/graph/seedGraphs/optimize.json: one worked problem for each of the Solver, Assignment, Shortest Path,
+// Pareto Front and Staffing cards, built from plain tables and the existing cards around them. `node scripts/tune-seeds.mjs
 // optimize` then lays it out.
 //   node scripts/optimize/gen-seed.mjs
 import { writeFileSync } from "node:fs";
@@ -100,12 +100,24 @@ add("front", "ParetoNode", { label: "Plans worth weighing" }, { stringLiterals: 
 chart("front_chart", "Drive hours against wait", "scatter", "x=Drive hours; y=Mean wait (days); annotate=Plan");
 wire("plans.frame -> front.options", "front.all -> front_chart.values");
 
+// ── 6. Staffing: how many dispatchers keep callers from waiting ──
+add("calls", "ValueInputNode", { label: "Calls an hour", value: "42" });
+add("call_min", "ValueInputNode", { label: "Minutes a call", value: "6" });
+add("answer_min", "ValueInputNode", { label: "Answer within (min)", value: "1" });
+add("answer_share", "ValueInputNode", { label: "Share answered in time", value: "0.8" });
+add("desk", "StaffingNode", { label: "Dispatchers on shift" });
+keep("desk_cols", "Answered in time, by dispatchers", "Servers, Within Target");
+chart("desk_chart", "Answered in time, by dispatchers", "column", "xlabel=Dispatchers; ylabel=Share answered in time; ymax=1");
+wire("calls.value -> desk.arrivals", "call_min.value -> desk.minutes", "answer_min.value -> desk.target", "answer_share.value -> desk.share",
+  "desk.options -> desk_cols.frame", "desk_cols.frame -> desk_chart.values");
+
 const groups = [
   ["grp_mix", "Product mix: what to roast this week", ["blends", "stock", "mix", "mix_units", "mix_chart", "mix_room"], "teal"],
   ["grp_portfolio", "Project portfolio: the best set within budget", ["projects", "budget", "portfolio", "portfolio_pick"], "blue"],
   ["grp_crews", "Crew assignment: who takes which job", ["hours", "crews"], "amber"],
   ["grp_route", "Shortest route: the road network", ["roads", "route", "reach", "reach_cols", "reach_chart"], "green"],
   ["grp_front", "Comparing plans: the real tradeoffs", ["plans", "front", "front_chart"], "violet"],
+  ["grp_desk", "Staffing: dispatchers on shift", ["calls", "call_min", "answer_min", "answer_share", "desk", "desk_cols", "desk_chart"], "sky"],
 ];
 for (const [id, label, members, color] of groups) nodes.push({ id, type: "GroupNode", init: { label, members, color } });
 
@@ -113,6 +125,6 @@ const shortForm = new URL("./seed.json", import.meta.url);
 writeFileSync(shortForm, JSON.stringify({ nodes, cables }, null, 1) + "\n");
 const saved = JSON.parse(execFileSync("npm", ["run", "-s", "validate-graph", "--", shortForm.pathname, "--json"], { encoding: "utf8", maxBuffer: 1 << 26 }));
 delete saved.cables;
-const seed = { v: saved.v, order: 336, label: "Optimize: five planning problems", group: "Modeling", nodes: saved.nodes, connections: saved.connections };
+const seed = { v: saved.v, order: 336, label: "Optimize: six planning problems", group: "Modeling", nodes: saved.nodes, connections: saved.connections };
 writeFileSync(new URL("../../src/graph/seedGraphs/optimize.json", import.meta.url), JSON.stringify(seed, null, 2) + "\n");
 console.log(`${seed.nodes.length} cards`);

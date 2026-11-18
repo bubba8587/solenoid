@@ -1322,6 +1322,12 @@ Tests: `lp.rs` (Wyndor's mix and its duals, a diet at least cost, equalities and
 
 Tests: `networks.test.ts` (least and greatest assignment, blank pairs and extra rows; a path both ways and one way, link counting, every place's distance, the refusals, the save; a front over two measures and with one turned to higher is better).
 
+### Staffing (Erlang C)
+
+`staffing` (`nodes/solver.rs`) is the M/M/c queue (Erlang 1917): jobs arrive at random at **Arrivals an hour** and each takes a random time averaging **Minutes a job** (both required; empty, no answer; 0 or below, `#DOMAIN!`). The load is arrivals × minutes / 60 servers' worth of work; c servers keep up only above it. Erlang B by its recursion, then C = cB / (c − load(1 − B)), stable where the factorial form overflows. For each c from the fewest that keep up: **Busy** (load / c), **Chance of Waiting** (Erlang C), **Mean Wait (min)** (C × minutes / (c − load)) and **Within Target** (1 − C·e^(−(c − load) × target / minutes)). **Target wait** (Fallback 0) and **Share within target** (Fallback 0.8, a fraction below 1, else `#DOMAIN!`) set **Servers needed**, the fewest meeting the share; the table runs three rows past it (at most 200 rows). A load above 10,000 servers is `#DOMAIN!`.
+
+Tests: `networks.test.ts` (100 calls an hour at 3 minutes, 80% within 20 seconds: 8 agents, and each row's service level against Erlang C computed directly).
+
 ### Group Cost Settle
 
 The Group Cost Settle card answers who pays whom in the fewest transfers, with no solver. Its kernels are the core's `planners.rs`, and both modes feed one greedy core, `min_transfers(balances)`:

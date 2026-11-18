@@ -17,6 +17,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "AssignmentNode" => Some(assignment(c)),
         "ShortestPathNode" => Some(shortest_path(c)),
         "ParetoNode" => Some(pareto(c)),
+        "StaffingNode" => Some(staffing(c)),
         _ => None,
     }
 }
@@ -567,4 +568,77 @@ fn pareto(c: &mut Call) -> Answer {
     });
     all.push(num_column("Beaten By", beaten.iter().map(|&b| V::Num(b as f64)).collect()));
     out(c, frame_v(taken(&f, &front_rows)), frame_v(all))
+}
+
+/// The Staffing card: Erlang C, the M/M/c queue (Erlang 1917). Jobs arrive at random at a steady rate and each takes a
+/// random time with a steady mean; with c servers, the chance a job waits, the mean wait, and the share started within
+/// the target wait. Answers a row per server count from the fewest that keep up, and the fewest that meet the share.
+fn staffing(c: &mut Call) -> Answer {
+    let out = |c: &mut Call, table: Cv, needed: V| {
+        c.show("cachedResult", table.clone());
+        c.show("cachedNeeded", needed.clone());
+        Ok(vec![("options".into(), table), ("needed".into(), Cv::from(needed))])
+    };
+    let fail = |c: &mut Call, e: V| out(c, Cv::V(e.clone()), e);
+    let read = |c: &Call, k: &str| match c.read_input(k, c.unwired(k)) {
+        V::Num(n) if n.is_finite() => Ok(Some(n)),
+        V::Null | V::Undef => Ok(None),
+        v if v.is_sol_error() => Err(v),
+        _ => Err(err(ErrorCode::Value, format!("{} takes a number", c.label(k)))),
+    };
+    let vals = (|| -> Result<_, V> {
+        Ok((read(c, "arrivals")?, read(c, "minutes")?, read(c, "target")?, read(c, "share")?))
+    })();
+    let (arrivals, minutes, target, share) = match vals {
+        Ok(v) => v,
+        Err(e) => return fail(c, e),
+    };
+    let (Some(rate), Some(mins)) = (arrivals, minutes) else { return out(c, Cv::NULL, V::Null) };
+    if rate <= 0.0 || mins <= 0.0 {
+        return fail(c, err(ErrorCode::Domain, "Arrivals and minutes a job take numbers above 0"));
+    }
+    let target = target.unwrap_or(0.0).max(0.0);
+    let share = share.unwrap_or(0.8);
+    if !(0.0..1.0).contains(&share) {
+        return fail(c, err(ErrorCode::Domain, "Share within target is a fraction below 1, such as 0.8"));
+    }
+    // The load in servers' worth of work; c servers keep up only while c > load.
+    let load = rate * mins / 60.0;
+    if load > 10_000.0 {
+        return fail(c, err(ErrorCode::Domain, "Staffing takes a load of at most 10,000 servers"));
+    }
+    let first = load.floor() as usize + 1;
+    // Erlang B by its recursion, then C from B: stable for large counts where the factorial form overflows.
+    let mut b = 1.0;
+    for k in 1..first {
+        b = load * b / (k as f64 + load * b);
+    }
+    let mut rows: Vec<[f64; 5]> = Vec::new();
+    let mut needed = None;
+    let mut k = first;
+    loop {
+        b = load * b / (k as f64 + load * b);
+        let cf = k as f64;
+        let wait_chance = cf * b / (cf - load * (1.0 - b));
+        let mean_wait = wait_chance * mins / (cf - load);
+        let within = 1.0 - wait_chance * libm::exp(-(cf - load) * target / mins);
+        rows.push([cf, load / cf, wait_chance, mean_wait, within]);
+        if needed.is_none() && within >= share {
+            needed = Some(cf);
+        }
+        // Three rows past the answer, so the table shows what one more server buys.
+        if needed.is_some_and(|n| cf >= n + 3.0) || rows.len() > 200 {
+            break;
+        }
+        k += 1;
+    }
+    let col = |i: usize, name: &str| num_column(name, rows.iter().map(|r| V::Num(r[i])).collect());
+    let table = vec![
+        col(0, "Servers"),
+        col(1, "Busy"),
+        col(2, "Chance of Waiting"),
+        col(3, "Mean Wait (min)"),
+        col(4, "Within Target"),
+    ];
+    out(c, frame_v(table), needed.map_or(V::Null, V::Num))
 }

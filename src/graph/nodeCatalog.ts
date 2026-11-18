@@ -4,7 +4,7 @@ import {
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, UsMapNode, QuiverNode, RecordNode, CardsNode, GanttNode,
-  FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, WindowNode, GreedyQueueNode, LocalSearchNode, SolverNode, AssignmentNode, ShortestPathNode, ParetoNode,
+  FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, EditFrameNode, DescribeNode, CorrMatrixNode, WindowNode, GreedyQueueNode, LocalSearchNode, SolverNode, AssignmentNode, ShortestPathNode, ParetoNode, StaffingNode,
   ArithmeticNode, DisplayNode, MathFXNode,
   FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupListsNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ComparisonNode, ConduitNode, CastNode, ConstantNode, PhysicsConstantNode, MRoundNode,
@@ -706,6 +706,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "assignment", added: NEXT_RELEASE, label: "Assignment", description: "Pairs each row with one column, people with jobs say, for the least or greatest total. A blank cell can't be paired.", create: () => new AssignmentNode(), parity: false, keywords: "assignment hungarian munkres matching pair match crew job worker task shift one to one cost matrix optimize" },
           { type: "shortest-path", added: NEXT_RELEASE, label: "Shortest Path", description: "The cheapest way through a table of links from one place to another, or the distance to every place.", create: () => new ShortestPathNode(), parity: false, keywords: "shortest path dijkstra route network graph link edge road distance hop travel optimize" },
           { type: "pareto-front", added: NEXT_RELEASE, label: "Pareto Front", description: "The options no other option beats on every measure: the real tradeoffs between cost, time and quality.", create: () => new ParetoNode(), parity: false, keywords: "pareto front frontier dominated non-dominated tradeoff trade-off multi objective criteria compare plans efficient optimize" },
+          { type: "staffing", added: NEXT_RELEASE, label: "Staffing (Erlang C)", description: "How many agents, crews or counters a queue needs: from the arrivals an hour and the minutes a job, each server count's chance of waiting, mean wait and share started within a target.", create: () => new StaffingNode(), parity: false, keywords: "staffing erlang c queue queueing call center agents servers technicians wait service level occupancy utilization m/m/c capacity planning" },
         ],
       },
       {

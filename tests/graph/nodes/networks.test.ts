@@ -1,6 +1,6 @@
 // [[A1]] visualGraphCalculator: Assignment, Shortest Path and Pareto Front.
 import { describe, it, expect } from "vitest";
-import { AssignmentNode, ShortestPathNode, ParetoNode } from "../../../src/graph/nodes/optimize";
+import { AssignmentNode, ShortestPathNode, ParetoNode, StaffingNode } from "../../../src/graph/nodes/optimize";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { isSolError } from "../../../src/graph/errorValue";
 
@@ -78,5 +78,23 @@ describe("Pareto Front", () => {
     expect(rows(out.all).map((r) => [r.Plan, r["On Front"], r["Beaten By"]])).toEqual([["A", true, 0], ["B", true, 0], ["C", false, 1], ["D", true, 0]]);
     n.stringLiterals = { lower: "Hours", higher: "Response" };
     expect(rows(call<{ front: unknown }>(n, { options }).front).map((r) => r.Plan)).toEqual(["D"]);
+  });
+});
+
+describe("Staffing (Erlang C)", () => {
+  it("gives each server count's chance of waiting and service level, and the fewest that meet the target", () => {
+    // 100 calls an hour, 3 minutes each (5 erlangs), 80% answered within 20 seconds: 8 agents, as Erlang C computes.
+    const n = new StaffingNode();
+    const out = call<{ options: unknown; needed: number }>(n, { arrivals: 100, minutes: 3, target: 1 / 3, share: 0.8 });
+    const r = rows(out.options);
+    expect(r[0].Servers).toBe(6);
+    expect(r.map((x) => Math.round((x["Within Target"] as number) * 1e4) / 1e4).slice(0, 4)).toEqual([0.4743, 0.7404, 0.8801, 0.9484]);
+    expect(Math.round((r[1]["Chance of Waiting"] as number) * 1e4) / 1e4).toBe(0.3241);
+    expect(out.needed).toBe(8);
+    expect(r[r.length - 1].Servers).toBe(11);
+  });
+  it("answers nothing until both rates are set, and refuses a share of 1 or more", () => {
+    expect(call<{ needed: unknown }>(new StaffingNode(), { arrivals: 100 }).needed).toBe(null);
+    expect(isSolError(call<{ needed: unknown }>(new StaffingNode(), { arrivals: 100, minutes: 3, share: 1 }).needed)).toBe(true);
   });
 });

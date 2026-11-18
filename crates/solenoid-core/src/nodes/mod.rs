@@ -669,6 +669,7 @@ pub const DIRECT: &[&str] = &[
     "SplitColumnNode",
     "SplitFrameNode",
     "StackNode",
+    "StaffingNode",
     "StandardizeNode",
     "SubstituteNode",
     "SumIfsNode",

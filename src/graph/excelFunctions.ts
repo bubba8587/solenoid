@@ -16,7 +16,7 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   DECISIONMATRIX: "Decision Matrix", CUBEINPUT: "Cube Input", GROUPCOSTSETTLE: "Group Cost Settle", PAYOFFPLANNER: "Payoff Planner", SENSITIVITY: "Sensitivity", ALLOCATOR: "Allocator", RECONCILE: "Reconcile", DESCRIBE: "Describe", CORRELATIONMATRIX: "Correlation Matrix", KMEANS: "K-Means", PCA: "PCA", LOGISTICREGRESSION: "Logistic Regression", WINDOW: "Window",
   NESTJOIN: "Nest Join", BUILDCUBE: "Build Cube", CUBECOLUMNS: "Cube Columns",
   CUBEROLLUP: "Cube Rollup",
-  SETCELL: "Set Cell", CATEGORIZE: "Categorize", GREEDYQUEUE: "Greedy Queue", LOCALSEARCH: "Local Search", SOLVER: "Solver", ASSIGNMENT: "Assignment", SHORTESTPATH: "Shortest Path", PARETOFRONT: "Pareto Front",
+  SETCELL: "Set Cell", CATEGORIZE: "Categorize", GREEDYQUEUE: "Greedy Queue", LOCALSEARCH: "Local Search", SOLVER: "Solver", ASSIGNMENT: "Assignment", SHORTESTPATH: "Shortest Path", PARETOFRONT: "Pareto Front", STAFFINGERLANGC: "Staffing (Erlang C)",
 };
 
 export const NODE_SURFACE_NAMES: Readonly<Record<string, string>> = {
