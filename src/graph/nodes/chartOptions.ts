@@ -13,6 +13,8 @@ export interface ChartOptions {
   xmin?: number;
   xmax?: number;
   aspect?: AspectMode;
+  /** Calendar Heatmap: sum the days into ISO weeks, months or years. */
+  period?: CalendarPeriod;
   yscale?: AxisScale;
   maxgap?: number;
   linestyle?: LineStyle;
@@ -53,6 +55,8 @@ export type StackMode = "stacked" | "percent";
 
 // Update these key lists whenever a renderer learns or drops an option.
 
+export type CalendarPeriod = "day" | "week" | "month" | "year";
+
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "stacked" | "zoom"
   | "layout" | "tiers" | "fit" | "critical" | "baseline" | "arrows" | "today" | "weekends" | "labels" | "histogram" | "minutes" | "window" | "columns"
@@ -60,7 +64,7 @@ export type ChartBuilderKey =
   | "cardsize" | "clamp"
   | "x" | "y" | "s" | "c" | "annotate" | "by" | "linestyle" | "aspect" | "xmin" | "xmax"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize"
-  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin" | "yscale" | "maxgap";
+  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin" | "yscale" | "maxgap" | "period";
 
 export type ChartTargetId =
   | "column" | "bar" | "line" | "area" | "scatter" | "xyline"
@@ -92,7 +96,7 @@ const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "layout", "critical", "minutes", "window", "week"];
 const RECORD_KEYS: readonly ChartBuilderKey[] =
   ["title", "c", "fontsize", "cardsize", "clamp"];
-const CALHEAT_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
+const CALHEAT_KEYS: readonly ChartBuilderKey[] = ["title", "period", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
 const CONTOUR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
 const FIELD_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "fontsize"];
 const HEATMAP_KEYS: readonly ChartBuilderKey[] =

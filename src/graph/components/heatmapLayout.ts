@@ -73,7 +73,7 @@ export function heatmapLayout(a: HeatLayoutInput): HeatLayout {
 }
 
 /** The cell under a point, as payload indices, or null off the grid. */
-export function heatCellAt(l: HeatLayout, x: number, y: number): { r: number; c: number } | null {
+export function heatCellAt(l: Pick<HeatLayout, "gx" | "gy" | "cw" | "ch" | "nR" | "nC" | "lower">, x: number, y: number): { r: number; c: number } | null {
   const c = Math.floor((x - l.gx) / l.cw);
   const vr = Math.floor((y - l.gy) / l.ch);
   if (!(c >= 0 && c < l.nC && vr >= 0 && vr < l.nR)) return null;
@@ -182,4 +182,124 @@ export function calendarHeight(days: readonly number[], W: number, fs: number, c
   while (b < MAX_BANDS && availW / Math.ceil(weeks / b) < 8) b++;
   const cell = Math.min(16, availW / Math.ceil(weeks / b));
   return Math.ceil(b * (padT + 7 * cell) + (b - 1) * BAND_GAP + padB);
+}
+
+// ─── Calendar by week, month or year ──────────────────────────────────────────
+
+export type CalPeriod = "week" | "month" | "year";
+
+/** A grouped calendar's cells: a row per year and a column per ISO week or month, or one row of years. Each cell is
+ *  its period's first day, null where the year has no such week (week 53 in most years). */
+export interface PeriodGrid {
+  period: CalPeriod;
+  byStart: Map<number, number>;
+  rows: string[]; nR: number; nC: number;
+  /** Years of data the grid left out at the start, which the note under it counts. */
+  cutYears: number;
+  start(r: number, c: number): number | null;
+}
+
+const MS_DAY = 86_400_000;
+const EPOCH_SERIAL = 25569;
+const ymdSerial = (y: number, m: number, d: number) => Date.UTC(y, m, d) / MS_DAY + EPOCH_SERIAL;
+const yearOf = (serial: number) => serialToJsDate(serial).getUTCFullYear();
+/** The ISO year a week (given by its Monday) belongs to: its Thursday's. */
+export const isoYearOf = (monday: number) => yearOf(monday + 3);
+/** The Monday of ISO week 1: the week holding 4 January. */
+const isoWeekOne = (y: number) => { const jan4 = ymdSerial(y, 0, 4); return jan4 - mondayIndex(jan4); };
+export const isoWeekOf = (monday: number) => Math.round((monday - isoWeekOne(isoYearOf(monday))) / 7) + 1;
+/** The most years a grid by week or month stacks; past it the earliest drop, as the day grid keeps its last year. */
+const MAX_YEAR_ROWS = 12;
+const MAX_YEAR_COLS = 60;
+
+export function periodGrid(days: readonly number[], values: readonly number[], period: CalPeriod): PeriodGrid | null {
+  if (days.length === 0) return null;
+  const byStart = new Map<number, number>();
+  for (let i = 0; i < days.length; i++) byStart.set(days[i], (byStart.get(days[i]) ?? 0) + (values[i] ?? 0));
+  const yearKey = period === "week" ? isoYearOf : yearOf;
+  let y0 = Infinity, y1 = -Infinity;
+  for (const d of byStart.keys()) { const y = yearKey(d); if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const first = Math.max(y0, y1 - (period === "year" ? MAX_YEAR_COLS : MAX_YEAR_ROWS) + 1);
+  const years = Array.from({ length: y1 - first + 1 }, (_, i) => first + i);
+  const cutYears = first - y0;
+  if (period === "year") {
+    return { period, byStart, rows: [""], nR: 1, nC: years.length, cutYears, start: (_r, c) => ymdSerial(years[c], 0, 1) };
+  }
+  if (period === "month") {
+    return { period, byStart, rows: years.map(String), nR: years.length, nC: 12, cutYears, start: (r, c) => ymdSerial(years[r], c, 1) };
+  }
+  return {
+    period, byStart, rows: years.map(String), nR: years.length, nC: 53, cutYears,
+    start: (r, c) => { const m = isoWeekOne(years[r]) + 7 * c; return isoYearOf(m) === years[r] ? m : null; },
+  };
+}
+
+/** The column labels: month initials over the week each month opens in (by a common year's days), the months, or
+ *  the years. */
+export function periodColLabels(g: PeriodGrid, cellW: number): { c: number; text: string }[] {
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  if (g.period === "week") {
+    return MONTHS.map((m, i) => ({ c: Math.floor((ymdSerial(2025, i, 1) - ymdSerial(2025, 0, 1)) / 7), text: m[0] }));
+  }
+  if (g.period === "month") return MONTHS.map((m, c) => ({ c, text: cellW >= 22 ? m : m[0] }));
+  const step = Math.max(1, Math.ceil(26 / Math.max(cellW, 1e-6)));
+  const out: { c: number; text: string }[] = [];
+  for (let c = g.nC - 1; c >= 0; c -= step) out.push({ c, text: String(yearOf(g.start(0, c)!)) });
+  return out;
+}
+
+/** The text a hovered cell names: `W07 2026`, `Feb 2026` or `2026`. */
+export function periodLabel(period: CalPeriod, start: number): string {
+  if (period === "year") return String(yearOf(start));
+  if (period === "month") return `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][serialToJsDate(start).getUTCMonth()]} ${yearOf(start)}`;
+  return `W${String(isoWeekOf(start)).padStart(2, "0")} ${isoYearOf(start)}`;
+}
+
+const PERIOD_MAX_CELL: Record<CalPeriod, number> = { week: 16, month: 30, year: 30 };
+
+export interface PeriodLayout {
+  /** The grid's top left corner and cell size, in the shape `heatCellAt` reads. */
+  gx: number; gy: number; cw: number; ch: number; nR: number; nC: number; lower: false;
+  gap: number; lineH: number;
+  rowLabelX: number | null;
+  colLabelY: number;
+  noteY: number | null;
+  cbar: { x: number; y: number; w: number; h: number; textX: number } | null;
+}
+
+/** Where a grouped calendar sits: cells as wide as the width allows up to a cap, square, except that by week a row
+ *  is at least a label tall, since 53 columns leave square cells too thin to tell the years apart. Left-aligned, with
+ *  the year labels left, a row of labels below and a note line when years were cut. `H` null asks for the height
+ *  the cells want (the card's), else the cells shrink to fit it. */
+export function periodLayout(g: PeriodGrid, W: number, H: number | null, fs: number, rowLabelW: number, cbarTickW: number | null): PeriodLayout {
+  const lineH = Math.ceil(10.5 * fs);
+  const padT = Math.ceil(5 * fs);
+  const rowLabW = rowLabelW > 0 ? Math.min(rowLabelW, W * 0.28) + 3 : 0;
+  const cbarW = cbarTickW === null ? 0 : 6 + 8 + 3 + cbarTickW;
+  const below = lineH + 3 + (g.cutYears > 0 ? lineH : 0) + 1;
+  const availW = Math.max(1, W - rowLabW - cbarW - 1);
+  let cw = Math.min(PERIOD_MAX_CELL[g.period], availW / g.nC);
+  let ch = g.period === "week" ? Math.max(cw, lineH) : cw;
+  if (H !== null) {
+    const availH = Math.max(1, H - padT - below);
+    if (g.nR * ch > availH) { ch = availH / g.nR; if (g.period !== "week") cw = ch; else cw = Math.min(cw, ch); }
+  }
+  const gx = rowLabW, gy = padT;
+  const gridW = cw * g.nC, gridH = ch * g.nR;
+  return {
+    gx, gy, cw, ch, nR: g.nR, nC: g.nC, lower: false,
+    gap: Math.min(cw, ch) > 6 ? 1 : 0.5, lineH,
+    rowLabelX: rowLabW > 0 ? gx - 3 : null,
+    colLabelY: gy + gridH + 3,
+    noteY: g.cutYears > 0 ? gy + gridH + 3 + lineH + lineH / 2 : null,
+    cbar: cbarTickW === null ? null : { x: gx + gridW + 6, y: gy, w: 8, h: gridH, textX: gx + gridW + 6 + 8 + 3 },
+  };
+}
+
+/** A grouped calendar's figure height at a card's width. */
+export function periodHeight(days: readonly number[], period: CalPeriod, W: number, fs: number, cbarTickW: number | null): number {
+  const g = periodGrid(days, days.map(() => 0), period);
+  if (!g) return 90;
+  const L = periodLayout(g, W, null, fs, period === "year" ? 0 : 24 * fs, cbarTickW);
+  return Math.ceil(L.colLabelY + (L.noteY === null ? L.lineH : L.noteY - L.colLabelY + L.lineH / 2) + 1);
 }
