@@ -21,8 +21,6 @@ import { isSvgValue } from "../svgValue";
 import { isDocumentValue } from "../documentValue";
 import { InlineRefValue } from "./inlineRefDisplay";
 import { FigureScope } from "./chartCore";
-import { RefreshIcon } from "./RefreshIcon";
-import { CloseIcon } from "./CloseIcon";
 import { errorTip } from "./ErrorChip";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { useCoversCanvas } from "./useCoversCanvas";
@@ -30,14 +28,63 @@ import "./Markdown.css";
 import "./ReportOverlay.css";
 import "./DashboardOverlay.css";
 import "./HtmlPageOverlay.css";
+import solenoidIcon from "../../logo/solenoidicon.svg";
 
 /** Prints the page alone, every sheet of it with its own backgrounds; the print stylesheet hides the rest of the app. */
-function printPage(): void {
-  const root = document.documentElement;
-  root.classList.add("sol-printing-page");
-  const done = () => { root.classList.remove("sol-printing-page"); window.removeEventListener("afterprint", done); };
-  window.addEventListener("afterprint", done);
-  window.print();
+/** While a page is open, Print (Ctrl+P, ⌘P, the browser's menu) prints the page alone: the class the print
+ *  stylesheet keys on is set for the dialog and cleared after. */
+function usePrintsThePage(open: boolean): void {
+  useEffect(() => {
+    if (!open) return;
+    const root = document.documentElement;
+    const on = () => root.classList.add("sol-printing-page");
+    const off = () => root.classList.remove("sol-printing-page");
+    // The desktop app's webview has no Print shortcut of its own, so the page answers Ctrl+P and ⌘P itself.
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") { e.preventDefault(); on(); window.print(); }
+    };
+    window.addEventListener("beforeprint", on);
+    window.addEventListener("afterprint", off);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("beforeprint", on);
+      window.removeEventListener("afterprint", off);
+      window.removeEventListener("keydown", onKey);
+      off();
+    };
+  }, [open]);
+}
+
+/** The way back to the app, the page's only chrome: shown at the top and on a scroll up or a pointer near it, hidden
+ *  on a scroll down so the page has the whole window. */
+function BackButton({ scroller }: { scroller: HTMLElement | null }) {
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    if (!scroller) return;
+    let last = scroller.scrollTop;
+    const onScroll = () => {
+      const y = scroller.scrollTop;
+      if (y < 48 || y < last - 4) setShown(true);
+      else if (y > last + 4) setShown(false);
+      last = y;
+    };
+    const onMove = (e: PointerEvent) => { if (e.clientY < 72 && e.clientX < 160) setShown(true); };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pointermove", onMove);
+    return () => { scroller.removeEventListener("scroll", onScroll); window.removeEventListener("pointermove", onMove); };
+  }, [scroller]);
+  return (
+    <button
+      type="button"
+      className={`sol-htmlpage__back${shown ? "" : " sol-htmlpage__back--hidden"}`}
+      onClick={() => htmlPageStore.close()}
+      onFocus={() => setShown(true)}
+      title="Back to Solenoid (Esc)"
+      aria-label="Back to Solenoid"
+    >
+      <span className="sol-htmlpage__mark" style={{ WebkitMaskImage: `url("${solenoidIcon}")`, maskImage: `url("${solenoidIcon}")` }} />
+    </button>
+  );
 }
 
 /** A value drawn as a box rather than in the page's text. */
@@ -124,15 +171,8 @@ export function HtmlPageOverlay() {
   const node = found instanceof HtmlPageNode ? found : undefined;
   useEscapeToClose(() => htmlPageStore.close(), !!node);
   useCoversCanvas(!!node);
-  // On a phone the page opens under the app's accent bar, which holds the notch inset, as a Dashboard does.
-  useEffect(() => {
-    if (!node) return;
-    const root = document.documentElement;
-    const place = () => root.style.setProperty("--dash-top", `${document.querySelector(".solenoid-menubar")?.getBoundingClientRect().bottom ?? 0}px`);
-    place();
-    window.addEventListener("resize", place);
-    return () => { window.removeEventListener("resize", place); root.style.removeProperty("--dash-top"); };
-  }, [node]);
+  usePrintsThePage(!!node);
+  const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   // Back from editing the files elsewhere, the page reads them again; unchanged text redraws nothing.
   const openId = node?.id;
   useEffect(() => {
@@ -144,22 +184,8 @@ export function HtmlPageOverlay() {
   if (!node) return null;
   const render = node.render;
   return (
-    <div className="dashboard-overlay sol-htmlpage" onPointerDown={(e) => e.stopPropagation()}>
-      <div className="report-header">
-        <span className="report-title">{node.label?.trim() || "HTML Page"}</span>
-        <div className="report-header-actions">
-          {render && (
-            <button type="button" className="report-embed-btn" onClick={() => printPage()} title="Print the page, or save it as a PDF">Print</button>
-          )}
-          <button type="button" className="report-close" onClick={() => void refreshConnection(node.id)} title="Read the files again" aria-label="Read the files again">
-            <RefreshIcon size={14} />
-          </button>
-          <button type="button" className="report-close" onClick={() => htmlPageStore.close()} title="Close (Esc)" aria-label="Close">
-            <CloseIcon size={16} />
-          </button>
-        </div>
-      </div>
-      <div className="sol-htmlpage__scroll">
+    <div className="sol-htmlpage" role="dialog" aria-label={node.label?.trim() || "HTML Page"} onPointerDown={(e) => e.stopPropagation()}>
+      <div className="sol-htmlpage__scroll" ref={setScroller}>
         {render ? (
           <>
             <style>{render.css}</style>
@@ -171,6 +197,7 @@ export function HtmlPageOverlay() {
           <div className="sol-htmlpage__empty">Pick a page on the card</div>
         )}
       </div>
+      <BackButton scroller={scroller} />
     </div>
   );
 }

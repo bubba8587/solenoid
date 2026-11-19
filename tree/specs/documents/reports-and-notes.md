@@ -536,7 +536,7 @@ flowchart LR
 `collapsed`. Both files are named relative to the data folder (Settings ▸ Data), as Local File's are, and read through
 the same file bridge: the desktop app's folder, the headless runner's, or on the web the demo vault, whose `.html` and
 `.css` files the build bundles (`demoVaultData.ts`). The card picks each with the data folder's file picker, which lists
-only that kind. The files are read once per name, folder and Refresh (the board's refresh button, or Refresh All
+only that kind. The files are read once per name, folder and Refresh (the window coming back into focus while the page is open, or Refresh All
 Connections), not every compute. A file that can't be read is `#REF!` naming it; the inputs stay. On the desktop a card with no
 page offers **New page**: it writes a starter `.html` and `.css` (`STARTER_HTML`, `STARTER_CSS`) under the data folder's
 `pages/` at the first free name (`starterName`: `page`, `page-2`…), never over a file that's there, and picks both. The
@@ -579,10 +579,13 @@ can't read stays as written and is named on the card ("pages/img/gone.png isn't 
 draws. The demo vault's pictures and fonts ship in the web build beside its workbooks (`DEMO_VAULT_BINARY`), so the
 examples show on the web.
 
-**On screen** (`HtmlPageOverlay.tsx`, open state in `htmlPageStore.ts`): the Dashboard board's chrome (the header with
-the card's title, Print, a Refresh that reads the files again and Close; Esc closes; the files are read again too when
-the app's window comes back into focus, so an edit made in another editor shows on return) over the page on the surface color
-(the canvas under it stops painting, `useCoversCanvas`, as under a Dashboard), sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
+**On screen** (`HtmlPageOverlay.tsx`, open state in `htmlPageStore.ts`): the page has the whole window, none of the
+app's chrome (menu, toolbar, status bar, a header) over it, the canvas under it not painting (`useCoversCanvas`). The one
+control is a way back: a button in the top-left corner with the Solenoid mark (`sol-htmlpage__back`), neutral in the
+app's light or dark whatever the page's colors, clear of a phone's notch. It hides while the page scrolls down and
+returns on a scroll up, at the top, on a pointer near it or on keyboard focus; it and Esc close the page. The files are
+read again when the app's window comes back into focus, so an edit made in another editor shows on return. The page's
+doc pads its top clear of the button. The page is sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
 Report's preview is, with each slot's value portalled in. A number, text, a date, a list or an error draws inline in
 the page's text. A **figure** (a chart, a Frame, a Cube, a diagram, a picture, an SVG or a document) draws as a Dashboard
 box (`dashboard-box`): its name as the label, its value `rich` and `fill`. A chart, diagram or picture's box is 320 px
@@ -606,18 +609,18 @@ Format Controller's scale. A page's `@media (prefers-color-scheme: …)` follows
 figure's own title `.sol-box__title`, so a page that heads a figure itself hides the label and title
 (`.sol-box__label, .sol-box__title { display: none }`). These names stay; the app's own classes beside them may change.
 
-**Print.** The header's Print prints the page alone (`sol-printing-page` on the root for the print, an `@media print`
-block in `HtmlPageOverlay.css`): the app and the header hidden, the page across as many sheets as it needs with its
-backgrounds kept (`print-color-adjust: exact`), and a box never split between sheets. A page's own `@media print` rules
-apply too. Saving as PDF is the browser's or the system's print dialog.
+**Print.** While a page is open, Print (Ctrl+P or ⌘P, which the page answers itself since the desktop webview has no
+shortcut, or the browser's menu) prints the page alone (`sol-printing-page` on the root for the dialog, an `@media
+print` block in `HtmlPageOverlay.css`): the app and the back button hidden, the page across as many sheets as it needs
+with its backgrounds kept (`print-color-adjust: exact`), and a box never split between sheets. A page's own `@media
+print` rules apply too. Saving as PDF is the print dialog's.
 
 **Links.** A link goes where `pageLink` says, and the app's own address never changes. A link to an id in the page
 (`<a href="#chairs">`) scrolls the page to it, smoothly. A link to another `.html` in the data folder, relative to the
 page's file (`team.html`, `../q3.html#east`), opens the HTML Page in the same graph that shows that file, at the id it names;
 when none does, a notice says so. An `http(s):` or `mailto:` link opens outside the app (`openExternal`). Anything else
 (another scheme, a path out of the data folder, a file that isn't a page) does nothing. So a graph's pages make a
-site: the showcase's Contents page links the rest. A section a link names carries the `id` (`<section id="{{ c | lower }}">`, Knap fills it). On a phone the page opens under the app's accent bar, as
-a Dashboard does, and a page's own `@media` rules answer the screen's width.
+site: the showcase's Contents page links the rest. A section a link names carries the `id` (`<section id="{{ c | lower }}">`, Knap fills it). On a phone a page's own `@media` rules answer the screen's width.
 
 Tests: `tests/graph/nodes/htmlPage.test.ts`: the CSS scoped (page selectors, lists, `@media`, `@keyframes` left alone) and
 kept from fetching; a document split into its body and styles; a bare tag's slot; the card's inputs in first-use order;

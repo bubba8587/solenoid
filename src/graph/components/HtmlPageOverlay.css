@@ -1,5 +1,15 @@
-/* An HTML Page: the page scrolls under the board's header on the page's own ground; its own CSS, scoped to
-   .sol-htmlpage__doc, styles everything inside. A figure's box is a Dashboard box (DashboardOverlay.css). */
+/* An HTML Page: the whole window, none of the app's chrome but one button back, the page on its own ground; its own
+   CSS, scoped to .sol-htmlpage__doc, styles everything inside. A figure's box is a Dashboard box (DashboardOverlay.css). */
+.sol-htmlpage {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+/* A notice raised from a page (a link to a page the graph doesn't show) shows over it. */
+html.sol-canvas-covered:has(.sol-htmlpage) .solenoid-notices { z-index: 9100; bottom: calc(12px + env(safe-area-inset-bottom)); }
 .sol-htmlpage__scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -8,7 +18,8 @@
   color: var(--text);
 }
 .sol-htmlpage__doc {
-  padding: 24px clamp(16px, 4vw, 48px) 48px;
+  /* Clear of the back button and a phone's notch at the top; a page that wants its own edge sets body's padding. */
+  padding: calc(56px + env(safe-area-inset-top)) clamp(16px, 4vw, 48px) calc(48px + env(safe-area-inset-bottom));
   font-family: var(--font-sans);
   line-height: 1.5;
 }
@@ -27,6 +38,38 @@
   font: inherit;
   color: inherit;
 }
+/* The way back: neutral in the app's light or dark whatever the page's colors, so it reads on any page, and out of the
+   way while the page scrolls down. */
+.sol-htmlpage__back {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
+  z-index: 9001;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--text);
+  cursor: pointer;
+  transition: opacity 160ms ease, transform 160ms ease, border-color 120ms ease;
+}
+.sol-htmlpage__back:hover { border-color: var(--text-dim); }
+.sol-htmlpage__back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sol-htmlpage__back--hidden { opacity: 0; transform: translateY(-8px); pointer-events: none; }
+.sol-htmlpage__mark {
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  -webkit-mask: center / contain no-repeat;
+  mask: center / contain no-repeat;
+}
+@media (prefers-reduced-motion: reduce) { .sol-htmlpage__back { transition: opacity 160ms ease; transform: none !important; } }
 .sol-htmlpage__empty {
   padding: 32px;
   color: var(--text-muted);
@@ -42,8 +85,8 @@
   html.sol-printing-page .sol-htmlpage__scroll,
   html.sol-printing-page .sol-htmlpage__scroll * { visibility: visible; }
   html.sol-printing-page .sol-htmlpage { position: absolute; inset: 0 auto auto 0; width: 100%; height: auto; background: none; }
-  html.sol-printing-page .sol-htmlpage .report-header { display: none; }
-  html.sol-printing-page .sol-htmlpage__scroll { overflow: visible; height: auto; }
+  html.sol-printing-page .sol-htmlpage__back { display: none; }
+  html.sol-printing-page .sol-htmlpage__scroll { overflow: visible; height: auto; background: none; }
   html.sol-printing-page .sol-htmlpage__doc { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   html.sol-printing-page .sol-box { break-inside: avoid; }
 }
