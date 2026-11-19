@@ -52,7 +52,7 @@ tauri-plugin-decorum = "1"
 
 # linux_webview.rs; already in the dep tree via wry.
 [target.'cfg(target_os = "linux")'.dependencies]
-webkit2gtk = "2.0"
+webkit2gtk = "3.0"
 
 # Windows 11 DWM: set the window's border color (DWMWA_BORDER_COLOR) to the app
 # accent so the focused-window frame matches the theme. Already in the dep tree via
