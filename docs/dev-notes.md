@@ -70,7 +70,12 @@ in-page `#id` link scrolls the page. Pictures and fonts a page names (`src`, CSS
 the data folder and inlined as `data:` URIs, from tags only (a `src` shown as text stays text); Print prints the page
 alone. A bare tag inside an attribute prints as text; `prefers-color-scheme` follows the app's theme; an open page
 re-reads its files on window focus; on the desktop, New page writes a starter pair under `pages/` (not yet eyeballed in
-the desktop build). The HTML Showcase example renders seven pages from `demo-vault/Data/pages/` (a one-pager, a project brief, a team
+the desktop build). Links between pages (`pageLink`): a sibling `.html` opens the card showing
+it, a web link opens outside the app, nothing moves the app's address. Figures a page restyles now include the US Map
+(land, borders, ink) and a Waterfall's or Candlestick's rise, fall and total (`--chart-up`, `--chart-down`,
+`--chart-neutral`). The showcase is eleven pages: Contents, the guide, the six earlier, a road trip (US Map), an annual
+report (Sankey, Waterfall, Gauge) and a year of running (Calendar Heatmap, KPI; `runs-2026.csv` in the demo vault). A
+slot is a `span`, so a page's rule for `span` reaches it (the guide says so). The HTML Showcase example renders seven pages from `demo-vault/Data/pages/` (a one-pager, a project brief, a team
 directory, a shop catalog, an invoice, a money letter and "Writing a page", a guide that is itself a page), with
 OFL fonts and pictures in `pages/fonts` and `pages/images`, which the web build bundles (`DEMO_VAULT_BINARY`).
 
