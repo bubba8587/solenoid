@@ -1256,6 +1256,217 @@
       "y": 8800
     },
     {
+      "id": "y_year",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Season",
+        "value": "2026",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 10450
+    },
+    {
+      "id": "y_runs",
+      "type": "LocalFileNode",
+      "init": {
+        "label": "Runs",
+        "fileName": "runs-2026.csv"
+      },
+      "x": 0,
+      "y": 10620
+    },
+    {
+      "id": "y_km",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Distance",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Km"
+      },
+      "x": 360,
+      "y": 10450
+    },
+    {
+      "id": "y_kind",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Kind of run",
+        "readAs": "text"
+      },
+      "stringLiterals": {
+        "name": "Kind"
+      },
+      "x": 360,
+      "y": 10700
+    },
+    {
+      "id": "y_total",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Kilometres",
+        "expr": "ROUND(SUM(km), 0)"
+      },
+      "x": 720,
+      "y": 10450
+    },
+    {
+      "id": "y_count",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Runs this year",
+        "op": "count"
+      },
+      "x": 720,
+      "y": 10700
+    },
+    {
+      "id": "y_longest",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Longest run",
+        "op": "max"
+      },
+      "x": 720,
+      "y": 10950
+    },
+    {
+      "id": "y_avg",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Average run",
+        "expr": "ROUND(AVERAGE(km), 1)"
+      },
+      "x": 1060,
+      "y": 10450
+    },
+    {
+      "id": "y_races",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Races",
+        "expr": "COUNTIF(kind, \"Race\")"
+      },
+      "x": 1060,
+      "y": 10700
+    },
+    {
+      "id": "y_longs",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Long runs",
+        "expr": "COUNTIF(kind, \"Long\")"
+      },
+      "x": 1060,
+      "y": 10950
+    },
+    {
+      "id": "y_pick",
+      "type": "PickColumnsNode",
+      "init": {
+        "label": "Date and distance"
+      },
+      "stringLiterals": {
+        "columns": "Date, Km"
+      },
+      "x": 360,
+      "y": 11200
+    },
+    {
+      "id": "y_cal",
+      "type": "CalendarHeatmapNode",
+      "init": {
+        "label": "Every day"
+      },
+      "x": 720,
+      "y": 11200
+    },
+    {
+      "id": "y_month",
+      "type": "ComputedColumnNode",
+      "init": {
+        "label": "Month",
+        "expr": "TEXT(@Date, \"MMM\")",
+        "addAs": "text"
+      },
+      "stringLiterals": {
+        "name": "Month"
+      },
+      "x": 360,
+      "y": 11550
+    },
+    {
+      "id": "y_bymonth",
+      "type": "GroupByFrameNode",
+      "init": {
+        "label": "Km by month",
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "keys": "Month",
+        "column": "Km"
+      },
+      "x": 720,
+      "y": 11550
+    },
+    {
+      "id": "y_monchart",
+      "type": "ChartNode",
+      "init": {
+        "label": "By month",
+        "op": "column"
+      },
+      "x": 1060,
+      "y": 11550
+    },
+    {
+      "id": "y_last",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Last year's km",
+        "value": "1840"
+      },
+      "x": 0,
+      "y": 10970
+    },
+    {
+      "id": "y_kpi",
+      "type": "KpiNode",
+      "init": {
+        "label": "Against last year"
+      },
+      "stringLiterals": {
+        "unit": "km"
+      },
+      "x": 1400,
+      "y": 10450
+    },
+    {
+      "id": "y_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "A year of running",
+        "fileName": "pages/running.html",
+        "styleFile": "pages/running.css",
+        "sideVars": [
+          "year",
+          "total",
+          "runs",
+          "days",
+          "vs_last",
+          "by_month",
+          "longest",
+          "avg",
+          "races",
+          "longs"
+        ]
+      },
+      "x": 1760,
+      "y": 10450
+    },
+    {
       "id": "g_q",
       "type": "GroupNode",
       "init": {
@@ -1494,6 +1705,39 @@
       },
       "x": -30,
       "y": 8740
+    },
+    {
+      "id": "g_y",
+      "type": "GroupNode",
+      "init": {
+        "label": "A year of running",
+        "members": [
+          "y_year",
+          "y_runs",
+          "y_km",
+          "y_kind",
+          "y_total",
+          "y_count",
+          "y_longest",
+          "y_avg",
+          "y_races",
+          "y_longs",
+          "y_pick",
+          "y_cal",
+          "y_month",
+          "y_bymonth",
+          "y_monchart",
+          "y_last",
+          "y_kpi",
+          "y_page"
+        ],
+        "color": "amber",
+        "collapsed": false,
+        "width": 2120,
+        "height": 1490
+      },
+      "x": -30,
+      "y": 10390
     }
   ],
   "connections": [
@@ -2294,6 +2538,156 @@
       "sourceOutput": "frame",
       "target": "n_page",
       "targetInput": "impact"
+    },
+    {
+      "source": "y_runs",
+      "sourceOutput": "frame",
+      "target": "y_km",
+      "targetInput": "frame"
+    },
+    {
+      "source": "y_runs",
+      "sourceOutput": "frame",
+      "target": "y_kind",
+      "targetInput": "frame"
+    },
+    {
+      "source": "y_km",
+      "sourceOutput": "values",
+      "target": "y_total",
+      "targetInput": "km"
+    },
+    {
+      "source": "y_km",
+      "sourceOutput": "values",
+      "target": "y_count",
+      "targetInput": "list"
+    },
+    {
+      "source": "y_km",
+      "sourceOutput": "values",
+      "target": "y_longest",
+      "targetInput": "list"
+    },
+    {
+      "source": "y_km",
+      "sourceOutput": "values",
+      "target": "y_avg",
+      "targetInput": "km"
+    },
+    {
+      "source": "y_kind",
+      "sourceOutput": "values",
+      "target": "y_races",
+      "targetInput": "kind"
+    },
+    {
+      "source": "y_kind",
+      "sourceOutput": "values",
+      "target": "y_longs",
+      "targetInput": "kind"
+    },
+    {
+      "source": "y_runs",
+      "sourceOutput": "frame",
+      "target": "y_pick",
+      "targetInput": "frame"
+    },
+    {
+      "source": "y_pick",
+      "sourceOutput": "frame",
+      "target": "y_cal",
+      "targetInput": "frame"
+    },
+    {
+      "source": "y_runs",
+      "sourceOutput": "frame",
+      "target": "y_month",
+      "targetInput": "frame"
+    },
+    {
+      "source": "y_month",
+      "sourceOutput": "frame",
+      "target": "y_bymonth",
+      "targetInput": "frame"
+    },
+    {
+      "source": "y_bymonth",
+      "sourceOutput": "frame",
+      "target": "y_monchart",
+      "targetInput": "values"
+    },
+    {
+      "source": "y_total",
+      "sourceOutput": "result",
+      "target": "y_kpi",
+      "targetInput": "value"
+    },
+    {
+      "source": "y_last",
+      "sourceOutput": "value",
+      "target": "y_kpi",
+      "targetInput": "prev"
+    },
+    {
+      "source": "y_year",
+      "sourceOutput": "value",
+      "target": "y_page",
+      "targetInput": "year"
+    },
+    {
+      "source": "y_total",
+      "sourceOutput": "result",
+      "target": "y_page",
+      "targetInput": "total"
+    },
+    {
+      "source": "y_count",
+      "sourceOutput": "result",
+      "target": "y_page",
+      "targetInput": "runs"
+    },
+    {
+      "source": "y_cal",
+      "sourceOutput": "chart",
+      "target": "y_page",
+      "targetInput": "days"
+    },
+    {
+      "source": "y_kpi",
+      "sourceOutput": "chart",
+      "target": "y_page",
+      "targetInput": "vs_last"
+    },
+    {
+      "source": "y_monchart",
+      "sourceOutput": "chart",
+      "target": "y_page",
+      "targetInput": "by_month"
+    },
+    {
+      "source": "y_longest",
+      "sourceOutput": "result",
+      "target": "y_page",
+      "targetInput": "longest"
+    },
+    {
+      "source": "y_avg",
+      "sourceOutput": "result",
+      "target": "y_page",
+      "targetInput": "avg"
+    },
+    {
+      "source": "y_races",
+      "sourceOutput": "result",
+      "target": "y_page",
+      "targetInput": "races"
+    },
+    {
+      "source": "y_longs",
+      "sourceOutput": "result",
+      "target": "y_page",
+      "targetInput": "longs"
     }
   ]
 }

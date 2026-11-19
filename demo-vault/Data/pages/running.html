@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><title>A year of running</title></head>
+<body>
+<div class="log">
+  <header>
+    <div class="bib">
+      <span class="pin"></span><span class="pin r"></span>
+      <p class="race">{{ year }} · a year on foot</p>
+      <p class="num">{{ total | number_format }}</p>
+      <p class="unit">kilometres</p>
+    </div>
+    <div class="side">
+      <h1>{{ runs }} runs, one marathon, one bad July.</h1>
+      <p>Four runs a week through the winter, the long runs climbing every Sunday, two weeks off with a sore calf, then the build to Chicago in October and a slow, happy December.</p>
+    </div>
+  </header>
+
+  <section class="cal">
+    <h2>Every day of the year</h2>
+    {{ days }}
+  </section>
+
+  <section class="row">
+    <div class="vs">
+      <h2>Against last year</h2>
+      {{ vs_last }}
+    </div>
+    <div class="months">
+      <h2>By month</h2>
+      {{ by_month }}
+    </div>
+  </section>
+
+  <section class="facts">
+    <div><b>{{ longest }}</b><span>km, the longest run</span></div>
+    <div><b>{{ avg }}</b><span>km, the average run</span></div>
+    <div><b>{{ races }}</b><span>race{% if races != 1 %}s{% endif %}</span></div>
+    <div><b>{{ longs }}</b><span>long Sundays</span></div>
+  </section>
+</div>
+</body></html>
