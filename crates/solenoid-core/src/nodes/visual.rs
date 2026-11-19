@@ -2619,6 +2619,7 @@ impl<'a> PieceGrid<'a> {
 
 /// Each point's region by the cuts a Conditional Regions card shows, one key per line.
 #[cfg(any(target_arch = "wasm32", test))]
+#[cfg_attr(feature = "plugin", allow(dead_code))]
 pub(crate) fn region_keys(cuts: &str, xs: &[f64], ys: &[f64]) -> String {
     let cuts: Cuts = serde_json::from_str(cuts).unwrap_or_default();
     xs.iter().zip(ys).map(|(&x, &y)| region_key(&cuts, x, y)).collect::<Vec<_>>().join("\n")

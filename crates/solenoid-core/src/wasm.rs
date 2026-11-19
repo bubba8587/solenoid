@@ -8,9 +8,11 @@ use wasm_bindgen::prelude::*;
 
 use crate::binary::{decode_frame, Columnar};
 use crate::error_value::{ErrorCode, SolError};
+#[cfg(not(feature = "plugin"))]
 use crate::frame::get_column;
 #[cfg(not(feature = "plugin"))]
 use crate::frame_backend::invoke;
+#[cfg(not(feature = "plugin"))]
 use crate::frame_backend::{get, register};
 use crate::wire::error_to_wire;
 
@@ -60,6 +62,7 @@ pub fn engine_invoke(command: &str, args: &str) -> String {
     }
 }
 
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn engine_source_bin(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> String {
     reply(decode_frame(schema, tags, nums, strs, lens).map(|f| serde_json::json!(register(f))))
@@ -71,6 +74,7 @@ thread_local! {
 
 /// Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
 /// `column` names (`get_column`; `null` when none), each cut to `limit` cells when it's set.
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn engine_read_bin(handle: &str, column: Option<String>, limit: Option<u32>) -> String {
     reply(get(handle).map(|f| {
@@ -89,6 +93,7 @@ pub fn engine_read_bin(handle: &str, column: Option<String>, limit: Option<u32>)
 }
 
 /// Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn engine_csv_frame(text: &str, order: &str) -> String {
     let (out, rows) =
@@ -99,6 +104,7 @@ pub fn engine_csv_frame(text: &str, order: &str) -> String {
 }
 
 /// An Excel workbook's named Tables: name, sheet, columns and row count each (`xlsx::tables`).
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn engine_xlsx_tables(bytes: &[u8]) -> String {
     reply(crate::xlsx::tables(bytes).map(|ts| {
@@ -111,6 +117,7 @@ pub fn engine_xlsx_tables(bytes: &[u8]) -> String {
 
 /// Stages a workbook's Table `table` for the `take_*` calls and answers its schema, as `engine_csv_frame` does a CSV's
 /// (`xlsx::table_columnar`).
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn engine_xlsx_frame(bytes: &[u8], table: &str) -> String {
     reply(crate::xlsx::table_columnar(bytes, table).map(|(out, rows)| {
@@ -165,6 +172,7 @@ pub fn engine_csv_rows(text: &str, detect: bool, keep_blank: bool) -> String {
 /// Stages the answer `engine_node`'s reply named `{"staged": id}` for the `take_*` calls; its kind and schema as JSON
 /// with the id it is kept under (`{"kind", "schema", "held"}`, `nodes::columnar::keep`), or null where it was taken
 /// already.
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn card_unstage(id: u32) -> Option<String> {
     let ((kind, schema, out), v) = crate::nodes::columnar::take_out(id)?;
@@ -175,6 +183,7 @@ pub fn card_unstage(id: u32) -> Option<String> {
 
 /// Keeps a big frame or list that crossed as buffers; the id a card call names it by,
 /// `{"__held": id}` (`nodes::columnar::keep`).
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn card_keep(
     kind: &str,
@@ -193,12 +202,14 @@ pub fn card_keep(
 }
 
 /// Drops the kept values whose JavaScript objects were collected.
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn card_forget(ids: &[u32]) {
     crate::nodes::columnar::forget(ids);
 }
 
 /// How many values the core keeps for JavaScript objects (`card_keep`), for the tests.
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn card_kept_count() -> usize {
     crate::nodes::columnar::kept_count()
@@ -284,6 +295,7 @@ pub fn read_decimal(text: &str) -> f64 {
 
 /// The field a card's unwired input `key` on `rung` shows (`nodes::fields`): number, logical, text, csv, keyed, bound
 /// or none.
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn literal_field(class: &str, key: &str, rung: &str, kept_as_text: bool) -> String {
     crate::nodes::fields::field_of(class, key, rung, kept_as_text).name().to_string()
@@ -291,6 +303,7 @@ pub fn literal_field(class: &str, key: &str, rung: &str, kept_as_text: bool) -> 
 
 /// A card's declared kind for its empty field `key` under its `op` and what it shows, as `kind` and `shown` JSON; empty text where it
 /// declares none (`nodes::fields::Empty`).
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn empty_field(class: &str, op: &str, key: &str) -> String {
     match crate::nodes::fields::empty_of(class, op, key) {
@@ -303,6 +316,7 @@ pub fn empty_field(class: &str, op: &str, key: &str) -> String {
 }
 
 /// Text as a date's day, as a Frame Input Date cell reads it: NaN when it doesn't read as one, `undefined` for blank.
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn read_date(text: &str) -> Option<f64> {
     match crate::nodes::keyed_value("date", text) {
@@ -313,6 +327,7 @@ pub fn read_date(text: &str) -> Option<f64> {
 }
 
 /// Each point's Conditional Regions key, by the cuts its card shows, one per line.
+#[cfg(not(feature = "plugin"))]
 #[wasm_bindgen]
 pub fn region_keys(cuts: &str, xs: &[f64], ys: &[f64]) -> String {
     crate::nodes::region_keys(cuts, xs, ys)
