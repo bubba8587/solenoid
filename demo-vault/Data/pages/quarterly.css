@@ -32,7 +32,7 @@ body {
 .masthead { border-top: 6px double var(--ink); border-bottom: 1px solid var(--ink); padding: 14px 0 22px; margin-bottom: 26px; }
 .eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--accent-red); margin: 0 0 10px; }
 h1 { font-size: 56px; font-weight: 300; line-height: 1.02; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap-style: balance; }
-h1 .solenoid-ref-inline { font-weight: 700; font-style: italic; color: var(--accent-red); }
+h1 em { font-weight: 700; font-style: italic; color: var(--accent-red); }
 .lede { font-size: 20px; font-style: italic; color: var(--muted); margin: 0; text-wrap-style: pretty; }
 .regions { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); margin-bottom: 30px; }
 .region { padding: 16px 18px 14px; border-left: 1px solid var(--rule); }

@@ -1,21 +1,21 @@
 @font-face { font-family: "Fraunces"; src: url(fonts/Fraunces.woff2) format("woff2"); font-weight: 100 900; }
 
-:root { --ink: #1b1b1f; --dim: #64646c; --line: #e3e1dc; --hi: #f5b914; }
-@media (prefers-color-scheme: dark) { :root { --ink: #ececef; --dim: #9c9ca4; --line: #2e2e33; } }
+:root { --ink: #1b1b1f; --dim: #64646c; --line: #e3e1dc; --edge: #cfccc4; --hi: #b58200; }
+@media (prefers-color-scheme: dark) { :root { --ink: #ececef; --dim: #9c9ca4; --line: #2e2e33; --edge: #45454c; --hi: #f5b914; } }
 body { color: var(--ink); font-family: var(--font-sans); }
-.toc { max-width: 760px; margin: 0 auto; padding: 24px 8px 48px; }
+.toc { max-width: 1080px; margin: 0 auto; padding: 24px 8px 48px; }
 .eyebrow { margin: 0; font-family: var(--font-mono); font-size: 12px; color: var(--dim); }
 h1 { font-family: "Fraunces", serif; font-weight: 300; font-size: clamp(56px, 10vw, 96px); letter-spacing: -.03em; line-height: 1; margin: 6px 0 12px; }
-.lede { margin: 0 0 28px; color: var(--dim); max-width: 36em; line-height: 1.55; text-wrap-style: pretty; }
+.lede { margin: 0 0 28px; color: var(--dim); max-width: 40em; line-height: 1.55; text-wrap-style: pretty; }
 .lede code { font-family: var(--font-mono); font-size: .9em; }
-ol { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
-li { border-bottom: 1px solid var(--line); }
-li a { display: grid; grid-template-columns: 56px 1fr auto; gap: 16px; align-items: baseline; padding: 16px 4px; color: inherit; text-decoration: none; }
-.no { font-family: "Fraunces", serif; font-size: 34px; font-weight: 300; color: var(--dim); font-variant-numeric: lining-nums tabular-nums; }
-.body b { display: block; font-family: "Fraunces", serif; font-weight: 500; font-size: 24px; letter-spacing: -.01em; }
-.about { display: block; margin-top: 2px; line-height: 1.5; text-wrap-style: pretty; }
-.shows { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--dim); }
-.go { font-size: 12px; color: var(--dim); border: 1px solid var(--line); border-radius: 5px; padding: 2px 10px; }
-li a:hover .no { color: var(--hi); }
-li a:hover .go { color: var(--ink); border-color: var(--ink); }
-@media (max-width: 560px) { li a { grid-template-columns: 40px 1fr; } .go { display: none; } .no { font-size: 26px; } }
+
+.grid { list-style: none; margin: 0; padding: 22px 0 0; border-top: 2px solid var(--ink); display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 28px 22px; }
+.grid a { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: baseline; color: inherit; text-decoration: none; }
+.cover { grid-column: 1 / -1; width: 100%; aspect-ratio: 8 / 5; object-fit: cover; object-position: top; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; background: var(--line); }
+.grid a:hover .cover { border-color: var(--edge); }
+.no { font-family: "Fraunces", serif; font-size: 22px; font-weight: 300; color: var(--dim); font-variant-numeric: lining-nums tabular-nums; }
+.grid b { font-family: "Fraunces", serif; font-weight: 500; font-size: 22px; letter-spacing: -.01em; line-height: 1.15; }
+.grid a:hover b { color: var(--hi); }
+.about, .shows { grid-column: 2; }
+.about { margin-top: 4px; line-height: 1.5; font-size: 14px; text-wrap-style: pretty; }
+.shows { margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--dim); }

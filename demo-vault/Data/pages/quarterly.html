@@ -6,7 +6,7 @@
 <body>
   <header class="masthead">
     <p class="eyebrow">{{ company }} · {{ quarter }}</p>
-    <h1>Bookings came in at {{ total }}</h1>
+    <h1>Bookings came in at <em>${{ total | number_format }}k</em></h1>
     <p class="lede">Up {{ growth }} on the quarter before, led by the {{ best }} region.</p>
   </header>
 

@@ -635,7 +635,9 @@ print` rules apply too. Saving as PDF is the print dialog's.
 page's file (`team.html`, `../q3.html#east`), opens the HTML Page in the same graph that shows that file, at the id it names;
 when none does, a notice says so. An `http(s):` or `mailto:` link opens outside the app (`openExternal`). Anything else
 (another scheme, a path out of the data folder, a file that isn't a page) does nothing. So a graph's pages make a
-site: the showcase's Contents page links the rest. A section a link names carries the `id` (`<section id="{{ c | lower }}">`, Knap fills it). On a phone a page's own `@media` rules answer the screen's width.
+site: the showcase's Contents page links the rest, each under a cover, a picture of the page's top
+(`pages/images/thumbs/`). The covers are screenshots: after a page changes, `node scripts/page-covers.mjs [seed]
+[page…]` opens each page with its group's cards in the running app and writes them again. A section a link names carries the `id` (`<section id="{{ c | lower }}">`, Knap fills it). On a phone a page's own `@media` rules answer the screen's width.
 
 Tests: `tests/graph/nodes/htmlPage.test.ts`: the CSS scoped (page selectors, lists, `@media`, `@keyframes` left alone) and
 kept from fetching; a document split into its body and styles; a bare tag's slot; the card's inputs in first-use order;

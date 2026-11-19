@@ -5,19 +5,17 @@
   <header>
     <p class="eyebrow">HTML Page · showcase</p>
     <h1>Contents</h1>
-    <p class="lede">{{ pages | length }} pages, each an HTML and a CSS file in the demo vault's <code>pages</code> folder, filled by the cards around it. Every figure is a card you can open and change; every link below opens the page.</p>
+    <p class="lede">{{ pages | length }} pages, each an HTML and a CSS file in the demo vault's <code>pages</code> folder, filled by the cards around it. Every figure is a card you can open and change; every cover below opens its page.</p>
   </header>
-  <ol>
+  <ol class="grid">
     {% for p in pages %}
     <li>
       <a href="{{ p.File }}">
+        <img class="cover" src="{{ p.Cover }}" alt="">
         <span class="no">{{ loop.index }}</span>
-        <span class="body">
-          <b>{{ p.Title }}</b>
-          <span class="about">{{ p.About }}</span>
-          <span class="shows">{{ p.Shows }}</span>
-        </span>
-        <span class="go">Open</span>
+        <b>{{ p.Title }}</b>
+        <span class="about">{{ p.About }}</span>
+        <span class="shows">{{ p.Shows }}</span>
       </a>
     </li>
     {% endfor %}
