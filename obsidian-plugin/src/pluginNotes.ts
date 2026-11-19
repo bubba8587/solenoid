@@ -12,6 +12,23 @@ export interface PluginNotes {
 
 export const PLUGIN_NOTES: PluginNotes[] = [
   {
+    version: "0.1.12",
+    notes: [
+      {
+        title: "Solenoid Look plays nicely with TaskNotes",
+        body: "",
+      },
+      {
+        title: "Crisper rounded borders on everyday screens",
+        body: "",
+      },
+      {
+        title: "A guide for AI agents working in your vault",
+        body: "",
+      },
+    ],
+  },
+  {
     version: "0.1.11",
     notes: [
       {
