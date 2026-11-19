@@ -85,8 +85,10 @@ html.sol-canvas-covered:has(.sol-htmlpage) .solenoid-notices { z-index: 9100; bo
   mask: center / contain no-repeat;
 }
 @media (prefers-reduced-motion: reduce) { .sol-htmlpage__back { transition: opacity 160ms ease; transform: none !important; } }
+.sol-htmlpage__scroll:focus { outline: none; }
 .sol-htmlpage__empty {
-  padding: 32px;
+  /* Clear of the back button in the corner. */
+  padding: calc(68px + env(safe-area-inset-top)) 32px 32px;
   color: var(--text-muted);
   font-size: 13px;
 }

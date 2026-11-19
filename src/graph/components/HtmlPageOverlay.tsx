@@ -173,6 +173,13 @@ export function HtmlPageOverlay() {
   useCoversCanvas(!!node);
   usePrintsThePage(!!node);
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
+  // The keyboard reads the page while it is open (arrows, space, Page Down scroll it), and goes back where it was after.
+  useEffect(() => {
+    if (!scroller) return;
+    const before = document.activeElement as HTMLElement | null;
+    scroller.focus({ preventScroll: true });
+    return () => { if (before?.isConnected) before.focus({ preventScroll: true }); };
+  }, [scroller]);
   // Back from editing the files elsewhere, the page reads them again; unchanged text redraws nothing.
   const openId = node?.id;
   useEffect(() => {
@@ -185,7 +192,7 @@ export function HtmlPageOverlay() {
   const render = node.render;
   return (
     <div className="sol-htmlpage" role="dialog" aria-label={node.label?.trim() || "HTML Page"} onPointerDown={(e) => e.stopPropagation()}>
-      <div className="sol-htmlpage__scroll" ref={setScroller}>
+      <div className="sol-htmlpage__scroll" ref={setScroller} tabIndex={-1}>
         {render ? (
           <>
             <style>{render.css}</style>

@@ -595,7 +595,9 @@ pushes a history entry for each page opened, so a browser's Back pops it; a clos
 never pans sideways as a whole (the scroller's `overflow-x` is hidden); a wide thing that should scroll, a code sample
 or a big table, scrolls in its own box. The files are
 read again when the app's window comes back into focus, so an edit made in another editor shows on return. The page's
-doc pads its top clear of the button. The page is sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
+doc pads its top clear of the button. The keyboard reads the page while it's open: its scroller takes focus on open, so arrows,
+space and Page Down scroll it and the canvas's shortcuts can't act on the cards behind; a close gives focus back to
+where it was. The page is sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
 Report's preview is, with each slot's value portalled in. A number, text, a date, a list or an error draws inline in
 the page's text. A **figure** (a chart, a Frame, a Cube, a diagram, a picture, an SVG or a document) draws as a Dashboard
 box (`dashboard-box`): its name as the label, its value `rich` and `fill`. A chart, diagram or picture's box is 320 px
