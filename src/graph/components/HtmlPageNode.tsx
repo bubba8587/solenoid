@@ -83,7 +83,7 @@ export function HtmlPageComponent({ data, emit }: NodeProps<HtmlPageNodeType>) {
         <>
           <CollapsedInputPill node={data} emit={emit} keys={refKeys} />
           <div className="solenoid-node__display-value solenoid-node__display-value--chip">
-            {data.error ? <ErrorChip err={data.error} /> : <DocumentChip size="sm" label="Page" onOpen={open} />}
+            {data.error ? <ErrorChip err={data.error} /> : data.fileName.trim() ? <DocumentChip size="sm" label="Page" onOpen={open} /> : null}
           </div>
         </>
       ) : (
