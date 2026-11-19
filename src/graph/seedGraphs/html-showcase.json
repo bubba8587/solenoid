@@ -1467,6 +1467,47 @@
       "y": 10450
     },
     {
+      "id": "x_pages",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "The pages",
+        "frameText": "[{\"name\":\"Title\",\"type\":\"string\",\"cells\":[\"Writing a page\",\"Quarterly one-pager\",\"Project brief\",\"Team directory\",\"Shop catalog\",\"Invoice\",\"Money letter\",\"Coast to coast\",\"Annual report\",\"A year of running\"]},{\"name\":\"File\",\"type\":\"string\",\"cells\":[\"guide.html\",\"quarterly.html\",\"project-brief.html\",\"team.html\",\"shop.html\",\"invoice.html\",\"money.html\",\"roadtrip.html\",\"annual.html\",\"running.html\"]},{\"name\":\"About\",\"type\":\"string\",\"cells\":[\"How a page is made, written as one: tags, loops, figures, style and files.\",\"A quarter's bookings for a board pack: the total, the growth and the best region.\",\"Status, budget and milestones for one project, with its burn chart.\",\"Everyone on the crew as a card, best sellers first, with each person's goal.\",\"A plant and lamp shop by aisle, with stock, ratings and a price map.\",\"One customer's orders joined to the product list, taxed, totalled and stamped.\",\"A quarter's spending against budget, written as a letter.\",\"A twelve-stop road trip, day by day, with the drive between each.\",\"A small nonprofit's year from one table of money flows.\",\"A runner's 2026 from a watch export, marathon and injury included.\"]},{\"name\":\"Shows\",\"type\":\"string\",\"cells\":[\"Column chart \u00b7 a bar sized by a value \u00b7 both themes\",\"Column chart \u00b7 a ledger table\",\"Area chart \u00b7 status badges\",\"Bar chart \u00b7 cards from a CSV\",\"Scatter chart \u00b7 in-page aisle links\",\"A paid stamp from a card \u00b7 print-ready\",\"Pie chart \u00b7 budget bars\",\"US Map \u00b7 column chart\",\"Sankey \u00b7 Waterfall \u00b7 Gauge\",\"Calendar Heatmap \u00b7 KPI \u00b7 column chart\"]}]"
+      },
+      "x": 0,
+      "y": -700
+    },
+    {
+      "id": "x_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Contents",
+        "fileName": "pages/index.html",
+        "styleFile": "pages/index.css",
+        "sideVars": [
+          "pages"
+        ]
+      },
+      "x": 1760,
+      "y": -700
+    },
+    {
+      "id": "g_x",
+      "type": "GroupNode",
+      "init": {
+        "label": "Contents",
+        "members": [
+          "x_pages",
+          "x_page"
+        ],
+        "color": "gray",
+        "collapsed": false,
+        "width": 2120,
+        "height": 390
+      },
+      "x": -30,
+      "y": -760
+    },
+    {
       "id": "g_q",
       "type": "GroupNode",
       "init": {
@@ -2688,6 +2729,12 @@
       "sourceOutput": "result",
       "target": "y_page",
       "targetInput": "longs"
+    },
+    {
+      "source": "x_pages",
+      "sourceOutput": "frame",
+      "target": "x_page",
+      "targetInput": "pages"
     }
   ]
 }

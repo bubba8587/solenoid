@@ -10,7 +10,9 @@ import { appThemeStore } from "../appTheme";
 import { getOwningEditor } from "../activeGraph";
 import { HtmlPageNode } from "../nodeClasses";
 import { sanitizeNoteHtml } from "../noteHtml";
-import { PAGE_SCOPE, SLOT_ATTR } from "../htmlPageText";
+import { PAGE_SCOPE, SLOT_ATTR, dirOf, pageLink } from "../htmlPageText";
+import { openExternal } from "../fileBridge";
+import { pushNotice } from "../noticeStore";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
@@ -55,6 +57,9 @@ function Slot({ node, name, highlight }: { node: HtmlPageNode; name: string; hig
   );
 }
 
+/** The place a link to another page names, until that page is drawn. */
+let pendingAnchor: string | null = null;
+
 function PageBody({ node, body }: { node: HtmlPageNode; body: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<{ el: HTMLElement; name: string; highlight: boolean }[]>([]);
@@ -70,15 +75,35 @@ function PageBody({ node, body }: { node: HtmlPageNode; body: string }) {
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   // A figure's slot is a block, so its box takes the page's width.
   for (const s of slots) s.el.classList.toggle("sol-htmlpage__slot--box", isPageFigure(node.refValue(s.name)));
-  // An in-page link (`href="#aisle"`) scrolls the page to that id; it never moves the app's own address.
-  const onClick = (e: React.MouseEvent) => {
-    const a = (e.target as Element).closest?.("a[href^='#']");
-    if (!a || !ref.current) return;
-    e.preventDefault();
-    const id = decodeURIComponent((a.getAttribute("href") ?? "").slice(1));
+  // A link goes to a place on the page, to another page the graph shows, or to the web outside the app; it never moves
+  // the app's own address.
+  const scrollTo = (id: string) => {
+    if (!ref.current) return;
     const to = id ? [...ref.current.querySelectorAll<HTMLElement>("[id]")].find((el) => el.id === id) : ref.current;
     to?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  const onClick = (e: React.MouseEvent) => {
+    const a = (e.target as Element).closest?.("a[href]");
+    if (!a) return;
+    e.preventDefault();
+    const link = pageLink(a.getAttribute("href") ?? "", dirOf(node.fileName.trim()));
+    if (!link) return;
+    if ("web" in link) { void openExternal(link.web); return; }
+    if (!("page" in link)) { scrollTo(link.anchor); return; }
+    const target = getOwningEditor(node.id)?.getNodes()
+      .find((n) => n instanceof HtmlPageNode && n.fileName.trim().replace(/\\/g, "/") === link.page);
+    if (!target) { pushNotice(`No HTML Page in this graph shows ${link.page}`); return; }
+    pendingAnchor = link.anchor;
+    htmlPageStore.open(target.id);
+  };
+  // Opened by a link that names a place on it: go there once the page is drawn.
+  useLayoutEffect(() => {
+    if (pendingAnchor === null) return;
+    const id = pendingAnchor;
+    pendingAnchor = null;
+    if (ref.current) ref.current.closest(".sol-htmlpage__scroll")?.scrollTo({ top: 0 });
+    if (id) requestAnimationFrame(() => scrollTo(id));
+  }, [body]);
   return (
     <>
       <div ref={ref} className={PAGE_SCOPE} onClick={onClick} />

@@ -145,14 +145,38 @@ export function localAssetPath(ref: string, baseDir: string): string | null {
   const clean = r.split(/[?#]/)[0];
   const ext = (/\.([a-z0-9]+)$/i.exec(clean)?.[1] ?? "").toLowerCase();
   if (!(ext in ASSET_TYPES)) return null;
+  return inDataFolder(clean, baseDir);
+}
+
+/** A relative path (or one from the data folder's root, with a leading `/`) as a data-folder path; none when it climbs
+ *  out. */
+function inDataFolder(path: string, baseDir: string): string | null {
   let decoded: string;
-  try { decoded = decodeURIComponent(clean); } catch { return null; }
+  try { decoded = decodeURIComponent(path); } catch { return null; }
   const parts = decoded.startsWith("/") ? [] : baseDir.split("/").filter(Boolean);
   for (const seg of decoded.split(/[/\\]/)) {
     if (!seg || seg === ".") continue;
     if (seg === "..") { if (!parts.length) return null; parts.pop(); } else parts.push(seg);
   }
   return parts.join("/");
+}
+
+/** Where a link in a page goes: a place on the page (`#id`), another page in the data folder (`team.html`, opened by
+ *  the card that shows it, at its `#id` if it names one), or a web address, which opens outside the app. None for
+ *  anything else: a page never moves the app's own address. */
+export type PageLink = { anchor: string } | { page: string; anchor: string } | { web: string };
+
+export function pageLink(href: string, baseDir: string): PageLink | null {
+  const h = href.trim();
+  if (h.startsWith("#")) { try { return { anchor: decodeURIComponent(h.slice(1)) }; } catch { return null; } }
+  if (/^(https?:|mailto:)/i.test(h)) return { web: h };
+  if (/^[a-z][a-z0-9+.-]*:/i.test(h) || h.startsWith("//")) return null;
+  const [path, hash = ""] = h.split("#");
+  const clean = path.split("?")[0];
+  if (!/\.html?$/i.test(clean)) return null;
+  const page = inDataFolder(clean, baseDir);
+  if (!page) return null;
+  try { return { page, anchor: decodeURIComponent(hash) }; } catch { return { page, anchor: "" }; }
 }
 
 /** The folder a data-folder path sits in (`pages/team.html` → `pages`). */

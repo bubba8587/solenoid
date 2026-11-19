@@ -1,7 +1,7 @@
 // [[C68]] knapIsTheDocumentSyntax, [[reports-and-notes#HTML pages]], [[engineering#Untrusted content]]
 import { describe, it, expect, afterEach } from "vitest";
 import { HtmlPageNode } from "../../../src/graph/nodes/htmlPage";
-import { pageParts, scopeCss, slotsFor, localAssetPath, assetRefs, withAssets, starterName, STARTER_HTML, STARTER_CSS, PAGE_SCOPE, SLOT_ATTR } from "../../../src/graph/htmlPageText";
+import { pageParts, scopeCss, slotsFor, localAssetPath, assetRefs, withAssets, starterName, pageLink, STARTER_HTML, STARTER_CSS, PAGE_SCOPE, SLOT_ATTR } from "../../../src/graph/htmlPageText";
 import { setFsProvider, type FsProvider } from "../../../src/graph/fileBridge";
 import { settingsStore } from "../../../src/graph/settingsStore";
 import { extractInit } from "../../../src/graph/nodeInit";
@@ -154,6 +154,19 @@ describe("the HTML Page card", () => {
     const init = extractInit(node) as Record<string, unknown>;
     expect(init).toMatchObject({ fileName: "pages/q3.html", styleFile: "pages/q3.css", sideVars: ["title", "total", "sales", "note"] });
     expect(Object.keys(new HtmlPageNode(init as never).inputs)).toEqual(["title", "total", "sales", "note"]);
+  });
+});
+
+describe("a link in an HTML Page", () => {
+  it("goes to a place on the page, another page in the data folder, or the web, and nowhere else", () => {
+    expect(pageLink("#chairs", "pages")).toEqual({ anchor: "chairs" });
+    expect(pageLink("team.html", "pages")).toEqual({ page: "pages/team.html", anchor: "" });
+    expect(pageLink("../reports/q3.html#east", "pages")).toEqual({ page: "reports/q3.html", anchor: "east" });
+    expect(pageLink("/pages/shop.htm?x=1", "elsewhere")).toEqual({ page: "pages/shop.htm", anchor: "" });
+    expect(pageLink("https://example.com/a", "pages")).toEqual({ web: "https://example.com/a" });
+    for (const href of ["javascript:alert(1)", "file:///etc/passwd", "//x.test/a.html", "notes.md", "../../out.html"]) {
+      expect(pageLink(href, "pages"), href).toBeNull();
+    }
   });
 });
 

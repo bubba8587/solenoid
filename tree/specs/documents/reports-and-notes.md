@@ -611,8 +611,12 @@ block in `HtmlPageOverlay.css`): the app and the header hidden, the page across 
 backgrounds kept (`print-color-adjust: exact`), and a box never split between sheets. A page's own `@media print` rules
 apply too. Saving as PDF is the browser's or the system's print dialog.
 
-**Links inside a page.** A link to an id in the page (`<a href="#chairs">`) scrolls the page to it, smoothly; the app's
-own address never changes. A section a link names carries the `id` (`<section id="{{ c | lower }}">`, Knap fills it). On a phone the page opens under the app's accent bar, as
+**Links.** A link goes where `pageLink` says, and the app's own address never changes. A link to an id in the page
+(`<a href="#chairs">`) scrolls the page to it, smoothly. A link to another `.html` in the data folder, relative to the
+page's file (`team.html`, `../q3.html#east`), opens the HTML Page in the same graph that shows that file, at the id it names;
+when none does, a notice says so. An `http(s):` or `mailto:` link opens outside the app (`openExternal`). Anything else
+(another scheme, a path out of the data folder, a file that isn't a page) does nothing. So a graph's pages make a
+site: the showcase's Contents page links the rest. A section a link names carries the `id` (`<section id="{{ c | lower }}">`, Knap fills it). On a phone the page opens under the app's accent bar, as
 a Dashboard does, and a page's own `@media` rules answer the screen's width.
 
 Tests: `tests/graph/nodes/htmlPage.test.ts`: the CSS scoped (page selectors, lists, `@media`, `@keyframes` left alone) and

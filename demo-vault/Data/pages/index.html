@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><title>Contents</title></head>
+<body>
+<div class="toc">
+  <header>
+    <p class="eyebrow">HTML Page · showcase</p>
+    <h1>Contents</h1>
+    <p class="lede">{{ pages | length }} pages, each an HTML and a CSS file in the demo vault's <code>pages</code> folder, filled by the cards around it. Every figure is a card you can open and change; every link below opens the page.</p>
+  </header>
+  <ol>
+    {% for p in pages %}
+    <li>
+      <a href="{{ p.File }}">
+        <span class="no">{{ loop.index }}</span>
+        <span class="body">
+          <b>{{ p.Title }}</b>
+          <span class="about">{{ p.About }}</span>
+          <span class="shows">{{ p.Shows }}</span>
+        </span>
+        <span class="go">Open</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+</div>
+</body></html>
