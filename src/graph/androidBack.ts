@@ -3,6 +3,7 @@
 import { isAndroidApp } from "./fileBridge";
 import { escapeClosersOpen } from "./components/useEscapeToClose";
 import { openLayerCount } from "./components/escapeLayers";
+import { htmlPageStore } from "./htmlPageStore";
 
 /** Anything Escape would close: a surface on the shared Escape hook, a menu on a popup, or a dialog or menu that
  *  handles its own Escape (found by its role). */
@@ -22,6 +23,8 @@ export async function initAndroidBack(): Promise<void> {
   const { onBackButtonPress, exit } = await import("@tauri-apps/api/app");
   const { flushSaveNow } = await import("./persistence");
   await onBackButtonPress(() => {
+    // An HTML Page steps back through the pages its links opened, then to the canvas; Escape would close them all.
+    if (htmlPageStore.openNodeId()) { htmlPageStore.back(); return; }
     if (somethingToClose()) { pressEscape(); return; }
     flushSaveNow();
     void exit(0);

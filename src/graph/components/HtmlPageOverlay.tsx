@@ -141,7 +141,7 @@ function PageBody({ node, body }: { node: HtmlPageNode; body: string }) {
       .find((n) => n instanceof HtmlPageNode && n.fileName.trim().replace(/\\/g, "/") === link.page);
     if (!target) { pushNotice(`No HTML Page in this graph shows ${link.page}`); return; }
     pendingAnchor = link.anchor;
-    htmlPageStore.open(target.id);
+    htmlPageStore.open(target.id, true);
   };
   // Opened by a link that names a place on it: go there once the page is drawn.
   useLayoutEffect(() => {

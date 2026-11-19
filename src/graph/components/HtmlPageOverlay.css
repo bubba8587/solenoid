@@ -8,12 +8,19 @@
   flex-direction: column;
   background: var(--surface);
 }
+/* A table, cube or matrix on a page is the page's content, not a value to open: its size chip stays on a Dashboard
+   and in a Report, not here. */
+.sol-htmlpage .solenoid-table-display__chip { display: none; }
 /* A notice raised from a page (a link to a page the graph doesn't show) shows over it. */
 html.sol-canvas-covered:has(.sol-htmlpage) .solenoid-notices { z-index: 9100; bottom: calc(12px + env(safe-area-inset-bottom)); }
 .sol-htmlpage__scroll {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  /* A page reads top to bottom: it never pans sideways as a whole (a phone's drag would slide it off its edge); a wide
+     thing that should scroll, a code sample or a big table, scrolls in its own box. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--surface);
   color: var(--text);
 }

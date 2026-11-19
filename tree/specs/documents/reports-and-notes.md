@@ -583,13 +583,19 @@ examples show on the web.
 app's chrome (menu, toolbar, status bar, a header) over it, the canvas under it not painting (`useCoversCanvas`). The one
 control is a way back: a button in the top-left corner with the Solenoid mark (`sol-htmlpage__back`), neutral in the
 app's light or dark whatever the page's colors, clear of a phone's notch. It hides while the page scrolls down and
-returns on a scroll up, at the top, on a pointer near it or on keyboard focus; it and Esc close the page. The files are
+returns on a scroll up, at the top, on a pointer near it or on keyboard focus; it and Esc close the page. **Back**
+(the browser's, or Android's gesture, `androidBack.ts`) steps one page at a time: a page a link opened returns to the page
+that linked it, the first page to the canvas, never out of the app. The store (`htmlPageStore.ts`) keeps the trail and
+pushes a history entry for each page opened, so a browser's Back pops it; a close unwinds the entries it pushed. A page
+never pans sideways as a whole (the scroller's `overflow-x` is hidden); a wide thing that should scroll, a code sample
+or a big table, scrolls in its own box. The files are
 read again when the app's window comes back into focus, so an edit made in another editor shows on return. The page's
 doc pads its top clear of the button. The page is sanitized (`sanitizeNoteHtml`, with the document's network gate) and set imperatively, as a
 Report's preview is, with each slot's value portalled in. A number, text, a date, a list or an error draws inline in
 the page's text. A **figure** (a chart, a Frame, a Cube, a diagram, a picture, an SVG or a document) draws as a Dashboard
 box (`dashboard-box`): its name as the label, its value `rich` and `fill`. A chart, diagram or picture's box is 320 px
-high and fills it; a table, cube or document keeps its own height up to 480 px and scrolls. A page sizes or hides a box
+high and fills it; a table, cube or document keeps its own height up to 480 px and scrolls. A table, cube or matrix
+shows without its size chip (`[6×2 Frame]`): on a page it is content, not a value to open; a Dashboard and a Report keep it. A page sizes or hides a box
 by its slot (`[data-sol-ref="sales"] .dashboard-box { height: 200px }`), its rule scoped like the rest. A value in the
 page's text takes the page's font and ink, an error keeping its red.
 

@@ -32,3 +32,16 @@ footer { margin-top: 44px; font-size: 12px; color: #6b6b6b; border-top: 1px soli
 .sign { margin-top: 36px; }
 .sign img { width: 180px; display: block; }
 .sign p { margin: 2px 0 0; font-size: 12px; color: #6b6b6b; border-top: 1px solid #1c1c1c; width: 220px; padding-top: 4px; }
+/* A phone: the sheet tightens, the Placed column goes, an order number stays on one line, and every column fits. */
+@media (max-width: 520px) {
+  .sheet { padding: 22px 14px; }
+  table { font-size: 13px; }
+  th, td { padding-left: 4px; padding-right: 4px; }
+  th:nth-child(2), td:nth-child(2) { display: none; }
+  td.mono { white-space: nowrap; font-size: 11px; }
+  .pill { padding: 2px 6px; font-size: 10px; }
+  header { flex-direction: column; gap: 14px; }
+  .meta { text-align: left; }
+  .brand { font-size: 28px; }
+  .sheet .stamp, .sheet .stamp.due { position: static; display: inline-block; margin: 0 0 16px; transform: rotate(-4deg); font-size: 14px; padding: 3px 10px; border-width: 3px; }
+}
