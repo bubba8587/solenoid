@@ -458,13 +458,16 @@ select.dropdown:focus {
   border-radius: 0;
 }
 
-button:not(.clickable-icon):not(.mod-cta):not(.mod-warning) {
+/* A plain button is a sunken pill. The rule weighs no more than a class, so a plugin's own button keeps the shape its
+   view gives it. TaskNotes draws its views' buttons on Obsidian's button variables (a day in the agenda's week strip,
+   a day link, the month title), which the look already sets, and the pill only boxed them: its views are left out. */
+:where(button:not(.clickable-icon):not(.mod-cta):not(.mod-warning):not(.tasknotes-plugin *)) {
   background-color: var(--sol-sunken);
   border: 1px solid var(--sol-border);
   box-shadow: none;
   border-radius: 999px;
 }
-button:not(.clickable-icon):not(.mod-cta):not(.mod-warning):hover {
+:where(button:not(.clickable-icon):not(.mod-cta):not(.mod-warning):not(.tasknotes-plugin *)):hover {
   background-color: var(--sol-raised);
   border-color: var(--sol-border-strong);
 }
@@ -1136,6 +1139,49 @@ kbd {
 .graph-view.color-line-highlight { color: var(--sol-accent); }
 .graph-view.color-circle { color: var(--sol-accent); }
 .graph-view.color-text { color: var(--sol-text-dim); }
+
+/* ── TaskNotes ──────────────────────────────────────────────────────────────── */
+/* TaskNotes draws its views, cards and dialogs on Obsidian's variables, which the look already sets; these rules only
+   undo where a look rule meant for Obsidian's own chrome lands on TaskNotes' (the plain button's pill above too). */
+
+/* A heading in a TaskNotes view is the view's title (the calendar's date range), not a note's heading, so it stays the
+   text color rather than a heading's hue. */
+.tasknotes-plugin {
+  --h1-color: currentColor;
+  --h2-color: currentColor;
+  --h3-color: currentColor;
+  --h4-color: currentColor;
+  --h5-color: currentColor;
+  --h6-color: currentColor;
+}
+/* A TaskNotes dialog has no padding of its own and lays its header over the top of its content, so the dialog
+   header's pull into the padding put the title on the dialog's edge with a divider stopping at the title. The title
+   keeps TaskNotes' own place, and the header no divider: one spanning the dialog would cut through the first field. */
+body:not(.is-phone) .tasknotes-plugin.tn-modal > .modal-header:has(> .modal-title:not(:empty)) {
+  margin: 0;
+  padding: var(--size-4-3) var(--size-4-4) 0;
+  border-bottom: none;
+}
+/* The mini calendar's empty corner over the week numbers took the sidebar's fill, a dark square in dark mode. */
+.tasknotes-plugin .mini-calendar-view__week-header:empty {
+  background: none;
+}
+/* In a note, the task card TaskNotes puts on a task and its relationships widget are cards on the page, as Properties
+   and embeds are: the surface under one hairline with 8px corners. TaskNotes ruled the task card off with a top line
+   on the canvas and outlined the widget in dashes round a surface-colored board, a box in a box. */
+.tasknotes-task-card-note-widget,
+.tasknotes-relationships-widget {
+  background-color: var(--sol-surface);
+  border: 1px solid var(--sol-hairline);
+  border-radius: 8px;
+}
+.tasknotes-task-card-note-widget {
+  padding: var(--size-4-1) var(--size-4-3);
+}
+/* The widget's base sits in a paragraph, whose margin doubled the widget's own padding above and below it. */
+.tasknotes-relationships-widget .relationships__bases-container > p {
+  margin-block: 0;
+}
 
 /* The Default palette's tokens, derived from palette.ts by lookTokens.ts (npm run plugin:build). */
 .theme-dark {

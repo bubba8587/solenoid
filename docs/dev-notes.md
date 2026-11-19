@@ -6,6 +6,19 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-19: the Solenoid look over TaskNotes 5.0.1; cloud session)
+- **What stands** ([[obsidian-plugin#The look]], Other plugins' views): the plain-button pill is a `:where()` rule and
+  skips `.tasknotes-plugin` subtrees, which fixed the agenda (every ghost button had become a sunken pill: blob day
+  links, oval week-strip days). A TaskNotes section at the end of `look.css` sets its view headings to the text color
+  (`--hN-color: currentColor`; `inherit` in a custom property inherits the variable, not the color), places its
+  dialog title without the header divider, clears the mini calendar's empty corner, and makes its in-note task card
+  and relationships widget surface cards. Settings pages needed nothing: they are stock setting rows.
+- **Rig in the cloud:** Obsidian from the Snap (`unsquashfs` after `apt-get install squashfs-tools`), TaskNotes'
+  `main.js`/`styles.css`/`manifest.json` from `github.com/callumalpass/tasknotes/releases/download/<v>/` (release
+  downloads work; the API and jsDelivr don't), copied into the rig vault's plugins and enabled by `eval`. The plugin
+  build needs `cargo install wasm-bindgen-cli --version 0.2.130`. A settings window open in the rig takes the next
+  modal; close it first. A 1.15 modal's close button is `.modal-header-button`.
+
 ### SESSION DIGEST (2026-11-18b: the optimization suite's UI, the Solver in depth, a recalc leak, Plan C, HTML Page; cloud session)
 **Solver** ([[frame-verbs#Solver]], pinned in `solver.test.ts` against exact answers)
 - Limits are a saved `limitList`, edited in a PIVOTBY-style popup a sentence each and listed on the card in the pipeline

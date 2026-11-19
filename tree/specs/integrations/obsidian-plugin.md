@@ -94,6 +94,8 @@ The look's rules have one source, `obsidian-plugin/src/look.css`, and it authors
 
 **Graph view.** A note is a node in the accent, and the active one is the ink. Tags and attachments keep their type's hue.
 
+**Other plugins' views.** A plain button is a sunken pill, and the rule weighs no more than one class (`:where()`), so a button a plugin styles keeps the shape its view gives it. TaskNotes (checked against 5.0.1 in the rig) draws its views, cards and dialogs on Obsidian's variables, which the look already sets, so the look leaves its buttons out of the pill and undoes only what a rule meant for Obsidian's chrome did to it: the pill boxed every ghost button in the agenda (the week strip's days became ovals, the day links dark blobs); a heading in its views (the calendar's date range) took the note headings' hues, so there it is the text color; the dialog header's pull into the padding put a TaskNotes dialog's title on its edge (it has no padding and lays its header over the content, so its title keeps TaskNotes' place and no divider); the mini calendar's empty corner took the sidebar's fill. In a note, its task card and relationships widget are cards on the page as embeds are (the surface, one hairline, 8 px corners), not a rule on the canvas and a dashed box round a board.
+
 Tests: `obsidian-plugin/snippet.test.ts`: the demo vault's snippet is exactly what the plugin build writes.
 
 ## Knap notes
