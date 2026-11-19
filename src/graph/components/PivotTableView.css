@@ -45,8 +45,7 @@
 
 .pivot-view__scroll {
   margin: 10px 14px 12px;
-  max-height: 56vh;
-  max-height: 56dvh;
+  max-height: calc(56 * var(--sol-dvh, 1vh));
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 4px;

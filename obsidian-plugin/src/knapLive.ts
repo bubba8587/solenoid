@@ -133,7 +133,8 @@ export function knapLivePreview(notes: KnapNotes) {
 
     /** A press on a chip is the chip's; anywhere else puts the cursor in, which shows the source. */
     ignoreEvent(event: Event): boolean {
-      return event.target instanceof Element && !!event.target.closest(".solenoid-knap-chip");
+      const target = event.target as Node | null;
+      return !!target?.instanceOf(Element) && !!(target as Element).closest(".solenoid-knap-chip");
     }
   }
 

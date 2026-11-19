@@ -1,5 +1,5 @@
 // [[A1]] visualGraphCalculator, [[components#The design system]]
-import { createNotifier, createToggleStore } from "./storeKit";
+import { createNotifier, createToggleStore, readSaved, writeSaved } from "./storeKit";
 import { colormapRgb } from "./colormaps";
 
 // ── Color helpers ────────────────────────────────────────────────────────────
@@ -913,14 +913,12 @@ function recomputeReport() {
 }
 
 function persist() {
-  try { localStorage.setItem(LS_KEY, _appBase); } catch { /* private mode / quota */ }
+  writeSaved(LS_KEY, _appBase);
 }
 
 function persistCustom() {
-  try {
-    localStorage.setItem(LS_CUSTOM_KEY, JSON.stringify(_customMap));
-    localStorage.setItem(LS_CUSTOM_CHROME_KEY, JSON.stringify(_customChrome));
-  } catch { /* private mode / quota */ }
+  writeSaved(LS_CUSTOM_KEY, JSON.stringify(_customMap));
+  writeSaved(LS_CUSTOM_CHROME_KEY, JSON.stringify(_customChrome));
 }
 
 function mergeChrome(base: ChromeRamp, patch: ChromeRamp | undefined): ChromeRamp {
@@ -1054,7 +1052,7 @@ export const paletteEditorPanel = createToggleStore();
 /** Read the persisted app palette choice and apply it. Call once at startup. */
 export function initPalette() {
   try {
-    const raw = localStorage.getItem(LS_CUSTOM_KEY);
+    const raw = readSaved(LS_CUSTOM_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       const m: Record<PaletteSlot, string> = { ...PALETTE };
@@ -1065,7 +1063,7 @@ export function initPalette() {
     }
   } catch { /* ignore malformed custom map */ }
   try {
-    const raw = localStorage.getItem(LS_CUSTOM_CHROME_KEY);
+    const raw = readSaved(LS_CUSTOM_CHROME_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<PaletteChrome>;
       _customChrome = {
@@ -1074,10 +1072,8 @@ export function initPalette() {
       };
     }
   } catch { /* ignore malformed custom chrome */ }
-  try {
-    const v = localStorage.getItem(LS_KEY);
-    if (v === "Custom" || (v && v in BUILTIN_PALETTES)) _appBase = v as PaletteChoice;
-  } catch { /* ignore */ }
+  const v = readSaved(LS_KEY);
+  if (v === "Custom" || (v && v in BUILTIN_PALETTES)) _appBase = v as PaletteChoice;
   recompute();
   notifyPalette();
 }

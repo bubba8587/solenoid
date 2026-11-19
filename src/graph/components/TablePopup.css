@@ -14,8 +14,7 @@
 /* ── Grid ─────────────────────────────────────────────────────────────────── */
 .table-popup__grid-scroll {
   margin: 12px 14px;
-  max-height: 56vh;
-  max-height: 56dvh;
+  max-height: calc(56 * var(--sol-dvh, 1vh));
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -470,8 +469,7 @@
   width: calc(100% - 28px);
   margin: 12px 14px;
   min-height: 120px;
-  max-height: 56vh;
-  max-height: 56dvh;
+  max-height: calc(56 * var(--sol-dvh, 1vh));
   padding: 8px 10px;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
@@ -770,7 +768,7 @@
   .table-popup__colhead-input { min-width: 0; width: auto; flex: 1 0 auto; font-size: 12px; padding: 3px 4px; }
   .table-popup__csv { font-size: 14px; margin: 8px; width: calc(100% - 16px); }
   /* The CSV block is an editor: it asks for the whole screen and shrinks to what the header and footer leave. */
-  .sol-popup--fitnarrow .table-popup__csv { height: 100vh; height: 100dvh; }
+  .sol-popup--fitnarrow .table-popup__csv { height: calc(100 * var(--sol-dvh, 1vh)); }
   .sol-popup--fitnarrow .table-popup__csvwrap { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
   .sol-popup--fitnarrow .table-popup__csvwrap .table-popup__csv--over { flex: 0 1 auto; min-height: 0; }
   .table-popup__csvwrap { margin: 8px; }
@@ -814,8 +812,7 @@
 /* ── Form view ──────────────────────────────────────────────────────────────── */
 .table-popup__form-scroll {
   margin: 12px 14px;
-  max-height: 56vh;
-  max-height: 56dvh;
+  max-height: calc(56 * var(--sol-dvh, 1vh));
   overflow: auto;
 }
 /* The form widens with its layout, about 220px a grid column, and never narrower than one comfortable field. */

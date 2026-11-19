@@ -1,5 +1,5 @@
 // [[A1]] visualGraphCalculator (module-singleton store, storeKit)
-import { createValueStore } from "./storeKit";
+import { createValueStore, readSaved, writeSaved } from "./storeKit";
 import { WHATS_NEW_VERSION } from "./whatsNewSlides";
 
 type HelpDialog = "about" | "whatsnew";
@@ -26,10 +26,10 @@ export const helpDialogStore = {
 
 export function autoShowWhatsNewOnce(): void {
   try {
-    const seen = localStorage.getItem(SEEN_KEY);
+    const seen = readSaved(SEEN_KEY);
     if (seen === WHATS_NEW_VERSION) return;
     const firstEver = seen === null;
-    localStorage.setItem(SEEN_KEY, WHATS_NEW_VERSION);
+    writeSaved(SEEN_KEY, WHATS_NEW_VERSION);
     if (!firstEver) set("whatsnew");
   } catch {
     /* private mode / quota — skip the auto-show, the menu item still works */

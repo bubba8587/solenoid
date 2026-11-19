@@ -9,8 +9,9 @@ export function themeColor(name: string, fallback: string, within: Element = doc
   const raw = getComputedStyle(within).getPropertyValue(name).trim();
   if (!raw) return fallback;
   if (!/light-dark\(|var\(|color-mix\(/.test(raw)) return raw;
-  const host = within instanceof HTMLCanvasElement ? (within.parentElement ?? document.body) : within;
-  const probe = document.createElement("span");
+  const doc = within.ownerDocument;
+  const host = within.tagName === "CANVAS" ? (within.parentElement ?? doc.body) : within;
+  const probe = doc.createElement("span");
   probe.style.setProperty("color", `var(${name})`);
   probe.hidden = true;
   host.appendChild(probe);

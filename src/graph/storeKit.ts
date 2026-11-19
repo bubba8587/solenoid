@@ -38,18 +38,25 @@ export function createToggleStore(initial = false): ToggleStore {
   };
 }
 
-/** A toggle kept per viewer under `key` ("1" or "0"); `load` reads it back at startup. Storage can be missing or
- *  throw (private mode, quota), and then the toggle lives in memory only. */
+/** The text kept per viewer under `key`, or null when there is none. Storage can be missing or throw (private mode),
+ *  which reads as none. Every store's saved state goes through this and `writeSaved`. */
+export function readSaved(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+/** Keeps `text` per viewer under `key`. Storage can be missing or throw (private mode, quota), and then the state lives
+ *  in memory only. */
+export function writeSaved(key: string, text: string): void {
+  try { localStorage.setItem(key, text); } catch { /* in memory only */ }
+}
+
+/** A toggle kept per viewer under `key` ("1" or "0"); `load` reads it back at startup. */
 export function createSavedToggle(key: string): ToggleStore & { load: () => void } {
   const store = createToggleStore();
-  store.subscribe(() => {
-    try { localStorage.setItem(key, store.get() ? "1" : "0"); } catch { /* in memory only */ }
-  });
+  store.subscribe(() => writeSaved(key, store.get() ? "1" : "0"));
   return {
     ...store,
-    load: () => {
-      try { store.set(localStorage.getItem(key) === "1"); } catch { /* in memory only */ }
-    },
+    load: () => store.set(readSaved(key) === "1"),
   };
 }
 

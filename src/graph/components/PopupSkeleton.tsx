@@ -12,15 +12,15 @@ export function useAfterPaint(key: unknown): boolean {
     if (key == null) { setReadyFor(null); return; }
     let timer = 0;
     // A rAF runs before the next paint; the timeout it queues runs after it.
-    const frame = requestAnimationFrame(() => { timer = window.setTimeout(() => setReadyFor(key), 0); });
-    return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
+    const frame = window.requestAnimationFrame(() => { timer = window.setTimeout(() => setReadyFor(key), 0); });
+    return () => { window.cancelAnimationFrame(frame); window.clearTimeout(timer); };
   }, [key]);
   return key != null && readyFor === key;
 }
 
 /** Resolves after the browser has painted what is on screen now: work started after it can't hold a popup's skeleton back. */
 export function afterNextPaint(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+  return new Promise((resolve) => window.requestAnimationFrame(() => window.setTimeout(resolve, 0)));
 }
 
 /** The loading placeholder a popup shows while its body renders or its data arrives: one neutral shimmering block. */

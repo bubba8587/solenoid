@@ -1,3 +1,10 @@
+/* The dynamic viewport unit, where the engine has it (the height a phone's bars and keyboard leave), else the static one:
+   a height written `calc(N * var(--sol-dvh, 1vh))` is one declaration with its fallback in it. `:host` carries it into
+   the Obsidian plugin's shadow roots. */
+@supports (height: 1dvh) {
+  :root, :host { --sol-dvh: 1dvh; }
+}
+
 :root {
   color-scheme: dark;
   /* The " Variable"-suffixed family is the bundled @fontsource webfont and must come first, or phones fall back to system-ui. */
@@ -96,8 +103,7 @@ body,
 .solenoid-app {
   position: relative;
   width: 100vw;
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100 * var(--sol-dvh, 1vh));
 }
 
 /* Form controls don't inherit font-family from the UA stylesheet, so force the app font on them. */

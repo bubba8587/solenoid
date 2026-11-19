@@ -26,8 +26,8 @@ export function pushNotice(message: string, tone: NoticeTone = "info", ttl = DEF
   const id = ++_seq;
   _notices = [..._notices, { id, message, tone, ...(action ? { action } : {}) }];
   notify();
-  if (ttl > 0 && typeof setTimeout !== "undefined") {
-    setTimeout(() => dismissNotice(id), ttl);
+  if (ttl > 0 && typeof window !== "undefined") {
+    window.setTimeout(() => dismissNotice(id), ttl);
   }
   return id;
 }

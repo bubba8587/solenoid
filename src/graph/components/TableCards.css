@@ -4,8 +4,7 @@
   display: flex;
   flex-direction: column;
   margin: 12px 14px;
-  max-height: 56vh;
-  max-height: 56dvh;
+  max-height: calc(56 * var(--sol-dvh, 1vh));
   overflow: auto;
   overscroll-behavior: contain;
 }
@@ -97,7 +96,7 @@
 }
 .table-cards__more { align-self: center; margin: 4px 0 2px; }
 @media (max-width: 640px) {
-  .table-cards-wrap { margin: 10px; max-height: 62vh; max-height: 62dvh; }
+  .table-cards-wrap { margin: 10px; max-height: calc(62 * var(--sol-dvh, 1vh)); }
   .table-cards__sort { font-size: 14px; }
   .table-cards__sort,
   .table-cards__dir { height: 34px; }

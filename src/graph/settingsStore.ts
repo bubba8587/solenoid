@@ -1,6 +1,6 @@
 // [[C44]] dateSerials
 
-import { createNotifier, createToggleStore } from "./storeKit";
+import { createNotifier, createToggleStore, readSaved, writeSaved } from "./storeKit";
 
 /** Display only: the stored label stays raw. */
 type HeaderTitleCase = "as-typed" | "upper" | "proper";
@@ -285,8 +285,7 @@ let _settings: Settings = { ...DEFAULT_SETTINGS };
 const { notify, subscribe, version } = createNotifier();
 
 function persist() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(_settings)); }
-  catch { /* private mode / quota — non-fatal */ }
+  writeSaved(LS_KEY, JSON.stringify(_settings));
 }
 
 export const settingsStore = {
@@ -322,7 +321,7 @@ subscribe(syncPerfClasses);
 /** Call once at startup. */
 export function initSettings(): void {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = readSaved(LS_KEY);
     if (raw) _settings = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) };
   } catch { /* ignore malformed */ }
   syncPerfClasses();

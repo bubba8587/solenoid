@@ -22,11 +22,14 @@ function hold(node: Element, attr: string, v: string): void {
   _held++;
 }
 
+/** An element, by its node type: a node of another window (a popped-out note's) fails that window's `instanceof`. */
+const isElement = (node: Node): node is Element => node.nodeType === 1;
+
 function install(): void {
   if (_installed) return;
   _installed = true;
   DOMPurify.addHook("afterSanitizeAttributes", (node) => {
-    if (!_holding || !(node instanceof Element)) return;
+    if (!_holding || !isElement(node)) return;
     for (const attr of ["src", "srcset", "poster", "background"]) {
       const v = node.getAttribute(attr);
       if (v !== null && (attr === "srcset" ? srcsetReachesWeb(v) : isWebUrl(v))) hold(node, attr, v);
@@ -45,7 +48,7 @@ function install(): void {
     if (style && CSS_FETCH.test(style)) { node.removeAttribute("style"); _held++; }
   });
   DOMPurify.addHook("afterSanitizeElements", (node) => {
-    if (_holding && node instanceof Element && node.tagName === "STYLE" && CSS_FETCH.test(node.textContent ?? "")) {
+    if (_holding && isElement(node) && node.tagName === "STYLE" && CSS_FETCH.test(node.textContent ?? "")) {
       node.textContent = "";
       _held++;
     }

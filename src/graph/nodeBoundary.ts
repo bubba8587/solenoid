@@ -78,7 +78,7 @@ function cellKinds(a: readonly unknown[]): Uint8Array {
   for (let i = 0; i < a.length; i++) {
     const v = a[i];
     switch (typeof v) {
-      case "number": k[i] = v === v ? 0 : 12; break;
+      case "number": k[i] = Number.isNaN(v) ? 12 : 0; break;
       case "string": k[i] = 1; break;
       case "boolean": k[i] = 2; break;
       case "undefined": k[i] = 4; break;
