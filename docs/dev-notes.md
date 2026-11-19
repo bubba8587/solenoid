@@ -21,6 +21,12 @@ specific item.
 - **1 px round corners are painted twice** ([[obsidian-plugin#The look]]): an outline at `-1px` on a border, a shadow ring
   listed twice. Found at 1x, not 4x: check a stroke at the scales people run (1, 1.5, 2), blown up with point
   filtering. `corner-shape: round` renders identically to none; `mod-macos` on the body emulates the Mac superellipse.
+- **The plugin's module is 780 KB** (from 1.41 MB; `main.js` 1.76 MB from 2.60 MB): the `plugin` feature drops the wasm
+  exports only the graph calls, and `engineGlue.ts` throws in their place. Still compiled but linked out: the Excel
+  readers and netcore; making them optional deps would speed the snapshot's build but not shorten its lock files.
+- **Plugin review warnings, 69 to 47** (`npm run plugin:lint`); what stands is in [[obsidian-plugin]] § Publishing.
+  Open: `networkAllowed()` is true in the plugin (a vault note is never foreign), so a web image URL in a cell loads,
+  beside the README's "no network access".
 
 ### SESSION DIGEST (2026-11-19: Calendar Heatmap by week, month or year; cloud session)
 - **What stands:** the options' `period` (Group by on a Chart Builder's Calendar Heatmap target: Day, ISO week, Month,
