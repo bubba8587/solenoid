@@ -3,15 +3,15 @@ import type { ReactNode } from "react";
 import type { GraphNode } from "../graphModel";
 import type {
   WaterfallNode, CandlestickNode, BoxplotNode,
-  CalendarHeatmapNode, HeatmapNode, ProportionNode, ProportionLayout, QuiverNode, UsMapNode, UsMapScope,
+  CalendarHeatmapNode, CalendarPeriod, HeatmapNode, ProportionNode, ProportionLayout, QuiverNode, UsMapNode, UsMapScope,
 } from "../nodeClasses";
-import { PROPORTION_LAYOUT_OPTIONS, US_MAP_SCOPE_OPTIONS } from "../nodeClasses";
+import { CALENDAR_PERIOD_OPTIONS, PROPORTION_LAYOUT_OPTIONS, US_MAP_SCOPE_OPTIONS } from "../nodeClasses";
 import type { ChartValue, ChartPayload } from "../chartValue";
 import { isSolError, type SolError } from "../errorValue";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
-import { calendarHeight } from "./heatmapLayout";
+import { calendarHeight, periodHeight } from "./heatmapLayout";
 import { legendLines } from "../geo/usMapLegend";
 import { ChartChip } from "./ChartChip";
 import { OpToggle, SegToggle } from "./SegToggle";
@@ -73,12 +73,30 @@ export const BoxplotComponent = makeFigureComponent<BoxplotNode>(
   (p) => p?.kind === "boxplot" && p.boxes.length > 0,
 );
 
-// The height the wrapped weeks need at the card's width, plus the title strip; the tick width is a typical label's.
+function CalendarPeriodControls({ data }: { data: CalendarHeatmapNode }) {
+  const [period, setPeriod] = useState<CalendarPeriod>(data.period);
+  async function pick(next: CalendarPeriod) {
+    if (next === data.period) return;
+    data.setPeriod(next); // every period takes the same sockets
+    setPeriod(next);
+    await getOwningView(data.id)?.rerenderNode(data.id);
+    await processEdited(data.id);
+  }
+  return <SegToggle value={period} options={CALENDAR_PERIOD_OPTIONS} onChange={(s) => void pick(s)} />;
+}
+
+// The height the wrapped weeks (or the grouped grid) need at the card's width, plus the title strip; the tick width
+// is a typical label's.
 export const CalendarHeatmapComponent = makeFigureComponent<CalendarHeatmapNode>(
-  (cv, w) => cv.payload?.kind === "calheat"
-    ? calendarHeight(cv.payload.days, w, 1, cv.options.cbar === false ? null : 22) + (cv.options.title ? 16 : 0)
-    : 110,
+  (cv, w) => {
+    const p = cv.payload?.kind === "calheat" ? cv.payload : null;
+    if (!p) return 110;
+    const tick = cv.options.cbar === false ? null : 22;
+    const fig = p.period && p.period !== "day" ? periodHeight(p.days, p.period, w, 1, tick) : calendarHeight(p.days, w, 1, tick);
+    return fig + (cv.options.title ? 16 : 0);
+  },
   (p) => p?.kind === "calheat" && p.days.length > 0,
+  (data) => <CalendarPeriodControls data={data} />,
 );
 
 // Tall enough for square cells at the card's width, so a short grid leaves no dead band.

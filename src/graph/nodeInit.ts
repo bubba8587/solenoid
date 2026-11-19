@@ -41,6 +41,7 @@ export const INIT_FIELD_ORDER = [
   "exportTotals",
   "tableName",
   "scope",
+  "period",
   "stepStart",
   "turns",
   "reach", "ends", "orderDir", "stuck", "goal", "direction", "orderBy", "transitionsDirection", "transitionsMatch", "transitionsOf", "transitionsUnlisted",

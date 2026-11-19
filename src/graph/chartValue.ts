@@ -68,6 +68,8 @@ export interface BoxplotPayload {
 }
 export interface CalHeatPayload {
   kind: "calheat";
+  /** What a cell is; each of `days` is its period's first day (an ISO week's Monday, a month's 1st, 1 January). */
+  period: "day" | "week" | "month" | "year";
   days: number[];
   values: number[];
 }

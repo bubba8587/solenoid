@@ -403,6 +403,25 @@ describe("chart-wave nodes emit their payloads", () => {
     expect(q.values).toEqual([2, 1]);
   });
 
+  it("Calendar Heatmap sums by ISO week, month or year, keyed by each one's first day, and the period saves", async () => {
+    // 29-Dec-2025 (Mon) 46020, 04-Jan-2026 (Sun) 46026, 05-Jan-2026 (Mon) 46027, 01-Feb-2026 46054.
+    const f = frame([
+      { name: "Day", type: "date", values: [46020, 46026, 46027, 46054] },
+      { name: "N", type: "number", values: [1, 2, 4, 8] },
+    ]);
+    const by = async (period: "day" | "week" | "month" | "year") => {
+      const p = (await new CalendarHeatmapNode({ period }).data({ frame: [f] })).chart.payload as CalHeatPayload;
+      return [p.period, p.days, p.values];
+    };
+    expect(await by("week")).toEqual(["week", [46020, 46027, 46048], [3, 4, 8]]);
+    expect(await by("month")).toEqual(["month", [45992, 46023, 46054], [1, 6, 8]]);
+    expect(await by("year")).toEqual(["year", [45658, 46023], [1, 14]]);
+    expect(await by("day")).toEqual(["day", [46020, 46026, 46027, 46054], [1, 2, 4, 8]]);
+    const n = new CalendarHeatmapNode({ period: "month" });
+    expect(new CalendarHeatmapNode(extractInit(n) as { period?: "month" }).period).toBe("month");
+    expect(extractInit(new CalendarHeatmapNode()).period).toBe("day");
+  });
+
   it("Proportion emits the waffle layout when its op is waffle, round-tripping through extractInit", async () => {
     const n = new ProportionNode({ op: "waffle" });
     const f = frame([{ name: "Part", type: "string", values: ["A"] }, { name: "Share", type: "number", values: [1] }]);

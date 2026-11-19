@@ -786,8 +786,18 @@ export class BoxplotNode extends GraphNode {
 
 // ─── Calendar heatmap ─────────────────────────────────────────────────────────
 
+export type CalendarPeriod = "day" | "week" | "month" | "year";
+export const CALENDAR_PERIOD_META = {
+  day:   { label: "Day" },
+  week:  { label: "Week" },
+  month: { label: "Month" },
+  year:  { label: "Year" },
+} satisfies Record<CalendarPeriod, { label: string }>;
+export const CALENDAR_PERIOD_OPTIONS = Object.entries(CALENDAR_PERIOD_META).map(([value, m]) => ({ value: value as CalendarPeriod, label: m.label }));
+
 export class CalendarHeatmapNode extends GraphNode {
   label: string;
+  period: CalendarPeriod = "day";
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
@@ -801,12 +811,17 @@ export class CalendarHeatmapNode extends GraphNode {
     ] },
   };
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; period?: CalendarPeriod }) {
     super("CalendarHeatmap");
     this.label = init?.label ?? "Calendar Heatmap";
+    if (init?.period && init.period in CALENDAR_PERIOD_META) this.period = init.period;
     this.addInput("frame", frameIn("Date + Value"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
+  }
+
+  setPeriod(next: CalendarPeriod): void {
+    this.period = next;
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {

@@ -6,7 +6,7 @@ import { resolveColor, heightRampColor, divergingRampColor } from "../palette";
 import { colormapRgb, heatScale, type HeatScale } from "../colormaps";
 import { formatNumberSpec } from "../numberSpec";
 import { formatScalar } from "./format";
-import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, calCellXY, type HeatLayout, type CalLayout } from "./heatmapLayout";
+import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, calCellXY, periodGrid, periodColLabels, periodLabel, PERIOD_MAX_CELL, type HeatLayout, type CalLayout, type CalPeriod, type PeriodGrid } from "./heatmapLayout";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import type { ChartOptions } from "../nodes/chartOptions";
 import { serialToJsDate } from "../nodes/date";
@@ -264,14 +264,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   const scale = heatScale(L.lo, L.hi, o);
   // A day's cell: its own theme color, picked per mode in CSS, so nothing here guesses the mode from a color.
   const cellBase = ink.emptyCell;
-  // No cmap and no center keeps the accent, at an opacity by value over the empty-day color.
-  const color = heatColorFn(o);
-  const paint: Paint = o.cmap || o.center !== undefined
-    ? (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }
-    : (c, x, y, w, h, t) => {
-      c.fillStyle = cellBase; c.fillRect(x, y, w, h);
-      c.fillStyle = ink.accent; c.globalAlpha = 0.16 + 0.84 * t; c.fillRect(x, y, w, h); c.globalAlpha = 1;
-    };
+  const paint = calPaint(o, ink);
 
   ctx.fillStyle = ink.dim;
   if (L.truncated) {
@@ -315,6 +308,84 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   }
   if (L.cbar) drawColorbar(ctx, ink, L.cbar, scale, paint, scaleTicks(scale), Math.ceil(10.5 * fs));
   return L;
+}
+
+/** The calendar's own coloring: with no cmap and no center the accent at an opacity by value over the empty-day color. */
+function calPaint(o: ChartOptions, ink: ReturnType<typeof themeInk>): Paint {
+  const color = heatColorFn(o);
+  return o.cmap || o.center !== undefined
+    ? (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }
+    : (c, x, y, w, h, t) => {
+      c.fillStyle = ink.emptyCell; c.fillRect(x, y, w, h);
+      c.fillStyle = ink.accent; c.globalAlpha = 0.16 + 0.84 * t; c.fillRect(x, y, w, h); c.globalAlpha = 1;
+    };
+}
+
+type PeriodLayout = { g: PeriodGrid; L: HeatLayout; cell: number; gap: number };
+
+/** A calendar summed by week, month or year: a row per year (one row of years by year), the cells square at the size
+ *  the width allows up to a cap, left-aligned under the title so the figure reads as the day grid does. */
+function drawCalPeriod(canvas: HTMLCanvasElement, p: CalHeatPayload, period: CalPeriod, o: ChartOptions, W: number, H: number, fs: number): PeriodLayout | null {
+  const ctx = setupCanvas(canvas, W, H);
+  if (!ctx) return null;
+  const ink = themeInk(canvas);
+  const g = periodGrid(p.days, p.values, period);
+  if (!g) return null;
+  let lo = Infinity, hi = -Infinity;
+  for (let r = 0; r < g.nR; r++) for (let c = 0; c < g.nC; c++) {
+    const s = g.start(r, c);
+    const v = s === null ? undefined : g.byStart.get(s);
+    if (v !== undefined) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  }
+  const scale = heatScale(lo, hi, o);
+  const showCbar = o.cbar !== false;
+  ctx.font = tickFont(fs, ctx.canvas);
+  const widest = (xs: Iterable<string>) => { let m = 0; for (const x of xs) m = Math.max(m, ctx.measureText(x).width); return m; };
+  const L0 = heatmapLayout({
+    nR: g.nR, nC: g.nC, W, H, fs,
+    rowLabelW: widest(g.rows), colLabelW: 1,
+    cbarTickW: showCbar ? widest(scaleTicks(scale).map(compactTick)) : 0,
+    xlabel: false, ylabel: false, cbar: showCbar, aspect: "equal", lower: false, note: g.cutYears > 0,
+  });
+  // Capped cells: the block keeps its left edge, and the colorbar and the labels follow the grid's true size.
+  const cell = Math.min(L0.cw, PERIOD_MAX_CELL[period]);
+  const gx = L0.rowLabels ? L0.rowLabels.x + 3 : 1, gy = Math.ceil(5 * fs);
+  const gridW = cell * g.nC, gridH = cell * g.nR;
+  const L: HeatLayout = {
+    ...L0, gx, gy, cw: cell, ch: cell,
+    rowLabels: L0.rowLabels ? { ...L0.rowLabels, x: gx - 3 } : null,
+    colLabels: { y: gy + gridH + 3, h: L0.lineH, rotated: false, step: 1 },
+    cbar: L0.cbar ? { ...L0.cbar, x: gx + gridW + 6, y: gy, h: gridH, textX: gx + gridW + 6 + 8 + 3 } : null,
+    note: g.cutYears > 0 ? { x: gx + gridW, y: gy + gridH + 3 + L0.lineH + L0.lineH / 2 } : null,
+  };
+  const gap = cell > 6 ? 1 : 0.5;
+  const paint = calPaint(o, ink);
+  for (let r = 0; r < g.nR; r++) for (let c = 0; c < g.nC; c++) {
+    const s = g.start(r, c);
+    if (s === null) continue;
+    const x = gx + c * cell, y = gy + r * cell;
+    const v = g.byStart.get(s);
+    if (v === undefined) { ctx.fillStyle = ink.emptyCell; ctx.fillRect(x, y, cell - gap, cell - gap); }
+    else paint(ctx, x, y, cell - gap, cell - gap, scale.t(v));
+  }
+  ctx.fillStyle = ink.dim;
+  if (L.rowLabels) {
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let r = 0; r < g.nR; r += L.rowLabels.step) ctx.fillText(g.rows[r], L.rowLabels.x, gy + r * cell + cell / 2);
+  }
+  ctx.textBaseline = "top";
+  ctx.textAlign = period === "week" ? "left" : "center";
+  for (const { c, text } of periodColLabels(g, cell)) {
+    ctx.fillText(text, gx + c * cell + (period === "week" ? 0 : cell / 2), L.colLabels!.y);
+  }
+  if (L.note) {
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`last ${period === "year" ? g.nC : g.nR} yr`, L.note.x, L.note.y);
+  }
+  if (L.cbar) drawColorbar(ctx, ink, L.cbar, scale, paint, scaleTicks(scale), Math.ceil(10.5 * fs));
+  return { g, L, cell, gap };
 }
 
 // ─── Heatmap ──────────────────────────────────────────────────────────────────
@@ -835,7 +906,36 @@ function HoverFrame({ width, height, canvasRef, onMove, hover }: {
   );
 }
 
-export function CalHeatView({ payload, options, width, height, fscale = 1 }: { payload: CalHeatPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
+type CalViewProps = { payload: CalHeatPayload; options: ChartOptions; width: number; height: number; fscale?: number };
+
+export function CalHeatView(props: CalViewProps) {
+  const period = props.payload.period;
+  return period && period !== "day" ? <CalPeriodView {...props} period={period} /> : <CalDayView {...props} />;
+}
+
+function CalPeriodView({ payload, options, width, height, fscale = 1, period }: CalViewProps & { period: CalPeriod }) {
+  const [ref, layout] = useHoverCanvas((c) => drawCalPeriod(c, payload, period, options, width, height, fscale), [payload, period, JSON.stringify(options), width, height, fscale]);
+  const [hover, setHover] = useState<{ r: number; c: number; x: number; y: number } | null>(null);
+  if (payload.days.length === 0) return <Empty />;
+  const P = layout.current;
+  const start = hover && P ? P.g.start(hover.r, hover.c) : null;
+  return (
+    <HoverFrame width={width} height={height} canvasRef={ref}
+      onMove={(x, y) => {
+        const cell = P ? heatCellAt(P.L, x, y) : null;
+        setHover(cell && P!.g.start(cell.r, cell.c) !== null ? { ...cell, x, y } : null);
+      }}
+      hover={hover && P && start !== null ? {
+        x: hover.x, y: hover.y,
+        cell: { left: P.L.gx + hover.c * P.cell, top: P.L.gy + hover.r * P.cell, width: P.cell - P.gap, height: P.cell - P.gap },
+        label: periodLabel(period, start),
+        value: P.g.byStart.get(start),
+      } : null}
+    />
+  );
+}
+
+function CalDayView({ payload, options, width, height, fscale = 1 }: CalViewProps) {
   const [ref, layout] = useHoverCanvas((c) => drawCalHeat(c, payload, options, width, height, fscale), [payload, JSON.stringify(options), width, height, fscale]);
   const [hover, setHover] = useState<{ day: number; x: number; y: number } | null>(null);
   if (payload.days.length === 0) return <Empty />;

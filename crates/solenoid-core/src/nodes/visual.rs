@@ -1953,9 +1953,31 @@ fn boxplot(c: &mut Call) -> Answer {
     figure(c, "boxplot", Json::Null, json!({ "kind": "boxplot", "boxes": boxes }), opts, "Boxplot")
 }
 
+/// The first day of the period `day` falls in: itself, its ISO week's Monday, its month's 1st or its year's 1 January.
+fn calendar_period_start(day: i64, period: &str) -> i64 {
+    use crate::date_serial::{civil_from_days, days_from_civil};
+    // Serial 25569 is 01-Jan-1970, a Thursday.
+    let epoch = day - 25569;
+    match period {
+        "week" => day - (epoch + 3).rem_euclid(7),
+        "month" | "year" => {
+            let (y, m, _) = civil_from_days(epoch);
+            days_from_civil(y, if period == "month" { m } else { 1 }, 1) + 25569
+        }
+        _ => day,
+    }
+}
+
 /// Each day in column 0 with the sum of its rows' values: a number from column 1, or 1 for a row without one (a blank
-/// cell, or a second column that isn't numbers), so a frame of dated entries counts them per day.
+/// cell, or a second column that isn't numbers), so a frame of dated entries counts them per day. The card's `period`
+/// sums the days into ISO weeks, months or years instead, each keyed by its first day.
 fn calendar_heatmap(c: &mut Call) -> Answer {
+    let period = match c.field_str("period", "day") {
+        "week" => "week",
+        "month" => "month",
+        "year" => "year",
+        _ => "day",
+    };
     let frame = first(c, "frame");
     let cols = frame_columns(&frame);
     let serials: Vec<Option<f64>> = cols.first().map_or_else(Vec::new, |col| col.values.iter().map(finite).collect());
@@ -1964,12 +1986,12 @@ fn calendar_heatmap(c: &mut Call) -> Answer {
     for (i, d) in serials.iter().enumerate() {
         let Some(d) = d else { continue };
         let v = amounts.and_then(|col| col.values.get(i)).and_then(finite).unwrap_or(1.0);
-        *by_day.entry(d.floor() as i64).or_insert(0.0) += v;
+        *by_day.entry(calendar_period_start(d.floor() as i64, period)).or_insert(0.0) += v;
     }
     let days: Vec<Json> = by_day.keys().map(|&d| jn(d as f64)).collect();
     let values: Vec<Json> = by_day.values().map(|&v| jn(v)).collect();
     let opts = read_options(c)?;
-    let payload = json!({ "kind": "calheat", "days": days, "values": values });
+    let payload = json!({ "kind": "calheat", "period": period, "days": days, "values": values });
     figure(c, "calheat", Json::Array(values), payload, opts, "Calendar Heatmap")
 }
 
@@ -2750,6 +2772,23 @@ fn conditional_regions(c: &mut Call) -> Answer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn calendar_periods_start_on_monday_the_first_and_new_year() {
+        // 46023 is 01-Jan-2026, a Thursday; 45658 is Wednesday 01-Jan-2025, whose ISO week opens Monday 30-Dec-2024.
+        assert_eq!(calendar_period_start(46023, "week"), 46020);
+        assert_eq!(calendar_period_start(46020, "week"), 46020);
+        assert_eq!(calendar_period_start(46026, "week"), 46020);
+        assert_eq!(calendar_period_start(46027, "week"), 46027);
+        assert_eq!(calendar_period_start(45658, "week"), 45656);
+        // 15-Mar-2026 is 46096; 01-Mar-2026 is 46082.
+        assert_eq!(calendar_period_start(46096, "month"), 46082);
+        assert_eq!(calendar_period_start(46096, "year"), 46023);
+        assert_eq!(calendar_period_start(46096, "day"), 46096);
+        // A leap day and a day before 1900 bucket as any other.
+        assert_eq!(calendar_period_start(45351, "month"), 45323);
+        assert_eq!(calendar_period_start(-100, "year"), crate::date_serial::days_from_civil(1899, 1, 1) + 25569);
+    }
 
     /// The walk before the indices: every flow that would close a loop, in order, from string sets.
     fn by_names((sources, targets, values): Flows) -> (Flows, usize) {
