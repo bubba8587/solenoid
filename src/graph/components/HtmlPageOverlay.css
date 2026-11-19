@@ -21,6 +21,8 @@ html.sol-canvas-covered:has(.sol-htmlpage) .solenoid-notices { z-index: 9100; bo
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* The page's own z-indexes stay inside the page: a fixed header at z-index 99999 can't cover the way back. */
+  isolation: isolate;
   background: var(--surface);
   color: var(--text);
 }

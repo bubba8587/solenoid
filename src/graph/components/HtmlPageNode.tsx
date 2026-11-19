@@ -88,7 +88,7 @@ export function HtmlPageComponent({ data, emit }: NodeProps<HtmlPageNodeType>) {
         </>
       ) : (
         <>
-          <CardOpenButton label="Open Page" onOpen={open} />
+          {data.fileName.trim() && <CardOpenButton label="Open Page" onOpen={open} />}
           {!readable ? (
             <div className="sol-conn__note">Local files are read in the desktop app. Turn on the demo vault in Settings ▸ Data to try the sample pages.</div>
           ) : !folder ? (

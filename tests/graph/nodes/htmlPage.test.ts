@@ -18,6 +18,23 @@ describe("an HTML Page's CSS", () => {
     expect(scopeCss("h1, .card p { color: red }")).toBe(`${S} h1, ${S} .card p { color: red }`);
   });
 
+  it("splits a selector list only on its own commas, not those inside :is() or a quoted attribute", () => {
+    expect(scopeCss(":is(h1, h2) span { color: red }")).toBe(`${S} :is(h1, h2) span { color: red }`);
+    expect(scopeCss(':not(.a, .b), a[title="x,y"] { margin: 0 }')).toBe(`${S} :not(.a, .b), ${S} a[title="x,y"] { margin: 0 }`);
+  });
+
+  it("scopes the rules inside any at-rule that holds rules, not only the ones it knows", () => {
+    expect(scopeCss("@scope (.a) { p { color: red } }")).toBe(`@scope (.a) { ${S} p { color: red } }`);
+    expect(scopeCss("@starting-style { .pop { opacity: 0 } }")).toBe(`@starting-style { ${S} .pop { opacity: 0 } }`);
+    expect(scopeCss("@page { margin: 1cm }")).toBe("@page { margin: 1cm }");
+  });
+
+  it("keeps a statement at-rule to itself, so the rule after it is still scoped", () => {
+    expect(scopeCss('@charset "utf-8"; .y { color: blue }')).toBe(`@charset "utf-8"; ${S} .y { color: blue }`);
+    expect(scopeCss("@layer base, theme; button { display: none }")).toBe(`@layer base, theme; ${S} button { display: none }`);
+    expect(scopeCss("@media print { @layer x; p { margin: 0 } }")).toContain(`${S} p { margin: 0 }`);
+  });
+
   it("scopes the rules inside @media and leaves @keyframes' frames alone", () => {
     const out = scopeCss("@media (max-width: 600px) { .grid { display: block } } @keyframes rise { from { opacity: 0 } to { opacity: 1 } }");
     expect(out.startsWith("@media (max-width: 600px) {")).toBe(true);

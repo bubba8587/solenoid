@@ -564,7 +564,12 @@ lines.
 selectors under `.sol-htmlpage__doc`, `html`, `body` and `:root` naming the page itself, rules in `@media`, `@supports`,
 `@container` and `@layer` scoped the same, `@keyframes` and `@font-face` left as they are. So a page styles nothing else
 on screen, and the app's look reaches the page only where the page leaves it unset. Nothing in it fetches: `@import`
-goes, and so does every `url()` that isn't an inline image or font (it reads `none`).
+goes, and so does every `url()` that isn't an inline image or font (it reads `none`). A selector list splits only on its own commas (`:is(h1, h2)`, `[title="a,b"]` stay whole); a statement
+(`@charset`, `@layer a, b;`) ends at its semicolon, so the rule after it is still scoped; and every at-rule that holds
+rules, known or not (`@media`, `@scope`, `@starting-style`…), has them scoped, only the ones that hold declarations
+(`@font-face`, `@keyframes`, `@page`, `@property`…) passing through as written. The page's scroller is its own stacking
+context, so a page's z-index never covers the way back. A `<form>` is dropped by the sanitizer (its fields stay), since
+submitting one would move the app's own page; that holds for Notes and Reports too.
 
 **Pictures and fonts from the data folder.** A page names its own files as a web page would: `<img src="images/logo.svg">`,
 `style="background: url(images/grain.png)"`, `@font-face { src: url(fonts/Fraunces.woff2) }`. A path is relative to the

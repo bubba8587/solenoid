@@ -32,6 +32,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.sol-pick__text--path { display: flex; min-width: 0; }
+.sol-pick__dir { flex: 0 1000 auto; min-width: 1.2em; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); }
+.sol-pick__base { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sol-pick__missing {
   flex: none;
   font-size: 10px;

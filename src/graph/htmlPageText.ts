@@ -47,12 +47,30 @@ export function attributeSlots(rendered: string): string[] {
   return [...out];
 }
 
+/** `text` split on `sep` where it stands outside parentheses, brackets and quotes: a selector list's own commas, not
+ *  those inside `:is(h1, h2)` or `[title="a,b"]`. */
+function splitTopLevel(text: string, sep: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let quote = "";
+  let from = 0;
+  for (let k = 0; k < text.length; k++) {
+    const c = text[k];
+    if (quote) { if (c === "\\") k++; else if (c === quote) quote = ""; continue; }
+    if (c === '"' || c === "'") quote = c;
+    else if (c === "(" || c === "[") depth++;
+    else if (c === ")" || c === "]") depth = Math.max(0, depth - 1);
+    else if (c === sep && depth === 0) { out.push(text.slice(from, k)); from = k + 1; }
+  }
+  out.push(text.slice(from));
+  return out;
+}
+
 /** A selector list under the page's scope: `html`, `body` and `:root` name the page itself. `theme` limits it to the
  *  app's light or dark, at no extra specificity. */
 function scopeSelectors(list: string, theme = ""): string {
   const scope = theme ? `:where(html[data-theme="${theme}"]) .${PAGE_SCOPE}` : `.${PAGE_SCOPE}`;
-  return list
-    .split(",")
+  return splitTopLevel(list, ",")
     .map((raw) => {
       const sel = raw.trim();
       if (!sel) return sel;
@@ -65,6 +83,9 @@ function scopeSelectors(list: string, theme = ""): string {
     })
     .join(", ");
 }
+
+/** The at-rules whose blocks hold declarations or keyframes, not rules: copied as written. */
+const HOLDS_DECLARATIONS = /^@(-[a-z]+-)?(font-face|keyframes|page|property|counter-style|font-feature-values|font-palette-values|view-transition|viewport)\b/i;
 
 const SCHEME_RE = /\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/i;
 
@@ -90,6 +111,15 @@ export function scopeCss(css: string): string {
         continue;
       }
       if (open === -1) { out += src.slice(i); i = src.length; return; }
+      // A statement before the next block (`@charset "utf-8";`, `@layer base, theme;`) ends at its semicolon; read as
+      // part of the head, the rule after it would leave the page unscoped.
+      const semi = src.indexOf(";", i);
+      if (semi !== -1 && semi < open) {
+        const statement = src.slice(i, semi + 1);
+        if (statement.trim().startsWith("@")) out += statement;
+        i = semi + 1;
+        continue;
+      }
       const head = src.slice(i, open);
       const at = head.trim();
       i = open + 1;
@@ -101,11 +131,13 @@ export function scopeCss(css: string): string {
         if (rest) { out += `${head.match(/^\s*/)?.[0] ?? ""}@media ${rest} {`; block(depth + 1); }
         else { block(depth + 1); out = out.replace(/\}$/, ""); }
         theme = outer;
-      } else if (/^@(media|supports|container|layer)\b/i.test(at)) {
+      } else if (at.startsWith("@") && !HOLDS_DECLARATIONS.test(at)) {
+        // @media, @supports, @container, @layer, @scope, @starting-style and any at-rule to come hold rules: each is
+        // scoped, so none reaches past the page.
         out += `${head}{`;
         block(depth + 1);
       } else if (at.startsWith("@")) {
-        // @font-face, @keyframes and the rest hold declarations or frames, not selectors.
+        // @font-face, @keyframes and their kin hold declarations or frames, not selectors.
         const end = matching(open);
         out += `${head}${src.slice(open, end + 1)}`;
         i = end + 1;

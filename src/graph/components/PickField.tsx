@@ -30,7 +30,15 @@ export function PickField({ value, placeholder, example = false, missing = false
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" />
       </svg>
-      <span className="sol-pick__text">{value || placeholder}</span>
+      {value && /[/\\]./.test(value) ? (
+        // A nested path keeps its name, the part that tells picks apart, and shortens the folders before it first.
+        <span className="sol-pick__text sol-pick__text--path">
+          <span className="sol-pick__dir">{value.slice(0, Math.max(value.lastIndexOf("/"), value.lastIndexOf("\\")) + 1)}</span>
+          <span className="sol-pick__base">{value.slice(Math.max(value.lastIndexOf("/"), value.lastIndexOf("\\")) + 1)}</span>
+        </span>
+      ) : (
+        <span className="sol-pick__text">{value || placeholder}</span>
+      )}
       {missing && <span className="sol-pick__missing">missing</span>}
     </button>
   );
