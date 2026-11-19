@@ -2,12 +2,12 @@
 // about the pointer and a drag pans, inside the figure only: on the canvas the wheel is the map's once its card is
 // selected (`.ownwheel`), and `nodrag nopan` keep the card and the canvas still under a drag. A double click goes back to
 // the whole map.
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { UsMapPayload } from "../chartValue";
 import { usMapGeometry, placePins, zoomBox, panBox, type Box } from "../geo/usMapLayout";
 import { legendLines } from "../geo/usMapLegend";
-import { useChartColors, useSeriesColors } from "./chartCore";
+import { FigureScope, useChartColors, useSeriesColors } from "./chartCore";
 import { themeColor } from "./themeColor";
 import { colormapRgb } from "../colormaps";
 import { resolveColor, PALETTE } from "../palette";
@@ -29,9 +29,11 @@ export const UsMapView = memo(function UsMapView({ payload, options, width, heig
 }) {
   const { viz } = useChartColors();
   const colors = useSeriesColors();
-  const land = themeColor("--surface-raised", "#2a2d31");
-  const border = themeColor("--border-strong", "#555");
-  const ink = themeColor("--text-dim", "#888");
+  // Read where the figure draws: an HTML Page's slot sets its own land, borders and ink.
+  const scope = useContext(FigureScope) ?? undefined;
+  const land = themeColor("--surface-raised", "#2a2d31", scope);
+  const border = themeColor("--border-strong", "#555", scope);
+  const ink = themeColor("--text-dim", "#888", scope);
   const { paths, box: home } = usMapGeometry(payload.scope);
   const { pins, off } = useMemo(() => placePins(payload, payload.scope), [payload]);
   const [view, setView] = useState<Box>(home);

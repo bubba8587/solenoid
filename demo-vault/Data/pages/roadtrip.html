@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><title>Coast to coast</title></head>
+<body>
+<main class="trip">
+  <header class="mast">
+    <p class="kicker">An itinerary · {{ nights }} nights · {{ stops | length }} stops</p>
+    <h1>Coast <i>to</i> coast</h1>
+    <p class="dek">From the Hudson to the Pacific the long way round: down the Blue Ridge, through the music cities, across the Texas hill country and the high desert.</p>
+  </header>
+
+  <dl class="facts">
+    <div><dt>Driving</dt><dd>{{ miles | number_format }}<small>mi</small></dd></div>
+    <div><dt>Behind the wheel</dt><dd>{{ hours }}<small>hrs</small></dd></div>
+    <div><dt>Longest day</dt><dd>{{ longest | number_format }}<small>mi</small></dd></div>
+    <div><dt>Fuel, about</dt><dd><small>$</small>{{ fuel | number_format }}</dd></div>
+  </dl>
+
+  <figure class="hero">{{ route }}</figure>
+
+  <ol class="legs">
+    {% for s in stops %}
+    {% if s.Miles > 0 %}<li class="drive"><span>{{ s.Miles }} mi</span></li>{% endif %}
+    <li class="stop k-{{ s.Kind | lower }}" id="stop-{{ loop.index }}">
+      <div class="day"><b>{{ s.Day }}</b><span>day</span></div>
+      <div class="what">
+        <h2>{{ s.Stop }} <em>{{ s.State }}</em></h2>
+        <p class="meta">{{ s.Kind }} · {{ s.Nights }} night{% if s.Nights != 1 %}s{% endif %}</p>
+        <p>{{ s.Note }}</p>
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+
+  <section class="legchart">
+    <h3>Each day's drive</h3>
+    {{ by_leg }}
+  </section>
+
+  <footer>Planned in Solenoid. Every number here is a card on the canvas: change a stop and the page follows.</footer>
+</main>
+</body></html>

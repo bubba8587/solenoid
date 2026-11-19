@@ -891,6 +891,168 @@
       "y": 6900
     },
     {
+      "id": "r_stops",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Stops",
+        "frameText": "[{\"name\":\"Stop\",\"type\":\"string\",\"cells\":[\"New York\",\"Philadelphia\",\"Washington\",\"Asheville\",\"Nashville\",\"Memphis\",\"Austin\",\"Marfa\",\"Santa Fe\",\"Grand Canyon\",\"Las Vegas\",\"Los Angeles\"]},{\"name\":\"State\",\"type\":\"string\",\"cells\":[\"NY\",\"PA\",\"DC\",\"NC\",\"TN\",\"TN\",\"TX\",\"TX\",\"NM\",\"AZ\",\"NV\",\"CA\"]},{\"name\":\"Lat\",\"type\":\"number\",\"cells\":[\"40.71\",\"39.95\",\"38.91\",\"35.6\",\"36.16\",\"35.15\",\"30.27\",\"30.31\",\"35.69\",\"36.06\",\"36.17\",\"34.05\"]},{\"name\":\"Lon\",\"type\":\"number\",\"cells\":[\"-74.01\",\"-75.17\",\"-77.04\",\"-82.55\",\"-86.78\",\"-90.05\",\"-97.74\",\"-104.02\",\"-105.94\",\"-112.14\",\"-115.14\",\"-118.24\"]},{\"name\":\"Kind\",\"type\":\"string\",\"cells\":[\"City\",\"City\",\"City\",\"Nature\",\"Music\",\"Music\",\"Music\",\"Nature\",\"City\",\"Nature\",\"City\",\"City\"]},{\"name\":\"Day\",\"type\":\"number\",\"cells\":[\"1\",\"3\",\"4\",\"6\",\"8\",\"10\",\"11\",\"13\",\"14\",\"16\",\"17\",\"18\"]},{\"name\":\"Nights\",\"type\":\"number\",\"cells\":[\"2\",\"1\",\"2\",\"2\",\"2\",\"1\",\"2\",\"1\",\"2\",\"1\",\"1\",\"2\"]},{\"name\":\"Miles\",\"type\":\"number\",\"cells\":[\"0\",\"95\",\"140\",\"475\",\"295\",\"212\",\"715\",\"410\",\"520\",\"480\",\"275\",\"270\"]},{\"name\":\"Note\",\"type\":\"string\",\"cells\":[\"Two days of walking: the High Line, a slice on Bleecker, the ferry past the statue at dusk.\",\"Reading Terminal for lunch, then the murals of the Mural Arts trail.\",\"The Mall's museums are free; save an evening for the memorials lit up.\",\"The Blue Ridge Parkway south in the morning; the river arts district after.\",\"The Ryman for a show, then the honky-tonks on Broadway until they close.\",\"Sun Studio, Stax, and ribs on Beale Street.\",\"The longest day on the road, so two nights: Barton Springs, then live music on South Congress.\",\"The Chinati Foundation by day and the Marfa lights, maybe, by night.\",\"Canyon Road's galleries, green chile everything, Meow Wolf if it rains.\",\"Sunset from Hopi Point, sunrise from Mather Point, and as much of the rim trail as the legs allow.\",\"One night is plenty. Drive in after dark for the lights.\",\"Griffith Observatory, tacos in Boyle Heights, and the Pacific at Santa Monica to finish.\"]}]"
+      },
+      "x": 0,
+      "y": 7700
+    },
+    {
+      "id": "r_milecol",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Miles",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Miles"
+      },
+      "x": 720,
+      "y": 7700
+    },
+    {
+      "id": "r_nightcol",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Nights",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Nights"
+      },
+      "x": 720,
+      "y": 7950
+    },
+    {
+      "id": "r_miles",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Total miles",
+        "op": "sum"
+      },
+      "x": 1060,
+      "y": 7700
+    },
+    {
+      "id": "r_longest",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Longest day",
+        "op": "max"
+      },
+      "x": 1060,
+      "y": 7950
+    },
+    {
+      "id": "r_nights",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Nights away",
+        "op": "sum"
+      },
+      "x": 1060,
+      "y": 8200
+    },
+    {
+      "id": "r_mpg",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Miles per gallon",
+        "value": "28"
+      },
+      "x": 0,
+      "y": 8220
+    },
+    {
+      "id": "r_gas",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Gas, a gallon",
+        "value": "3.40"
+      },
+      "x": 0,
+      "y": 8390
+    },
+    {
+      "id": "r_hours",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Hours driving",
+        "expr": "ROUND(miles / 55, 0)"
+      },
+      "x": 1400,
+      "y": 7700
+    },
+    {
+      "id": "r_fuel",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Fuel cost",
+        "expr": "ROUND(miles / mpg * gas, 0)"
+      },
+      "x": 1400,
+      "y": 7950
+    },
+    {
+      "id": "r_map",
+      "type": "UsMapNode",
+      "init": {
+        "label": "The route",
+        "width": 620
+      },
+      "stringLiterals": {
+        "options": "c=Kind; annotate=Stop; markersize=49"
+      },
+      "x": 360,
+      "y": 8220
+    },
+    {
+      "id": "r_pick",
+      "type": "PickColumnsNode",
+      "init": {
+        "label": "Stop and miles"
+      },
+      "stringLiterals": {
+        "columns": "Stop, Miles"
+      },
+      "x": 1060,
+      "y": 8450
+    },
+    {
+      "id": "r_chart",
+      "type": "ChartNode",
+      "init": {
+        "label": "Miles each leg",
+        "op": "column"
+      },
+      "x": 1400,
+      "y": 8220
+    },
+    {
+      "id": "r_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Road trip",
+        "fileName": "pages/roadtrip.html",
+        "styleFile": "pages/roadtrip.css",
+        "sideVars": [
+          "nights",
+          "stops",
+          "miles",
+          "hours",
+          "longest",
+          "fuel",
+          "route",
+          "by_leg"
+        ]
+      },
+      "x": 1760,
+      "y": 7700
+    },
+    {
       "id": "g_q",
       "type": "GroupNode",
       "init": {
@@ -1067,6 +1229,35 @@
       },
       "x": -30,
       "y": 6840
+    },
+    {
+      "id": "g_r",
+      "type": "GroupNode",
+      "init": {
+        "label": "Road trip",
+        "members": [
+          "r_stops",
+          "r_milecol",
+          "r_nightcol",
+          "r_miles",
+          "r_longest",
+          "r_nights",
+          "r_mpg",
+          "r_gas",
+          "r_hours",
+          "r_fuel",
+          "r_map",
+          "r_pick",
+          "r_chart",
+          "r_page"
+        ],
+        "color": "vermilion",
+        "collapsed": false,
+        "width": 2120,
+        "height": 1140
+      },
+      "x": -30,
+      "y": 7640
     }
   ],
   "connections": [
@@ -1591,6 +1782,126 @@
       "sourceOutput": "result",
       "target": "w_page",
       "targetInput": "total_moons"
+    },
+    {
+      "source": "r_stops",
+      "sourceOutput": "frame",
+      "target": "r_milecol",
+      "targetInput": "frame"
+    },
+    {
+      "source": "r_stops",
+      "sourceOutput": "frame",
+      "target": "r_nightcol",
+      "targetInput": "frame"
+    },
+    {
+      "source": "r_milecol",
+      "sourceOutput": "values",
+      "target": "r_miles",
+      "targetInput": "list"
+    },
+    {
+      "source": "r_milecol",
+      "sourceOutput": "values",
+      "target": "r_longest",
+      "targetInput": "list"
+    },
+    {
+      "source": "r_nightcol",
+      "sourceOutput": "values",
+      "target": "r_nights",
+      "targetInput": "list"
+    },
+    {
+      "source": "r_miles",
+      "sourceOutput": "result",
+      "target": "r_hours",
+      "targetInput": "miles"
+    },
+    {
+      "source": "r_miles",
+      "sourceOutput": "result",
+      "target": "r_fuel",
+      "targetInput": "miles"
+    },
+    {
+      "source": "r_mpg",
+      "sourceOutput": "value",
+      "target": "r_fuel",
+      "targetInput": "mpg"
+    },
+    {
+      "source": "r_gas",
+      "sourceOutput": "value",
+      "target": "r_fuel",
+      "targetInput": "gas"
+    },
+    {
+      "source": "r_stops",
+      "sourceOutput": "frame",
+      "target": "r_map",
+      "targetInput": "frame"
+    },
+    {
+      "source": "r_stops",
+      "sourceOutput": "frame",
+      "target": "r_pick",
+      "targetInput": "frame"
+    },
+    {
+      "source": "r_pick",
+      "sourceOutput": "frame",
+      "target": "r_chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "r_nights",
+      "sourceOutput": "result",
+      "target": "r_page",
+      "targetInput": "nights"
+    },
+    {
+      "source": "r_stops",
+      "sourceOutput": "frame",
+      "target": "r_page",
+      "targetInput": "stops"
+    },
+    {
+      "source": "r_miles",
+      "sourceOutput": "result",
+      "target": "r_page",
+      "targetInput": "miles"
+    },
+    {
+      "source": "r_hours",
+      "sourceOutput": "result",
+      "target": "r_page",
+      "targetInput": "hours"
+    },
+    {
+      "source": "r_longest",
+      "sourceOutput": "result",
+      "target": "r_page",
+      "targetInput": "longest"
+    },
+    {
+      "source": "r_fuel",
+      "sourceOutput": "result",
+      "target": "r_page",
+      "targetInput": "fuel"
+    },
+    {
+      "source": "r_map",
+      "sourceOutput": "chart",
+      "target": "r_page",
+      "targetInput": "route"
+    },
+    {
+      "source": "r_chart",
+      "sourceOutput": "chart",
+      "target": "r_page",
+      "targetInput": "by_leg"
     }
   ]
 }
