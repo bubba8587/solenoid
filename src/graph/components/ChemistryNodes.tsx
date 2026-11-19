@@ -5,7 +5,7 @@ import {
 import { useRef, useState } from "react";
 import { ELEMENT_BY_SYMBOL, ELEMENT_CATEGORIES } from "../nodes/chemistryOps";
 import { useConnectedInputs } from "./inlineInput";
-import { useSeriesColors } from "./chartCore";
+import { useSeriesColors } from "./seriesColors";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeSocket } from "./NodeSocket";
 import { FrameOutRow, RowPager, shortNum, useAnchorTop } from "./GeometryFigure";

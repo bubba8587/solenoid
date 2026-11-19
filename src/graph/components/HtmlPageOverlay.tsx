@@ -20,7 +20,7 @@ import { isImageValue } from "../imageValue";
 import { isSvgValue } from "../svgValue";
 import { isDocumentValue } from "../documentValue";
 import { InlineRefValue } from "./inlineRefDisplay";
-import { FigureScope } from "./chartCore";
+import { FigureScope } from "./seriesColors";
 import { errorTip } from "./ErrorChip";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { useCoversCanvas } from "./useCoversCanvas";

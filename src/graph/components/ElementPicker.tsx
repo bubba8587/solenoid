@@ -3,7 +3,7 @@ import { useSyncExternalStore } from "react";
 import { elementPicker } from "../elementPickerStore";
 import { elementCell, searchElements } from "../nodeClasses";
 import { ELEMENTS, ELEMENT_BY_SYMBOL, ELEMENT_CATEGORIES, type ElementMeta } from "../nodes/chemistryOps";
-import { useSeriesColors } from "./chartCore";
+import { useSeriesColors } from "./seriesColors";
 import { PopupShell } from "./PopupShell";
 import { formatScalar } from "./format";
 import "./ElementPicker.css";

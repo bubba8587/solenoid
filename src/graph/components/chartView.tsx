@@ -8,7 +8,8 @@ import type { ChartRef, ChartValue, ScalePayload, OverlayPayload, XYPayload, UsM
 import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { SurfaceView } from "./SurfaceView";
-import { useSeriesColors, useChartColors } from "./chartCore";
+import { useChartColors } from "./chartCore";
+import { useSeriesColors } from "./seriesColors";
 // `ganttSvg` is imported eagerly: the export provider must return a string synchronously.
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 import { LadderView } from "./ladderView";

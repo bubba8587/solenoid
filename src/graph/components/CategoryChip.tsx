@@ -1,5 +1,5 @@
 // [[components#The design system]] (DESIGN.md § Quiet Accent)
-import { useSeriesColors } from "./chartCore";
+import { useSeriesColors } from "./seriesColors";
 import "./CategoryChip.css";
 
 /** The shared chart palette slot at `index` (first-appearance order, categoryColor.ts), so a value is the same color in a column and a chart.

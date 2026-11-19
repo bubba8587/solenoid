@@ -5,7 +5,7 @@ import type { LadderAction } from "../nodes/ladderOps";
 import { formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatScalar } from "./format";
 import { stopDragStart } from "../coarse";
-import { useSeriesColors } from "./chartCore";
+import { useSeriesColors } from "./seriesColors";
 import { layoutLadder, metricsFor } from "./ladderLayout";
 import "./ladderView.css";
 

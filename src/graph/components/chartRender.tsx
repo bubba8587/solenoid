@@ -3,7 +3,8 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { type SyntheticEvent, type ComponentProps, useId, useMemo, useState, useSyncExternalStore, type ReactElement, type ReactNode, type PointerEvent, type MouseEvent } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, edgeRoom, categoryInterval, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, regionLabelColor, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
+import { useChartColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, edgeRoom, categoryInterval, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, regionLabelColor, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
+import { useSeriesColors } from "./seriesColors";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { ChartValue, OverlayPayload, XYPayload, XYPoint, ChartRef } from "../chartValue";
 import type { RegionCuts, RegionPoint } from "../nodes/visual";
