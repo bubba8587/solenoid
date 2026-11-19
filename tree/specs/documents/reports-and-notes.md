@@ -609,7 +609,9 @@ figure reads its styling from where it draws, not from the app's root: each slot
 in the app, so the palette's green, vermilion and blue), a Gauge's track (`--gauge-track`) and a canvas chart's face (read from its own canvas) follow the page, or one
 box's own rule (`[data-sol-ref="trend"] { --chart-1: #c2410c }`). `--chart-font-scale` multiplies a chart's text over its
 Format Controller's scale. A page's `@media (prefers-color-scheme: …)` follows the app's light or dark, not the system's
-(its rules scoped under `:where(html[data-theme="…"])`, no extra specificity), so a page can carry both themes. Outside a page nothing sets a scope, so every other surface reads the app's as before.
+(its rules scoped under `:where(html[data-theme="…"])`, no extra specificity), so a page can carry both themes. A page's raised surface (a chart's tooltip, a map's land) follows its own ground and ink when it sets those two but not
+`--surface-raised` (`HtmlPageOverlay.css`, at no specificity), so a light page in the dark app never pairs its dark ink
+with the app's dark tooltip. Outside a page nothing sets a scope, so every other surface reads the app's as before.
 
 **Names a page styles.** A figure's box is `.sol-box`, its name bar `.sol-box__label`, its value `.sol-box__value` and a
 figure's own title `.sol-box__title`, so a page that heads a figure itself hides the label and title

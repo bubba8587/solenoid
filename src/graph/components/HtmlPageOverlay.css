@@ -24,6 +24,12 @@ html.sol-canvas-covered:has(.sol-htmlpage) .solenoid-notices { z-index: 9100; bo
   background: var(--surface);
   color: var(--text);
 }
+/* A page that sets its own ground and ink (--surface, --text) but not a raised surface would pair its ink with the
+   app's raised color: a light page in the dark app put near-black text on a dark tooltip. The raised surface follows the
+   page's own two, at no specificity, so a page that sets it still wins. */
+:where(.sol-htmlpage__doc) {
+  --surface-raised: color-mix(in srgb, var(--surface) 94%, var(--text));
+}
 .sol-htmlpage__doc {
   /* Clear of the back button and a phone's notch at the top; a page that wants its own edge sets body's padding. */
   padding: calc(56px + env(safe-area-inset-top)) clamp(16px, 4vw, 48px) calc(48px + env(safe-area-inset-bottom));
