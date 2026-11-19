@@ -75,7 +75,11 @@ it, a web link opens outside the app, nothing moves the app's address. Figures a
 (land, borders, ink) and a Waterfall's or Candlestick's rise, fall and total (`--chart-up`, `--chart-down`,
 `--chart-neutral`). The showcase is eleven pages: Contents, the guide, the six earlier, a road trip (US Map), an annual
 report (Sankey, Waterfall, Gauge) and a year of running (Calendar Heatmap, KPI; `runs-2026.csv` in the demo vault). A
-slot is a `span`, so a page's rule for `span` reaches it (the guide says so). The HTML Showcase example renders seven pages from `demo-vault/Data/pages/` (a one-pager, a project brief, a team
+slot is a `span`, so a page's rule for `span` reaches it (the guide says so). Audit, 2026-11-19: a page has the whole window (one back button, Back steps
+through the pages, Ctrl+P prints, focus moves into the page); CSS scoping no longer leaks after `@charset` or `@layer
+a, b;` or inside `@scope`, and splits selectors only on top-level commas; the sanitizer drops `<form>` (pages, Notes,
+Reports); a light page in the dark app gets a readable tooltip; every showcase page passes a 3:1 text-contrast sweep in
+both themes (the script is ad hoc, not in the repo; `oklch()` colors read wrong in it). The HTML Showcase example renders seven pages from `demo-vault/Data/pages/` (a one-pager, a project brief, a team
 directory, a shop catalog, an invoice, a money letter and "Writing a page", a guide that is itself a page), with
 OFL fonts and pictures in `pages/fonts` and `pages/images`, which the web build bundles (`DEMO_VAULT_BINARY`).
 

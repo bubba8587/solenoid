@@ -40,7 +40,7 @@ h1 { font-size: 64px; font-weight: 700; letter-spacing: -0.04em; line-height: 0.
 .line { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; padding: 3px 0; }
 .line span { color: var(--muted); }
 .line b { font-family: var(--font-mono); font-weight: 500; }
-.stars { color: #c98a0b; letter-spacing: 1px; font-family: inherit !important; }
+.stars { color: #a86f00; letter-spacing: 1px; font-family: inherit !important; }
 .goal { height: 4px; background: var(--line); margin: 2px 0 6px; }
 .fill { height: 100%; background: var(--c); }
 .bio { font-size: 13px; color: #3f3b4b; margin: 10px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); text-wrap-style: pretty; }

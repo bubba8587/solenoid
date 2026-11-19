@@ -4,7 +4,7 @@
 
 :root {
   --paper: #f4efe6; --ink: #22201c; --dim: #6f675b; --rule: #d8cfbf;
-  --rust: #b4532a; --teal: #2c6e6a; --ochre: #c08a1e;
+  --rust: #b4532a; --teal: #2c6e6a; --ochre: #94680f;
   --surface: #fbf8f2; --surface-raised: #e6dccb; --text: var(--ink); --text-dim: var(--dim); --border: var(--rule); --border-strong: #c7bca8;
   --font-sans: "Space Grotesk", system-ui, sans-serif;
   --chart-1: var(--rust); --chart-2: var(--teal); --chart-3: var(--ochre);
