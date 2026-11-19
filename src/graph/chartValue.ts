@@ -3,7 +3,7 @@ import type { CardColType, CardPlan } from "./cardLayout";
 import type { RecordPlacement } from "./recordLayout";
 import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
-import type { ChartOptions, LineStyle } from "./nodes/chartOptions";
+import type { CalendarPeriod, ChartOptions, LineStyle } from "./nodes/chartOptions";
 import type { GanttPayload } from "@solenoid/gantt-layout";
 
 export interface KpiPayload {
@@ -69,7 +69,7 @@ export interface BoxplotPayload {
 export interface CalHeatPayload {
   kind: "calheat";
   /** What a cell is; each of `days` is its period's first day (an ISO week's Monday, a month's 1st, 1 January). */
-  period: "day" | "week" | "month" | "year";
+  period: CalendarPeriod;
   days: number[];
   values: number[];
 }

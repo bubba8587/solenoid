@@ -786,18 +786,12 @@ export class BoxplotNode extends GraphNode {
 
 // ─── Calendar heatmap ─────────────────────────────────────────────────────────
 
-export type CalendarPeriod = "day" | "week" | "month" | "year";
-export const CALENDAR_PERIOD_META = {
-  day:   { label: "Day" },
-  week:  { label: "Week" },
-  month: { label: "Month" },
-  year:  { label: "Year" },
-} satisfies Record<CalendarPeriod, { label: string }>;
-export const CALENDAR_PERIOD_OPTIONS = Object.entries(CALENDAR_PERIOD_META).map(([value, m]) => ({ value: value as CalendarPeriod, label: m.label }));
-
 export class CalendarHeatmapNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    options: "key=value pairs separated by semicolons, or a Chart Builder. period=week, month or year sums the days by ISO week, month or year; also title, cmap, center, vmin, vmax, cbar.",
+  };
+
   label: string;
-  period: CalendarPeriod = "day";
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
@@ -811,17 +805,12 @@ export class CalendarHeatmapNode extends GraphNode {
     ] },
   };
 
-  constructor(init?: { label?: string; period?: CalendarPeriod }) {
+  constructor(init?: { label?: string }) {
     super("CalendarHeatmap");
     this.label = init?.label ?? "Calendar Heatmap";
-    if (init?.period && init.period in CALENDAR_PERIOD_META) this.period = init.period;
     this.addInput("frame", frameIn("Date + Value"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
-  }
-
-  setPeriod(next: CalendarPeriod): void {
-    this.period = next;
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
@@ -970,10 +959,10 @@ export class QuiverNode extends GraphNode {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "stacked", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "stacked", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale", "period"] as const;
 /** The fields that are discrete picks (a checkbox or a dropdown): plain card settings with no socket, since nobody
  *  drives a grid line or a colormap from a cable. The rest (text, column names, numbers) keep their sockets. */
-export const CB_PICK_FIELDS: ReadonlySet<string> = new Set(["grid", "marker", "clamp", "pielabels", "radarscale", "stacked", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "linestyle", "aspect", "yscale", "cmap", "annot", "cbar", "origin"]);
+export const CB_PICK_FIELDS: ReadonlySet<string> = new Set(["grid", "marker", "clamp", "pielabels", "radarscale", "stacked", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "linestyle", "aspect", "yscale", "cmap", "annot", "cbar", "origin", "period"]);
 const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center", "maxgap"] as const;
 
 export class ChartBuilderNode extends GraphNode {

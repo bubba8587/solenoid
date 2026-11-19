@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import type { GraphNode } from "../graphModel";
 import type {
   WaterfallNode, CandlestickNode, BoxplotNode,
-  CalendarHeatmapNode, CalendarPeriod, HeatmapNode, ProportionNode, ProportionLayout, QuiverNode, UsMapNode, UsMapScope,
+  CalendarHeatmapNode, HeatmapNode, ProportionNode, ProportionLayout, QuiverNode, UsMapNode, UsMapScope,
 } from "../nodeClasses";
-import { CALENDAR_PERIOD_OPTIONS, PROPORTION_LAYOUT_OPTIONS, US_MAP_SCOPE_OPTIONS } from "../nodeClasses";
+import { PROPORTION_LAYOUT_OPTIONS, US_MAP_SCOPE_OPTIONS } from "../nodeClasses";
 import type { ChartValue, ChartPayload } from "../chartValue";
 import { isSolError, type SolError } from "../errorValue";
 import { NodeShell, type NodeProps } from "./nodeKit";
@@ -73,18 +73,6 @@ export const BoxplotComponent = makeFigureComponent<BoxplotNode>(
   (p) => p?.kind === "boxplot" && p.boxes.length > 0,
 );
 
-function CalendarPeriodControls({ data }: { data: CalendarHeatmapNode }) {
-  const [period, setPeriod] = useState<CalendarPeriod>(data.period);
-  async function pick(next: CalendarPeriod) {
-    if (next === data.period) return;
-    data.setPeriod(next); // every period takes the same sockets
-    setPeriod(next);
-    await getOwningView(data.id)?.rerenderNode(data.id);
-    await processEdited(data.id);
-  }
-  return <SegToggle value={period} options={CALENDAR_PERIOD_OPTIONS} onChange={(s) => void pick(s)} />;
-}
-
 // The height the wrapped weeks (or the grouped grid) need at the card's width, plus the title strip; the tick width
 // is a typical label's.
 export const CalendarHeatmapComponent = makeFigureComponent<CalendarHeatmapNode>(
@@ -96,7 +84,6 @@ export const CalendarHeatmapComponent = makeFigureComponent<CalendarHeatmapNode>
     return fig + (cv.options.title ? 16 : 0);
   },
   (p) => p?.kind === "calheat" && p.days.length > 0,
-  (data) => <CalendarPeriodControls data={data} />,
 );
 
 // Tall enough for square cells at the card's width, so a short grid leaves no dead band.

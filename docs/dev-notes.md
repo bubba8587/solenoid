@@ -7,7 +7,8 @@ first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
 ### SESSION DIGEST (2026-11-19: Calendar Heatmap by week, month or year; cloud session)
-- **What stands:** the card's `period` pick (Day, Week, Month, Year) sums days into ISO weeks, months or years on the
+- **What stands:** the options' `period` (Group by on a Chart Builder's Calendar Heatmap target: Day, ISO week, Month,
+  Year; author: the pick belongs on the builder, not on the chart card) sums days into ISO weeks, months or years on the
   core (`calendar_period_start`, `nodes/visual.rs`); the grouped figure is `CalPeriodView` over `periodGrid` and
   `periodLayout` (`heatmapLayout.ts`). Spec: [[chart-figures]] § Calendar Heatmap.
 - **Why week rows aren't square:** 53 columns on a 300 px card leave ~4 px cells, and four years of those stacked

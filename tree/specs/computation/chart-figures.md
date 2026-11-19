@@ -108,7 +108,7 @@ Each figure node computes its value in `data()`, caches it on the node (`cachedC
 | Waterfall | `frame` (Label + Delta), `options` | `waterfall` | the known deltas | yes |
 | Candlestick | `frame` (Date + OHLC), `options` | `candle` | the known closes | yes |
 | Boxplot | `values` (frame or list, received raw), `options` | `boxplot` | null | yes |
-| Calendar Heatmap | `frame` (Date + Value), `options`; Day, Week, Month or Year on the card (`period`) | `calheat` | the values | yes |
+| Calendar Heatmap | `frame` (Date + Value), `options` | `calheat` | the values | yes |
 | US Map | `frame` (Lat + Lon), `options`; Lower 48 or All 50 on the card (`scope`) | `usmap` | null | yes |
 | Heatmap | `values` (frame, table or list, received raw), `options` | `heatmap` | null | yes |
 | Record | `frame`, `rows`, `by` (Board only), `layout` (all but Cards), `options` | `record` | null | yes |
@@ -202,7 +202,7 @@ Proportion, Sankey, Waterfall, Candlestick and Calendar Heatmap read their frame
 - **Sankey:** sources from column 0, targets column 1, values column 2 (null as 0). `merge_flows` first folds every repeated From and To pair into one flow carrying the sum of their values, in first-seen order, so the payload holds one flow per pair. `acyclic_flows` then walks the flows in order: a blank end, a self-loop or a value that is not positive is kept in place untouched; a flow whose target already reaches its source closes a cycle and is dropped (counted in `droppedLoops`, which the card shows under the figure as "N looped flows dropped"); the rest are added to the graph. When at least one flow was dropped and no drawable flow remains, the output is `#SHAPE!` "The flows form a loop; a Sankey needs a direction".
 - **Waterfall:** names column 0, deltas column 1 with null kept as a gap; `total` is always true.
 - **Candlestick:** no columns gives a null output. Fewer than four columns is `#SHAPE!` "Candlestick needs Open, High, Low and Close columns (a date column first is optional)". Five or more: column 0 is the label axis (as text) and columns 1 to 4 are OHLC. Exactly four: all four are OHLC and labels are `"1"`, `"2"`, ….
-- **Calendar Heatmap:** column 0 is read raw (a date stays a serial) and a row without a finite date is dropped; the day is `floor(serial)`. Each day carries the sum of its rows: a row adds its column 1 number when column 1 is a Number column and the cell is a finite number, else 1, so a blank value counts the row and a frame of dated entries (a second column of text, or none) counts entries per day (author 2026-11-02). The days come out once each, in date order. The figure still sums any repeated day it is handed. The card's `period` (a saved pick, default `day`; a value it does not know reads as `day`) sums the days instead into ISO weeks (Monday to Sunday, the week keyed by its Monday), months or years, each keyed by its first day (`calendar_period_start`), and the chart's values are those totals.
+- **Calendar Heatmap:** column 0 is read raw (a date stays a serial) and a row without a finite date is dropped; the day is `floor(serial)`. Each day carries the sum of its rows: a row adds its column 1 number when column 1 is a Number column and the cell is a finite number, else 1, so a blank value counts the row and a frame of dated entries (a second column of text, or none) counts entries per day (author 2026-11-02). The days come out once each, in date order. The figure still sums any repeated day it is handed. The options' `period` (`day`, `week`, `month` or `year`; unset, or a word it does not know, is `day`), Group by on a Chart Builder, sums the days instead into ISO weeks (Monday to Sunday, the week keyed by its Monday), months or years, each keyed by its first day (`calendar_period_start`), and the chart's values are those totals.
 
 ### US Map
 
@@ -347,7 +347,7 @@ A key a renderer does not read is inert on that figure. For each Chart Builder t
 | Radial, Funnel | `title`, `fontsize` |
 | Merge Plots (`overlay`) | `title`, `xlabel`, `ylabel`, `grid`, `aspect`, `xmin`/`xmax`, `ymin`/`ymax`, and on an XY merge `yscale`, `maxgap`, `linewidth` (a fallback for series without one), `fontsize`; each series keeps its inherited `color`, `markersize`, `linewidth`, `alpha`, `marker` |
 | KPI, Gauge (`scale`), Proportion, Sankey, Waterfall, Candlestick, Boxplot | `title`, `fontsize` |
-| Calendar Heatmap | `title`, `cmap`, `center`, `vmin`/`vmax`, `cbar`, `fontsize` |
+| Calendar Heatmap | `title`, `period`, `cmap`, `center`, `vmin`/`vmax`, `cbar`, `fontsize` |
 | US Map | `title`, `fontsize`, `lat`, `lon`, `c`, `s`, `annotate`, `color`, `cmap`, `markersize`, `alpha` |
 | Contour (Surface, Flat view) | `title`, `xlabel`, `ylabel`, `cmap`, `center`, `vmin`/`vmax`, `cbar`, `fontsize` |
 | Surface (3-D view), Vector Field | `title`, `cmap`, `fontsize` |

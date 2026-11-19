@@ -189,6 +189,15 @@ const SELECT_KEYS: readonly {
       .map((m, i) => ({ value: String(i + 1), label: m })),
   },
   {
+    key: "period", label: "Group by", clearValue: "day",
+    options: [
+      { value: "day", label: "Day" },
+      { value: "week", label: "ISO week" },
+      { value: "month", label: "Month" },
+      { value: "year", label: "Year" },
+    ],
+  },
+  {
     key: "cardsize", label: "Tile size", clearValue: "m",
     options: [{ value: "s", label: "Small" }, { value: "m", label: "Medium" }, { value: "l", label: "Large" }],
   },

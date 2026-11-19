@@ -313,6 +313,17 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
                 );
             }
             "maxgap" => put_num(&mut o, "maxgap", to_num(val).filter(|n| *n > 0.0)),
+            "period" => word(
+                &mut o,
+                "period",
+                match lower_text(trim_space(val)).as_ref() {
+                    "day" => Some("day"),
+                    "week" => Some("week"),
+                    "month" => Some("month"),
+                    "year" => Some("year"),
+                    _ => None,
+                },
+            ),
             "yscale" => word(
                 &mut o,
                 "yscale",
@@ -1969,13 +1980,14 @@ fn calendar_period_start(day: i64, period: &str) -> i64 {
 }
 
 /// Each day in column 0 with the sum of its rows' values: a number from column 1, or 1 for a row without one (a blank
-/// cell, or a second column that isn't numbers), so a frame of dated entries counts them per day. The card's `period`
+/// cell, or a second column that isn't numbers), so a frame of dated entries counts them per day. The options' `period`
 /// sums the days into ISO weeks, months or years instead, each keyed by its first day.
 fn calendar_heatmap(c: &mut Call) -> Answer {
-    let period = match c.field_str("period", "day") {
-        "week" => "week",
-        "month" => "month",
-        "year" => "year",
+    let opts = read_options(c)?;
+    let period = match opts.get("period").and_then(Json::as_str) {
+        Some("week") => "week",
+        Some("month") => "month",
+        Some("year") => "year",
         _ => "day",
     };
     let frame = first(c, "frame");
@@ -1990,7 +2002,6 @@ fn calendar_heatmap(c: &mut Call) -> Answer {
     }
     let days: Vec<Json> = by_day.keys().map(|&d| jn(d as f64)).collect();
     let values: Vec<Json> = by_day.values().map(|&v| jn(v)).collect();
-    let opts = read_options(c)?;
     let payload = json!({ "kind": "calheat", "period": period, "days": days, "values": values });
     figure(c, "calheat", Json::Array(values), payload, opts, "Calendar Heatmap")
 }
@@ -2154,7 +2165,7 @@ fn us_map_figure(c: &mut Call, opts: Obj) -> Answer {
 
 // ─── Chart Builder ──────────────────────────────────────────────────────────────
 
-const CB_STR_KEYS: [&str; 44] = [
+const CB_STR_KEYS: [&str; 45] = [
     "title",
     "xlabel",
     "ylabel",
@@ -2199,6 +2210,7 @@ const CB_STR_KEYS: [&str; 44] = [
     "fmt",
     "cbar",
     "origin",
+    "period",
 ];
 const CB_NUM_KEYS: [&str; 8] = ["linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center", "maxgap"];
 

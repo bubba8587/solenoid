@@ -167,14 +167,6 @@
    "row"
   ]
  },
- "CalendarHeatmapNode": {
-  "period": [
-   "day",
-   "month",
-   "week",
-   "year"
-  ]
- },
  "CastNode": {
   "dateOrder": [
    "",
