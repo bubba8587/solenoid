@@ -298,7 +298,7 @@ body {
   --metadata-label-font-weight: 500;
   --metadata-input-text-color: var(--sol-text);
   --metadata-property-background-active: color-mix(in srgb, var(--sol-accent) 8%, transparent);
-  --metadata-property-box-shadow-focus: 0 0 0 1px var(--sol-accent);
+  --metadata-property-box-shadow-focus: 0 0 0 1px var(--sol-accent), 0 0 0 1px var(--sol-accent);
   --metadata-property-radius: 4px;
 
   --input-shadow: none;
@@ -504,7 +504,7 @@ button.mod-warning {
 .menu-item.selected:not(.is-disabled),
 .workspace-drawer-tab-select .workspace-tab-header-inner,
 .workspace-drawer-tab-options-list .workspace-tab-header.is-active .workspace-tab-header-inner {
-  box-shadow: inset 0 0 0 1px var(--sol-full-accent);
+  box-shadow: inset 0 0 0 1px var(--sol-full-accent), inset 0 0 0 1px var(--sol-full-accent);
 }
 /* On an accent wash, nothing stays gray: the picked item's icon, and the picked file's type badge, take the accent. */
 .menu-item.selected:not(.is-disabled) .menu-item-icon,
@@ -639,7 +639,7 @@ button.mod-warning {
 .tree-item-self.has-active-menu,
 .tree-item-self.has-focus,
 body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus {
-  box-shadow: inset 0 0 0 1px var(--sol-accent);
+  box-shadow: inset 0 0 0 1px var(--sol-accent), inset 0 0 0 1px var(--sol-accent);
 }
 
 .vertical-tab-header-group-title,
@@ -718,6 +718,44 @@ body:not(.is-phone) .modal .modal-title {
   border-color: var(--sol-overlay-border);
   border-width: 2px 0 0 2px;
   border-style: solid;
+}
+
+/* ── A 1px stroke round a corner ───────────────────────────────────────────── */
+/* A 1px line round a curve only half covers each pixel there, and blended that way a light line on a dark ground all
+   but vanishes at the corners: at 1x and 1.5x, so on most Windows and Android screens, a panel's hairline looked
+   bitten off where it turns. Every 1px stroke with round corners is painted twice on the same pixels: the straight runs
+   are unchanged and a corner's half-covered pixels fill in. A border takes an outline 1px inside its edge, which lies
+   exactly on it; a ring drawn as a shadow lists itself twice (above, where it is drawn). */
+.nav-buttons-container,
+.view-actions,
+.canvas-control-group,
+.markdown-rendered pre {
+  outline: 1px solid var(--sol-border);
+  outline-offset: -1px;
+}
+body:not(.is-phone) .modal {
+  outline: 1px solid var(--sol-border);
+  outline-offset: -1px;
+}
+.markdown-rendered blockquote,
+.markdown-rendered table {
+  outline: 1px solid var(--sol-full-accent);
+  outline-offset: -1px;
+}
+.markdown-rendered .markdown-embed,
+.markdown-rendered .file-embed,
+.tasknotes-task-card-note-widget,
+.tasknotes-relationships-widget {
+  outline: 1px solid var(--sol-hairline);
+  outline-offset: -1px;
+}
+a.tag:not(:focus-visible) {
+  outline: var(--tag-border-width) solid var(--tag-border-color);
+  outline-offset: calc(-1 * var(--tag-border-width));
+}
+.multi-select-pill {
+  outline: var(--pill-border-width) solid var(--pill-border-color);
+  outline-offset: calc(-1 * var(--pill-border-width));
 }
 
 /* ── Writing ────────────────────────────────────────────────────────────────── */
@@ -946,7 +984,7 @@ kbd {
   overflow: hidden;
   padding: 0 0 var(--size-4-2);
   border-radius: 8px;
-  box-shadow: inset 0 0 0 1px var(--sol-card-stroke);
+  box-shadow: inset 0 0 0 1px var(--sol-card-stroke), inset 0 0 0 1px var(--sol-card-stroke);
 }
 /* A node card's header: the band at the header tint, under a 2px cap of the full accent round its top and sides, over
    the card's divider (nodeCard.css: __frame-cap, __frame-divider). */
@@ -1054,7 +1092,8 @@ kbd {
   stroke-width: 2.25px;
 }
 .metadata-property:focus-within {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sol-type) var(--sol-mix-emphasis), var(--sol-border));
+  --sol-ring: color-mix(in srgb, var(--sol-type) var(--sol-mix-emphasis), var(--sol-border));
+  box-shadow: 0 0 0 1px var(--sol-ring), 0 0 0 1px var(--sol-ring);
 }
 .metadata-property:has(> [data-property-type="number"]) { --sol-type: var(--sol-number); --sol-type-ink: var(--sol-ink-on-number); }
 .metadata-property:has(> [data-property-type="text"]) { --sol-type: var(--sol-string); --sol-type-ink: var(--sol-ink-on-string); }

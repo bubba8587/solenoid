@@ -18,6 +18,9 @@ specific item.
   downloads work; the API and jsDelivr don't), copied into the rig vault's plugins and enabled by `eval`. The plugin
   build needs `cargo install wasm-bindgen-cli --version 0.2.130`. A settings window open in the rig takes the next
   modal; close it first. A 1.15 modal's close button is `.modal-header-button`.
+- **1 px round corners are painted twice** ([[obsidian-plugin#The look]]): an outline at `-1px` on a border, a shadow ring
+  listed twice. Found at 1x, not 4x: check a stroke at the scales people run (1, 1.5, 2), blown up with point
+  filtering. `corner-shape: round` renders identically to none; `mod-macos` on the body emulates the Mac superellipse.
 
 ### SESSION DIGEST (2026-11-18b: the optimization suite's UI, the Solver in depth, a recalc leak, Plan C, HTML Page; cloud session)
 **Solver** ([[frame-verbs#Solver]], pinned in `solver.test.ts` against exact answers)
