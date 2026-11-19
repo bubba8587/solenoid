@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><title>Annual report</title></head>
+<body>
+<div class="report">
+  <section class="cover">
+    <p class="org">{{ org }}</p>
+    <h1><span>Annual</span> <span>report</span> <b>{{ year }}</b></h1>
+    <p class="mission">Free tutoring, a summer reading camp and a book in every child's hands, in the neighbourhoods that need them most.</p>
+  </section>
+
+  <section class="headline">
+    <div><dt>Raised</dt><dd>${{ income | number_format }}</dd></div>
+    <div><dt>Spent on the work</dt><dd>{{ pct }}<small>%</small></dd></div>
+    <div><dt>Left for next year</dt><dd>${{ net | number_format }}</dd></div>
+  </section>
+
+  <section class="letter">
+    <h2>From the director</h2>
+    <p>This year more of every dollar went to the work itself than in any year before. Individual donors gave more than foundations for the first time, which means the program now rests on the people it serves, and on their neighbours. Thank you.</p>
+    <p class="sig">Amara Okafor, executive director</p>
+  </section>
+
+  <section class="flow">
+    <h2>Where it came from, and where it went</h2>
+    {{ flows }}
+  </section>
+
+  <section class="pair">
+    <div>
+      <h2>The year's cash</h2>
+      {{ cash }}
+    </div>
+    <div>
+      <h2>Share spent on programs</h2>
+      {{ program_share }}
+      <p class="note">The rest paid for administration and fundraising. Charity watchdogs look for 75% or more.</p>
+    </div>
+  </section>
+
+  <section class="impact">
+    <h2>What it bought</h2>
+    <ul>
+      {% for m in impact %}
+      <li><b>{{ m.Value | number_format }}</b><span>{{ m.Measure }}</span><em>{{ m.Program }}</em></li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <footer>{{ org }} is a 501(c)(3). Figures are unaudited. Built from one table of flows in Solenoid; every total above is a card.</footer>
+</div>
+</body></html>

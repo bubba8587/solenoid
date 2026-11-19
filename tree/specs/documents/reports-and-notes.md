@@ -596,7 +596,8 @@ dresses its boxes, tables and charts in its own palette and type; a page that do
 figure reads its styling from where it draws, not from the app's root: each slot is the figure's scope (`FigureScope`,
 `chartCore.ts`), so an SVG chart's axis, grid and series colors (`--text-dim`, `--border-strong`, `--chart-1` to
 `--chart-12` over the palette's series colors; a one-series chart takes `--chart-1`), the US Map's land, borders and ink (`--surface-raised`, `--border-strong`,
-`--text-dim`) and a canvas chart's face (read from its own canvas) follow the page, or one
+`--text-dim`), a Waterfall's or Candlestick's rise, fall and total (`--chart-up`, `--chart-down`, `--chart-neutral`, unset
+in the app, so the palette's green, vermilion and blue), a Gauge's track (`--gauge-track`) and a canvas chart's face (read from its own canvas) follow the page, or one
 box's own rule (`[data-sol-ref="trend"] { --chart-1: #c2410c }`). `--chart-font-scale` multiplies a chart's text over its
 Format Controller's scale. A page's `@media (prefers-color-scheme: …)` follows the app's light or dark, not the system's
 (its rules scoped under `:where(html[data-theme="…"])`, no extra specificity), so a page can carry both themes. Outside a page nothing sets a scope, so every other surface reads the app's as before.

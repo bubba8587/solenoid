@@ -1,0 +1,59 @@
+@font-face { font-family: "Fraunces"; src: url(fonts/Fraunces.woff2) format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Fraunces"; font-style: italic; src: url(fonts/Fraunces-Italic.woff2) format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Instrument Sans"; src: url(fonts/InstrumentSans.woff2) format("woff2"); font-weight: 400 700; }
+
+:root {
+  --ink: #14211d; --deep: #0f3d33; --coral: #ef6a4c; --leaf: #8fbf72; --sand: #f6f1e7; --line: #dcd3c2; --dim: #5d665f;
+  --surface: #fffdf8; --text: var(--ink); --text-dim: var(--dim); --border: var(--line); --border-strong: #c9bfac;
+  --font-sans: "Instrument Sans", system-ui, sans-serif;
+  --chart-1: var(--deep); --chart-2: var(--coral); --chart-3: var(--leaf); --chart-4: #d9a441; --chart-5: #6c8ea3;
+  --chart-6: #a35d8c; --chart-7: #3f7d5c; --chart-8: #b8873a; --chart-9: #8a9a5b; --chart-10: #5b6f8f;
+  --chart-up: var(--leaf); --chart-down: var(--coral); --chart-neutral: var(--deep); --gauge-track: #e7dfd0;
+  --chart-font-scale: 1.1;
+}
+body { background: var(--sand); color: var(--ink); font-family: "Instrument Sans", sans-serif; font-size: 16px; line-height: 1.55; }
+.report { max-width: 900px; margin: 0 auto 40px; background: var(--surface); }
+h2 { font-family: "Fraunces", serif; font-weight: 500; font-size: 24px; margin: 0 0 12px; letter-spacing: -.01em; }
+
+.cover { background: var(--deep); color: var(--sand); padding: 56px 48px 44px; position: relative; overflow: hidden; }
+.cover::after { content: ""; position: absolute; right: -80px; top: -80px; width: 320px; height: 320px; border-radius: 50%; border: 56px solid var(--coral); opacity: .9; }
+.org { margin: 0; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--leaf); position: relative; z-index: 1; }
+.cover h1 { font-family: "Fraunces", serif; font-weight: 300; font-size: clamp(54px, 10vw, 104px); line-height: .92; margin: 16px 0 18px; letter-spacing: -.03em; position: relative; z-index: 1; }
+.cover h1 span:last-of-type { font-style: italic; }
+.cover h1 b { display: block; font-weight: 800; color: var(--coral); }
+.mission { max-width: 30em; margin: 0; font-size: 18px; color: #d7e3dc; position: relative; z-index: 1; text-wrap-style: pretty; }
+
+.headline { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
+.headline div { padding: 22px 28px; border-left: 1px solid var(--line); }
+.headline div:first-child { border-left: none; }
+.headline dt { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.headline dd { margin: 6px 0 0; font-family: "Fraunces", serif; font-size: 44px; font-weight: 600; line-height: 1; color: var(--deep); font-variant-numeric: lining-nums; }
+.headline small { font-size: 24px; }
+
+section.letter, section.flow, section.pair, section.impact { padding: 32px 48px 8px; }
+.letter p { max-width: 38em; font-family: "Fraunces", serif; font-size: 19px; line-height: 1.5; text-wrap-style: pretty; }
+.letter p:first-of-type::first-letter { float: left; font-size: 62px; line-height: .9; padding: 4px 8px 0 0; color: var(--coral); font-weight: 700; }
+.sig { font-style: italic; color: var(--dim); font-size: 16px !important; }
+
+.flow .sol-box { height: 380px; border: none; background: transparent; }
+.flow .sol-box__label, .flow .sol-box__title, .pair .sol-box__label, .pair .sol-box__title { display: none; }
+.pair { display: grid; grid-template-columns: 3fr 2fr; gap: 32px; }
+.pair .sol-box { height: 280px; border: none; background: transparent; }
+.note { font-size: 13px; color: var(--dim); margin: 6px 0 0; text-wrap-style: pretty; }
+
+.impact ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 2px solid var(--deep); }
+.impact li { padding: 18px 16px 18px 0; border-bottom: 1px solid var(--line); }
+.impact b { display: block; font-family: "Fraunces", serif; font-size: 40px; font-weight: 600; line-height: 1; color: var(--coral); }
+.impact span { display: block; margin-top: 6px; font-weight: 600; }
+.impact em { font-style: normal; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+
+footer { padding: 28px 48px 36px; font-size: 13px; color: var(--dim); }
+
+@media (max-width: 640px) {
+  .cover, section.letter, section.flow, section.pair, section.impact, footer { padding-left: 20px; padding-right: 20px; }
+  .headline { grid-template-columns: 1fr; }
+  .headline div { border-left: none; border-top: 1px solid var(--line); }
+  .pair { grid-template-columns: 1fr; }
+  .impact ul { grid-template-columns: 1fr 1fr; }
+  .flow .sol-box { height: 300px; }
+}

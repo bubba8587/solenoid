@@ -1053,6 +1053,209 @@
       "y": 7700
     },
     {
+      "id": "n_org",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Organization",
+        "value": "Open Book Project",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 8800
+    },
+    {
+      "id": "n_year",
+      "type": "ValueInputNode",
+      "init": {
+        "label": "Year",
+        "value": "2026",
+        "op": "string"
+      },
+      "x": 0,
+      "y": 8970
+    },
+    {
+      "id": "n_flows",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Money flows",
+        "frameText": "[{\"name\":\"From\",\"type\":\"string\",\"cells\":[\"Individual gifts\",\"Foundations\",\"Events\",\"Earned income\",\"General fund\",\"General fund\",\"General fund\",\"General fund\",\"General fund\"]},{\"name\":\"To\",\"type\":\"string\",\"cells\":[\"General fund\",\"General fund\",\"General fund\",\"General fund\",\"Literacy tutoring\",\"Summer camp\",\"Book bank\",\"Administration\",\"Fundraising\"]},{\"name\":\"Value\",\"type\":\"number\",\"cells\":[\"412000\",\"286000\",\"94000\",\"58000\",\"368000\",\"214000\",\"121000\",\"78000\",\"51000\"]}]"
+      },
+      "x": 0,
+      "y": 9140
+    },
+    {
+      "id": "n_from",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "From",
+        "readAs": "text"
+      },
+      "stringLiterals": {
+        "name": "From"
+      },
+      "x": 360,
+      "y": 8800
+    },
+    {
+      "id": "n_to",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "To",
+        "readAs": "text"
+      },
+      "stringLiterals": {
+        "name": "To"
+      },
+      "x": 360,
+      "y": 9050
+    },
+    {
+      "id": "n_val",
+      "type": "GetColumnNode",
+      "init": {
+        "label": "Amounts",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Value"
+      },
+      "x": 360,
+      "y": 9300
+    },
+    {
+      "id": "n_income",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Raised",
+        "expr": "SUMIFS(amount, to, \"General fund\")"
+      },
+      "x": 720,
+      "y": 8800
+    },
+    {
+      "id": "n_spent",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Spent this year",
+        "expr": "SUMIFS(amount, from, \"General fund\")"
+      },
+      "x": 720,
+      "y": 9050
+    },
+    {
+      "id": "n_overhead",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Overhead",
+        "expr": "SUMIFS(amount, to, \"Administration\") + SUMIFS(amount, to, \"Fundraising\")"
+      },
+      "x": 720,
+      "y": 9300
+    },
+    {
+      "id": "n_share",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Program share",
+        "expr": "(spent - overhead) / spent"
+      },
+      "x": 1060,
+      "y": 9050
+    },
+    {
+      "id": "n_pct",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Program share, %",
+        "expr": "ROUND(share * 100, 1)"
+      },
+      "x": 1400,
+      "y": 9050
+    },
+    {
+      "id": "n_net",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Left over",
+        "expr": "raised - spent"
+      },
+      "x": 1060,
+      "y": 8800
+    },
+    {
+      "id": "n_sankey",
+      "type": "SankeyNode",
+      "init": {
+        "label": "Flows"
+      },
+      "x": 360,
+      "y": 9600
+    },
+    {
+      "id": "n_cash",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "The year's cash",
+        "frameText": "[{\"name\":\"Label\",\"type\":\"string\",\"cells\":[\"Start of year\",\"Individual gifts\",\"Foundations\",\"Events\",\"Earned income\",\"Programs\",\"Administration\",\"Fundraising\"]},{\"name\":\"Delta\",\"type\":\"number\",\"cells\":[\"140000\",\"412000\",\"286000\",\"94000\",\"58000\",\"-703000\",\"-78000\",\"-51000\"]}]"
+      },
+      "x": 0,
+      "y": 9600
+    },
+    {
+      "id": "n_water",
+      "type": "WaterfallNode",
+      "init": {
+        "label": "Cash"
+      },
+      "stringLiterals": {
+        "options": "total=true"
+      },
+      "x": 720,
+      "y": 9600
+    },
+    {
+      "id": "n_gauge",
+      "type": "GaugeNode",
+      "init": {
+        "label": "Share to programs"
+      },
+      "x": 1400,
+      "y": 9300
+    },
+    {
+      "id": "n_impact",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Impact",
+        "frameText": "[{\"name\":\"Measure\",\"type\":\"string\",\"cells\":[\"Children tutored\",\"Tutoring hours\",\"Campers\",\"Books given away\",\"Volunteers\",\"Schools served\"]},{\"name\":\"Value\",\"type\":\"number\",\"cells\":[\"1240\",\"18600\",\"312\",\"27400\",\"410\",\"23\"]},{\"name\":\"Program\",\"type\":\"string\",\"cells\":[\"Literacy tutoring\",\"Literacy tutoring\",\"Summer camp\",\"Book bank\",\"All programs\",\"All programs\"]}]"
+      },
+      "x": 0,
+      "y": 10050
+    },
+    {
+      "id": "n_page",
+      "type": "HtmlPageNode",
+      "init": {
+        "label": "Annual report",
+        "fileName": "pages/annual.html",
+        "styleFile": "pages/annual.css",
+        "sideVars": [
+          "org",
+          "year",
+          "income",
+          "pct",
+          "net",
+          "flows",
+          "cash",
+          "program_share",
+          "impact"
+        ]
+      },
+      "x": 1760,
+      "y": 8800
+    },
+    {
       "id": "g_q",
       "type": "GroupNode",
       "init": {
@@ -1258,6 +1461,39 @@
       },
       "x": -30,
       "y": 7640
+    },
+    {
+      "id": "g_n",
+      "type": "GroupNode",
+      "init": {
+        "label": "Annual report",
+        "members": [
+          "n_org",
+          "n_year",
+          "n_flows",
+          "n_from",
+          "n_to",
+          "n_val",
+          "n_income",
+          "n_spent",
+          "n_overhead",
+          "n_share",
+          "n_pct",
+          "n_net",
+          "n_sankey",
+          "n_cash",
+          "n_water",
+          "n_gauge",
+          "n_impact",
+          "n_page"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 2120,
+        "height": 1640
+      },
+      "x": -30,
+      "y": 8740
     }
   ],
   "connections": [
@@ -1902,6 +2138,162 @@
       "sourceOutput": "chart",
       "target": "r_page",
       "targetInput": "by_leg"
+    },
+    {
+      "source": "n_flows",
+      "sourceOutput": "frame",
+      "target": "n_from",
+      "targetInput": "frame"
+    },
+    {
+      "source": "n_flows",
+      "sourceOutput": "frame",
+      "target": "n_to",
+      "targetInput": "frame"
+    },
+    {
+      "source": "n_flows",
+      "sourceOutput": "frame",
+      "target": "n_val",
+      "targetInput": "frame"
+    },
+    {
+      "source": "n_val",
+      "sourceOutput": "values",
+      "target": "n_income",
+      "targetInput": "amount"
+    },
+    {
+      "source": "n_to",
+      "sourceOutput": "values",
+      "target": "n_income",
+      "targetInput": "to"
+    },
+    {
+      "source": "n_val",
+      "sourceOutput": "values",
+      "target": "n_spent",
+      "targetInput": "amount"
+    },
+    {
+      "source": "n_from",
+      "sourceOutput": "values",
+      "target": "n_spent",
+      "targetInput": "from"
+    },
+    {
+      "source": "n_val",
+      "sourceOutput": "values",
+      "target": "n_overhead",
+      "targetInput": "amount"
+    },
+    {
+      "source": "n_to",
+      "sourceOutput": "values",
+      "target": "n_overhead",
+      "targetInput": "to"
+    },
+    {
+      "source": "n_spent",
+      "sourceOutput": "result",
+      "target": "n_share",
+      "targetInput": "spent"
+    },
+    {
+      "source": "n_overhead",
+      "sourceOutput": "result",
+      "target": "n_share",
+      "targetInput": "overhead"
+    },
+    {
+      "source": "n_share",
+      "sourceOutput": "result",
+      "target": "n_pct",
+      "targetInput": "share"
+    },
+    {
+      "source": "n_income",
+      "sourceOutput": "result",
+      "target": "n_net",
+      "targetInput": "raised"
+    },
+    {
+      "source": "n_spent",
+      "sourceOutput": "result",
+      "target": "n_net",
+      "targetInput": "spent"
+    },
+    {
+      "source": "n_flows",
+      "sourceOutput": "frame",
+      "target": "n_sankey",
+      "targetInput": "frame"
+    },
+    {
+      "source": "n_cash",
+      "sourceOutput": "frame",
+      "target": "n_water",
+      "targetInput": "frame"
+    },
+    {
+      "source": "n_share",
+      "sourceOutput": "result",
+      "target": "n_gauge",
+      "targetInput": "value"
+    },
+    {
+      "source": "n_org",
+      "sourceOutput": "value",
+      "target": "n_page",
+      "targetInput": "org"
+    },
+    {
+      "source": "n_year",
+      "sourceOutput": "value",
+      "target": "n_page",
+      "targetInput": "year"
+    },
+    {
+      "source": "n_income",
+      "sourceOutput": "result",
+      "target": "n_page",
+      "targetInput": "income"
+    },
+    {
+      "source": "n_pct",
+      "sourceOutput": "result",
+      "target": "n_page",
+      "targetInput": "pct"
+    },
+    {
+      "source": "n_net",
+      "sourceOutput": "result",
+      "target": "n_page",
+      "targetInput": "net"
+    },
+    {
+      "source": "n_sankey",
+      "sourceOutput": "chart",
+      "target": "n_page",
+      "targetInput": "flows"
+    },
+    {
+      "source": "n_water",
+      "sourceOutput": "chart",
+      "target": "n_page",
+      "targetInput": "cash"
+    },
+    {
+      "source": "n_gauge",
+      "sourceOutput": "chart",
+      "target": "n_page",
+      "targetInput": "program_share"
+    },
+    {
+      "source": "n_impact",
+      "sourceOutput": "frame",
+      "target": "n_page",
+      "targetInput": "impact"
     }
   ]
 }

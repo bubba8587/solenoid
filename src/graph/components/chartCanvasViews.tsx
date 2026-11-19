@@ -41,10 +41,11 @@ function themeInk(canvas: HTMLCanvasElement) {
     border: v("--border-strong", "#555"),
     sunken: v("--surface-sunken", "#2a2a2a"),
     emptyCell: v("--chart-empty-cell", "#141414"),
-    up: resolveColor("green"),
-    down: resolveColor("vermilion"),
+    // A rise, a fall and a total: the palette's, or what an HTML Page sets where the figure draws.
+    up: v("--chart-up", resolveColor("green")),
+    down: v("--chart-down", resolveColor("vermilion")),
     accent: v("--accent", resolveColor("sky")),
-    neutral: resolveColor("blue"),
+    neutral: v("--chart-neutral", resolveColor("blue")),
   };
 }
 
