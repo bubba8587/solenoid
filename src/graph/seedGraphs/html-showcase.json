@@ -1306,7 +1306,7 @@
       "id": "y_total",
       "type": "ExpressionNode",
       "init": {
-        "label": "Kilometres",
+        "label": "Kilometers",
         "expr": "ROUND(SUM(km), 0)"
       },
       "x": 720,
