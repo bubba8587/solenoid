@@ -6,6 +6,14 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-19: Calendar Heatmap by week, month or year; cloud session)
+- **What stands:** the card's `period` pick (Day, Week, Month, Year) sums days into ISO weeks, months or years on the
+  core (`calendar_period_start`, `nodes/visual.rs`); the grouped figure is `CalPeriodView` over `periodGrid` and
+  `periodLayout` (`heatmapLayout.ts`). Spec: [[chart-figures]] § Calendar Heatmap.
+- **Why week rows aren't square:** 53 columns on a 300 px card leave ~4 px cells, and four years of those stacked
+  can't be told apart or labeled; a week row is at least a label line tall instead (seen in a shot, fixed).
+- **Cloud gotcha:** `npm run build:wasm` needs `wasm-bindgen` 0.2.130 (`cargo install wasm-bindgen-cli --version 0.2.130 --locked`), which a fresh container lacks.
+
 ### SESSION DIGEST (2026-11-18b: the optimization suite's UI, the Solver in depth, a recalc leak, Plan C, HTML Page; cloud session)
 **Solver** ([[frame-verbs#Solver]], pinned in `solver.test.ts` against exact answers)
 - Limits are a saved `limitList`, edited in a PIVOTBY-style popup a sentence each and listed on the card in the pipeline

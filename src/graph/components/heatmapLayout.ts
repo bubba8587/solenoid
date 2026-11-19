@@ -73,7 +73,7 @@ export function heatmapLayout(a: HeatLayoutInput): HeatLayout {
 }
 
 /** The cell under a point, as payload indices, or null off the grid. */
-export function heatCellAt(l: HeatLayout, x: number, y: number): { r: number; c: number } | null {
+export function heatCellAt(l: Pick<HeatLayout, "gx" | "gy" | "cw" | "ch" | "nR" | "nC" | "lower">, x: number, y: number): { r: number; c: number } | null {
   const c = Math.floor((x - l.gx) / l.cw);
   const vr = Math.floor((y - l.gy) / l.ch);
   if (!(c >= 0 && c < l.nC && vr >= 0 && vr < l.nR)) return null;
@@ -255,16 +255,51 @@ export function periodLabel(period: CalPeriod, start: number): string {
   return `W${String(isoWeekOf(start)).padStart(2, "0")} ${isoYearOf(start)}`;
 }
 
-export const PERIOD_MAX_CELL: Record<CalPeriod, number> = { week: 16, month: 30, year: 30 };
+const PERIOD_MAX_CELL: Record<CalPeriod, number> = { week: 16, month: 30, year: 30 };
 
-/** A grouped calendar's figure height at a card's width: the cells as large as the width allows, up to a cap, with a
- *  row of labels under them and a line for the note when years were cut. Matches what `heatmapLayout` fits. */
+export interface PeriodLayout {
+  /** The grid's top left corner and cell size, in the shape `heatCellAt` reads. */
+  gx: number; gy: number; cw: number; ch: number; nR: number; nC: number; lower: false;
+  gap: number; lineH: number;
+  rowLabelX: number | null;
+  colLabelY: number;
+  noteY: number | null;
+  cbar: { x: number; y: number; w: number; h: number; textX: number } | null;
+}
+
+/** Where a grouped calendar sits: cells as wide as the width allows up to a cap, square, except that by week a row
+ *  is at least a label tall, since 53 columns leave square cells too thin to tell the years apart. Left-aligned, with
+ *  the year labels left, a row of labels below and a note line when years were cut. `H` null asks for the height
+ *  the cells want (the card's), else the cells shrink to fit it. */
+export function periodLayout(g: PeriodGrid, W: number, H: number | null, fs: number, rowLabelW: number, cbarTickW: number | null): PeriodLayout {
+  const lineH = Math.ceil(10.5 * fs);
+  const padT = Math.ceil(5 * fs);
+  const rowLabW = rowLabelW > 0 ? Math.min(rowLabelW, W * 0.28) + 3 : 0;
+  const cbarW = cbarTickW === null ? 0 : 6 + 8 + 3 + cbarTickW;
+  const below = lineH + 3 + (g.cutYears > 0 ? lineH : 0) + 1;
+  const availW = Math.max(1, W - rowLabW - cbarW - 1);
+  let cw = Math.min(PERIOD_MAX_CELL[g.period], availW / g.nC);
+  let ch = g.period === "week" ? Math.max(cw, lineH) : cw;
+  if (H !== null) {
+    const availH = Math.max(1, H - padT - below);
+    if (g.nR * ch > availH) { ch = availH / g.nR; if (g.period !== "week") cw = ch; else cw = Math.min(cw, ch); }
+  }
+  const gx = rowLabW, gy = padT;
+  const gridW = cw * g.nC, gridH = ch * g.nR;
+  return {
+    gx, gy, cw, ch, nR: g.nR, nC: g.nC, lower: false,
+    gap: Math.min(cw, ch) > 6 ? 1 : 0.5, lineH,
+    rowLabelX: rowLabW > 0 ? gx - 3 : null,
+    colLabelY: gy + gridH + 3,
+    noteY: g.cutYears > 0 ? gy + gridH + 3 + lineH + lineH / 2 : null,
+    cbar: cbarTickW === null ? null : { x: gx + gridW + 6, y: gy, w: 8, h: gridH, textX: gx + gridW + 6 + 8 + 3 },
+  };
+}
+
+/** A grouped calendar's figure height at a card's width. */
 export function periodHeight(days: readonly number[], period: CalPeriod, W: number, fs: number, cbarTickW: number | null): number {
   const g = periodGrid(days, days.map(() => 0), period);
   if (!g) return 90;
-  const lineH = Math.ceil(10.5 * fs);
-  const rowLabW = period === "year" ? 0 : Math.min(24 * fs, W * 0.28) + 3;
-  const availW = Math.max(1, W - rowLabW - (cbarTickW === null ? 0 : 6 + 8 + 3 + cbarTickW) - 1);
-  const cell = Math.min(PERIOD_MAX_CELL[period], availW / g.nC);
-  return Math.ceil(Math.ceil(5 * fs) + g.nR * cell + lineH + 3 + (g.cutYears > 0 ? lineH : 0) + 1);
+  const L = periodLayout(g, W, null, fs, period === "year" ? 0 : 24 * fs, cbarTickW);
+  return Math.ceil(L.colLabelY + (L.noteY === null ? L.lineH : L.noteY - L.colLabelY + L.lineH / 2) + 1);
 }
