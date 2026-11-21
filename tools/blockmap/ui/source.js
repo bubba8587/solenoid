@@ -14,41 +14,42 @@ export async function connect({ onBoard, onEvents, onReset, onStatus, onWorktree
   return demo({ onEvents, onStatus, onWorktrees });
 }
 
+// The page takes events from the stream only, in the log's order; a commit just waits for its own events to come
+// back on it. Each batch's id is the log's byte offset after it, so a dropped stream resumes exactly where it
+// left off (the browser sends the last id it saw; before any, the offset the first read ended at).
 async function tryLive(q, { onBoard, onEvents, onReset, onStatus, onWorktrees }) {
   let board;
   let events;
+  let from = null;
   try {
     const res = await fetch(`api/board${q}`, { cache: 'no-store' });
     if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) return null;
     board = await res.json();
-    events = await (await fetch(`api/events${q}`, { cache: 'no-store' })).json();
+    const log = await fetch(`api/events${q}`, { cache: 'no-store' });
+    from = log.headers.get('x-blockmap-offset');
+    events = await log.json();
   } catch {
     return null;
   }
-  let lastTs = events.length ? events[events.length - 1].ts : 0;
   const seen = new Set(events.map((e) => e.id));
-  let opened = false;
-  const take = (list) => {
-    const fresh = list.filter((e) => !seen.has(e.id));
-    for (const e of fresh) {
-      seen.add(e.id);
-      lastTs = Math.max(lastTs, e.ts);
-    }
-    if (fresh.length) onEvents(fresh);
-  };
-  const es = new EventSource(`api/stream${q}`);
-  es.addEventListener('hello', async () => {
-    onStatus('live');
-    if (opened) {
-      // Back after a drop: fetch whatever was written while the stream was down.
-      try {
-        take(await (await fetch(`api/events${q}${q ? '&' : '?'}since=${lastTs}`, { cache: 'no-store' })).json());
-      } catch {
-        // The next event will arrive on the stream anyway.
+  const waiting = new Map();
+  const arrived = (list) => {
+    for (const e of list) {
+      const done = waiting.get(e.id);
+      if (done) {
+        waiting.delete(e.id);
+        done();
       }
     }
-    opened = true;
-  });
+  };
+  const take = (list) => {
+    const fresh = list.filter((e) => !seen.has(e.id));
+    for (const e of fresh) seen.add(e.id);
+    if (fresh.length) onEvents(fresh);
+    arrived(list);
+  };
+  const es = new EventSource(`api/stream${q}${from !== null ? `${q ? '&' : '?'}from=${encodeURIComponent(from)}` : ''}`);
+  es.addEventListener('hello', () => onStatus('live'));
   es.addEventListener('events', (m) => take(JSON.parse(m.data)));
   es.addEventListener('board', (m) => onBoard(JSON.parse(m.data)));
   es.addEventListener('worktrees', (m) => onWorktrees(JSON.parse(m.data)));
@@ -57,6 +58,7 @@ async function tryLive(q, { onBoard, onEvents, onReset, onStatus, onWorktrees })
     seen.clear();
     for (const e of list) seen.add(e.id);
     onReset(list);
+    arrived(list);
   });
   es.addEventListener('problem', (m) => onStatus('problem', JSON.parse(m.data).message));
   es.onerror = () => onStatus('offline');
@@ -72,8 +74,14 @@ async function tryLive(q, { onBoard, onEvents, onReset, onStatus, onWorktrees })
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `The board answered ${res.status}.`);
-      take(body.accepted || []);
-      return body.accepted;
+      const accepted = body.accepted || [];
+      // Resolves once the stream has delivered them (it was sent before this answer), or after a few seconds.
+      const pending = accepted.filter((e) => !seen.has(e.id)).map((e) => new Promise((done) => waiting.set(e.id, done)));
+      let timer;
+      await Promise.race([Promise.all(pending), new Promise((done) => (timer = setTimeout(done, 4000)))]);
+      clearTimeout(timer);
+      for (const e of accepted) waiting.delete(e.id);
+      return accepted;
     },
   };
 }

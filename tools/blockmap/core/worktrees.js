@@ -8,13 +8,54 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import { safeId } from './model.js';
 
-function git(cwd, args) {
+// Every call reads without taking the optional index lock, so a poll every few seconds never makes an agent's
+// own `git add` or `git commit` fail on index.lock. `raw` keeps the output as git wrote it (NUL-separated -z).
+function git(cwd, args, { raw = false } = {}) {
   return new Promise((resolve) => {
-    execFile('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
-      resolve({ ok: !err, code: err ? err.code ?? 1 : 0, out: String(stdout || '').trim() });
+    execFile('git', ['--no-optional-locks', ...args], { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+      const out = String(stdout || '');
+      resolve({ ok: !err, code: err ? err.code ?? 1 : 0, out: raw ? out : out.trim() });
     });
   });
+}
+
+// `git status --porcelain -z`: "XY path", NUL-ended, and a rename or copy's source path as the next field.
+export function parseStatus(out) {
+  const parts = out.split('\0');
+  const rows = [];
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    if (p.length < 4) continue;
+    const code = p.slice(0, 2);
+    rows.push({ code, path: p.slice(3) });
+    if (/[RC]/.test(code)) i++;
+  }
+  return rows;
+}
+
+// `git diff --numstat -z`: "added TAB deleted TAB path", NUL-ended; a rename leaves the path empty and gives the
+// source and the destination as the next two fields. Binary files count "-" lines.
+export function parseNumstat(out) {
+  const parts = out.split('\0');
+  const rows = [];
+  for (let i = 0; i < parts.length; i++) {
+    const m = /^(-|\d+)\t(-|\d+)\t([^]*)$/.exec(parts[i]);
+    if (!m) continue;
+    let file = m[3];
+    if (!file) {
+      file = parts[i + 2] || '';
+      i += 2;
+    }
+    if (file) rows.push({ add: Number(m[1]) || 0, del: Number(m[2]) || 0, file });
+  }
+  return rows;
+}
+
+// The paths a dry-run `git merge-tree --write-tree --name-only -z` says conflict: the fields after the tree.
+function conflictsOf(res) {
+  return !res.ok && res.code === 1 ? res.out.split('\0').slice(1).filter(Boolean) : [];
 }
 
 export async function listWorktrees(root) {
@@ -56,15 +97,50 @@ export async function baseRef(root, configured) {
   return { name: 'HEAD', ref: 'HEAD' };
 }
 
+// A worktree is named after its folder, made into an id the log accepts.
 export function worktreeName(wt) {
-  return wt.main ? 'main' : path.basename(wt.path);
+  return wt.main ? 'main' : safeId(path.basename(wt.path));
 }
 
 export async function worktreeSnapshot(root, { base } = {}) {
   const list = await listWorktrees(root);
   const b = await baseRef(root, base);
   const rows = await Promise.all(list.filter((wt) => !wt.bare && !wt.prunable && fs.existsSync(wt.path)).map((wt) => inspect(wt, b)));
-  return { base: b.name, at: Date.now(), list: rows };
+  return { base: b.name, at: Date.now(), list: rows, clashes: await forecast(root, rows) };
+}
+
+// The merge forecast: for each pair of branches that changed a file in common, a dry-run merge of the two
+// heads says which files would really conflict once one of them has landed. Overlaps that merge cleanly are
+// not clashes. Results are kept per pair of commits, so a pair is merged again only when a branch moves.
+const forecastCache = new Map();
+export async function forecast(root, rows) {
+  const branches = rows.filter((r) => !r.main && r.head && r.ahead > 0);
+  const sets = branches.map((r) => new Set(r.files));
+  const out = [];
+  for (let i = 0; i < branches.length; i++) {
+    for (let j = i + 1; j < branches.length; j++) {
+      const a = branches[i];
+      const b = branches[j];
+      const [small, big] = sets[i].size <= sets[j].size ? [sets[i], sets[j]] : [sets[j], sets[i]];
+      let shared = false;
+      for (const f of small) {
+        if (big.has(f)) {
+          shared = true;
+          break;
+        }
+      }
+      if (!shared) continue;
+      const key = `${a.head}|${b.head}`;
+      if (!forecastCache.has(key)) {
+        const res = await git(root, ['merge-tree', '--write-tree', '--name-only', '--no-messages', '-z', a.head, b.head], { raw: true });
+        forecastCache.set(key, conflictsOf(res));
+        if (forecastCache.size > 500) forecastCache.delete(forecastCache.keys().next().value);
+      }
+      const files = forecastCache.get(key);
+      if (files.length) out.push({ a: a.name, b: b.name, files });
+    }
+  }
+  return out;
 }
 
 async function inspect(wt, base) {
@@ -87,11 +163,12 @@ async function inspect(wt, base) {
   const [counts, mb, status, last] = await Promise.all([
     git(cwd, ['rev-list', '--left-right', '--count', `${base.ref}...HEAD`]),
     git(cwd, ['merge-base', base.ref, 'HEAD']),
-    git(cwd, ['status', '--porcelain', '--untracked-files=all']),
+    git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all'], { raw: true }),
     git(cwd, ['log', '-1', '--format=%ct%x09%s']),
   ]);
   if (counts.ok) [row.behind, row.ahead] = counts.out.split(/\s+/).map(Number);
-  if (status.ok && status.out) row.dirty = status.out.split('\n').length;
+  const entries = status.ok ? parseStatus(status.out) : [];
+  row.dirty = entries.length;
   if (last.ok && last.out) {
     const [ts, ...subject] = last.out.split('\t');
     row.lastCommit = { ts: Number(ts) * 1000, subject: subject.join('\t') };
@@ -99,27 +176,28 @@ async function inspect(wt, base) {
   const files = new Set();
   if (mb.ok) {
     // Against the merge base and the working tree, so committed and uncommitted work both count.
-    const numstat = await git(cwd, ['diff', '--numstat', mb.out]);
-    if (numstat.ok && numstat.out) {
-      for (const line of numstat.out.split('\n')) {
-        const [a, d, file] = line.split('\t');
-        if (!file) continue;
-        files.add(file.includes(' => ') ? file.replace(/\{(.*) => (.*)\}/, '$2').replace(/.* => /, '') : file);
-        row.add += Number(a) || 0;
-        row.del += Number(d) || 0;
+    const numstat = await git(cwd, ['diff', '--numstat', '-z', mb.out], { raw: true });
+    if (numstat.ok) {
+      for (const r of parseNumstat(numstat.out)) {
+        files.add(r.file);
+        row.add += r.add;
+        row.del += r.del;
       }
     }
   }
-  if (status.ok && status.out) {
-    for (const line of status.out.split('\n')) if (line.startsWith('??')) files.add(line.slice(3));
-  }
+  for (const e of entries) if (e.code === '??') files.add(e.path);
   row.files = [...files];
   if (row.ahead > 0 && row.behind > 0) {
-    const merge = await git(cwd, ['merge-tree', '--write-tree', '--name-only', '--no-messages', base.ref, 'HEAD']);
-    // Exit 1 means conflicts: the first line is the tree, the rest the conflicted paths.
-    if (!merge.ok && merge.code === 1) row.conflicts = merge.out.split('\n').slice(1).filter(Boolean);
+    // Exit 1 means conflicts: the first field is the tree, the rest the conflicted paths.
+    row.conflicts = conflictsOf(await git(cwd, ['merge-tree', '--write-tree', '--name-only', '--no-messages', '-z', base.ref, 'HEAD'], { raw: true }));
   }
   return row;
+}
+
+// The files that differ between two commits, or null when git can't say (a commit that is gone).
+export async function changedBetween(cwd, a, b) {
+  const res = await git(cwd, ['diff', '--name-only', '-z', a, b], { raw: true });
+  return res.ok ? new Set(res.out.split('\0').filter(Boolean)) : null;
 }
 
 // Whether a commit has reached the base branch, so a queued merge can be marked landed.

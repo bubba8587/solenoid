@@ -53,11 +53,17 @@ class Refusal extends Error {}
 async function context(flags) {
   const url = flags.url || process.env.BLOCKMAP_URL;
   const store = url ? remoteStore(url) : openStore(findBoardDir());
-  const { board, events } = await store.load();
   const now = Date.now();
-  const state = reduce(board, events);
   const me = whoAmI(flags.as);
-  return { store, board, events, state, me, now, flags };
+  if (store.kind !== 'local') {
+    const { board, events } = await store.load();
+    return { store, board, events, state: reduce(board, events), me, now, flags };
+  }
+  // The local store keeps its fold; the raw log is read only by the commands that print it.
+  let events = null;
+  const ctx = { store, board: store.board(), state: store.state(), me, now, flags };
+  Object.defineProperty(ctx, 'events', { enumerable: true, get: () => (events ??= store.readEvents()) });
+  return ctx;
 }
 
 async function commit(ctx, events) {
@@ -308,7 +314,10 @@ const commands = {
 
   async note(ctx) {
     const text = words(ctx.pos);
-    if (ctx.flags.to) return commands.msg({ ...ctx, pos: [ctx.flags.to, ...ctx.pos] });
+    if (ctx.flags.to) {
+      ctx.pos = [ctx.flags.to, ...ctx.pos];
+      return commands.msg(ctx);
+    }
     const block = ctx.flags.block ? needBlock(ctx, ctx.flags.block).id : undefined;
     await commit(ctx, [...joinIfNeeded(ctx), ev(ctx, 'note', { text, ...(block ? { block } : {}) })]);
     out(ctx, 'Noted on the board.');
@@ -444,8 +453,9 @@ const commands = {
     const wt = snap.list.find((w) => w.name === name);
     if (!wt) throw new Refusal('Run `bm ready` inside the worktree, or name it with --worktree.');
     if (wt.main) throw new Refusal('The main checkout is where branches merge into, not one that queues.');
+    if (!wt.ahead) throw new Refusal(`Nothing to merge: ${wt.name} has no commits ahead of ${snap.base}.${wt.dirty ? ` Commit its ${wt.dirty} uncommitted change(s), then run \`bm ready\` again.` : ''}`);
     const note = typeof ctx.flags.note === 'string' ? ctx.flags.note : words(ctx.pos);
-    await commit(ctx, [...joinIfNeeded(ctx), ev(ctx, 'merge.ready', { worktree: wt.name, branch: wt.branch, commit: wt.head, note })]);
+    await commit(ctx, [...joinIfNeeded(ctx), ev(ctx, 'merge.ready', { worktree: wt.name, branch: wt.branch, commit: wt.head, ahead: wt.ahead, note })]);
     const warn = [wt.dirty ? `${wt.dirty} uncommitted change(s) won't be in the merge; commit them and run \`bm ready\` again.` : '', wt.conflicts.length ? `It conflicts with ${snap.base} in ${wt.conflicts.join(', ')}.` : ''].filter(Boolean);
     out(ctx, [`${wt.name} (${wt.branch}) is in the merge queue at ${wt.head.slice(0, 8)}.`, ...warn].join('\n'), { worktree: wt.name });
   },
@@ -631,7 +641,7 @@ Board
 
 Working (agents)
   bm join [--name N] [--task T]              join the board (any command joins you)
-  bm reserve <block...> [--for "intent"] [--watch] [--force]
+  bm reserve <block...> [--for "intent"] [--watch]
   bm next                                    take the top block from the human's queue
   bm doing "<what you're doing now>"
   bm status working|idle|blocked|done

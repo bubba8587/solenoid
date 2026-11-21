@@ -4,15 +4,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
+// Paths come NUL-separated (-z), so a name with spaces or accents arrives as written rather than quoted.
 export function gitFiles(root) {
   try {
-    const out = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
+    const out = execFileSync('git', ['--no-optional-locks', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
       cwd: root,
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'ignore'],
     });
-    return [...new Set(out.split('\n').filter(Boolean))];
+    return [...new Set(out.split('\0').filter(Boolean))];
   } catch {
     return walk(root);
   }
@@ -33,8 +34,8 @@ function walk(root) {
 }
 
 export function changedFiles(root, { staged = false, since = null } = {}) {
-  const run = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\n').filter(Boolean);
-  if (staged) return run(['diff', '--cached', '--name-only']);
-  if (since) return run(['diff', '--name-only', `${since}...HEAD`]).concat(run(['diff', '--name-only']));
-  return [...new Set(run(['diff', '--name-only', 'HEAD']).concat(run(['ls-files', '--others', '--exclude-standard'])))];
+  const run = (args) => execFileSync('git', ['--no-optional-locks', ...args], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean);
+  if (staged) return run(['diff', '--cached', '--name-only', '-z']);
+  if (since) return [...new Set(run(['diff', '--name-only', '-z', `${since}...HEAD`]).concat(run(['diff', '--name-only', '-z'])))];
+  return [...new Set(run(['diff', '--name-only', '-z', 'HEAD']).concat(run(['ls-files', '-z', '--others', '--exclude-standard'])))];
 }

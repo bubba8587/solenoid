@@ -6,18 +6,26 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-11-21: Blockmap, a live map of who works where; cloud session)
+### SESSION DIGEST (2026-11-21: Blockmap 2 and the theme kit; cloud session)
 - **What stands:** `tools/blockmap/` (zero dependencies, nothing imported from the app; `tools/blockmap/README.md`)
-  and this repository's board, `.blockmap/board.json`: 53 blocks in 8 districts whose globs claim all 3,990 tracked
-  files, each naming the specs to read before touching it, with `docs/backlog.md` imported onto the blocks (the "needs
-  the author's call" headings become decisions waiting on the author). Agents reserve blocks with `tools/blockmap/bm`;
-  `bm serve --open` shows the map, the agents' windows, tethers, alerts and a replayable timeline.
-- **Off by default.** Nothing in `.claude/settings.json` changed: `bm hooks install` writes the Claude Code hooks into
-  the git-ignored `.claude/settings.local.json`, after which a session joins the board, is refused an edit inside a block
-  another agent holds (with the reason), reserves a free block on its first edit there and is told that block's specs.
-  `docs/agent-coordination.md`'s claim lines are untouched; the board could replace them if the author wants.
-- **Tests:** `node --test tools/blockmap/test/*.test.js` (not in vitest's globs or `tests/buckets.mjs`, so CI doesn't run
-  them). A board edit that leaves files unclaimed shows an "Unclaimed" district on the map.
+  and this repository's board, `.blockmap/board.json`: 53 blocks in 8 districts whose globs claim every tracked file,
+  each naming the specs to read before touching it, with `docs/backlog.md` imported onto the blocks. Agents reserve
+  blocks with `tools/blockmap/bm`; `bm serve --open` shows the map, an inbox of what waits on the author, the agents'
+  windows, the worktrees and their merge queue (with a pairwise `git merge-tree` forecast), and a replayable timeline.
+- **The theme kit:** `tools/solenoid-theme/` is Solenoid's palette system for other apps, generated from
+  `src/graph/{palette,storeKit,colormaps,themeVars,appTheme}.ts` (Node strips the types), App.css's token blocks and
+  the toolbar pill, swatch grid, Settings Appearance and Custom editor CSS; `controls.js` ports those controls to plain
+  DOM with Solenoid's class names. **A change to any of those Solenoid files needs `node tools/solenoid-theme/sync.mjs`**,
+  which also refreshes Blockmap's vendored `ui/theme/`; `--check` (run by the kit's tests) fails while the kit lags.
+  The Theme block on the board claims both folders. Built so it can become its own package (author: maybe a shared
+  repository for all their apps); the README says how.
+- **Off by default.** Nothing in `.claude/settings.json` changed: `bm hooks install` writes the hooks into the
+  git-ignored `.claude/settings.local.json` (per checkout, so each worktree installs its own).
+- **Tests:** `node --test tools/blockmap/test/*.test.js` (28), `node --test tools/solenoid-theme/test/kit.test.js` (6),
+  and the browser smoke test `node tools/blockmap/scripts/smoke.js` (needs Playwright on `NODE_PATH`). None are in
+  vitest's globs or `tests/buckets.mjs`, so CI doesn't run them.
+- **Reopen if:** hook calls slow past a second (they fold once and read only the appended tail; an on-disk checkpoint
+  was measured as unneeded at 50,000 events); or Solenoid starts importing the kit, which flips the sync around.
 
 ### SESSION DIGEST (2026-11-19: the Solenoid look over TaskNotes 5.0.1; cloud session)
 - **What stands** ([[obsidian-plugin#The look]], Other plugins' views): the plain-button pill is a `:where()` rule and

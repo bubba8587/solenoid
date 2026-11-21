@@ -283,13 +283,14 @@ function doRender() {
   trees.update();
   const moved = placeTiles();
   ctx.map.paint();
-  // After the paint, which decides which slots the Active view hides.
-  ctx.map.fit();
   paintTop();
   paintAlerts();
   paintAttention();
   timeline.update();
   inspector.update();
+  // Last of the layout: after the paint (which slots the Active view hides) and after the alert strip and the
+  // timeline have taken their height.
+  ctx.map.fit();
   fly(moved, before);
   tethers.draw();
 }

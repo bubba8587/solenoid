@@ -5,17 +5,17 @@
 // so the timeline can replay any moment, and a board change (a block renamed, a path moved)
 // re-maps old activity the next time anything folds it.
 
-import { compileIndex, blockForPath, normalizePath } from './glob.js';
+import { indexFor, blockForPath, normalizePath } from './glob.js';
 
 export const SCHEMA = 1;
 export const HUMAN = 'human';
 // The board itself, for what it observes rather than what anyone does (a merge it saw land in git).
 export const SYSTEM = 'system';
 export const UNMAPPED = '_unmapped';
-// Agents are colored by palette slot, not by hex, so a palette change recolors them. Gold, green and vermilion
-// stay out: they mean needs-you, ok and danger. Gray is the human. The five cool hues go first; pink, amber and
-// lime sit near the status colors and are used only past five agents.
-export const PALETTE = ['sky', 'violet', 'teal', 'purple', 'blue', 'pink', 'amber', 'lime'];
+// Agents are colored by palette slot, not by hex, so a palette change recolors them. Every slot near a status
+// color stays out (vermilion and amber for danger, gold and lime for needs-you, green and teal for ok), and
+// gray is the human; past five agents the colors repeat and the initials tell them apart.
+export const PALETTE = ['sky', 'violet', 'pink', 'blue', 'purple'];
 // waiting: the agent needs the human (a question, a permission prompt). review: its turn ended and it waits for the
 // next prompt. Both count as needing the human, and neither goes stale until four times the usual quiet.
 export const AGENT_STATUS = ['working', 'idle', 'blocked', 'waiting', 'review', 'done'];
@@ -23,6 +23,31 @@ export const NEEDS_HUMAN = ['waiting', 'review'];
 export const ITEM_KINDS = ['task', 'bug', 'question', 'decision', 'note'];
 export const ITEM_STATUS = ['open', 'doing', 'blocked', 'done', 'wontfix'];
 export const OUTCOMES = ['landed', 'parked', 'handoff', 'dropped', 'taken'];
+export const EVENT_TYPES = [
+  'agent.join', 'agent.status', 'agent.beat', 'agent.leave', 'block.reserve', 'block.release', 'block.queue', 'block.unqueue',
+  'block.freeze', 'item.add', 'item.update', 'touch', 'test', 'note', 'msg', 'msg.read', 'merge.ready', 'merge.unready',
+  'merge.order', 'merge.landed',
+];
+const TOUCH_OPS = ['edit', 'read', 'run'];
+// Ids are keys in the state, so they are short plain words; the three names that reach an object's prototype never are.
+const ID = /^[\w.-]{1,80}$/;
+const RESERVED = new Set(['__proto__', 'constructor', 'prototype']);
+export function validId(id) {
+  return typeof id === 'string' && ID.test(id) && !RESERVED.has(id);
+}
+// The nearest valid id to a name from outside (a worktree's folder).
+export function safeId(name) {
+  const id = String(name).replace(/[^\w.-]+/g, '-').slice(0, 80) || 'x';
+  return RESERVED.has(id) ? `${id}-` : id;
+}
+// An empty optional field is absent; anything else must be one of its kind.
+const given = (v) => v !== undefined && v !== null && v !== '';
+// Only the human and the board itself may force a reservation or act for another agent.
+const privileged = (actor) => actor === HUMAN || actor === SYSTEM;
+// An agent quiet this long no longer keeps its palette slot for itself (a session that crashed never leaves).
+const COLOR_HOLD_MS = 6 * 3600_000;
+// How far ahead of the clock an event may be dated: no further than a write in flight.
+const FUTURE_MS = 5 * 60_000;
 const KIND_PREFIX = { task: 'T', bug: 'B', question: 'Q', decision: 'D', note: 'N' };
 const KEEP = 48;
 
@@ -53,20 +78,20 @@ export function eventId(now, rand = Math.random) {
 // State
 
 export function createState(board) {
-  const blocks = {};
+  const blocks = Object.create(null);
   for (const b of board.blocks) blocks[b.id] = freshBlock(b.id);
   blocks[UNMAPPED] = freshBlock(UNMAPPED);
-  const items = {};
+  const items = Object.create(null);
   for (const it of board.items || []) items[it.id] = { status: 'open', source: 'import', history: [], ...it };
   const state = {
     board,
-    index: compileIndex(board.blocks),
+    index: indexFor(board.blocks),
     blocks,
-    agents: {},
+    agents: Object.create(null),
     items,
     trespass: [],
     notes: [],
-    merges: {},
+    merges: Object.create(null),
     mergeSeq: 0,
     queueSeq: 0,
     count: 0,
@@ -79,7 +104,7 @@ export function createState(board) {
 }
 
 function freshBlock(id) {
-  return { id, holder: null, since: 0, intent: '', watchers: {}, queued: null, frozen: null, touches: [], test: null, history: [], added: 0, removed: 0 };
+  return { id, holder: null, since: 0, intent: '', watchers: Object.create(null), queued: null, frozen: null, touches: [], test: null, history: [], added: 0, removed: 0 };
 }
 
 function ensureAgent(state, id, ts, info = {}) {
@@ -90,7 +115,7 @@ function ensureAgent(state, id, ts, info = {}) {
       name: info.name || (id === HUMAN ? 'You' : codename(id)),
       kind: info.kind || (id === HUMAN ? 'human' : id.startsWith('cc-') ? 'Claude Code' : id.startsWith('wt-') ? 'worktree' : 'agent'),
       worktree: info.worktree || '',
-      color: info.color || pickColor(state, id),
+      color: info.color || pickColor(state, id, ts),
       model: info.model || '',
       where: info.where || '',
       task: '',
@@ -116,10 +141,11 @@ function ensureAgent(state, id, ts, info = {}) {
   return a;
 }
 
-function pickColor(state, id) {
+function pickColor(state, id, ts) {
   if (id === HUMAN) return '';
-  // The first slot no present agent wears, in PALETTE's order, so the first agents get the cool hues.
-  const used = new Set(Object.values(state.agents).filter((a) => !a.leftAt).map((a) => a.color));
+  // The first slot no present agent wears, in PALETTE's order, so the first agents get the cool hues. An agent
+  // that left, or has been quiet for hours, doesn't keep its slot.
+  const used = new Set(Object.values(state.agents).filter((a) => a.id !== HUMAN && !a.leftAt && ts - a.lastSeen <= COLOR_HOLD_MS).map((a) => a.color));
   return PALETTE.find((c) => !used.has(c)) || PALETTE[hash(id) % PALETTE.length];
 }
 
@@ -159,13 +185,28 @@ function releaseInternal(state, b, ts, outcome, note, by) {
 export function reduce(board, events, untilTs = Infinity) {
   const state = createState(board);
   for (const e of events) {
-    if (e.ts > untilTs) break;
+    if (e.ts > untilTs) continue;
     apply(state, e);
   }
   return state;
 }
 
+// Whether a logged event can be folded at all: a log can be edited by hand, so the fold skips an event whose
+// time isn't a number or whose ids aren't ids, rather than letting one reach the page or an object's prototype.
+function foldable(e) {
+  if (!e || typeof e.ts !== 'number' || !Number.isFinite(e.ts)) return false;
+  if (!validId(e.by || HUMAN)) return false;
+  if (typeof e.agent === 'string' && !validId(e.agent)) return false;
+  if (given(e.block) && !validId(e.block)) return false;
+  if (given(e.worktree) && !validId(e.worktree)) return false;
+  if (given(e.to) && e.to !== '*' && !validId(e.to)) return false;
+  if (e.type === 'item.update' && !validId(e.item)) return false;
+  if (e.type === 'item.add' && given(e.item?.id) && !validId(e.item.id)) return false;
+  return true;
+}
+
 export function apply(state, e) {
+  if (!foldable(e)) return state;
   state.count++;
   if (!state.firstTs) state.firstTs = e.ts;
   state.lastTs = Math.max(state.lastTs, e.ts);
@@ -177,7 +218,8 @@ export function apply(state, e) {
   const me = ensureAgent(state, actor, e.ts, e.type === 'agent.join' ? e.agent : undefined);
   me.lastSeen = Math.max(me.lastSeen, e.ts);
   if (me.leftAt && e.type !== 'agent.leave' && actor !== HUMAN) me.leftAt = 0;
-  const target = e.agent && typeof e.agent === 'string' ? ensureAgent(state, e.agent, e.ts) : me;
+  // Acting for another agent is the human's alone; anyone else naming one acts for themselves.
+  const target = typeof e.agent === 'string' && (e.agent === actor || actor === HUMAN) ? ensureAgent(state, e.agent, e.ts) : me;
 
   switch (e.type) {
     case 'agent.join': {
@@ -238,7 +280,7 @@ export function apply(state, e) {
         remove(target.watching, b.id);
         break;
       }
-      if (b.holder && (b.holder === target.id || e.force || actor === HUMAN)) {
+      if (b.holder && (b.holder === target.id || actor === HUMAN)) {
         releaseInternal(state, b, e.ts, e.outcome, e.note, actor);
       }
       break;
@@ -359,8 +401,10 @@ export function apply(state, e) {
         worktree: e.worktree,
         branch: e.branch || '',
         commit: e.commit || '',
+        // Commits ahead of the base when it was marked ready; a branch with none is never seen to land.
+        ahead: Number.isFinite(e.ahead) ? e.ahead : null,
         note: e.note || '',
-        agent: typeof e.agent === 'string' ? e.agent : actor,
+        agent: target.id,
         readyAt: e.ts,
         pos: prev && prev.status === 'ready' ? prev.pos : ++state.mergeSeq,
         status: 'ready',
@@ -641,23 +685,28 @@ export function makeEvent(state, type, by, payload = {}, now = Date.now(), rand 
 
 // Returns null when the event may be appended, or a sentence saying why not and what to do.
 export function checkEvent(state, e, now = Date.now()) {
+  const bad = checkShape(e, now);
+  if (bad) return bad;
   const actor = e.by || HUMAN;
   const who = typeof e.agent === 'string' ? e.agent : actor;
+  const priv = privileged(actor);
+  if (who !== actor && !priv) return `Only the human acts for another agent; ${agentName(state, actor)} can act only for itself.`;
+  if (e.force && !priv) return `Only the human can force a reservation. Ask them to move the block to you, or wait: a holder unseen for ${Math.round(state.staleMs / 60_000)} min can be taken over.`;
   switch (e.type) {
     case 'block.reserve': {
       const b = state.blocks[e.block];
       if (!b || e.block === UNMAPPED) return `No block named "${e.block}".`;
       if (e.mode === 'watch') return null;
       const name = blockMeta(state, e.block).name;
-      if (b.frozen && actor !== HUMAN && !e.force) {
+      if (b.frozen && !priv) {
         return `${name} is frozen${b.frozen.note ? ` (${b.frozen.note})` : ''}. Ask the human to unfreeze it, or pick other work.`;
       }
-      if (b.holder && b.holder !== who) {
+      if (b.holder && b.holder !== who && !priv) {
         const h = state.agents[b.holder];
-        if (b.holder === HUMAN && actor !== HUMAN && !e.force) {
+        if (b.holder === HUMAN) {
           return `${name} is held by ${h.name} (the human)${b.intent ? `: ${b.intent}` : ''}. Pick other work or ask them.`;
         }
-        if (!isStale(state, b.holder, now) && !e.force && actor !== HUMAN) {
+        if (!isStale(state, b.holder, now)) {
           return `${name} is held by ${h.name} since ${clock(b.since)}${b.intent ? ` for "${b.intent}"` : ''}. Message them with \`bm note\`, pick other work, or wait: a holder unseen for ${Math.round(state.staleMs / 60_000)} min can be taken over.`;
         }
       }
@@ -668,7 +717,7 @@ export function checkEvent(state, e, now = Date.now()) {
       if (!b) return `No block named "${e.block}".`;
       if (b.watchers[who]) return null;
       if (!b.holder) return `${blockMeta(state, e.block).name} isn't held by anyone.`;
-      if (b.holder !== who && actor !== HUMAN && !e.force) return `${blockMeta(state, e.block).name} is held by ${agentName(state, b.holder)}, not you.`;
+      if (b.holder !== who && !priv) return `${blockMeta(state, e.block).name} is held by ${agentName(state, b.holder)}, not you.`;
       return null;
     }
     case 'block.queue':
@@ -678,17 +727,15 @@ export function checkEvent(state, e, now = Date.now()) {
     case 'item.add':
       if (!e.item?.title) return 'An item needs a title.';
       if (e.item.block && !state.blocks[e.item.block]) return `No block named "${e.item.block}".`;
-      if (e.item.kind && !ITEM_KINDS.includes(e.item.kind)) return `Kinds are ${ITEM_KINDS.join(', ')}.`;
       return null;
     case 'item.update':
       if (!state.items[e.item]) return `No item ${e.item}.`;
-      if (e.status && !ITEM_STATUS.includes(e.status)) return `Statuses are ${ITEM_STATUS.join(', ')}.`;
-      return null;
-    case 'agent.status':
-      if (e.status && !AGENT_STATUS.includes(e.status)) return `Statuses are ${AGENT_STATUS.join(', ')}.`;
+      if (e.block && !state.blocks[e.block]) return `No block named "${e.block}".`;
       return null;
     case 'merge.ready':
-      return e.worktree ? null : 'Name the worktree that is ready.';
+      if (!e.worktree) return 'Name the worktree that is ready.';
+      if (e.ahead === 0) return `Nothing to merge: ${e.worktree} has no commits ahead of the base. Commit first, then mark it ready.`;
+      return null;
     case 'merge.unready':
     case 'merge.order':
     case 'merge.landed':
@@ -700,6 +747,46 @@ export function checkEvent(state, e, now = Date.now()) {
     default:
       return null;
   }
+}
+
+// Types, ids and enums, before any rule: a value from outside reaches state keys, timers and markup.
+function checkShape(e, now) {
+  if (!e || typeof e !== 'object') return 'An event is an object.';
+  if (!EVENT_TYPES.includes(e.type)) return `No event type "${String(e.type).slice(0, 40)}".`;
+  if (typeof e.ts !== 'number' || !Number.isFinite(e.ts)) return 'An event needs a time (ts, in milliseconds).';
+  if (e.ts > now + FUTURE_MS) return 'That event is dated in the future.';
+  if (e.id !== undefined && !validId(e.id)) return 'An event id is a short plain word.';
+  const id = (v, what) => (validId(v) ? null : `"${String(v).slice(0, 40)}" isn't a valid ${what} id: up to 80 letters, digits, _, . and -.`);
+  const oneOf = (v, list, what) => (!given(v) || list.includes(v) ? null : `${what} are ${list.join(', ')}.`);
+  const checks = [
+    id(e.by || HUMAN, 'agent'),
+    typeof e.agent === 'string' ? id(e.agent, 'agent') : null,
+    given(e.block) ? id(e.block, 'block') : null,
+    given(e.worktree) ? id(e.worktree, 'worktree') : null,
+    given(e.to) && e.to !== '*' ? id(e.to, 'agent') : null,
+    oneOf(e.mode, ['own', 'watch'], 'Modes'),
+    oneOf(e.outcome, OUTCOMES, 'Outcomes'),
+    e.type === 'touch' ? oneOf(e.op, TOUCH_OPS, 'Touch ops') : null,
+    e.type === 'agent.status' ? oneOf(e.status, AGENT_STATUS, 'Statuses') : null,
+    e.type === 'item.update' ? oneOf(e.status, ITEM_STATUS, 'Statuses') : null,
+  ];
+  if (e.type === 'agent.join' && e.agent && typeof e.agent === 'object') {
+    if (given(e.agent.id)) checks.push(id(e.agent.id, 'agent'));
+    if (given(e.agent.color) && !PALETTE.includes(e.agent.color)) checks.push(`Colors are ${PALETTE.join(', ')}.`);
+  }
+  if (e.type === 'item.update') checks.push(id(e.item, 'item'));
+  if (e.type === 'item.add') {
+    if (!e.item || typeof e.item !== 'object') return 'An item needs a title.';
+    if (given(e.item.id)) checks.push(id(e.item.id, 'item'));
+    if (given(e.item.block)) checks.push(id(e.item.block, 'block'));
+    checks.push(oneOf(e.item.kind, ITEM_KINDS, 'Kinds'), oneOf(e.item.status, ITEM_STATUS, 'Statuses'));
+  }
+  if (e.blocks !== undefined) checks.push(Array.isArray(e.blocks) ? e.blocks.map((b) => id(b, 'block')).find(Boolean) || null : 'blocks is a list of block ids.');
+  if (e.files !== undefined && !(Array.isArray(e.files) && e.files.every((f) => typeof f === 'string'))) checks.push('files is a list of paths.');
+  if (e.ids !== undefined && !(Array.isArray(e.ids) && e.ids.every((x) => typeof x === 'string'))) checks.push('ids is a list of event ids.');
+  if (e.type === 'merge.order' && !Number.isFinite(e.pos)) checks.push('A position is a number.');
+  if (given(e.ahead) && !(Number.isInteger(e.ahead) && e.ahead >= 0)) checks.push('ahead is a count of commits.');
+  return checks.find(Boolean) || null;
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -7,7 +7,8 @@ leaving a hatched socket behind; when the work lands the tile flies home. Every 
 decisions, whether its tests last passed, and who has been editing in it.
 
 It's isolated on purpose: zero dependencies, nothing imported from the host project, one folder (`tools/blockmap/`)
-plus the host's board (`.blockmap/board.json`). Moving it to its own repository means moving this folder.
+plus the host's board (`.blockmap/board.json`). Moving it to its own repository means moving this folder. Its look is
+the theme kit (`tools/solenoid-theme`), vendored into `ui/theme/` by the kit's own sync, so the folder stays whole.
 
 ```
 tools/blockmap/bm serve --open          # the board in a browser (http://127.0.0.1:4477)
@@ -27,10 +28,17 @@ A standalone copy that needs no server (it runs the simulated crew): `node tools
 - **Red means a real conflict.** A pairwise merge forecast (`git merge-tree` on each pair of branch heads) separates
   branches that will conflict from branches that only touch the same files.
 - **A merge queue you can drive:** reorder by drag or keyboard; Merge, Rebase or Ask to fix on each row.
-- **Calmer chrome.** Flat counts, small square controls, status as a neutral word with a colored dot, agents in
-  non-status colors, tethers only for the agent you point at, a framed map and a clock while replaying, settings in a
-  menu on phones.
-- **Hardened core** from an independent audit: see `docs/dev-notes.md` (Blockmap) for what changed.
+- **Solenoid's palette system, whole.** The theme kit is generated from Solenoid's own palette code and stylesheets:
+  the nine palettes and Custom, the accent picker (the paintbrush pill), Settings' palette select and the Custom
+  editor, and the chrome rules (round tool buttons and pills, the accent on focus and selection, ramps that follow
+  the accent).
+- **Calmer chrome.** Flat counts, status as a neutral word with a colored dot, agents in non-status colors, tethers
+  only for the agent you point at, a framed map and a clock while replaying.
+- **A core an audit couldn't break:** hook calls fold once and cache path lookups (0.3 s at 50,000 events, from
+  about 3), a lock that only its live owner holds or removes, a torn last line that can't swallow the next event, the
+  loser of a reservation race refused, strict event checks (types, ids, colors, a server-stamped time), `--force`
+  and acting for another agent kept to the person, git read without taking its index lock, linked worktrees on the
+  main checkout's board, and the page applying only what the log streams.
 
 ## Why use it, next to the orchestrators
 
@@ -87,7 +95,7 @@ What it doesn't do yet, and would be worth it:
 - **The timeline** has a lane per agent: the blocks it held (hatched while still held), a cross for a failing test and
   a diamond for a question. Drag across it, or press play (quiet stretches are skipped), to replay the board; the map
   is framed and the top bar says the time while you do. It folds away.
-- **Attention:** the tab title carries the inbox count, the bell turns on desktop notifications, and coming back to
+- **Attention:** the tab title carries the inbox count, Settings turns on desktop notifications, and coming back to
   the tab after a few minutes shows one line of what changed, with a replay from when you left.
 - **Lenses:** Work; Heat (recent edits, a cap in the color of whoever edited last, discs for who passed through);
   Issues (open bugs, tasks and your calls); Branches (each block tinted by the worktree that changed it, with its
@@ -95,10 +103,12 @@ What it doesn't do yet, and would be worth it:
 - **Search** finds blocks by name; a file path finds the block that owns it.
 - **Alerts** sit in one strip: edits inside someone else's (or a frozen) block, a holder gone quiet, failing tests.
 
-**Color says who; neutral says where.** The look is Solenoid's palette system, lifted whole (`ui/palette.js`, the
-tables copied as data): the nine palettes, the neutral ramp per theme and the chrome derived from it, the accent-mix
-rungs, the rule that a strong colored edge always has a tinted inside. Agents are colored by palette slot (sky, violet,
-pink, blue, purple first, so no agent looks like a status), and a palette change recolors them. The only other hues
+**Color says who; neutral says where.** The look is Solenoid's palette system, from the theme kit (`ui/theme/`, see
+`tools/solenoid-theme/README.md`): the nine palettes and Custom, the neutral ramp per theme and the chrome derived from
+it, the accent you pick with the paintbrush, the accent-mix rungs, the rule that a strong colored edge always has a
+tinted inside. The gear opens Settings: the palette, Edit custom…, the accent, and the board's switches (desktop
+notifications, active blocks only). Agents are colored by palette slot (sky, violet, pink, blue, purple first, so no
+agent looks like a status), and a palette change recolors them. The only other hues
 are the status slots: vermilion for bugs, failing tests and conflicts, gold for what needs you, green for working and
 passing. Status text stays neutral beside a colored dot, so nothing depends on reading a colored word. Timers read in
 compact units (`47s`, `12m`, `1h 05m`) and grow a gold, then vermilion, dot at named thresholds.
@@ -201,9 +211,12 @@ The truth is an append-only log, `.blockmap/live/events.jsonl` (ignored by git),
 over the board (`core/model.js`, the same code in Node and the browser), which is what lets the timeline replay any
 moment, and lets a renamed block or moved path re-map old activity.
 
-Every write goes through one lock (`core/store.js`): fold the log fresh, check each event against that state
-(`checkEvent`), append. Two agents racing for a block can't both win. Worktrees of one repository share the main
-checkout's log. A holder unseen for `staleAfterMin` (30) can be taken over; the human can always take a block back.
+Every write goes through one lock (`core/store.js`): bring the fold up to date with what was appended since, check
+each event against that state (`checkEvent`), append. Two agents racing for a block can't both win, and the hook
+refuses the loser's edit. The lock is a file naming its owner (pid, host, a nonce): it is broken only when that
+process is gone or it is a minute old, and a writer removes only its own. Worktrees of one repository share the main
+checkout's board and log. `--force` (taking a held or frozen block) and acting for another agent are the person's
+alone. A holder unseen for `staleAfterMin` (30) can be taken over; the human can always take a block back.
 
 **The board** (`.blockmap/board.json`, committed) names the districts and blocks. A block has an `id`, a `name`, a
 `district`, `about`, `paths` (globs: `**`, `*`, `{a,b}`, a trailing `/` for a folder, a bare name matches anywhere;
@@ -226,7 +239,8 @@ the token). The CLI then talks HTTP; the hooks still need the board on disk.
 | `server.js` | the HTTP server: the page, the board, the log, a server-sent event stream tailing the log |
 | `hooks/` | the Claude Code hook script and its installer |
 | `ui/` | the page: map, windows, timeline, inspector, drag and drop, tethers, the simulated crew (`sim.js`) |
-| `scripts/` | `bm init`'s drafter, the standalone bundle |
+| `ui/theme/` | the theme kit, vendored; generated by `node tools/solenoid-theme/sync.mjs`, never edited here |
+| `scripts/` | `bm init`'s drafter, the standalone bundle, the browser smoke test (`smoke.js`) |
 | `test/` | `node --test tools/blockmap/test/*.test.js` |
 
-The page uses two Google fonts (Archivo, JetBrains Mono) and falls back to system fonts offline.
+The page uses Solenoid's fonts from Google (Atkinson Hyperlegible Next and Mono) and falls back to system fonts offline.

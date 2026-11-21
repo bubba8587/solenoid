@@ -14,6 +14,8 @@ export function resolveBoard(store, { items = true, files = false, samples = 0 }
     name: config.name || path.basename(store.root),
     human: config.human || { name: 'You' },
     staleAfterMin: config.staleAfterMin ?? 30,
+    // The branch work merges into; empty lets git say (the remote's default, else main).
+    base: config.base || '',
     guard: config.guard || {},
     districts: config.districts || [],
     blocks: (config.blocks || []).map((b) => ({ ...b })),

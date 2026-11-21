@@ -6,13 +6,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import http from 'node:http';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { expandBraces, compileIndex, blockForPath } from '../core/glob.js';
 import { HUMAN, reduce, apply, createState, makeEvent, checkEvent, alerts, presence, needsHuman, isStale, findBlock, itemCounts } from '../core/model.js';
-import { lineCounts } from '../hooks/lines.js';
+import { lineCounts, testVerdict } from '../hooks/lines.js';
 import { importChecklist } from '../adapters/markdown-checklist.js';
-import { openStore } from '../core/store.js';
+import { openStore, findBoardDir } from '../core/store.js';
 import { draftBoard } from '../scripts/init.js';
 import { createSim } from '../ui/sim.js';
 
@@ -41,6 +42,22 @@ function run(state, type, by, payload, min) {
   assert.equal(why, null, `${type} refused: ${why}`);
   apply(state, e);
   return e;
+}
+
+// A board in a fresh folder, outside any git checkout, with its own live log.
+function tmpBoard(board = BOARD) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'blockmap-test-'));
+  fs.mkdirSync(path.join(dir, '.blockmap'));
+  fs.writeFileSync(path.join(dir, '.blockmap', 'board.json'), JSON.stringify(board));
+  return { dir, boardDir: path.join(dir, '.blockmap'), done: () => fs.rmSync(dir, { recursive: true, force: true }) };
+}
+
+const HOOK = path.join(HERE, '..', 'hooks', 'claude-code.js');
+function hookEnv(dir) {
+  const env = { ...process.env, BLOCKMAP_LIVE: path.join(dir, '.blockmap', 'live') };
+  delete env.BLOCKMAP_AGENT;
+  delete env.BLOCKMAP_DIR;
+  return env;
 }
 
 test('braces expand into separate patterns', () => {
@@ -258,6 +275,10 @@ test('edits carry the lines they added and removed', () => {
   assert.deepEqual(lineCounts('Edit', { old_string: 'a\nb\nc', new_string: 'a\nB\nc\nd' }), { add: 2, del: 1 });
   assert.deepEqual(lineCounts('Write', { content: 'x\ny\nz' }), { add: 3, del: 0 });
   assert.deepEqual(lineCounts('Edit', {}, { structuredPatch: [{ lines: [' a', '-b', '+B', '+d'] }] }), { add: 2, del: 1 });
+  // Lines match one to one, so repeated lines never make a count negative.
+  assert.deepEqual(lineCounts('Edit', { old_string: '}\n}\n}\n}', new_string: '}' }), { add: 0, del: 3 });
+  assert.deepEqual(lineCounts('Edit', { old_string: '}', new_string: '}\n}\n}' }), { add: 2, del: 0 });
+  assert.deepEqual(lineCounts('MultiEdit', { edits: [{ old_string: 'x\nx', new_string: 'x' }, { old_string: '', new_string: 'y' }] }), { add: 1, del: 1 });
   const st = createState(BOARD);
   run(st, 'touch', 'a1', { files: ['src/engine/pass.ts'], op: 'edit', add: 12, del: 4 }, 1);
   run(st, 'touch', 'a1', { files: ['src/engine/x.ts'], op: 'edit', add: 3, del: 0 }, 2);
@@ -292,6 +313,45 @@ test('worktrees are read from git: conflicts, uncommitted work, identity', async
     assert.deepEqual([a.ahead, a.behind, a.dirty], [1, 1, 1]);
     assert.deepEqual(a.files.sort(), ['a.txt', 'new.txt']);
     assert.deepEqual(a.conflicts, ['a.txt']);
+    // Paths come back as written, accents and spaces included, renames under their new name.
+    const agentA = path.join(dir, 'agent-a');
+    fs.writeFileSync(path.join(agentA, 'données à voir.txt'), 'y\n');
+    sh(agentA, 'mv', 'a.txt', 'é.txt');
+    const moved = (await worktreeSnapshot(repo)).list.find((w) => w.name === 'agent-a');
+    assert.deepEqual(moved.files.sort(), ['données à voir.txt', 'new.txt', 'é.txt']);
+    assert.equal(moved.dirty, 3);
+    sh(agentA, 'mv', 'é.txt', 'a.txt');
+    fs.rmSync(path.join(agentA, 'données à voir.txt'));
+    // A linked worktree folds the log over the main checkout's board, even when its branch has its own copy.
+    fs.mkdirSync(path.join(repo, '.blockmap'));
+    fs.writeFileSync(path.join(repo, '.blockmap', 'board.json'), JSON.stringify({ ...BOARD, blocks: [...BOARD.blocks, { id: 'mainonly', name: 'Main only', district: 'd', paths: ['m/'] }] }));
+    fs.mkdirSync(path.join(agentA, '.blockmap'));
+    fs.writeFileSync(path.join(agentA, '.blockmap', 'board.json'), JSON.stringify(BOARD));
+    assert.equal(findBoardDir(agentA), path.join(repo, '.blockmap'));
+    const prevLive = process.env.BLOCKMAP_LIVE;
+    const prevDir = process.env.BLOCKMAP_DIR;
+    delete process.env.BLOCKMAP_LIVE;
+    delete process.env.BLOCKMAP_DIR;
+    try {
+      const wtStore = openStore(findBoardDir(agentA), { cwd: path.join(agentA, 'src') });
+      assert.equal(wtStore.root, agentA);
+      assert.equal(wtStore.home, repo);
+      assert.equal(wtStore.live, path.join(repo, '.blockmap', 'live'));
+      assert.ok(wtStore.state().blocks.mainonly);
+      // `bm ready` refuses a branch with nothing committed ahead of the base.
+      sh(repo, 'worktree', 'add', '-q', '-b', 'agent-b', path.join(dir, 'agent-b'));
+      const env = { ...process.env };
+      for (const k of ['BLOCKMAP_AGENT', 'BLOCKMAP_URL', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID']) delete env[k];
+      const ready = spawnSync(process.execPath, [path.join(HERE, '..', 'cli.js'), 'ready'], { cwd: path.join(dir, 'agent-b'), env, encoding: 'utf8' });
+      assert.equal(ready.status, 3, ready.stderr);
+      assert.match(ready.stderr, /Nothing to merge: agent-b has no commits ahead of main/);
+      const queued = spawnSync(process.execPath, [path.join(HERE, '..', 'cli.js'), 'ready'], { cwd: agentA, env, encoding: 'utf8' });
+      assert.equal(queued.status, 0, queued.stderr);
+      assert.equal(wtStore.state().merges['agent-a'].ahead, 1);
+    } finally {
+      if (prevLive !== undefined) process.env.BLOCKMAP_LIVE = prevLive;
+      if (prevDir !== undefined) process.env.BLOCKMAP_DIR = prevDir;
+    }
     const prev = { ...process.env };
     delete process.env.BLOCKMAP_AGENT;
     delete process.env.CLAUDE_CODE_SESSION_ID;
@@ -324,9 +384,16 @@ test('the merge queue checks conflicts, overlaps with branches ahead, and moves 
     ],
   };
   const [first, second] = mergeChecks(st, snap, at(4));
-  assert.equal(first.verdict, 'Clean');
+  assert.equal(first.verdict, 'Ready');
+  assert.equal(first.level, 'ok');
+  // Sharing a file with a branch ahead is worth knowing, not a warning; being behind and moving since ready are.
   assert.equal(second.level, 'warn');
-  assert.deepEqual(second.checks.map((c) => c.text).sort(), ['3 behind main', 'Moved since ready', 'Overlaps one']);
+  assert.deepEqual(second.checks.map((c) => c.text).sort(), ['3 behind main', 'Moved since ready', 'Shares files with Heron']);
+  assert.equal(second.checks.find((c) => c.text === 'Shares files with Heron').level, 'info');
+  // A conflict the merge forecast finds between the two branches is danger.
+  const clashing = mergeChecks(st, { ...snap, clashes: [{ a: 'one', b: 'two', files: ['src/engine/pass.ts'] }] }, at(4))[1];
+  assert.equal(clashing.level, 'danger');
+  assert.equal(clashing.verdict, 'Conflicts with Heron');
   snap.list[1].conflicts = ['README.md'];
   assert.equal(mergeChecks(st, snap, at(4))[1].verdict, 'Conflicts with main');
   run(st, 'merge.order', HUMAN, { worktree: 'two', pos: 0.5 }, 5);
@@ -334,4 +401,284 @@ test('the merge queue checks conflicts, overlaps with branches ahead, and moves 
   apply(st, makeEvent(st, 'merge.landed', 'system', { worktree: 'two' }, at(6)));
   assert.equal(st.merges.two.status, 'landed');
   assert.equal(st.agents.system, undefined);
+});
+
+test('a torn last line does not swallow the next event', () => {
+  const t = tmpBoard();
+  try {
+    const store = openStore(t.boardDir);
+    store.commit([makeEvent(store.state(), 'agent.join', 'a1', { agent: { id: 'a1' } })]);
+    // A writer crashed halfway through its line.
+    fs.appendFileSync(store.eventsPath, '{"id":"x","ts":1,"by":"a2","type":"block.res');
+    store.commit([makeEvent(store.state(), 'block.reserve', 'a1', { block: 'engine' })]);
+    const fresh = openStore(t.boardDir);
+    assert.equal(fresh.state().blocks.engine.holder, 'a1');
+    assert.deepEqual(fresh.readEvents().map((e) => e.type), ['agent.join', 'block.reserve']);
+  } finally {
+    t.done();
+  }
+});
+
+test('the kept fold follows appends from elsewhere and starts over when the log is replaced', () => {
+  const t = tmpBoard();
+  try {
+    const store = openStore(t.boardDir);
+    store.commit([makeEvent(store.state(), 'agent.join', 'a1', { agent: { id: 'a1' } })]);
+    const other = makeEvent(store.state(), 'block.reserve', 'a1', { block: 'engine' });
+    fs.appendFileSync(store.eventsPath, `${JSON.stringify(other)}\n`);
+    assert.equal(store.state().blocks.engine.holder, 'a1');
+    // A longer log with other contents: the fold notices and folds it from the start.
+    const lines = [makeEvent(store.state(), 'agent.join', 'a2', { agent: { id: 'a2' } }), makeEvent(store.state(), 'block.reserve', 'a2', { block: 'tables' }), makeEvent(store.state(), 'note', 'a2', { text: 'x'.repeat(200) })];
+    fs.writeFileSync(store.eventsPath, lines.map((e) => JSON.stringify(e)).join('\n') + '\n');
+    const st = store.state();
+    assert.equal(st.agents.a1, undefined);
+    assert.equal(st.blocks.tables.holder, 'a2');
+    assert.equal(st.blocks.engine.holder, null);
+  } finally {
+    t.done();
+  }
+});
+
+test('the lock is broken only when its holder is gone, and only its owner removes it', () => {
+  const t = tmpBoard();
+  try {
+    const store = openStore(t.boardDir, { lockWaitMs: 300 });
+    const join = () => makeEvent(store.state(), 'agent.join', 'a1', { agent: { id: 'a1' } });
+    fs.mkdirSync(store.live, { recursive: true });
+    const lock = (pid, nonce) => fs.writeFileSync(store.lockPath, JSON.stringify({ pid, host: os.hostname(), nonce, ts: Date.now() }));
+    // A running holder keeps its lock, however long it has had it (up to a minute): the writer waits, then gives up.
+    lock(process.pid, 'live');
+    const old = new Date(Date.now() - 20_000);
+    fs.utimesSync(store.lockPath, old, old);
+    assert.throws(() => store.commit([join()]), /locked/);
+    assert.equal(JSON.parse(fs.readFileSync(store.lockPath, 'utf8')).nonce, 'live');
+    // A holder that died is taken over at once.
+    lock(spawnSync(process.execPath, ['-e', '']).pid, 'dead');
+    const t0 = Date.now();
+    store.commit([join()]);
+    assert.ok(Date.now() - t0 < 1000);
+    assert.equal(fs.existsSync(store.lockPath), false);
+    // A lock someone else holds by the time this writer finishes is theirs to remove.
+    store.withLock(() => lock(process.pid, 'theirs'));
+    assert.equal(JSON.parse(fs.readFileSync(store.lockPath, 'utf8')).nonce, 'theirs');
+  } finally {
+    t.done();
+  }
+});
+
+test('the hook denies the agent that loses a reservation race, and a freeze stops the holder too', async () => {
+  const t = tmpBoard();
+  const env = hookEnv(t.dir);
+  const call = (payload) => execFileSync('node', [HOOK], { input: JSON.stringify({ cwd: t.dir, ...payload }), env, encoding: 'utf8' });
+  try {
+    call({ hook_event_name: 'SessionStart', session_id: 'bbbb0000' });
+    const store = openStore(t.boardDir);
+    store.commit([makeEvent(store.state(), 'agent.join', 'a1', { agent: { id: 'a1', name: 'Heron' } })]);
+    // Hold the lock, so the hook reads a free block and then waits to reserve it while Heron takes it.
+    fs.writeFileSync(store.lockPath, JSON.stringify({ pid: process.pid, host: os.hostname(), nonce: 'test', ts: Date.now() }));
+    const child = spawn('node', [HOOK], { env });
+    let out = '';
+    child.stdout.on('data', (c) => (out += c));
+    const exited = new Promise((resolve) => child.on('close', resolve));
+    child.stdin.end(JSON.stringify({ cwd: t.dir, hook_event_name: 'PreToolUse', session_id: 'bbbb0000', tool_name: 'Edit', tool_input: { file_path: path.join(t.dir, 'src/engine/pass.ts') } }));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    fs.appendFileSync(store.eventsPath, `${JSON.stringify(makeEvent(store.state(), 'block.reserve', 'a1', { block: 'pass' }))}\n`);
+    fs.rmSync(store.lockPath);
+    await exited;
+    const lost = JSON.parse(out).hookSpecificOutput;
+    assert.equal(lost.permissionDecision, 'deny');
+    assert.match(lost.permissionDecisionReason, /taken before Blockmap could reserve it for you\. The pass is held by Heron/);
+    assert.equal(store.state().blocks.pass.holder, 'a1');
+    // Heron edits its own block freely, until the human freezes it.
+    env.BLOCKMAP_AGENT = 'a1';
+    assert.equal(call({ hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: path.join(t.dir, 'src/engine/pass.ts') } }), '');
+    store.commit([makeEvent(store.state(), 'block.freeze', HUMAN, { block: 'pass', on: true, note: 'release prep' })]);
+    const frozen = JSON.parse(call({ hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: path.join(t.dir, 'src/engine/pass.ts') } })).hookSpecificOutput;
+    assert.equal(frozen.permissionDecision, 'deny');
+    assert.match(frozen.permissionDecisionReason, /froze \(release prep\)/);
+  } finally {
+    t.done();
+  }
+});
+
+test('a test run passes only if every result line does', () => {
+  const cargo = (...results) => results.map((r) => `running 3 tests\ntest a ... ok\n\ntest result: ${r}; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n`).join('\n');
+  const multi = `${cargo('ok. 3 passed; 0 failed', 'FAILED. 1 passed; 2 failed')}\nerror: test failed, to rerun pass \`--test nodes\``;
+  assert.deepEqual(testVerdict({ stdout: multi }), { ok: false, summary: '2 failed, 4 passed' });
+  assert.deepEqual(testVerdict({ stdout: cargo('ok. 3 passed; 0 failed', 'ok. 2 passed; 0 failed') }), { ok: true, summary: '5 passed' });
+  assert.equal(testVerdict({ stdout: ' Test Files  1 failed | 2 passed (3)\n      Tests  2 failed | 40 passed (42)' }).ok, false);
+  assert.deepEqual(testVerdict({ stdout: ' Test Files  3 passed (3)\n      Tests  42 passed (42)' }), { ok: true, summary: '42 passed' });
+  assert.equal(testVerdict({ stdout: 'Tests:       1 failed, 2 passed, 3 total' }).ok, false);
+  assert.equal(testVerdict({ stdout: '==== 3 passed in 0.12s ====' }).ok, true);
+  assert.equal(testVerdict({ stdout: '=== 0 failed, 1 error ===\n=== 1 failed, 2 passed in 0.3s ===' }).ok, false);
+  assert.equal(testVerdict({ stdout: '  3 passing (20ms)\n  1 failing' }).ok, false);
+  assert.equal(testVerdict({ stdout: '--- FAIL: TestX (0.00s)\nFAIL\tpkg\t0.1s' }).ok, false);
+  assert.deepEqual(testVerdict({ stdout: '# tests 4\n# pass 4\n# fail 0' }), { ok: true, summary: '4 passed' });
+  assert.equal(testVerdict({ stdout: '# tests 4\n# pass 3\n# fail 1' }).ok, false);
+  assert.equal(testVerdict({ stdout: 'nothing to see' }), null);
+});
+
+test('ids that reach an object\'s prototype, odd times and colors never get into the state', () => {
+  const st = createState(BOARD);
+  const proto = { id: 'p1', ts: at(1), by: '__proto__', type: 'agent.status', status: 'working', doing: 'x' };
+  assert.match(checkEvent(st, proto, at(1)), /isn't a valid agent id/);
+  for (const by of ['constructor', 'prototype', 'a b', 'x'.repeat(81)]) assert.ok(checkEvent(st, { ...proto, by }, at(1)), by);
+  // A log edited by hand is folded without them.
+  apply(st, proto);
+  apply(st, { ...proto, by: 'a1', block: '__proto__', type: 'block.reserve' });
+  assert.equal(({}).status, undefined);
+  assert.equal(Object.keys(st.agents).join(), HUMAN);
+  const join = makeEvent(st, 'agent.join', 'a1', { agent: { id: 'a1' } }, at(1));
+  assert.match(checkEvent(st, { ...join, ts: '1"><b>' }, at(1)), /needs a time/);
+  apply(st, { ...join, ts: '1"><b>' });
+  assert.equal(st.agents.a1, undefined);
+  assert.match(checkEvent(st, { ...join, ts: at(90) }, at(1)), /in the future/);
+  assert.match(checkEvent(st, { ...join, agent: { id: 'a1', color: 'red;background:url(x)' } }, at(1)), /Colors are/);
+  assert.equal(checkEvent(st, { ...join, agent: { id: 'a1', color: 'violet' } }, at(1)), null);
+  // Enums are checked on the way in.
+  assert.match(ev(st, 'block.reserve', 'a1', { block: 'engine', mode: 'steal' }, 1).why, /Modes are/);
+  assert.match(ev(st, 'agent.status', 'a1', { status: 'asleep' }, 1).why, /Statuses are/);
+  assert.match(ev(st, 'agent.leave', 'a1', { outcome: 'vanished' }, 1).why, /Outcomes are/);
+  assert.match(ev(st, 'item.add', 'a1', { item: { kind: 'epic', title: 'x' } }, 1).why, /Kinds are/);
+  assert.match(ev(st, 'block.explode', 'a1', {}, 1).why, /No event type/);
+  // `bm --as __proto__` is refused before it writes anything.
+  const t = tmpBoard();
+  try {
+    const env = { ...hookEnv(t.dir), BLOCKMAP_DIR: t.boardDir };
+    const res = spawnSync(process.execPath, [path.join(HERE, '..', 'cli.js'), 'doing', 'x', '--as', '__proto__'], { env, encoding: 'utf8' });
+    assert.equal(res.status, 3);
+    assert.match(res.stderr, /isn't a valid agent id/);
+  } finally {
+    t.done();
+  }
+});
+
+test('only the human forces a reservation or acts for another agent', () => {
+  const st = createState(BOARD);
+  run(st, 'agent.join', 'a1', { agent: { id: 'a1', name: 'Heron' } }, 0);
+  run(st, 'agent.join', 'a2', { agent: { id: 'a2', name: 'Basalt' } }, 0);
+  run(st, 'block.reserve', HUMAN, { block: 'tables' }, 1);
+  run(st, 'block.reserve', 'a1', { block: 'engine' }, 1);
+  run(st, 'block.freeze', HUMAN, { block: 'pass', on: true }, 1);
+  assert.match(ev(st, 'block.reserve', 'a2', { block: 'tables', force: true }, 2).why, /Only the human can force/);
+  assert.match(ev(st, 'block.reserve', 'a2', { block: 'pass', force: true }, 2).why, /Only the human can force/);
+  assert.match(ev(st, 'block.release', 'a2', { block: 'engine', agent: 'a1' }, 2).why, /Only the human acts for another agent/);
+  assert.match(ev(st, 'agent.leave', 'a2', { agent: 'a1' }, 2).why, /Only the human acts for another agent/);
+  // The same moves in a log edited by hand fold as the agent acting for itself.
+  apply(st, makeEvent(st, 'block.release', 'a2', { block: 'engine', agent: 'a1', force: true }, at(3)));
+  assert.equal(st.blocks.engine.holder, 'a1');
+  apply(st, makeEvent(st, 'agent.leave', 'a2', { agent: 'a1' }, at(3)));
+  assert.equal(st.agents.a1.leftAt, 0);
+  assert.deepEqual(st.agents.a1.held, ['engine']);
+  // The human can.
+  run(st, 'block.release', HUMAN, { block: 'engine', agent: 'a1', outcome: 'parked' }, 4);
+  run(st, 'block.reserve', HUMAN, { block: 'pass', agent: 'a1' }, 5);
+  assert.equal(st.blocks.pass.holder, 'a1');
+});
+
+test('a branch with nothing ahead of the base is never queued, and a quiet agent gives up its color', () => {
+  const st = createState(BOARD);
+  run(st, 'agent.join', 'a1', { agent: { id: 'a1' } }, 0);
+  assert.match(ev(st, 'merge.ready', 'a1', { worktree: 'one', commit: 'aaa', ahead: 0 }, 1).why, /Nothing to merge/);
+  run(st, 'merge.ready', 'a1', { worktree: 'one', commit: 'aaa', ahead: 2 }, 1);
+  assert.equal(st.merges.one.ahead, 2);
+  run(st, 'agent.join', 'a2', { agent: { id: 'a2' } }, 1);
+  const first = st.agents.a1.color;
+  assert.notEqual(st.agents.a2.color, first);
+  // a1's session crashed without leaving; seven hours on, a newcomer may wear its color.
+  run(st, 'agent.status', 'a2', { status: 'working' }, 7 * 60);
+  run(st, 'agent.join', 'a3', { agent: { id: 'a3' } }, 7 * 60 + 1);
+  assert.equal(st.agents.a3.color, first);
+});
+
+test('the board carries its base branch through', async () => {
+  const { resolveBoard } = await import('../core/resolve.js');
+  const b = resolveBoard({ root: os.tmpdir(), readConfig: () => ({ ...BOARD, base: 'develop' }) }, { items: false });
+  assert.equal(b.base, 'develop');
+});
+
+test('the git watcher primes a new worktree and leaves out what HEAD moved', async () => {
+  const { gitEdits } = await import('../server.js');
+  let times = { 'a.ts': 1, 'b.ts': 1 };
+  const wt = (head) => ({ name: 'w', path: '/w', main: false, head, files: ['a.ts', 'b.ts'] });
+  const opts = { mtime: (dir, f) => times[f] ?? -1, headDiff: async () => new Set(['b.ts']) };
+  let r = await gitEdits(new Map(), [wt('h1')], opts);
+  assert.deepEqual(r.changes, []);
+  times['a.ts'] = 2;
+  r = await gitEdits(r.next, [wt('h1')], opts);
+  assert.deepEqual(r.changes.map((c) => c.files), [['a.ts']]);
+  // A checkout rewrote b.ts; a.ts was edited by hand.
+  times = { 'a.ts': 3, 'b.ts': 3 };
+  r = await gitEdits(r.next, [wt('h2')], opts);
+  assert.deepEqual(r.changes.map((c) => c.files), [['a.ts']]);
+  // When git can't say what moved, nothing is reported for that poll.
+  times = { 'a.ts': 4, 'b.ts': 4 };
+  r = await gitEdits(r.next, [wt('h3')], { ...opts, headDiff: async () => null });
+  assert.deepEqual(r.changes, []);
+});
+
+test('the server stamps what it is sent, answers only on localhost, and resumes its stream', async () => {
+  const t = tmpBoard();
+  const saved = { ...process.env };
+  process.env.BLOCKMAP_DIR = t.boardDir;
+  for (const k of ['BLOCKMAP_LIVE', 'BLOCKMAP_TOKEN']) delete process.env[k];
+  const { serve } = await import('../server.js');
+  let server;
+  try {
+    await assert.rejects(serve({ host: '0.0.0.0', port: 0, quiet: true }), /BLOCKMAP_TOKEN/);
+    server = await serve({ port: 0, quiet: true });
+    const port = server.address().port;
+    const req = (method, p, { body, headers = {} } = {}) => new Promise((resolve, reject) => {
+      const r = http.request({ host: '127.0.0.1', port, method, path: p, headers: { 'x-blockmap': '1', 'content-type': 'application/json', ...headers } }, (res) => {
+        let data = '';
+        res.on('data', (c) => (data += c));
+        res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: data }));
+      });
+      r.on('error', reject);
+      if (body) r.write(JSON.stringify(body));
+      r.end();
+    });
+    const posted = await req('POST', '/api/commit', { body: { events: [{ id: 'mine', ts: '"><img src=x onerror=alert(1)>', by: 'a1', type: 'agent.join', agent: { id: 'a1' } }, { id: 'later', ts: 9e15, by: 'a1', type: 'block.reserve', block: 'engine' }] } });
+    assert.equal(posted.status, 200, posted.body);
+    const accepted = JSON.parse(posted.body).accepted;
+    for (const e of accepted) {
+      assert.equal(typeof e.ts, 'number');
+      assert.ok(Math.abs(e.ts - Date.now()) < 60_000);
+      assert.ok(!['mine', 'later'].includes(e.id));
+      assert.equal(e.by, 'a1');
+    }
+    assert.equal((await req('POST', '/api/commit', { body: { events: [{ by: '__proto__', type: 'agent.status', status: 'working' }] } })).status, 409);
+    assert.equal((await req('GET', '/api/board', { headers: { host: 'evil.example:4477' } })).status, 403);
+    assert.equal((await req('GET', '/', { headers: { host: 'localhost.evil.example' } })).status, 403);
+    const log = await req('GET', '/api/events', { headers: { host: `localhost:${port}` } });
+    assert.equal(log.status, 200);
+    const offset = Number(log.headers['x-blockmap-offset']);
+    assert.equal(offset, fs.statSync(path.join(t.boardDir, 'live', 'events.jsonl')).size);
+    // A page that reconnects with the last offset it saw gets what came after, with the new offset as the id.
+    const before = JSON.parse(log.body);
+    await req('POST', '/api/commit', { body: { events: [{ by: 'a1', type: 'note', text: 'after the read' }] } });
+    const chunk = await new Promise((resolve, reject) => {
+      const r = http.get({ host: '127.0.0.1', port, path: '/api/stream', headers: { 'last-event-id': String(offset) } }, (res) => {
+        let data = '';
+        res.on('data', (c) => {
+          data += c;
+          if (/event: events\n/.test(data) && data.endsWith('\n\n')) {
+            r.destroy();
+            resolve(data);
+          }
+        });
+      });
+      r.on('error', reject);
+    });
+    const block = chunk.split('\n\n').find((b) => b.includes('event: events'));
+    const sent = JSON.parse(/^data: (.*)$/m.exec(block)[1]);
+    assert.deepEqual(sent.map((e) => e.text), ['after the read']);
+    assert.equal(Number(/^id: (\d+)$/m.exec(block)[1]), fs.statSync(path.join(t.boardDir, 'live', 'events.jsonl')).size);
+    assert.equal(before.length, 2);
+  } finally {
+    await new Promise((resolve) => (server ? server.close(resolve) : resolve()));
+    for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
+    Object.assign(process.env, saved);
+    t.done();
+  }
 });

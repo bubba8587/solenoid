@@ -79,7 +79,21 @@ export function compileIndex(blocks) {
     }
   }
   entries.sort((a, b) => b.spec - a.spec);
+  // A fold asks for the same few paths over and over; each answer is kept on the index it came from.
+  Object.defineProperty(entries, 'memo', { value: new Map() });
   return entries;
+}
+
+// The compiled index for a board's blocks, compiled once per blocks list (and again if its ids or paths
+// change), so folds and replays of one board share it and its memo.
+const compiled = new WeakMap();
+export function indexFor(blocks) {
+  const sig = blocks.map((b) => `${b.id}\u0000${(b.paths || []).join('\u0000')}`).join('\u0001');
+  const hit = compiled.get(blocks);
+  if (hit && hit.sig === sig) return hit.index;
+  const index = compileIndex(blocks);
+  compiled.set(blocks, { sig, index });
+  return index;
 }
 
 export function normalizePath(p) {
@@ -88,8 +102,21 @@ export function normalizePath(p) {
 
 export function blockForPath(index, path) {
   const p = normalizePath(path);
-  for (const e of index) if (e.re.test(p)) return e.block;
-  return null;
+  const memo = index.memo;
+  const known = memo?.get(p);
+  if (known !== undefined) return known;
+  let block = null;
+  for (const e of index) {
+    if (e.re.test(p)) {
+      block = e.block;
+      break;
+    }
+  }
+  if (memo) {
+    if (memo.size >= 100_000) memo.clear();
+    memo.set(p, block);
+  }
+  return block;
 }
 
 export function matchDetail(index, path) {

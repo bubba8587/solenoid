@@ -312,8 +312,9 @@ body.replaying .map-wrap { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--
   font: 600 10.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted);
 }
 .tray[data-label] { grid-auto-rows: 40px; grid-template-rows: 14px; }
-/* Dragging, the person's window opens both drop zones: hold it yourself, or put it up next. */
-body.dragging-tile .you .tray { display: grid; min-height: 56px; border-radius: 6px; outline: 1px dashed var(--border-strong); outline-offset: -1px; background: var(--surface-sunken); padding: 0 6px 6px; }
+/* Dragging over the person's window opens both drop zones: hold it yourself, or put it up next. Only over it, so
+   the windows below never move under a drag that is headed for an agent. */
+body.dragging-tile .you:is(.drop-ok, :has(.drop-ok)) .tray { display: grid; min-height: 56px; border-radius: 6px; outline: 1px dashed var(--border-strong); outline-offset: -1px; background: var(--surface-sunken); padding: 0 6px 6px; }
 body.dragging-tile .you .tray.drop-ok { outline: 2px solid var(--text-bright); }
 .win-more { width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 5px; background: none; color: var(--text-dim); padding: 0; flex: none; }
 .win-more:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }

@@ -15,10 +15,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { openStore, findBoardDir } from '../core/store.js';
-import { reduce, makeEvent, blockMeta, agentName, isStale, clock, itemCounts, HUMAN } from '../core/model.js';
+import { makeEvent, blockMeta, agentName, isStale, clock, itemCounts, HUMAN } from '../core/model.js';
 import { blockForPath, normalizePath } from '../core/glob.js';
 import { sessionAgentId, whereAmI, worktreeHere } from '../core/identity.js';
-import { lineCounts } from './lines.js';
+import { lineCounts, testVerdict } from './lines.js';
 
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const TEST_CMD = /\b(vitest|jest|mocha|pytest|cargo (nextest|test)|npm (run )?test|go test|node --test|test-bucket|cargo-test)\b/;
@@ -31,20 +31,26 @@ async function main() {
   const cwd = input.cwd || process.cwd();
   const dir = findBoardDir(cwd);
   if (!dir) return;
-  const store = openStore(dir);
+  const store = openStore(dir, { cwd });
   const me = process.env.BLOCKMAP_AGENT || sessionAgentId(input.session_id || process.env.CLAUDE_CODE_SESSION_ID || 'session');
   const board = store.board();
   const guard = { held: 'deny', frozen: 'deny', free: 'reserve', ...(board.guard || {}) };
   const now = Date.now();
-  let state = reduce(board, store.readEvents());
+  // One fold per call: the store keeps it current, and each commit only reads what was appended since.
+  let state = store.state();
   const cli = path.relative(cwd, path.join(store.root, CLI)) || CLI;
 
+  // Commits the events and returns null, or the reason they were refused. Any other failure is logged and
+  // the hook carries on, failing open.
   const commit = (events) => {
-    if (!events.length) return;
+    if (!events.length) return null;
     try {
       state = store.commit(events, now).state;
-    } catch {
-      // A refused event (a race for the same block) changes nothing; the edit decides below.
+      return null;
+    } catch (err) {
+      if (err.refused) return err.message;
+      logError(store.live, err);
+      return null;
     }
   };
   const ev = (type, payload) => makeEvent(state, type, me, payload, now);
@@ -81,10 +87,11 @@ async function main() {
       if (!id) return undefined;
       const b = state.blocks[id];
       const meta = blockMeta(state, id);
-      if (b.holder === me) return undefined;
+      // Frozen comes first: a freeze stops the holder too.
       if (b.frozen && guard.frozen !== 'allow') {
         return decide(guard.frozen, `${file} is in ${meta.name}, which ${agentName(state, b.frozen.by)} froze${b.frozen.note ? ` (${b.frozen.note})` : ''}. Don't edit there until it's unfrozen; pick other work or ask with \`${cli} ask "…"\`.`);
       }
+      if (b.holder === me) return undefined;
       if (b.holder && (b.holder === HUMAN || !isStale(state, b.holder, now)) && guard.held !== 'allow') {
         const who = b.holder === HUMAN ? `${agentName(state, HUMAN)} (the human)` : agentName(state, b.holder);
         return decide(
@@ -96,7 +103,12 @@ async function main() {
       if (guard.free === 'reserve') {
         const a = state.agents[me];
         const takeover = b.holder ? ` (taking over from ${agentName(state, b.holder)}, quiet since ${clock(state.agents[b.holder]?.lastSeen || b.since)})` : '';
-        commit([...ensureJoined(), ev('block.reserve', { block: id, intent: a?.task || `editing ${path.basename(file)}` })]);
+        const refused = commit([...ensureJoined(), ev('block.reserve', { block: id, intent: a?.task || `editing ${path.basename(file)}` })]);
+        if (refused) {
+          // Another agent reserved it (or the human froze it) since this hook read the board: the edit waits.
+          const mode = store.state().blocks[id]?.frozen ? guard.frozen : guard.held;
+          return decide(mode, `${file} is in ${meta.name}, which was taken before Blockmap could reserve it for you. ${refused}`);
+        }
         if (state.blocks[id].holder === me) {
           const c = itemCounts(state, id);
           const open = [c.bug && `${c.bug} open bug${c.bug > 1 ? 's' : ''}`, c.task && `${c.task} open task${c.task > 1 ? 's' : ''}`, c.decision && `${c.decision} waiting on the human`].filter(Boolean).join(', ');
@@ -122,8 +134,7 @@ async function main() {
           if (verdict) events.push(ev('test', verdict));
         }
       }
-      if (events.length && joined()) commit(events);
-      else if (events.length) commit([...ensureJoined(), ...events]);
+      if (events.length) commit([...ensureJoined(), ...events]);
       const parts = [takeNotes(store, me), inboxText(state, me, commit, ev)].filter(Boolean);
       return parts.length ? context('PostToolUse', parts.join('\n\n')) : undefined;
     }
@@ -204,23 +215,6 @@ function takeNotes(store, me) {
   }
 }
 
-function testVerdict(response) {
-  const text = typeof response === 'string' ? response : [response?.stdout, response?.stderr, response?.output].filter(Boolean).join('\n');
-  if (!text) return null;
-  // vitest and jest print a "Tests" line under "Test Files"; it's the count people mean.
-  const tests = /^\s*Tests:?\s+.*$/m.exec(text);
-  const hay = tests ? tests[0] : text;
-  const failed = /(\d+)\s+(failed|failing)\b/i.exec(hay) || /\btest result: FAILED\b/.exec(hay) || (!tests && /\bFAIL\b/.exec(hay));
-  const passed = /(\d+)\s+(passed|passing)\b/i.exec(hay) || /\btest result: ok\b/.exec(hay);
-  if (failed && !(failed[1] === '0')) return { ok: false, summary: tail(failed[0]) };
-  if (passed) return { ok: true, summary: tail(passed[0]) };
-  return null;
-}
-
-function tail(s) {
-  return String(s).slice(0, 80);
-}
-
 function relFile(root, file) {
   if (!file) return null;
   const abs = path.resolve(file);
@@ -234,7 +228,7 @@ function context(hookEventName, text) {
 }
 
 function decide(mode, reason) {
-  if (mode === 'warn') return undefined;
+  if (mode === 'warn' || mode === 'allow') return undefined;
   return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: mode === 'ask' ? 'ask' : 'deny', permissionDecisionReason: `Blockmap: ${reason}` } };
 }
 
@@ -249,6 +243,15 @@ function readStdin() {
   });
 }
 
+function logError(live, err) {
+  try {
+    fs.mkdirSync(live, { recursive: true });
+    fs.appendFileSync(path.join(live, 'hook-errors.log'), `${new Date().toISOString()} ${err.stack || err}\n`);
+  } catch {
+    // Nowhere to log; fail open regardless.
+  }
+}
+
 main()
   .then((out) => {
     if (out) process.stdout.write(JSON.stringify(out));
@@ -256,7 +259,7 @@ main()
   .catch((err) => {
     try {
       const dir = findBoardDir(process.cwd());
-      if (dir) fs.appendFileSync(path.join(dir, 'live', 'hook-errors.log'), `${new Date().toISOString()} ${err.stack || err}\n`);
+      if (dir) logError(openStore(dir).live, err);
     } catch {
       // Nowhere to log; fail open regardless.
     }
