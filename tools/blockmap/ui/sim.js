@@ -273,7 +273,16 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
           files: [...p.files], add: p.add, del: p.del, conflicts: conflictsOf(p), lastCommit: p.lastCommit,
         });
       }
-      return { base: BASE, at: now, list };
+      // The forecast, simulated: of the files two branches share, about half would conflict.
+      const branches = list.filter((w) => !w.main && w.ahead > 0);
+      const clashes = [];
+      for (let i = 0; i < branches.length; i++) {
+        for (let j = i + 1; j < branches.length; j++) {
+          const files = branches[i].files.filter((f) => branches[j].files.includes(f) && f.length % 2 === 0);
+          if (files.length) clashes.push({ a: branches[i].name, b: branches[j].name, files });
+        }
+      }
+      return { base: BASE, at: now, list, clashes };
     },
     // A plausible past: the last hours of a working session, ending at `to`.
     history(from, to, base = createState(board)) {

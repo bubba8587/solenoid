@@ -44,8 +44,15 @@ function finish(cur, src, board) {
   let title;
   let detail;
   if (bold) {
-    title = bold[1];
+    title = bold[1].replace(/[.:;,]\s*$/, '');
     detail = bold[2];
+    // A bold label of a word or two ("**Pie:** donut, half pies…") names a topic, not the item: the title keeps
+    // the start of what follows it.
+    if (title.split(/\s+/).length <= 2 && detail) {
+      const cut = detail.search(/[.;](\s|$)/);
+      const lead = (cut > 0 && cut < 90 ? detail.slice(0, cut) : detail.slice(0, 90).replace(/\s+\S*$/, '')).replace(/[,:]\s*$/, '');
+      title = `${title}: ${lead}`;
+    }
   } else {
     const cut = cur.text.search(/[.;:](\s|$)/);
     title = cut > 10 && cut < 140 ? cur.text.slice(0, cut) : cur.text.slice(0, 120);
@@ -74,7 +81,7 @@ function plain(s) {
   return s
     .replace(/\[\[([^\]|]+)(\|[^\]]+)?\]\]/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\*\*|__/g, '')
+    .replace(/\*\*|__|`/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

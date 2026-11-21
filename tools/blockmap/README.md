@@ -18,6 +18,20 @@ tools/blockmap/bm help                  # everything else
 
 A standalone copy that needs no server (it runs the simulated crew): `node tools/blockmap/scripts/bundle.js --out <dir>`.
 
+## What's new in 2
+
+- **The inbox.** One window of rows that wait on you, each with its act, instead of questions and states scattered
+  across the agent windows. The "need you" count is its length.
+- **A map that fits.** Uniform tiles packed into shelves by a small search, so 53 blocks read at full size on a
+  1280x760 laptop with room to spare. **Active** hides the quiet ones.
+- **Red means a real conflict.** A pairwise merge forecast (`git merge-tree` on each pair of branch heads) separates
+  branches that will conflict from branches that only touch the same files.
+- **A merge queue you can drive:** reorder by drag or keyboard; Merge, Rebase or Ask to fix on each row.
+- **Calmer chrome.** Flat counts, small square controls, status as a neutral word with a colored dot, agents in
+  non-status colors, tethers only for the agent you point at, a framed map and a clock while replaying, settings in a
+  menu on phones.
+- **Hardened core** from an independent audit: see `docs/dev-notes.md` (Blockmap) for what changed.
+
 ## Why use it, next to the orchestrators
 
 Most multi-agent tools (Conductor, Claude Squad, Vibe Kanban, Crystal, Cursor's agents window) give each agent its own
@@ -52,42 +66,50 @@ What it doesn't do yet, and would be worth it:
 
 ## What you see
 
-- **The map.** Districts of tiles on a dot-grid canvas, wide tiles for the blocks with the most code, scaled to fit
-  the window (down to 85%; past that it scrolls). In the Work lens a tile shows only what matters now: a conflict (someone
-  edited inside it without holding it), a failing test, what waits on you (a gold chip), open bugs and a lock when
-  frozen. A held block leaves a hatched socket in the holder's color with their initial and how long they've held it.
-  The top bar's "need you" and "bugs" counts filter the map to the blocks they count.
-- **The windows.** One per agent: a disc in the agent's color (the same disc its sockets carry on the map), the lines
-  it has added and removed, and its state with a live timer (a stopwatch while it works; an age once it needs you, its
-  turn ends, it goes quiet or it goes stale), then its task, what it's doing this second, its open question with an
-  answer box, and the tray of blocks it holds. The chevron opens its recent actions and a message box. **Up next** is
-  your queue; **your own window** holds the blocks you keep for yourself. Windows that need you sort to the top.
-- **Tethers** run faintly from each socket to its holder's window; hovering a window or a socket brings that agent's out.
-- **The timeline** has a lane per agent: which blocks it held when (overlapping holds stack), failing tests and
-  questions. Drag across it, or press play (quiet stretches are skipped), to replay the board. It folds away; short
-  screens start with it folded.
-- **Attention:** the tab title counts the agents waiting on you, the bell turns on desktop notifications for them and
-  for conflicts, and coming back to the tab after a few minutes shows one line of what changed, with a replay from
-  when you left.
-- **Lenses:** Work; Heat (recent edits, with a cap in the color of whoever edited last and dots for who passed through); Issues (open items, tasks included); Branches (which worktrees changed each block).
+- **The map.** Districts of tiles on a dot-grid canvas, every tile one size. The districts are packed into shelves (which
+  districts share a row, and how many tiles tall each row is, chosen together for the least height), so the whole
+  repository fits a laptop screen at full size; past that it scales to 92% and then scrolls. In the Work lens a tile
+  shows only what is live: a conflict (an edit inside a block someone else holds, or a merge git says will conflict),
+  a failing test, open bugs, branches that changed it, a lock when frozen. A held block leaves a hatched socket with
+  its holder's name and how long they've held it. **Active** hides every block with nothing going on.
+- **Needs you.** The top of the side column is an inbox, one row per thing that waits on you, each with its act: an
+  agent's question (answer it there), a permission prompt or a finished turn (Go focuses its worktree and window),
+  the merge queue's head when it's clean (Merge copies the command) or broken (Ask to fix messages its agent). The
+  top bar's count is this list's.
+- **Your window** holds your queue (**Next**) and the blocks you keep for yourself (**Yours**). While you drag a tile
+  it opens both as drop zones.
+- **Agent windows.** One per agent: a disc in its color (the disc its sockets carry), the lines its worktree changed
+  against the base, its state as a word with a colored dot and a live timer (a stopwatch while it works), its task,
+  what it's doing this second, and the tray of blocks it holds. The chevron opens its recent actions and a message
+  box. Five agents or more turn the column into a roster of one-line windows. A session silent for six hours holding
+  nothing drops off.
+- **A tether** runs from a socket to its holder's window when you point at the agent (its window, a socket or a tile).
+- **The timeline** has a lane per agent: the blocks it held (hatched while still held), a cross for a failing test and
+  a diamond for a question. Drag across it, or press play (quiet stretches are skipped), to replay the board; the map
+  is framed and the top bar says the time while you do. It folds away.
+- **Attention:** the tab title carries the inbox count, the bell turns on desktop notifications, and coming back to
+  the tab after a few minutes shows one line of what changed, with a replay from when you left.
+- **Lenses:** Work; Heat (recent edits, a cap in the color of whoever edited last, discs for who passed through);
+  Issues (open bugs, tasks and your calls); Branches (each block tinted by the worktree that changed it, with its
+  agents' discs).
 - **Search** finds blocks by name; a file path finds the block that owns it.
-- **Alerts:** an agent editing inside a block someone else holds (or a frozen one), a holder that has gone quiet,
-  failing tests, and questions waiting for you.
+- **Alerts** sit in one strip: edits inside someone else's (or a frozen) block, a holder gone quiet, failing tests.
 
 **Color says who; neutral says where.** The look is Solenoid's palette system, lifted whole (`ui/palette.js`, the
 tables copied as data): the nine palettes, the neutral ramp per theme and the chrome derived from it, the accent-mix
-rungs, the rule that a strong colored edge always has a tinted inside. Agents are colored by palette slot, so a palette change recolors them. The only other hues
+rungs, the rule that a strong colored edge always has a tinted inside. Agents are colored by palette slot (sky, violet,
+pink, blue, purple first, so no agent looks like a status), and a palette change recolors them. The only other hues
 are the status slots: vermilion for bugs, failing tests and conflicts, gold for what needs you, green for working and
-passing. Timers read in compact units (`47s`, `12m`, `1h 05m`) and turn gold, then vermilion, at named thresholds: a
-question waiting 5 and 15 minutes, an agent quiet for 10.
+passing. Status text stays neutral beside a colored dot, so nothing depends on reading a colored word. Timers read in
+compact units (`47s`, `12m`, `1h 05m`) and grow a gold, then vermilion, dot at named thresholds.
 
 ## What you can do
 
-Drag a tile into an agent's window to give it the block (the agent is messaged), onto **Up next** to queue it, into
-your own window to keep agents out, or back onto the map to release it. On a phone, long-press to drag, or tap a
-block and use **Give to…** in its details. The details drawer also files bugs and tasks, changes an item's status,
-freezes a block, and lists the specs to read before touching it. Answer an agent's question in its window; the answer
-lands in its inbox.
+Drag a tile into an agent's window to give it the block (the agent is messaged), into **Next** to queue it, into
+**Yours** to keep agents out, or back onto the map to release it. On a phone, long-press to drag, or tap a block and
+use **Give to** in its details. The details drawer also files bugs and tasks, changes an item's status, freezes a
+block, and lists the specs to read before touching it. Answer an agent's question in the inbox; the answer lands in
+its inbox on the board.
 
 ## The agent side
 
@@ -129,19 +151,23 @@ far it is ahead of and behind the base branch (`"base"` in `board.json`, else th
 the files and lines it changed since it branched with uncommitted work included, and the files that would conflict
 if it merged now, from a dry-run `git merge-tree` that touches nothing.
 
-- **Quick swap.** The strip over the map lists every worktree with its agent, commits ahead and behind, uncommitted
-  work, conflicts and queue position. A tab focuses the map on the blocks that worktree changed and gives its path,
-  a copied `cd`, and an Open link for VS Code, Cursor or Zed. In a terminal, `cd "$(tools/blockmap/bm wt path agent-2)"`;
-  `bm wt` lists them all.
+- **Quick swap.** The strip over the map lists every worktree by its agent's name, with commits ahead and behind,
+  uncommitted work, a red mark when it conflicts with the base or with another branch, and its queue position. A tab
+  focuses the map on the blocks that worktree changed and gives its path, a copied `cd`, and an Open link for VS Code,
+  Cursor or Zed. In a terminal, `cd "$(tools/blockmap/bm wt path agent-2)"`; `bm wt` lists them all.
+- **The merge forecast.** For every pair of branches that changed a file in common, a dry-run merge of the two heads
+  says whether they will really conflict once one lands (cached per pair of commits). Only those, and conflicts with
+  the base, are red; branches that merely share a file are noted and stay neutral.
 - **The merge queue.** `bm ready` in a worktree (or Queue merge on its tab) puts its branch in line at its current
-  commit. Each entry shows the worst of: conflicts with the base, failing tests, nothing to merge, uncommitted work,
-  new commits since it was marked ready, commits behind the base, files it shares with a branch ahead of it in the
-  queue, and no test run. The arrow moves an entry up; the first one copies its merge command. Blockmap never merges:
-  the lead does, and the board marks the entry merged when the commit shows up in the base. `bm merge` prints the
-  same queue.
-- **What is being changed where.** A tile changed in two or more worktrees carries a branch chip (red when one of
-  them already conflicts with the base in that block): those branches will meet at the merge. The Branches lens tints
-  each block by the worktree that changed it, gold where several did.
+  commit, once it has a commit to merge. Each entry shows the worst of: conflicts with the base or with a branch ahead
+  of it, failing tests, commits behind the base, new commits since it was readied; then what is only worth knowing
+  (shared files, uncommitted work, no test run). Each row has the one act that moves it along: **Merge** at a clean
+  head (copies the command), **Rebase** or **Ask to fix** (a message to its agent). Drag the grip, or use the arrow
+  keys on it, to reorder. Blockmap never merges: the lead does, and the board marks the entry merged when the commit
+  shows up in the base. `bm merge` prints the same queue.
+- **What is being changed where.** A tile changed in two or more worktrees carries a branch count, red only when the
+  forecast or the base says it will conflict there. The Branches lens tints each block by the worktree that changed
+  it and puts its agents' discs on it.
 
 ## Any agent, any model
 

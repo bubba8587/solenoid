@@ -25,9 +25,11 @@
       <button type="button" data-lens="issues" aria-pressed="false">Issues</button>
       <button type="button" data-lens="branches" aria-pressed="false">Branches</button>
     </div>
+    <button class="tool" id="active-only" type="button" aria-pressed="false" title="Hide blocks with nothing going on"><span class="box"></span>Active</button>
     <label class="search"><span id="search-ic"></span><input id="search" type="search" placeholder="Search" aria-label="Find a block or a file path" autocomplete="off" spellcheck="false"><kbd>/</kbd></label>
-    <div class="theme-tools">
-      <select class="palette-pick" id="palette" aria-label="Palette"></select>
+    <button class="icon-btn" id="menu-btn" type="button" aria-label="Display settings" aria-expanded="false"></button>
+    <div class="theme-tools" id="theme-tools">
+      <select class="pick" id="palette" aria-label="Palette"></select>
       <button class="icon-btn" id="theme" type="button" aria-label="Switch theme"></button>
     </div>
   </header>

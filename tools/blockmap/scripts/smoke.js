@@ -38,6 +38,12 @@ try {
   const blocks = await page.evaluate(() => window.blockmap.board.blocks.length);
   check(tiles >= blocks, `a tile per block (${tiles} for ${blocks})`);
   check((await page.locator('.wt-tab').count()) > 1, 'worktree tabs');
+  const fits = await page.evaluate(() => {
+    const w = document.getElementById('map-wrap');
+    return w.scrollHeight <= w.clientHeight + 1 && w.scrollWidth <= w.clientWidth + 1;
+  });
+  check(fits, 'the whole map fits at 1440x900 without scrolling');
+  check((await page.locator('#tethers path').count()) === 0, 'no tethers until you point at an agent');
 
   // Drag a free tile into an agent's window: the agent holds it.
   const free = await page.evaluate(() => Object.values(window.blockmap.live.blocks).find((b) => !b.holder && !b.queued && !b.frozen && !b.id.startsWith('_'))?.id);
@@ -65,9 +71,34 @@ try {
   if (wt) {
     await page.click(`.wt-tab[data-wt="${wt}"]`);
     await page.waitForTimeout(300);
-    check((await page.locator('.tile.match').count()) > 0 && (await page.locator('.wt-detail').isVisible()), `focusing ${wt} lights its blocks`);
+    const lit = await page.locator('.map .tile:not(.dim)').count();
+    const dim = await page.locator('.map .tile.dim').count();
+    check(lit > 0 && dim > 0 && (await page.locator('.wt-detail').isVisible()), `focusing ${wt} lights its blocks (${lit} lit, ${dim} dimmed)`);
     await page.click('.wt-tab[data-wt=""]');
   }
+
+  // The merge queue reorders from the keyboard, and the head gets the act that fits it.
+  const ready = await page.locator('.mq-grip').count();
+  if (ready > 1) {
+    const name = await page.locator('.mq-grip').last().getAttribute('data-name');
+    for (let i = 0; i < ready - 1; i++) {
+      await page.focus(`.mq-grip[data-name="${name}"]`);
+      await page.keyboard.press('ArrowUp');
+      await page.waitForTimeout(200);
+    }
+    const head = await page.evaluate(() => window.blockmap.mergeRows.find((r) => r.entry.status === 'ready'));
+    check(head?.entry.worktree === name, `arrow keys move ${name} to the head of the merge queue`);
+    const act = await page.locator('.mq-row').first().locator('.btn').textContent().catch(() => '');
+    const want = head.level === 'danger' ? 'Ask to fix' : head.checks.some((c) => c.action === 'rebase') ? 'Rebase' : head.level === 'ok' ? 'Merge' : '';
+    check((act || '') === want, `the head's button says ${want || 'nothing'} (${act || 'none'})`);
+  }
+
+  // Active only keeps the blocks with something going on.
+  await page.click('#active-only');
+  await page.waitForTimeout(300);
+  const hidden = await page.locator('.slot[hidden]').count();
+  check(hidden > 0, `Active hides the quiet blocks (${hidden})`);
+  await page.click('#active-only');
 
   // Scrubbing the timeline replays the past; Live returns.
   const tl = await page.locator('.tl-svg').boundingBox();

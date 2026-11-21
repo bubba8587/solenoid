@@ -1,46 +1,74 @@
-// The side column: a window per agent (its tray holds the blocks it reserved), the human's own
-// window, and the Up next queue. Windows are drop targets; their trays are where tiles go.
+// The side column, most urgent first: what needs the person (the inbox), the person's own window (their queue
+// and the blocks they keep), then a window per agent. Windows are drop targets; their trays are where tiles go.
 
 import { HUMAN, presence, presenceSince, openQuestions, blockMeta, agentName, clock } from '../core/model.js';
 import { h, icon, setHtml, setText, toggle, esc, timer, initials } from './dom.js';
 import { colorOf, inkOf } from './map.js';
 
-const RANK = { waiting: 0, review: 1, working: 2, quiet: 2, blocked: 3, stale: 4, idle: 5, done: 6, gone: 7 };
-const WORD = { working: 'Working', waiting: 'Needs you', review: 'Your turn', blocked: 'Blocked', quiet: 'Quiet', stale: 'Gone quiet', idle: 'Idle', done: 'Done', gone: 'Left' };
+const RANK = { question: 0, permission: 0, review: 1, working: 2, quiet: 2, blocked: 3, stale: 4, idle: 5, done: 6, gone: 7 };
+const WORD = { working: 'Working', question: 'Question', permission: 'Permission', review: 'Review', blocked: 'Blocked', quiet: 'Quiet', stale: 'Gone quiet', idle: 'Idle', done: 'Done', gone: 'Left' };
 const QUIET_MS = 5 * 60_000;
 const MIN = 60_000;
+const ROSTER_AT = 5;
+
+// What an agent's state is, in the words the person acts on: a question to answer, a permission to grant
+// (in its terminal), a finished turn to review; else working, quiet, gone quiet or idle.
+export function agentState(st, a, now) {
+  let p = presence(st, a.id, now);
+  let since = presenceSince(st, a.id, now);
+  if (p === 'waiting') p = openQuestions(st, a.id).length ? 'question' : 'permission';
+  if (p === 'working' && now - a.lastSeen > QUIET_MS) {
+    p = 'quiet';
+    since = a.lastSeen;
+  }
+  return { p, since };
+}
 
 export function createSide(ctx, root) {
   const wins = new Map();
-  const row = h('div', { class: 'side-row' });
-  const agentsHost = h('div', { style: { display: 'contents' } });
+  const inbox = h('section', { class: 'win inbox', hidden: true, 'data-win': 'inbox' });
+  const you = youWindow();
+  const mergeHost = h('div', { class: 'merge-host', hidden: true });
+  const agentsHost = h('div', { class: 'agents' });
   const empty = h('div', { class: 'side-empty' });
-  root.append(row, agentsHost, empty);
+  root.append(inbox, you.el, mergeHost, agentsHost, empty);
 
-  function fixedWindow(key) {
-    if (wins.has(key)) return wins.get(key);
-    const drop = key === 'queue' ? 'queue' : `agent:${HUMAN}`;
-    const tray = h('div', { class: 'tray', 'data-drop': drop });
+  inbox.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const form = e.target.closest('form[data-answer]');
+    const field = form?.querySelector('input');
+    if (field?.value.trim()) ctx.act.answer(form.dataset.answer, field.value.trim());
+  });
+  inbox.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const { act, arg } = b.dataset;
+    if (act === 'go') ctx.focusAgent(arg);
+    else if (act === 'merge') ctx.act.copyMerge(arg);
+    else if (act === 'fix') ctx.act.askFix(arg);
+    else if (act === 'rebase') ctx.act.askRebase(arg);
+  });
+
+  function youWindow() {
     const name = h('div', { class: 'win-name' });
-    const count = h('span', { class: 'win-count' });
-    const disc = h('span', { class: key === 'queue' ? 'disc plain' : 'disc', html: key === 'queue' ? icon('queue') : '' });
-    const el = h('section', { class: 'win compact', 'data-drop': drop, 'data-win': key }, h('div', { class: 'win-head' }, disc, name, count), tray);
-    row.append(el);
-    const w = { el, tray, name, count, disc };
-    wins.set(key, w);
-    return w;
+    const disc = h('span', { class: 'disc' });
+    const queueTray = h('div', { class: 'tray', 'data-drop': 'queue', 'data-label': 'Next' });
+    const heldTray = h('div', { class: 'tray', 'data-drop': `agent:${HUMAN}`, 'data-label': 'Yours' });
+    const el = h('section', { class: 'win you', 'data-drop': 'queue', 'data-win': 'human' }, h('div', { class: 'win-head' }, disc, name), h('div', { class: 'win-body' }, queueTray, heldTray));
+    el.style.setProperty('--ac', 'var(--human)');
+    el.style.setProperty('--aci', 'var(--slot-gray-ink)');
+    return { el, name, disc, queueTray, heldTray };
   }
 
   function agentWindow(id) {
     if (wins.has(id)) return wins.get(id);
     const name = h('div', { class: 'win-name' });
     const disc = h('span', { class: 'disc' });
-    const lines = h('span', { class: 'win-lines', title: 'Lines added and removed' });
+    const lines = h('span', { class: 'win-lines', title: 'Lines changed' });
     const state = h('span', { class: 'state' });
     const more = h('button', { class: 'win-more', type: 'button', 'aria-expanded': 'false', 'aria-label': 'More', html: icon('chev') });
     const task = h('div', { class: 'win-task' });
     const doing = h('div', { class: 'win-doing' });
-    const ask = h('div', { class: 'ask', hidden: true });
     const tray = h('div', { class: 'tray', 'data-drop': `agent:${id}` });
     const feed = h('ul', { class: 'feed' });
     const input = h('input', { class: 'field', id: `msg-${id}`, autocomplete: 'off', 'aria-label': 'Message' });
@@ -54,15 +82,10 @@ export function createSide(ctx, root) {
         if (ok) input.value = '';
       });
     });
-    // The log and the message box sit behind the header's chevron, so every agent fits on screen.
+    // The log and the message box sit behind the chevron, so every agent fits on screen.
     const details = h('div', { class: 'win-details', hidden: true }, feed, form);
-    const el = h(
-      'section',
-      { class: 'win', 'data-drop': `agent:${id}`, 'data-win': id },
-      h('div', { class: 'win-head' }, disc, name, lines, state, more),
-      h('div', { class: 'win-body' }, task, doing, ask, tray, details),
-    );
-    const w = { el, name, disc, lines, state, more, task, doing, ask, tray, details, feed, input, unread, askId: null, open: false };
+    const el = h('section', { class: 'win', 'data-drop': `agent:${id}`, 'data-win': id }, h('div', { class: 'win-head' }, disc, name, lines, state, more), h('div', { class: 'win-body' }, task, doing, tray, details));
+    const w = { el, name, disc, lines, state, more, task, doing, tray, details, feed, input, unread, open: false };
     more.addEventListener('click', () => {
       w.open = !w.open;
       details.hidden = !w.open;
@@ -77,33 +100,21 @@ export function createSide(ctx, root) {
   function update() {
     const st = ctx.view;
     const now = ctx.viewNow;
-
-    const q = fixedWindow('queue');
-    setText(q.name, 'Up next');
-    const queued = Object.values(st.blocks).filter((b) => b.queued && !b.holder).length;
-    setText(q.count, queued || '');
-
-    const hu = fixedWindow('human');
-    setText(hu.name, st.agents[HUMAN].name);
-    setText(hu.count, st.agents[HUMAN].held.length || '');
-    setText(hu.disc, initials(st.agents[HUMAN].name));
-    hu.el.style.setProperty('--ac', 'var(--human)');
-    hu.el.style.setProperty('--aci', 'var(--slot-gray-ink)');
+    const human = st.agents[HUMAN];
+    setText(you.name, human.name);
+    setText(you.disc, initials(human.name));
+    toggle(you.el, 'has-queue', Object.values(st.blocks).some((b) => b.queued && !b.holder));
+    toggle(you.el, 'has-held', human.held.length > 0);
 
     const agents = Object.values(st.agents)
-      .filter((a) => a.id !== HUMAN && (!a.leftAt || a.held.length || now - a.leftAt < 10 * MIN))
-      .map((a) => {
-        let p = presence(st, a.id, now);
-        let since = presenceSince(st, a.id, now);
-        if (p === 'working' && now - a.lastSeen > QUIET_MS) {
-          p = 'quiet';
-          since = a.lastSeen;
-        }
-        return { a, p, since };
-      })
+      // Left a while ago, or silent for hours holding nothing (a crashed session never says goodbye): off the column.
+      .filter((a) => a.id !== HUMAN && (a.held.length || (!a.leftAt ? now - a.lastSeen < 6 * 60 * MIN : now - a.leftAt < 10 * MIN)))
+      .map((a) => ({ a, ...agentState(st, a, now) }))
       .sort((x, y) => RANK[x.p] - RANK[y.p] || x.a.joinedAt - y.a.joinedAt);
 
-    const keep = new Set(['queue', 'human']);
+    paintInbox(st, now, agents);
+    toggle(root, 'roster', agents.length >= ROSTER_AT);
+    const keep = new Set();
     for (const entry of agents) {
       keep.add(entry.a.id);
       paintAgent(st, now, agentWindow(entry.a.id), entry);
@@ -121,19 +132,63 @@ export function createSide(ctx, root) {
     if (!agents.length) setHtml(empty, 'No agents yet. <code>tools/blockmap/bm join</code>, or <code>bm hooks install</code> to have Claude Code sessions join on their own.');
   }
 
+  // One row per thing the person can act on, with the act beside it.
+  function paintInbox(st, now, agents) {
+    const rows = [];
+    for (const { a, p, since } of agents) {
+      const who = `<span class="disc" style="--ac:${colorOf(st, a.id)};--aci:${inkOf(st, a.id)}">${esc(initials(a.name))}</span><span class="ib-who">${esc(a.name)}</span>`;
+      const t = timer(since, { warn: 5 * MIN, over: 15 * MIN }, now);
+      if (p === 'question') {
+        const q = openQuestions(st, a.id)[0];
+        rows.push({ key: `q:${q.id}`, html: `<div class="ib-row">${who}<span class="ib-what">${esc(q.title)}</span>${t}</div><form class="ib-form" data-answer="${esc(q.id)}"><input class="field" id="answer-${esc(q.id)}" autocomplete="off" aria-label="Answer"${ctx.replayTs ? ' disabled' : ''}><button class="btn confirm" type="submit"${ctx.replayTs ? ' disabled' : ''}>Answer</button></form>` });
+      } else if (p === 'permission') {
+        rows.push({ key: `p:${a.id}`, html: `<div class="ib-row">${who}<span class="ib-what">${esc(a.doing || 'Waiting for permission')}</span>${t}<button class="btn" type="button" data-act="go" data-arg="${esc(a.id)}">Go</button></div>` });
+      } else if (p === 'review') {
+        rows.push({ key: `r:${a.id}`, html: `<div class="ib-row">${who}<span class="ib-what">${esc(a.task || 'Finished its turn')}</span>${t}<button class="btn" type="button" data-act="go" data-arg="${esc(a.id)}">Go</button></div>` });
+      }
+    }
+    const head = ctx.mergeRows?.find((r) => r.entry.status === 'ready');
+    if (head) {
+      const t = timer(head.entry.readyAt, {}, now);
+      const name = `<span class="ib-who">${esc(head.label)}</span>`;
+      if (head.level === 'ok') rows.push({ key: `m:${head.entry.worktree}`, html: `<div class="ib-row"><span class="disc plain">${icon('branch')}</span>${name}<span class="ib-what">Ready to merge into ${esc(ctx.worktrees?.base || 'the base')}</span>${t}<button class="btn confirm" type="button" data-act="merge" data-arg="${esc(head.entry.worktree)}">Merge</button></div>` });
+      else if (head.level === 'danger') rows.push({ key: `f:${head.entry.worktree}`, html: `<div class="ib-row"><span class="disc plain danger">${icon('branch')}</span>${name}<span class="ib-what">${esc(head.verdict)}</span>${t}<button class="btn" type="button" data-act="fix" data-arg="${esc(head.entry.worktree)}">Ask to fix</button></div>` });
+      else if (head.checks[0]?.action === 'rebase') rows.push({ key: `b:${head.entry.worktree}`, html: `<div class="ib-row"><span class="disc plain">${icon('branch')}</span>${name}<span class="ib-what">${esc(head.verdict)}</span>${t}<button class="btn" type="button" data-act="rebase" data-arg="${esc(head.entry.worktree)}">Rebase</button></div>` });
+    }
+    ctx.inboxCount = rows.length;
+    inbox.hidden = !rows.length;
+    if (!rows.length) return;
+    // Rows are kept by key, so an answer being typed survives the next render.
+    const html = `<div class="win-head"><span class="disc plain">${icon('inbox')}</span><div class="win-name">Needs you</div><span class="win-count">${rows.length}</span></div><div class="ib-list">${rows.map((r) => `<div class="ib" data-key="${esc(r.key)}">${r.html}</div>`).join('')}</div>`;
+    // While the person types in it, the same rows aren't redrawn (their timers tick on their own).
+    const typing = inbox.contains(document.activeElement) ? document.activeElement : null;
+    const keys = rows.map((r) => r.key).join('|');
+    if (typing && inbox.__keys === keys) return;
+    const drafts = {};
+    for (const f of inbox.querySelectorAll('input')) drafts[f.id] = f.value;
+    setHtml(inbox, html);
+    for (const f of inbox.querySelectorAll('input')) if (drafts[f.id]) f.value = drafts[f.id];
+    inbox.__keys = keys;
+    if (typing?.id) document.getElementById(typing.id)?.focus();
+  }
+
   function paintAgent(st, now, w, { a, p, since }) {
     w.el.style.setProperty('--ac', colorOf(st, a.id));
     w.el.style.setProperty('--aci', inkOf(st, a.id));
     toggle(w.el, 'gone', p === 'gone');
-    toggle(w.el, 'needs', p === 'waiting' || p === 'review');
+    toggle(w.el, 'needs', p === 'question' || p === 'permission' || p === 'review');
     setText(w.disc, initials(a.name));
     setText(w.name, a.name);
-    setText(w.lines, a.added || a.removed ? `+${a.added} −${a.removed}` : '');
-    w.name.title = [a.kind === 'claude-code' ? 'Claude Code' : a.kind, a.model, a.where, a.id].filter(Boolean).join('\n');
+    w.name.title = [a.kind, a.model, a.where, a.id].filter(Boolean).join('\n');
+    // One count of lines: the worktree's, against the base, when git knows it; else what the edits reported.
+    const wt = ctx.worktrees?.list.find((x) => x.agent === a.id);
+    const add = wt ? wt.add : a.added;
+    const del = wt ? wt.del : a.removed;
+    setText(w.lines, add || del ? `+${add} −${del}` : '');
     w.state.className = `state ${p}`;
     const t =
       p === 'working' ? timer(since, { watch: true }, now)
-      : p === 'waiting' || p === 'review' ? timer(since, { warn: 5 * MIN, over: 15 * MIN }, now)
+      : p === 'question' || p === 'permission' || p === 'review' ? timer(since, { warn: 5 * MIN, over: 15 * MIN }, now)
       : p === 'quiet' ? timer(since, { warn: 10 * MIN }, now)
       : p === 'stale' ? timer(since, { over: 2 * 60 * MIN }, now)
       : timer(since, {}, now);
@@ -144,30 +199,11 @@ export function createSide(ctx, root) {
     w.task.title = a.task;
     w.task.hidden = !a.task;
     const doing = a.doing || (a.lastRun && now - a.lastRun.ts < 10 * MIN ? a.lastRun.cmd : '');
-    setText(w.doing, doing.replace(/\S*\/(\S+)/g, '$1'));
+    const shown = doing.replace(/\S*\/(\S+)/g, '$1');
+    const same = !!a.task && shown.includes(a.task);
+    setText(w.doing, same ? '' : shown);
     w.doing.title = doing;
-    w.doing.hidden = !doing || p === 'gone';
-
-    const qItem = openQuestions(st, a.id)[0];
-    if (qItem) {
-      if (w.askId !== qItem.id) {
-        w.askId = qItem.id;
-        w.ask.textContent = '';
-        const field = h('input', { class: 'field', id: `answer-${a.id}`, autocomplete: 'off', 'aria-label': 'Answer' });
-        const form = h('form', {}, field, h('button', { class: 'btn confirm', type: 'submit' }, 'Answer'));
-        form.addEventListener('submit', (e) => {
-          e.preventDefault();
-          if (field.value.trim()) ctx.act.answer(qItem.id, field.value.trim());
-        });
-        w.ask.append(h('div', { class: 'q' }, h('span', {}, qItem.title), h('span', { class: 'qt' })), form);
-      }
-      setHtml(w.ask.querySelector('.qt'), timer(qItem.createdAt, { warn: 5 * MIN, over: 15 * MIN }, now));
-      for (const el of w.ask.querySelectorAll('input,button')) el.disabled = !!ctx.replayTs;
-      w.ask.hidden = false;
-    } else {
-      w.ask.hidden = true;
-      w.askId = null;
-    }
+    w.doing.hidden = !doing || same || p === 'gone';
 
     if (w.open) {
       const lines = feedLines(st, ctx.eventsOf(a.id), now, 5);
@@ -181,13 +217,18 @@ export function createSide(ctx, root) {
 
   return {
     update,
+    mergeHost,
     trayFor(key) {
-      return wins.get(key === HUMAN ? 'human' : key)?.tray;
+      if (key === 'queue') return you.queueTray;
+      if (key === HUMAN) return you.heldTray;
+      return wins.get(key)?.tray;
     },
-    focusAnswer(agentId) {
-      const w = wins.get(agentId);
-      w?.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      w?.ask.querySelector('input')?.focus();
+    focusAnswer() {
+      inbox.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      inbox.querySelector('input')?.focus();
+    },
+    windowOf(id) {
+      return wins.get(id)?.el;
     },
   };
 }
@@ -224,6 +265,8 @@ function feedLine(st, e) {
     case 'item.update':
       if (e.answer) return { ts: e.ts, k: 'ask', icon: 'question', text: e.answer };
       return e.status === 'done' ? { ts: e.ts, k: 'task', icon: 'done', text: st.items[e.item]?.title || e.item } : null;
+    case 'merge.ready':
+      return { ts: e.ts, k: 'release', icon: 'branch', text: 'Ready to merge' };
     case 'note':
       return { ts: e.ts, k: 'note', icon: 'note', text: e.text };
     case 'msg':

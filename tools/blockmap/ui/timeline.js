@@ -3,7 +3,7 @@
 
 import { HUMAN, blockMeta, clock } from '../core/model.js';
 import { h, icon, setHtml, setText, esc, storageGet, storageSet } from './dom.js';
-import { colorOf, inkOf } from './map.js';
+import { colorOf } from './map.js';
 
 const RANGES = [
   ['1h', 3600_000],
@@ -180,6 +180,13 @@ export function createTimeline(ctx, root) {
     svg.style.height = `${H}px`;
 
     const parts = [];
+    // A hold that is still going is hatched in its agent's color, the way its socket on the map is.
+    const defs = lanes.map((id, i) => {
+      const c = colorOf(st, id);
+      return `<pattern id="tl-live-${i}" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><rect width="7" height="7" style="fill:color-mix(in srgb, ${c} 34%, var(--surface))"/><rect width="3" height="7" style="fill:color-mix(in srgb, ${c} 58%, var(--surface))"/></pattern>`;
+    });
+    parts.push(`<defs>${defs.join('')}</defs>`);
+    const laneIndex = new Map(lanes.map((id, i) => [id, i]));
     lanes.forEach((id, i) => {
       const ly = laneY.get(id);
       const lh = 6 + rowsOf.get(id) * ROW;
@@ -200,19 +207,18 @@ export function createTimeline(ctx, root) {
       const x0 = Math.max(LABEL, x(hd.from));
       const w = Math.max(2, x(hd.to ?? t1) - x0);
       const name = blockMeta(st, hd.block)?.name || hd.block;
-      // A finished hold is a tint of its agent's color with ordinary ink; the current one is the color itself.
-      const fill = hd.to ? `color-mix(in srgb, ${colorOf(st, hd.agent)} 32%, var(--surface))` : colorOf(st, hd.agent);
-      const ink = hd.to ? 'var(--text)' : inkOf(st, hd.agent);
-      parts.push(`<g class="hold"><rect x="${x0}" y="${by}" width="${w}" height="${ROW - 2}" rx="2" style="fill:${fill}"><title>${esc(name)}: ${clock(hd.from)} to ${hd.to ? clock(hd.to) : 'now'}</title></rect>${w > 40 ? `<text x="${x0 + 4}" y="${by + ROW / 2 + 2}" style="fill:${ink}">${esc(fit(name, w))}</text>` : ''}</g>`);
+      // A finished hold is a flat tint of its agent's color; the current one is hatched. Both carry ordinary ink.
+      const fill = hd.to ? `color-mix(in srgb, ${colorOf(st, hd.agent)} 26%, var(--surface))` : `url(#tl-live-${laneIndex.get(hd.agent)})`;
+      parts.push(`<g class="hold${hd.to ? '' : ' live'}"><rect x="${x0}" y="${by}" width="${w}" height="${ROW - 2}" rx="2" style="fill:${fill}"><title>${esc(name)}: ${clock(hd.from)} to ${hd.to ? clock(hd.to) : 'now'}</title></rect>${w > 40 ? `<text x="${x0 + 4}" y="${by + ROW / 2 + 2}">${esc(fit(name, w))}</text>` : ''}</g>`);
     }
-    // Only what asks for attention gets a mark: a failing test (red) and a question for the human (gold), above the bars.
+    // Only what asks for attention gets a mark, above the bars: a cross for a failing test, a diamond for a question.
     for (const e of events) {
       if (e.ts < t0) continue;
       const who = typeof e.agent === 'string' ? e.agent : e.by;
       const ly = laneY.get(who);
       if (ly === undefined) continue;
       const ex = x(e.ts);
-      if (e.type === 'test' && !e.ok) parts.push(`<circle class="mk-fail" cx="${ex}" cy="${ly + 2}" r="2.4"><title>${esc(e.summary || 'Tests fail')}</title></circle>`);
+      if (e.type === 'test' && !e.ok) parts.push(`<path class="mk-fail" d="M${ex - 2.6} ${ly - 0.6} l5.2 5.2 m0 -5.2 l-5.2 5.2"><title>${esc(e.summary || 'Tests fail')}</title></path>`);
       else if (e.type === 'item.add' && e.item?.kind === 'question') parts.push(`<path class="mk-ask" d="M${ex} ${ly - 1} l3 3 -3 3 -3 -3Z"><title>${esc(e.item.title)}</title></path>`);
     }
     parts.push(`<line class="now-line" x1="${x(t1)}" x2="${x(t1)}" y1="${AXIS - 4}" y2="${H}"/>`);

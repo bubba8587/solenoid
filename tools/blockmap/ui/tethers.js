@@ -1,5 +1,5 @@
-// The lines from each held block's socket on the map to its holder's window. They stay faint and stop at the
-// window's edge, so they never cross a window's contents; hovering an agent's window or socket brings its out.
+// The line from a held block's socket on the map to its holder's window, drawn only for the agent you point at
+// (its window, a socket or a tile it holds), and stopping at the window's edge so it never crosses its contents.
 
 import { presence } from '../core/model.js';
 import { colorOf } from './map.js';
@@ -17,7 +17,7 @@ export function createTethers(ctx, svg, mapWrap, side) {
     const sideBox = side.getBoundingClientRect();
     const parts = [];
     for (const b of Object.values(st.blocks)) {
-      if (!b.holder) continue;
+      if (!b.holder || b.holder !== hot) continue;
       const socket = ctx.map.sockets.get(b.id);
       const tile = ctx.map.tiles.get(b.id);
       if (!socket || !tile || socket.hidden || !tile.closest('.tray')) continue;
@@ -31,7 +31,7 @@ export function createTethers(ctx, svg, mapWrap, side) {
       if (sy < mapBox.top + 4 || sy > mapBox.bottom - 4 || sx > mapBox.right) continue;
       if (ey < sideBox.top + 4 || ey > sideBox.bottom - 4) continue;
       const dx = Math.max(30, (ex - sx) * 0.5);
-      const cls = [presence(st, b.holder, now) === 'working' ? 'working' : '', hot === b.holder ? 'hot' : ''].join(' ').trim();
+      const cls = presence(st, b.holder, now) === 'working' ? 'working' : '';
       const color = colorOf(st, b.holder);
       parts.push(`<path class="${cls}" d="M${sx} ${sy} C${sx + dx} ${sy}, ${ex - dx} ${ey}, ${ex} ${ey}" stroke="${color}"/>`);
       parts.push(`<circle cx="${sx}" cy="${sy}" r="2.6" fill="${color}"/>`);
@@ -59,8 +59,9 @@ export function createTethers(ctx, svg, mapWrap, side) {
 
   const hover = (e) => {
     const win = e.target.closest?.('.win[data-win]');
-    const sock = e.target.closest?.('.socket[data-socket]');
-    const next = win ? win.dataset.win : sock ? ctx.view?.blocks[sock.dataset.socket]?.holder || null : null;
+    const sock = e.target.closest?.('.socket[data-socket], .tray .tile[data-block]');
+    const id = sock?.dataset.socket || sock?.dataset.block;
+    const next = win && !sock ? win.dataset.win : id ? ctx.view?.blocks[id]?.holder || null : null;
     if (next !== hot) {
       hot = next;
       schedule();

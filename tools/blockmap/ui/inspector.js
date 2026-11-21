@@ -23,7 +23,7 @@ export function createInspector(ctx, root, scrim) {
   body.append(itemsSec, addSec, actSec, staticSec);
   root.append(head, body);
 
-  const kindSel = h('select', { id: 'add-kind', 'aria-label': 'Kind' }, h('option', { value: 'bug' }, 'Bug'), h('option', { value: 'task' }, 'Task'));
+  const kindSel = h('select', { class: 'pick', id: 'add-kind', 'aria-label': 'Kind' }, h('option', { value: 'bug' }, 'Bug'), h('option', { value: 'task' }, 'Task'));
   const addField = h('input', { class: 'field', id: 'add-title', placeholder: 'Title', autocomplete: 'off', 'aria-label': 'New item' });
   const addForm = h('form', { class: 'add-item' }, kindSel, addField, h('button', { class: 'btn', type: 'submit' }, 'Add'));
   addForm.addEventListener('submit', (e) => {
@@ -65,9 +65,9 @@ export function createInspector(ctx, root, scrim) {
     staticSec.textContent = '';
     if (meta.docs?.length) staticSec.append(h('div', { class: 'in-sec' }, h('h3', {}, 'Docs'), h('div', { class: 'docs' }, ...meta.docs.map((d) => h('div', {}, d)))));
     if (meta.paths?.length) {
-      staticSec.append(h('div', { class: 'in-sec' }, h('h3', {}, h('span', {}, 'Paths'), h('span', { class: 'num' }, meta.files !== undefined ? `${meta.files} files` : '')), h('pre', { class: 'paths' }, meta.paths.join('\n'))));
+      staticSec.append(h('div', { class: 'in-sec' }, h('h3', {}, h('span', {}, 'Paths'), h('span', { class: 'num' }, meta.files !== undefined ? `${meta.files} files` : '')), h('pre', { class: 'paths', html: breakable(meta.paths) })));
     } else if (id === UNMAPPED && ctx.board.unmapped?.sample?.length) {
-      staticSec.append(h('div', { class: 'in-sec' }, h('h3', {}, 'Paths'), h('pre', { class: 'paths' }, ctx.board.unmapped.sample.join('\n'))));
+      staticSec.append(h('div', { class: 'in-sec' }, h('h3', {}, 'Paths'), h('pre', { class: 'paths', html: breakable(ctx.board.unmapped.sample) })));
     }
   }
 
@@ -87,8 +87,8 @@ export function createInspector(ctx, root, scrim) {
     head.textContent = '';
     const closeBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Close', html: icon('close') });
     closeBtn.addEventListener('click', close);
-    head.append(h('div', { class: 'in-district' }, d?.name || 'Unclaimed'), h('div', { class: 'in-top' }, h('h2', { class: 'in-name' }, meta.name), closeBtn));
-    if (meta.about) head.append(h('p', { class: 'in-about' }, meta.about));
+    // What the block is stays a tooltip on its name; the panel's text is what is going on in it.
+    head.append(h('div', { class: 'in-district' }, d?.name || 'Unclaimed'), h('div', { class: 'in-top' }, h('h2', { class: 'in-name', title: meta.about || '' }, meta.name), closeBtn));
 
     const stateLine = h('div', { class: 'in-state' });
     if (b.holder) {
@@ -96,18 +96,20 @@ export function createInspector(ctx, root, scrim) {
       const chip = h('span', { class: 'holder', style: { '--hc': colorOf(st, b.holder), '--hci': inkOf(st, b.holder) } });
       setHtml(chip, `<span class="dot">${esc(initials(a?.name))}</span>${esc(a?.name || b.holder)} ${timer(b.since, {}, now)}`);
       stateLine.append(chip);
-      if (b.intent) stateLine.append(h('span', { class: 'in-about' }, b.intent));
     } else if (b.queued) {
       stateLine.append(h('span', { class: 'holder', html: `${icon('queue')}Up next ${timer(b.queued.ts, {}, now)}` }));
-      if (b.queued.note) stateLine.append(h('span', { class: 'in-about' }, b.queued.note));
     }
     if (b.frozen) stateLine.append(h('span', { class: 'badge', title: b.frozen.note || '', html: `${icon('lock')} Frozen` }));
-    if (b.test) stateLine.append(h('span', { class: `badge ${b.test.ok ? 'ok' : 'fail'}`, title: b.test.summary || '', html: `${icon(b.test.ok ? 'check' : 'cross')} ${b.test.ok ? 'Pass' : 'Fail'}` }));
+    if (b.test) stateLine.append(h('span', { class: `badge ${b.test.ok ? 'ok' : 'danger'}`, title: b.test.summary || '', html: `${icon(b.test.ok ? 'check' : 'cross')} ${b.test.ok ? 'Tests pass' : esc(b.test.summary || 'Tests fail')}` }));
     if (stateLine.children.length) head.append(stateLine);
+    // The holder's intent, unless it only repeats an item listed below.
+    const why = b.holder ? b.intent : b.queued?.note;
+    const listed = items.some((it) => it.status !== 'done' && it.title.trim() === String(why || '').replace(/…$/, '').trim());
+    if (why && !listed) head.append(h('p', { class: 'in-intent' }, why));
 
     if (id !== UNMAPPED) {
       const actions = h('div', { class: 'in-actions' });
-      const sel = h('select', { id: 'give-to', 'aria-label': 'Give to' }, h('option', { value: '' }, 'Give to'));
+      const sel = h('select', { class: 'pick', id: 'give-to', 'aria-label': 'Give to' }, h('option', { value: '' }, 'Give to'));
       for (const a of Object.values(st.agents)) {
         if (a.leftAt || a.id === b.holder) continue;
         sel.append(h('option', { value: a.id }, a.id === HUMAN ? `${a.name} (you)` : `${a.name}, ${presence(st, a.id, now)}`));
@@ -177,7 +179,7 @@ export function createInspector(ctx, root, scrim) {
     if (touches.length) {
       actSec.append(h('h3', {}, 'Activity'));
       const list = h('ul', { class: 'acts' });
-      for (const t of touches) list.append(h('li', {}, h('time', {}, clock(t.ts)), h('i', { style: { '--fc': colorOf(st, t.agent) } }), h('span', { class: 't', title: t.file }, t.file)));
+      for (const t of touches) list.append(h('li', {}, h('time', {}, clock(t.ts)), h('i', { style: { '--fc': colorOf(st, t.agent) }, title: agentName(st, t.agent) }), h('span', { class: 't', title: t.file }, shortPath(t.file))));
       actSec.append(list);
     }
     if (hist.length) {
@@ -186,6 +188,16 @@ export function createInspector(ctx, root, scrim) {
       for (const x of hist) list.append(h('li', {}, h('time', {}, clock(x.from)), h('i', { style: { '--fc': colorOf(st, x.agent) } }), h('span', { class: 't', title: x.intent || '' }, `${agentName(st, x.agent)}, ${dur(x.to - x.from)}, ${x.outcome}`)));
       actSec.append(list);
     }
+  }
+
+  // Long paths wrap at their slashes and commas, never inside a name.
+  function breakable(lines) {
+    return lines.map((l) => esc(l).replace(/([/,])/g, '$1<wbr>')).join('\n');
+  }
+
+  function shortPath(file) {
+    const parts = String(file || '').split('/');
+    return parts.length > 2 ? `…/${parts.slice(-2).join('/')}` : file;
   }
 
   function button(label, fn) {

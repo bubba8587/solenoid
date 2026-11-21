@@ -91,7 +91,8 @@ export function enableDnd(ctx) {
     const el = document.elementFromPoint(x, y)?.closest('[data-drop]');
     ghost.hidden = false;
     if (!el) return null;
-    const box = el.closest('.win') || el;
+    // The person's window has two drop zones (hold it, or up next), each lit on its own.
+    const box = el.classList.contains('tray') && el.closest('.you') ? el : el.closest('.win') || el;
     return { kind: el.dataset.drop, el: box };
   }
 

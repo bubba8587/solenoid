@@ -40,39 +40,50 @@ export function worktreesByBlock(state, snap) {
   return out;
 }
 
-const RANK = { ok: 0, warn: 1, danger: 2 };
+// danger: the merge would fail or break things. warn: it needs a step first. info: worth knowing.
+const RANK = { ok: 0, info: 1, warn: 2, danger: 3 };
 
 // Each queued branch with the checks a merge would care about, worst first, and a one-word-ish verdict.
 // Overlaps count against branches ahead in the queue: those land first and will move the files under it.
 export function mergeChecks(state, snap, now) {
   const byName = new Map((snap?.list || []).map((wt) => [wt.name, wt]));
   const base = snap?.base || 'base';
+  const clashes = snap?.clashes || [];
+  const label = (name) => {
+    const wt = byName.get(name);
+    const agent = wt ? agentForWorktree(state, wt) : null;
+    return agent ? agentName(state, agent) : name;
+  };
   const ahead = [];
   return mergeQueue(state, now).map((m) => {
-    if (m.status === 'landed') return { entry: m, wt: byName.get(m.worktree) || null, checks: [], level: 'ok', verdict: 'Merged' };
+    if (m.status === 'landed') return { entry: m, wt: byName.get(m.worktree) || null, checks: [], level: 'ok', verdict: 'Merged', label: m.agent && state.agents[m.agent] ? agentName(state, m.agent) : label(m.worktree) };
     const wt = byName.get(m.worktree) || null;
     const checks = [];
     if (!wt) checks.push({ level: 'danger', text: 'Worktree gone' });
     else {
       if (wt.conflicts.length) checks.push({ level: 'danger', text: `Conflicts with ${base}`, files: wt.conflicts });
+      for (const prev of ahead) {
+        const clash = clashes.find((c) => (c.a === prev.name && c.b === wt.name) || (c.b === prev.name && c.a === wt.name));
+        if (clash) checks.push({ level: 'danger', text: `Conflicts with ${label(prev.name)}`, files: clash.files, with: prev.name });
+        else {
+          const shared = prev.files.filter((f) => wt.files.includes(f));
+          if (shared.length) checks.push({ level: 'info', text: `Shares files with ${label(prev.name)}`, files: shared });
+        }
+      }
       const agent = agentForWorktree(state, wt);
       const test = agent ? state.agents[agent]?.lastTest : null;
       if (test && !test.ok) checks.push({ level: 'danger', text: 'Tests fail', detail: test.summary });
-      if (wt.ahead === 0) checks.push({ level: 'warn', text: 'Nothing to merge' });
-      if (wt.dirty) checks.push({ level: 'warn', text: `${wt.dirty} uncommitted` });
+      if (!wt.conflicts.length && wt.behind) checks.push({ level: 'warn', text: `${wt.behind} behind ${base}`, action: 'rebase' });
       if (m.commit && wt.head && !wt.head.startsWith(m.commit) && !m.commit.startsWith(wt.head)) checks.push({ level: 'warn', text: 'Moved since ready' });
-      if (!wt.conflicts.length && wt.behind) checks.push({ level: 'warn', text: `${wt.behind} behind ${base}` });
-      const files = new Set(wt.files);
-      for (const prev of ahead) {
-        const shared = prev.files.filter((f) => files.has(f));
-        if (shared.length) checks.push({ level: 'warn', text: `Overlaps ${prev.name}`, files: shared });
-      }
-      if (!test) checks.push({ level: 'warn', text: 'No test run' });
+      if (wt.ahead === 0) checks.push({ level: 'info', text: 'Nothing to merge' });
+      if (wt.dirty) checks.push({ level: 'info', text: `${wt.dirty} uncommitted` });
+      if (!test) checks.push({ level: 'info', text: 'No test run' });
       ahead.push({ name: wt.name, files: wt.files });
     }
     checks.sort((a, b) => RANK[b.level] - RANK[a.level]);
-    const level = checks[0]?.level || 'ok';
-    return { entry: m, wt, checks, level, verdict: level === 'ok' ? 'Clean' : checks[0].text };
+    const top = checks[0];
+    const level = !top || top.level === 'info' ? 'ok' : top.level;
+    return { entry: m, wt, checks, level, verdict: level === 'ok' ? (top ? `Ready, ${top.text.toLowerCase()}` : 'Ready') : top.text, label: label(m.worktree) };
   });
 }
 

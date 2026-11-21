@@ -81,6 +81,9 @@ const P = {
   branch: '<circle cx="4.6" cy="3.6" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="4.6" cy="12.4" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11.4" cy="5.6" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.6 5.2v5.6M11.4 7.2c0 2.6-2.4 3-4.6 3.6" fill="none" stroke="currentColor" stroke-width="1.3"/>',
   copy: '<rect x="5.2" y="5.2" width="8" height="8.6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 10.6V3.8C3 3.2 3.4 2.8 4 2.8h6" fill="none" stroke="currentColor" stroke-width="1.4"/>',
   up: '<path d="m4 10 4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  inbox: '<path d="M2.6 9.4 4.4 3.4h7.2l1.8 6v3.4H2.6Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M2.7 9.4h3.1l.9 1.5h2.6l.9-1.5h3.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
+  grip: '<circle cx="6" cy="4" r="1.2"/><circle cx="10" cy="4" r="1.2"/><circle cx="6" cy="8" r="1.2"/><circle cx="10" cy="8" r="1.2"/><circle cx="6" cy="12" r="1.2"/><circle cx="10" cy="12" r="1.2"/>',
+  dots: '<circle cx="3.6" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="12.4" cy="8" r="1.4"/>',
   mail: '<rect x="2.4" y="3.8" width="11.2" height="8.4" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m2.8 4.6 5.2 4 5.2-4" fill="none" stroke="currentColor" stroke-width="1.4"/>',
 };
 
@@ -98,6 +101,18 @@ export function toast(text, kind = 'info') {
   host.append(t);
   setTimeout(() => t.classList.add('out'), kind === 'error' ? 5200 : 2600);
   setTimeout(() => t.remove(), kind === 'error' ? 5600 : 3000);
+}
+
+// Copies text and says so; where the clipboard is out of reach, the toast shows the text to copy by hand.
+export function copyText(text, done = 'Copied.') {
+  const ok = () => toast(done);
+  const fail = () => toast(text);
+  try {
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(ok, fail);
+    else fail();
+  } catch {
+    fail();
+  }
 }
 
 export function storageGet(key, fallback) {
@@ -146,10 +161,12 @@ function clockOf(ts) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export function timer(since, { watch = false, warn = 0, over = 0, cls = '' } = {}, now = Date.now()) {
+export function timer(at, { watch = false, warn = 0, over = 0, cls = '' } = {}, now = Date.now()) {
+  // Only ever a number reaches the markup, whatever the log held.
+  const since = Number(at) || now;
   const ms = now - since;
   const state = over && ms >= over ? ' over' : warn && ms >= warn ? ' late' : '';
-  return `<span class="timer${state}${cls ? ` ${cls}` : ''}" data-since="${since}"${watch ? ' data-watch' : ''}${warn ? ` data-warn="${warn}"` : ''}${over ? ` data-over="${over}"` : ''} title="since ${clockOf(since)}">${watch ? stopwatch(ms) : dur(ms)}</span>`;
+  return `<span class="timer${state}${cls ? ` ${cls}` : ''}" data-since="${since}"${watch ? ' data-watch' : ''}${warn ? ` data-warn="${Number(warn)}"` : ''}${over ? ` data-over="${Number(over)}"` : ''} title="since ${clockOf(since)}">${watch ? stopwatch(ms) : dur(ms)}</span>`;
 }
 
 // Ticks every timer on the page once a second, in place, without a render.

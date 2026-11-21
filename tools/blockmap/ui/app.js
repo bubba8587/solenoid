@@ -11,8 +11,8 @@ import { createInspector } from './inspector.js';
 import { createTethers } from './tethers.js';
 import { enableDnd } from './dnd.js';
 import { createWorktrees, worktreeIndex } from './worktrees.js';
-import { agentForWorktree } from '../core/merges.js';
-import { h, icon, setHtml, setText, toast, storageGet, storageSet, esc, timer, startTimers } from './dom.js';
+import { agentForWorktree, mergeChecks, mergeCommand } from '../core/merges.js';
+import { h, icon, setHtml, setText, toast, storageGet, storageSet, esc, timer, startTimers, copyText } from './dom.js';
 import { PALETTE_NAMES, applyPalette } from './palette.js';
 
 const $ = (id) => document.getElementById(id);
@@ -43,11 +43,11 @@ const side = createSide(ctx, $('side'));
 const timeline = createTimeline(ctx, $('timeline'));
 const inspector = createInspector(ctx, $('inspector'), $('scrim'));
 const tethers = createTethers(ctx, $('tethers'), $('map-wrap'), $('side'));
-const mergeHost = h('div', { class: 'merge-host', hidden: true });
-$('side').insertBefore(mergeHost, $('side').children[1] || null);
-const trees = createWorktrees(ctx, $('wt-bar'), mergeHost);
+const trees = createWorktrees(ctx, $('wt-bar'), side.mergeHost);
 ctx.worktrees = null;
 ctx.focusWt = null;
+ctx.mergeRows = [];
+ctx.activeOnly = storageGet('blockmap.activeOnly', matchMedia('(max-width: 860px)').matches);
 
 // Focus one worktree: the map lights the blocks it changed and its agent's window comes into view.
 ctx.focus = (name) => {
@@ -56,6 +56,18 @@ ctx.focus = (name) => {
   const wt = ctx.worktrees?.list.find((w) => w.name === ctx.focusWt);
   if (wt?.agent) document.querySelector(`.win[data-win="${CSS.escape(wt.agent)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 };
+
+// Go to an agent: its worktree in focus (path, cd, editor link) and its window flashed into view.
+ctx.focusAgent = (id) => {
+  const wt = ctx.worktrees?.list.find((w) => w.agent === id && !w.main);
+  if (wt && ctx.focusWt !== wt.name) ctx.focus(wt.name);
+  const win = side.windowOf(id);
+  if (!win) return;
+  win.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  win.classList.add('flash');
+  setTimeout(() => win.classList.remove('flash'), 900);
+};
+
 enableDnd(ctx);
 
 // ------------------------------------------------------------------------------------------- state
@@ -82,11 +94,24 @@ function setBoard(board, events) {
   render();
 }
 
+// A replay moving forward applies only the events since its last frame; going back folds again from the start.
+let replayFold = null;
+function replayState(ts) {
+  const evs = ctx.events;
+  let f = replayFold;
+  if (!f || f.board !== ctx.board || f.n !== evs.length || ts < f.ts) f = { board: ctx.board, n: evs.length, i: 0, ts: -Infinity, state: reduce(ctx.board, []) };
+  while (f.i < evs.length && evs[f.i].ts <= ts) apply(f.state, evs[f.i++]);
+  f.ts = ts;
+  replayFold = f;
+  return f.state;
+}
+
 function computeView() {
   if (ctx.replayTs) {
-    ctx.view = reduce(ctx.board, ctx.events, ctx.replayTs);
+    ctx.view = replayState(ctx.replayTs);
     ctx.viewNow = ctx.replayTs;
   } else {
+    replayFold = null;
     ctx.view = ctx.live;
     ctx.viewNow = Date.now();
   }
@@ -164,16 +189,52 @@ ctx.act = {
   updateItem: (id, patch) => commit([{ type: 'item.update', item: id, ...patch }]),
   answer: (id, text) => commit([{ type: 'item.update', item: id, answer: text, status: 'done' }], 'Answered. It lands in the agent’s inbox.'),
   message: (agent, text) => commit([{ type: 'msg', to: agent, text }], `Sent to ${agentName(ctx.live, agent)}.`),
-  mergeReady: (wt) => commit([{ type: 'merge.ready', worktree: wt.name, branch: wt.branch, commit: wt.head, ...(wt.agent ? { agent: wt.agent } : {}) }], `${wt.name} is in the merge queue.`),
-  mergeUnready: (name) => commit([{ type: 'merge.unready', worktree: name }], `${name} is out of the merge queue.`),
-  mergeUp(name) {
-    const ready = Object.values(ctx.live.merges).filter((m) => m.status === 'ready').sort((a, b) => a.pos - b.pos);
-    const i = ready.findIndex((m) => m.worktree === name);
-    if (i <= 0) return Promise.resolve(false);
-    const before = ready[i - 2]?.pos ?? ready[i - 1].pos - 1;
-    return commit([{ type: 'merge.order', worktree: name, pos: (before + ready[i - 1].pos) / 2 }]);
+  mergeReady(wt) {
+    if (!wt.ahead) {
+      toast(wt.dirty ? 'Nothing committed yet. Commit, then queue it.' : `Nothing to merge: no commits ahead of ${ctx.worktrees?.base || 'the base'}.`);
+      return Promise.resolve(false);
+    }
+    return commit([{ type: 'merge.ready', worktree: wt.name, branch: wt.branch, commit: wt.head, ahead: wt.ahead, ...(wt.agent ? { agent: wt.agent } : {}) }], `${labelOfTree(wt.name)} is in the merge queue.`);
+  },
+  mergeUnready: (name) => commit([{ type: 'merge.unready', worktree: name }], `${labelOfTree(name)} is out of the merge queue.`),
+  // Move a queued branch to a place in the queue (0 is the head): its position goes halfway between its new neighbors.
+  mergeMove(name, to) {
+    const ready = Object.values(ctx.live.merges).filter((m) => m.status === 'ready' && m.worktree !== name).sort((a, b) => a.pos - b.pos);
+    if (!ctx.live.merges[name] || to < 0 || to > ready.length) return Promise.resolve(false);
+    const before = ready[to - 1]?.pos;
+    const after = ready[to]?.pos;
+    const pos = before === undefined ? (after ?? 0) - 1 : after === undefined ? before + 1 : (before + after) / 2;
+    return commit([{ type: 'merge.order', worktree: name, pos }]);
+  },
+  copyMerge(name) {
+    const entry = ctx.live.merges[name];
+    if (entry) copyText(mergeCommand(entry, ctx.worktrees?.base), 'Copied the merge command.');
+  },
+  askFix(name) {
+    const row = ctx.mergeRows.find((r) => r.entry.worktree === name);
+    const bad = row?.checks.filter((c) => c.level === 'danger') || [];
+    const text = `Your branch can't merge yet: ${bad.map((c) => `${c.text}${c.files ? ` (${c.files.slice(0, 6).join(', ')})` : ''}${c.detail ? ` (${c.detail})` : ''}`).join('; ') || 'it has problems'}. Fix it, commit, and \`bm ready\` again.`;
+    return askTree(name, text, 'Asked for a fix.');
+  },
+  askRebase(name) {
+    const base = ctx.worktrees?.base || 'the base';
+    return askTree(name, `Your branch is behind ${base}. Rebase onto ${base} (\`git rebase ${base}\`), run the tests, then \`bm ready\` again.`, 'Asked for a rebase.');
   },
 };
+
+function labelOfTree(name) {
+  const wt = ctx.worktrees?.list.find((w) => w.name === name);
+  return wt?.agent ? agentName(ctx.live, wt.agent) : name;
+}
+
+// A note for the agent in a worktree; when nobody there talks to the board, the command to run yourself.
+function askTree(name, text, done) {
+  const wt = ctx.worktrees?.list.find((w) => w.name === name);
+  const agent = wt?.agent && !wt.agent.startsWith('wt-') ? wt.agent : null;
+  if (agent) return commit([{ type: 'msg', to: agent, text }], `${done} ${agentName(ctx.live, agent)} gets it on its next step.`);
+  copyText(wt ? `cd "${wt.path}"` : name, `No agent on the board works in ${name}. Copied its cd command.`);
+  return Promise.resolve(false);
+}
 
 // ------------------------------------------------------------------------------------------ render
 
@@ -196,13 +257,16 @@ function doRender() {
   ctx.alertList = alerts(ctx.view, ctx.viewNow);
   if (ctx.worktrees) for (const wt of ctx.worktrees.list) wt.agent = agentForWorktree(ctx.view, wt);
   ctx.wtIndex = worktreeIndex(ctx.view, ctx.worktrees);
+  ctx.mergeRows = ctx.worktrees ? mergeChecks(ctx.view, ctx.worktrees, ctx.viewNow) : [];
   document.body.dataset.lens = ctx.lens;
   document.body.classList.toggle('inspecting', !!inspector.id);
+  document.body.classList.toggle('replaying', !!ctx.replayTs);
   side.update();
   trees.update();
-  ctx.map.fit();
   const moved = placeTiles();
   ctx.map.paint();
+  // After the paint, which decides which slots the Active view hides.
+  ctx.map.fit();
   paintTop();
   paintAlerts();
   paintAttention();
@@ -248,7 +312,8 @@ function placeTiles() {
 
 // FLIP: each moved tile starts where it was and glides to where it is now.
 function fly(tiles, before) {
-  if (!tiles.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // A replay moves many tiles a frame; they jump, so the motion means a live change.
+  if (!tiles.length || ctx.replayTs || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   for (const tile of tiles) {
     const a = before.get(tile.dataset.block);
     const b = tile.getBoundingClientRect();
@@ -280,42 +345,42 @@ function paintTop() {
   const working = agents.filter((a) => presence(st, a.id, now) === 'working').length;
   const held = Object.values(st.blocks).filter((b) => b.holder).length;
   let bugs = 0;
-  let need = agents.filter((a) => needsHuman(st, a.id, now) && !st.items[a.asked[0]]).length;
-  for (const it of Object.values(st.items)) {
-    if (it.status === 'done' || it.status === 'wontfix') continue;
-    if (it.kind === 'bug') bugs++;
-    if (it.kind === 'decision' || it.kind === 'question') need++;
-  }
-  // Needs-you leads; it and bugs are buttons that filter the map to the blocks they count.
-  const pressed = (f) => `aria-pressed="${ctx.filter === f}"`;
+  for (const it of Object.values(st.items)) if (it.kind === 'bug' && it.status !== 'done' && it.status !== 'wontfix') bugs++;
+  // Needs-you is the inbox's count, and takes you there; bugs filters the map to the blocks that have them.
+  const need = ctx.inboxCount || 0;
+  const stat = (n, word, extra = '') => `<b>${n}</b>${word}${extra}`;
   setHtml(
     $('stats'),
     [
-      `<button type="button" class="stat you" data-filter="you" ${pressed('you')}><b>${need}</b>need you</button>`,
-      `<span class="stat"><b>${working}</b>working</span>`,
-      `<span class="stat"><b>${held}</b>held</span>`,
-      `<button type="button" class="stat bug" data-filter="bugs" ${pressed('bugs')}><b>${bugs}</b>bugs</button>`,
+      `<button type="button" class="stat${need ? '' : ' zero'}" data-go="inbox"${need ? '' : ' disabled'}>${need ? '<i class="dot-warn"></i>' : ''}${stat(need, 'need you')}</button>`,
+      `<span class="stat${working ? '' : ' zero'}">${stat(working, 'working')}</span>`,
+      `<span class="stat${held ? '' : ' zero'}">${stat(held, 'held')}</span>`,
+      `<button type="button" class="stat${bugs ? '' : ' zero'}" data-filter="bugs" aria-pressed="${ctx.filter === 'bugs'}">${stat(bugs, bugs === 1 ? 'bug' : 'bugs')}</button>`,
     ].join(''),
   );
   const conn = $('conn');
   const mode = ctx.replayTs ? 'replay' : ctx.connState || ctx.mode;
   conn.className = `conn ${mode}`;
   conn.hidden = mode === 'live';
-  setText(conn.lastElementChild, { live: 'Live', demo: 'Demo', replay: 'Replay', offline: 'Reconnecting', connecting: 'Connecting' }[mode] || mode);
+  setText(conn.lastElementChild, mode === 'replay' ? `Replay ${clock(ctx.replayTs)}` : { demo: 'Demo', offline: 'Reconnecting', connecting: 'Connecting' }[mode] || mode);
 }
 
+// One strip: each alert a chip that opens what it's about. Questions live in the inbox, so they aren't repeated here.
 function paintAlerts() {
-  const al = ctx.alertList;
+  const al = ctx.alertList.filter((a) => a.kind !== 'question');
   const now = ctx.viewNow;
-  const shown = ctx.alertsOpen ? al : al.slice(0, 1);
+  const strip = $('alerts');
+  const room = matchMedia('(max-width: 860px)').matches ? 2 : 3;
+  const shown = ctx.alertsOpen ? al : al.slice(0, room);
   const away = ctx.away && !ctx.replayTs ? awayLine(ctx.away.since) : '';
-  const rows = shown.map((a, i) => {
-    const kind = a.kind === 'question' || a.kind === 'stale' ? 'warn' : 'high';
-    const more = i === 0 && al.length > 1 ? `<button class="more" type="button" data-alert-more>${ctx.alertsOpen ? 'Fewer' : `+${al.length - 1}`}</button>` : '';
-    return `<div class="alert ${kind}" role="button" tabindex="0" data-alert-block="${esc(a.block || '')}" data-alert-agent="${esc(a.agent || '')}" data-alert-kind="${a.kind}"><span class="sev"></span><span class="txt" title="${esc(a.text)}">${esc(a.text)}</span>${timer(a.ts, {}, now)}${more}</div>`;
+  const rows = shown.map((a) => {
+    const kind = a.severity === 'high' ? 'high' : 'warn';
+    return `<div class="alert ${kind}" role="button" tabindex="0" data-alert-block="${esc(a.block || '')}" data-alert-agent="${esc(a.agent || '')}" data-alert-kind="${esc(a.kind)}"><i class="${kind === 'high' ? 'dot-danger' : 'dot-warn'}"></i><span class="txt" title="${esc(a.text)}">${esc(a.text)}</span>${timer(a.ts, {}, now)}</div>`;
   });
-  if (away) rows.unshift(`<div class="alert away"><span class="sev"></span><span class="txt" title="${esc(away)}">${esc(away)}</span><button class="btn" type="button" data-away-replay>Replay</button><button class="icon-btn" type="button" data-away-close aria-label="Dismiss">${icon('close')}</button></div>`);
-  setHtml($('alerts'), rows.join(''));
+  if (al.length > room) rows.push(`<button class="more" type="button" data-alert-more>${ctx.alertsOpen ? 'Fewer' : `+${al.length - room}`}</button>`);
+  if (away) rows.unshift(`<div class="alert away"><i class="dot-muted"></i><span class="txt" title="${esc(away)}">${esc(away)}</span><button class="btn" type="button" data-away-replay>Replay</button><button class="icon-btn" type="button" data-away-close aria-label="Dismiss">${icon('close')}</button></div>`);
+  strip.classList.toggle('open', !!ctx.alertsOpen);
+  setHtml(strip, rows.join(''));
 }
 
 // What happened while the page was in the background, in one sentence.
@@ -349,6 +414,7 @@ ctx.showAway = (since) => {
 };
 
 $('stats').addEventListener('click', (e) => {
+  if (e.target.closest('[data-go="inbox"]')) return side.focusAnswer();
   const b = e.target.closest('[data-filter]');
   if (!b) return;
   ctx.filter = ctx.filter === b.dataset.filter ? null : b.dataset.filter;
@@ -372,9 +438,15 @@ $('alerts').addEventListener('click', (e) => {
   }
   const row = e.target.closest('.alert');
   if (!row) return undefined;
-  if (row.dataset.alertKind === 'question' && row.dataset.alertAgent) return side.focusAnswer(row.dataset.alertAgent);
+  if (row.dataset.alertKind === 'stale' && row.dataset.alertAgent) ctx.focusAgent(row.dataset.alertAgent);
   if (row.dataset.alertBlock) ctx.select(row.dataset.alertBlock);
   return undefined;
+});
+$('alerts').addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.alert[role="button"]')) {
+    e.preventDefault();
+    e.target.click();
+  }
 });
 
 // ---------------------------------------------------------------------------------------- attention
@@ -386,7 +458,8 @@ function paintAttention() {
   if (!ctx.live || !ctx.board) return;
   const now = Date.now();
   const waiting = Object.values(ctx.live.agents).filter((a) => a.id !== HUMAN && !a.leftAt && needsHuman(ctx.live, a.id, now));
-  document.title = `${waiting.length ? `(${waiting.length}) ` : ''}${ctx.board.name} Blockmap`;
+  const count = ctx.replayTs ? waiting.length : ctx.inboxCount || 0;
+  document.title = `${count ? `(${count}) ` : ''}${ctx.board.name} Blockmap`;
   const conflicts = alerts(ctx.live, now).filter((a) => a.kind === 'trespass' || a.kind === 'frozen');
   if (seen.primed && notifyOn() && document.hidden) {
     for (const a of waiting) if (!seen.needs.has(a.id)) notify(`${a.name} needs you`, a.doing || openTitle(a));
@@ -432,8 +505,36 @@ bell.addEventListener('click', async () => {
   }
   paintBell();
 });
-document.querySelector('.theme-tools').prepend(bell);
+$('theme-tools').prepend(bell);
 paintBell();
+
+// On a phone the palette, theme and bell fold into one menu button.
+const menuBtn = $('menu-btn');
+menuBtn.innerHTML = icon('dots');
+menuBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = !$('theme-tools').classList.contains('open');
+  $('theme-tools').classList.toggle('open', open);
+  menuBtn.setAttribute('aria-expanded', String(open));
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#theme-tools') && $('theme-tools').classList.contains('open')) {
+    $('theme-tools').classList.remove('open');
+    menuBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+
+// Active only: the map keeps the blocks with something going on (held, queued, edited lately, failing, in a branch).
+const activeBtn = $('active-only');
+const paintActive = () => activeBtn.setAttribute('aria-pressed', String(!!ctx.activeOnly));
+activeBtn.addEventListener('click', () => {
+  ctx.activeOnly = !ctx.activeOnly;
+  storageSet('blockmap.activeOnly', ctx.activeOnly);
+  paintActive();
+  ctx.map.refit();
+  render();
+});
+paintActive();
 
 // Coming back after a while: a one-line digest of what changed, with a replay from when you left.
 const AWAY_MS = 3 * 60_000;
