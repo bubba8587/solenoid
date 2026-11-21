@@ -1,67 +1,165 @@
-# Bleeding edge, 2026-11-08
+# Bleeding edge, 2026-11-21
 
-Every dependency at its newest release and the newest platform features tried out, rebased onto `develop` @ `ef6f3104a` by `.github/workflows/bleeding-edge.yml`. The branch keeps its own commits across runs: dependency bumps, fixes and experiments made here ride along on every rebase. The weekly reading of the release notes (what breaks, what's new, what's worth using) is in [ANALYSIS.md](ANALYSIS.md).
+Every dependency at its newest release and the newest platform features tried out, rebased onto `develop` @ `75107d281` by `.github/workflows/bleeding-edge.yml`. The branch keeps its own commits across runs: dependency bumps, fixes and experiments made here ride along on every rebase. The weekly reading of the release notes (what breaks, what's new, what's worth using) is in [ANALYSIS.md](ANALYSIS.md).
 
-**Every check passes.** Today 1 direct dependencies moved (0 across a major), 34 transitive. rustc 1.99.1 (58cf8f9c3 2026-10-13), Node v26.13.0.
+**11 of 17 checks fail.** Today 6 direct dependencies moved (0 across a major), 48 transitive. rustc 1.100.0 (0ef1bc386 2026-11-09), Node v26.13.1.
 
 ## This branch on its base
 
-Rebased from `d493e6290` onto `develop` @ `ef6f3104a`: 23 commits carried, one bump added.
+Rebased from `75107d281` onto `develop` @ `75107d281`: 42 commits carried, one bump added.
 
-- `09cce9c14` Bleeding edge 2026-10-30: every dependency at its newest, on rust-port
-- `06f5cfec0` Bleeding edge: the experiments ledger
-- `d57bcc702` Bleeding edge: its leaves and specs, on this branch only, and ready-to-port verdicts
-- `1c649408f` Bleeding edge: uuids for its leaves, and the renumbering in its spec
-- `6934000b8` Bleeding edge: four platform features ported to rust-port
-- `8982f18e7` Bleeding edge: focusgroup ported too
-- `c863180af` Bleeding edge: a ready finding ports as it stands
-- `67adbcd44` Bleeding edge: the wasm-bindgen 0.2.130 port is on rust-port
-- `5bcc895a9` Bleeding edge: a finding is one commit, ported with port.mjs
-- `028d91cda` Bleeding edge 2026-10-31: dependencies to their newest
-- `0ecec56f5` Bleeding edge: the report lists the toolchain that moved since the last run, with its release notes
-- `06cfd7884` Bleeding edge: build with the newest stable Rust, not the work branches' pin
-- `86cfd9c4e` Bleeding edge: the toolchain and dependency features in use, from their release notes
-- `723aedddb` B26 edgeReadsReleaseNotes: every bump on bleeding-edge is read through its release notes
-- `92f242b75` Bleeding edge: the release notes read for the 23 dependencies ahead of rust-port
-- `7c9a83847` Bleeding edge report 2026-11-01: 0 failing checks, on develop
-- `fdddc45f5` Bleeding edge analysis 2026-11-01
-- `68630470b` Bleeding edge 2026-11-02: dependencies to their newest
-- `9f7b5cdc3` Bleeding edge 2026-11-03: dependencies to their newest
-- `b6a04bd1b` Bleeding edge 2026-11-04: dependencies to their newest
-- `7b130c915` Bleeding edge 2026-11-05: dependencies to their newest
-- `c078fdcbe` Bleeding edge 2026-11-06: dependencies to their newest
-- `52f56fda0` Bleeding edge 2026-11-07: dependencies to their newest
+- `e50667f83` Bleeding edge 2026-10-30: every dependency at its newest, on rust-port
+- `86bb5475c` Bleeding edge: the experiments ledger
+- `44262971a` Bleeding edge: its leaves and specs, on this branch only, and ready-to-port verdicts
+- `da3ce3dfc` Bleeding edge: uuids for its leaves, and the renumbering in its spec
+- `ae19af670` Bleeding edge: four platform features ported to rust-port
+- `058d1fa3c` Bleeding edge: focusgroup ported too
+- `dbc33f04a` Bleeding edge: a ready finding ports as it stands
+- `c466aecce` Bleeding edge: the wasm-bindgen 0.2.130 port is on rust-port
+- `d749452f2` Bleeding edge: a finding is one commit, ported with port.mjs
+- `35f67bfd1` Bleeding edge 2026-10-31: dependencies to their newest
+- `1dde5f37e` Bleeding edge: the report lists the toolchain that moved since the last run, with its release notes
+- `1e1363898` Bleeding edge: the toolchain and dependency features in use, from their release notes
+- `3ae40ebe4` B26 edgeReadsReleaseNotes: every bump on bleeding-edge is read through its release notes
+- `82bbf2f0d` Bleeding edge: the release notes read for the 23 dependencies ahead of rust-port
+- `566112a0e` Bleeding edge report 2026-11-01: 0 failing checks, on develop
+- `14ce3b103` Bleeding edge analysis 2026-11-01
+- `d58ba8f55` Bleeding edge 2026-11-02: dependencies to their newest
+- `2d15cccca` Bleeding edge 2026-11-03: dependencies to their newest
+- `79a64b9ec` Bleeding edge 2026-11-04: dependencies to their newest
+- `332604433` Bleeding edge 2026-11-05: dependencies to their newest
+- `35f79b284` Bleeding edge 2026-11-06: dependencies to their newest
+- `ef0776922` Bleeding edge 2026-11-07: dependencies to their newest
+- `593f76668` Bleeding edge 2026-11-08: dependencies to their newest
+- `83df53173` Bleeding edge report 2026-11-08: 0 failing checks, on develop
+- `1135fb3d9` Edge: React Flow 13.0.0-next.3, its split stores
+- `81cd0c722` Bleeding edge 2026-11-09: dependencies to their newest
+- `42b476ceb` Bleeding edge 2026-11-10: dependencies to their newest
+- `93fa02c2a` Bleeding edge 2026-11-11: dependencies to their newest
+- `70e1b201d` Bleeding edge 2026-11-12: dependencies to their newest
+- `bb22a8fad` Bleeding edge: Rust 1.100 read against the crates, with its sweep script and an allocation probe
+- `75a4ae4ab` Bleeding edge: the Rust 1.100 report names the checks that ran
+- `53ed1c3e6` Bleeding edge: stable Rust, and no crate cooldown here
+- `9907f85e1` Bleeding edge: the Rust 1.100 findings after develop's pin moved
+- `84d60fc12` Bleeding edge: the Rust 1.100 findings are ported to develop
+- `1f29b4418` Bleeding edge 2026-11-13: dependencies to their newest
+- `d548f4614` Bleeding edge 2026-11-14: dependencies to their newest
+- `4bc67a0cf` Bleeding edge 2026-11-15: dependencies to their newest
+- `f1b8334d9` Bleeding edge 2026-11-16: dependencies to their newest
+- `7a23b44a5` Bleeding edge 2026-11-17: dependencies to their newest
+- `d50c5cdb0` Bleeding edge 2026-11-18: dependencies to their newest
+- `f3fdc1042` Bleeding edge 2026-11-19: dependencies to their newest
+- `cf2ea8a46` Bleeding edge 2026-11-20: dependencies to their newest
 
-<details><summary>26 npm direct dependencies ahead of develop</summary>
+**Findings: 0 of 1 port onto `develop` alone** (cherry-picked with `port.mjs`, generated files rebuilt, typecheck and unit tests run there). Whether a finding is ready also takes the engine check in its spec row.
+
+- ❌ `1135fb3d9` Edge: React Flow 13.0.0-next.3, its split stores: the unit tests failed:
+
+<details><summary>Why `1135fb3d9` doesn't port</summary>
+
+```
+the unit tests failed:
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed dimensional-flow
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"Group_3","type":"GroupNode","name":"Group_3","x":1346,"y":274,"init":{"label":"C · Matrix reads as a frame","members":["TableInput_1","TableInfo_3","Display_5","Display_6","GetColumn_1","Display_7"],"color":"purple","collapsed":false,"width":904,"height":697,"lockedPosition":false}},"want":"{\"id\":\"Group_3\",\"type\":\"GroupNode\",\"name\":\"Group_3\",\"x\":1346,\"y\":274,\"init\":{\"label\":\"C · Matrix reads as a frame\",\"members\":[\"Note_4\",\"TableInput_1\",\"TableInfo_3\",\"Display_5\",\"Display_6\",\"GetColumn_1\",\"Display_7\"],\"color\":\"purple\",\"collapsed\":false,\"width\":904,\"height\":697,\"lockedPosition\":false}}"}]}
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed dimensional-flow
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"Group_4","type":"GroupNode","name":"Group_4","x":481,"y":274,"init":{"label":"D · Transpose to a column","members":["Note_5","ListInput_2","TableTranspose_1"],"color":"teal","collapsed":false,"width":845,"height":515,"lockedPosition":false}},"want":"{\"id\":\"Group_4\",\"type\":\"GroupNode\",\"name\":\"Group_4\",\"x\":481,\"y\":274,\"init\":{\"label\":\"D · Transpose to a column\",\"members\":[\"Note_5\",\"ListInput_2\",\"TableTranspose_1\",\"Display_8\"],\"color\":\"teal\",\"collapsed\":false,\"width\":845,\"height\":515,\"lockedPosition\":false}}"}]}
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed dimensional-flow
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"Group_5","type":"GroupNode","name":"Group_5","x":-373,"y":1541,"init":{"label":"E · The type wall","members":["Note_6","ValueInput_2","Cast_1","Display_9","ValueInput_3","Cast_2","Display_10","ValueInput_4","ValueInput_5","Arithmetic_1","Display_11"],"color":"lime","collapsed":false,"width":1365,"height":923,"lockedPosition":false}},"want":"{\"id\":\"Group_5\",\"type\":\"GroupNode\",\"name\":\"Group_5\",\"x\":-373,\"y\":1541,\"init\":{\"label\":\"E · The type wall\",\"members\":[\"Note_6\",\"ValueInput_2\",\"Cast_1\",\"Display_9\",\"ValueInput_3\",\"Cast_2\",\"Display_10\",\"ValueInput_4\",\"ValueInput_5\",\"Comparison_1\",\"Arithmetic_1\",\"Display_11\"],\"color\":\"lime\",\"collapsed\":false,\"width\":1365,\"height\":923,\"lockedPosition\":false}}"}]}
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed script-tour
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"Group_4","type":"GroupNode","name":"Group_4","x":-130,"y":181,"init":{"label":"Friday the 13ths","members":["Script_6","Display_5"],"color":"teal","collapsed":false,"width":860,"height":349,"lockedPosition":false}},"want":"{\"id\":\"Group_4\",\"type\":\"GroupNode\",\"name\":\"Group_4\",\"x\":-130,\"y\":181,\"init\":{\"label\":\"Friday the 13ths\",\"members\":[\"ValueInput_4\",\"Script_6\",\"Display_5\"],\"color\":\"teal\",\"collapsed\":false,\"width\":860,\"height\":349,\"lockedPosition\":false}}"}]}
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed service-territory
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"ComputedColumn_1_c","type":"ComputedColumnNode","name":"ComputedColumn_1_c","x":392,"y":263,"init":{"label":"Expected incidents","expr":"ROUND(annual * @[Rel Freq] / SUM([Rel Freq]), 2)","addAs":"auto","sideVars":[],"width":235,"height":290},"literals":{},"stringLiterals":{"name":"Incidents per Yr"}},"want":"{\"id\":\"ComputedColumn_1_c\",\"type\":\"ComputedColumnNode\",\"name\":\"ComputedColumn_1_c\",\"x\":392,\"y\":263,\"init\":{\"label\":\"Expected incidents\",\"expr\":\"ROUND(annual * @[Rel Freq] / SUM([Rel Freq]), 2)\",\"addAs\":\"auto\",\"sideVars\":[\"annual\"],\"width\":235,\"height\":290},\"literals\":{},\"stringLiterals\":{\"name\":\"Incidents per Yr\"}}"}]}
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed chart-showcase
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"SliderInput_1","type":"SliderInputNode","name":"SliderInput_1","x":-5512,"y":-2305,"init":{"label":"Reading","value":1,"width":200,"height":258},"literals":{"max":1,"min":0,"step":0.01}},"want":"{\"id\":\"SliderInput_1\",\"type\":\"SliderInputNode\",\"name\":\"SliderInput_1\",\"x\":-5512,\"y\":-2305,\"init\":{\"label\":\"Reading\",\"value\":6,\"width\":200,\"height\":258},\"literals\":{\"max\":1,\"min\":0,\"step\":0.01}}"}]}
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed famous-math
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"FormatController_15","type":"FormatControllerNode","name":"FormatController_15","x":3426,"y":2366,"init":{"label":"Format","hostNodeId":"","socketKey":"","side":"output","format":"scientific","customPattern":"0.00","decimalDigits":3,"decimalMode":"places","unit":"custom","customUnit":" J","socketDataType":"numlist","textCase":"none","bold":false,"italic":false,"textScale":14,"textAlign":"right","textMarkdown":false,"textMono":false,"logicalStyle":"truefalse","lambdaView":"signature","chartFontScale":1,"grouping":true,"negativeStyle":"minus","scaleMode":"none","advancedOpen":false,"width":116,"height":64,"inheritFormat":false,"chip":false}},"want":"{\"id\":\"FormatController_15\",\"type\":\"FormatControllerNode\",\"name\":\"FormatController_15\",\"x\":3426,\"y\":2366,\"init\":{\"label\":\"Format\",\"hostNodeId\":\"Display_15\",\"socketKey\":\"out\",\"side\":\"output\",\"format\":\"scientific\",\"customPattern\":\"0.00\",\"decimalDigits\":3,\"decimalMode\":\"places\",\"unit\":\"custom\",\"customUnit\":\" J\",\"socketDataType\":\"numlist\",\"textCase\":\"none\",\"bold\":false,\"italic\":false,\"textScale\":14,\"textAlign\":\"right\",\"textMarkdown\":false,\"textMono\":false,\"logicalStyle\":\"truefalse\",\"lambdaView\":\"signature\",\"chartFontScale\":1,\"grouping\":true,\"negativeStyle\":\"minus\",\"scaleMode\":\"none\",\"advancedOpen\":false,\"width\":116,\"height\":64,\"inheritFormat\":false,\"chip\":false}}"},{"got":{"id":"Group_8","type":"GroupNode","name":"Group_8","x":3219,"y":2163,"init":{"label":"Results","members":["Display_12","Display_13","Display_14","FormatController_12","FormatController_13","FormatController_14","FormatController_15"],"color":"green","collapsed":false,"width":425,"height":673,"lockedPosition":false}},"want":"{\"id\":\"Group_8\",\"type\":\"GroupNode\",\"name\":\"Group_8\",\"x\":3219,\"y\":2163,\"init\":{\"label\":\"Results\",\"members\":[\"Display_12\",\"Display_13\",\"Display_14\",\"Display_15\",\"FormatController_12\",\"FormatController_13\",\"FormatController_14\",\"FormatController_15\"],\"color\":\"green\",\"collapsed\":false,\"width\":425,\"height\":673,\"lockedPosition\":false}}"}]}
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed product-launch-gantt
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"Group_1","type":"GroupNode","name":"Group_1","x":395,"y":985,"init":{"label":"The plan","members":["CubeInput_1","ValueInput_1"],"color":"amber","collapsed":false,"width":511,"height":414,"lockedPosition":false}},"want":"{\"id\":\"Group_1\",\"type\":\"GroupNode\",\"name\":\"Group_1\",\"x\":395,\"y\":985,\"init\":{\"label\":\"The plan\",\"members\":[\"CubeInput_1\",\"ValueInput_1\",\"ValueInput_2\"],\"color\":\"amber\",\"collapsed\":false,\"width\":511,\"height\":414,\"lockedPosition\":false}}"}]}
+
+[90mstderr[2m | tests/graph/draftFlush.test.ts[2m > [22m[2mopen drafts flush before a capture[2m > [22m[2mcommits every registered draft once, and a failing one never blocks the rest
+[22m[39m[solenoid] draft flush failed Error: boom
+    at [90m/tmp/bleeding-edge-port-4551/[39mtests/graph/draftFlush.test.ts:9:44
+    at flushDrafts [90m(/tmp/bleeding-edge-port-4551/[39msrc/graph/draftFlush.ts:11:11[90m)[39m
+    at [90m/tmp/bleeding-edge-port-4551/[39mtests/graph/draftFlush.test.ts:11:12
+    at [90mfile:///tmp/bleeding-edge-port-4551/[39mnode_modules/[4mvitest[24m/dist/chunks/run.CjdgFZiW.js:1632:35
+    at [90mfile:///tmp/bleeding-edge-port-4551/[39mnode_modules/[4mvitest[24m/dist/chunks/run.CjdgFZiW.js:2801:26
+    at [90mfile:///tmp/bleeding-edge-port-4551/[39mnode_modules/[4mvitest[24m/dist/chunks/run.CjdgFZiW.js:3338:20
+    at new Promise (<anonymous>)
+    at runWithCancel [90m(file:///tmp/bleeding-edge-port-4551/[39mnode_modules/[4mvitest[24m/dist/chunks/run.CjdgFZiW.js:3333:10[90m)[39m
+    at [90mfile:///tmp/bleeding-edge-port-4551/[39mnode_modules/[4mvitest[24m/dist/chunks/run.CjdgFZiW.js:3318:20
+    at new Promise (<anonymous>)
+
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[42m shared [49m[39m tests/graph/paletteDiagrams.test.ts[2m > [22mthe palette spec's diagrams[2m > [22mare what palette.ts draws now (rerun `node scripts/vite-run.mjs scripts/palette-diagrams.ts`)
+[31m[1mAssertionError[22m: tree/specs/canvas/palettes/default.svg: expected '<svg xmlns="http://www.w3.org/2000/sv…' to be '<svg xmlns="http://www.w3.org/2000/sv…' // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1027" viewBox="0 0 960 1027" font-family="system-ui, -apple-system, Segoe UI, sans-serif"><defs><marker id="head" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#1d1f23"/></marker><marker id="headDim" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#5d636b"/></marker><linearGradient id="hues"><stop offset="0" stop-color="oklch(0.75 0.12 0)"/><stop offset="0.041666666666666664" stop-color="oklch(0.75 0.12 15)"/><stop offset="0.08333333333333333" stop-color="oklch(0.75 0.12 30)"/><stop offset="0.125" stop-color="oklch(0.75 0.12 45)"/><stop offset="0.16666666666666666" stop-color="oklch(0.75 0.12 60)"/><stop offset="0.20833333333333334" stop-color="oklch(0.75 0.12 75)"/><stop offset="0.25" stop-color="oklch(0.75 0.12 90)"/><stop offset="0.2916666666666667" stop-color="oklch(0.75 0.12 105)"/><stop offset="0.3333333333333333" stop-color="oklch(0.75 0.12 120)"/><stop offset="0.375" stop-color="oklch(0.75 0.12 135)"/><stop offset="0.4166666666666667" stop-color="oklch(0.75 0.12 150)"/><stop offset="0.4583333333333333" stop-color="oklch(0.75 0.12 165)"/><stop offset="0.5" stop-color="oklch(0.75 0.12 180)"/><stop offset="0.5416666666666666" stop-color="oklch(0.75 0.12 195)"/><stop offset="0.5833333333333334" stop-color="oklch(0.75 0.12 210)"/><stop offset="0.625" stop-color="oklch(0.75 0.12 225)"/><stop offset="0.6666666666666666" stop-color="oklch(0.75 0.12 240)"/><stop offset="0.7083333333333334" stop-color="oklch(0.75 0.12 255)"/><stop offset="0.75" stop-color="oklch(0.75 0.12 270)"/><stop offset="0.7916666666666666" stop-color="oklch(0.75 0.12 285)"/><stop offset="0.8333333333333334" stop-color="oklch(0.75 0.12 300)"/><stop offset="0.875" stop-color="oklch(0.75 0.12 315)"/><stop offset="0.9166666666666666" stop-color="oklch(0.75 0.12 330)"/><stop offset="0.9583333333333334" stop-color="oklch(0.75 0.12 345)"/><stop offset="1" stop-color="oklch(0.75 0.12 360)"/></linearGradient><linearGradient id="plasma"><stop offset="0" stop-color="rgb(13,8,135)"/><stop offset="0.03125" stop-color="rgb(29.03125,6.59375,141.75)"/><stop offset="0.0625" stop-color="rgb(45.0625,5.1875,148.5)"/><stop offset="0.09375" stop-color="rgb(61.09375,3.78125,155.25)"/><stop offset="0.125" stop-color="rgb(75.5,2.75,160.125)"/><stop offset="0.15625" stop-color="rgb(87.875,2.1875,162.65625)"/><stop offset="0.1875" stop-color="rgb(100.25,1.625,165.1875)"/><stop offset="0.21875" stop-color="rgb(112.625,1.0625,167.71875)"/><stop offset="0.25" stop-color="rgb(124.5,6.5,165.5)"/><stop offset="0.28125" stop-color="rgb(136.3125,12.6875,162.6875)"/><stop offset="0.3125" stop-color="rgb(148.125,18.875,159.875)"/><stop offset="0.34375" stop-color="rgb(159.09375,26,155.75)"/><stop offset="0.375" stop-color="rgb(168.375,35,149)"/><stop offset="0.40625" stop-color="rgb(177.65625,44,142.25)"/><stop offset="0.4375" stop-color="rgb(186.9375,53,135.5)"/><stop offset="0.46875" stop-color="rgb(194.90625,62,128.09375)"/><stop offset="0.5" stop-color="rgb(202.5,71,120.5)"/><stop offset="0.53125" stop-color="rgb(210.09375,80,112.90625)"/><stop offset="0.5625" stop-color="rgb(217.3125,89.125,105.5)"/><stop offset="0.59375" stop-color="rgb(223.21875,98.6875,98.75)"/><stop offset="0.625" stop-color="rgb(229.125,108.25,92)"/><stop offset="0.65625" stop-color="rgb(235.03125,117.8125,85.25)"/><stop offset="0.6875" stop-color="rgb(239.625,128.125,78.3125)"/><stop offset="0.71875" stop-color="rgb(243.5625,138.8125,71.28125)"/><stop offset="0.75" stop-color="rgb(247.5,149.5,64.25)"/><stop offset="0.78125" stop-color="rgb(251.0625,160.34375,57.375)"/><stop offset="0.8125" stop-color="rgb(251.625,172.4375,51.75)"/><stop offset="0.84375" stop-color="rgb(252.1875,184.53125,46.125)"/><stop offset="0.875" stop-color="rgb(252.75,196.625,40.5)"/><stop offset="0.90625" stop-color="rgb(250.96875,209.34375,37.21875)"/><stop offset="0.9375" stop-color="rgb(247.3125,222.5625,35.8125)"/><stop offset="0.96875" stop-color="rgb(243.65625,235.78125,34.40625)"/><stop offset="1" stop-color="rgb(240,249,33)"/></linearGradient></defs><rect x="0" y="0" width="960" height="1027" fill="#f7f7f5" /><text x="24" y="34" font-size="20" fill="#1d1f23" font-weight="700" text-anchor="start">Default</text><text x="24" y="58" font-size="10" fill="#5d636b" font-weight="700" text-anchor="start">FROM DEFAULT</text><text x="24" y="75" font-size="12" fill="#1d1f23" font-weight="600" text-anchor="start">The original set. Every other palette is drawn as what it does to these colors.</text><rect x="25" y="87" width="74" height="34" fill="#f5b914" rx="3"/><text x="62" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">gold</text><text x="62" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#f5b914</text><rect x="101" y="87" width="74" height="34" fill="#00b862" rx="3"/><text x="138" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">green</text><text x="138" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#00b862</text><rect x="177" y="87" width="74" height="34" fill="#d9742b" rx="3"/><text x="214" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">amber</text><text x="214" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#d9742b</text><rect x="253" y="87" width="74" height="34" fill="#3173e0" rx="3"/><text x="290" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">blue</text><text x="290" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#3173e0</text><rect x="329" y="87" width="74" height="34" fill="#c8e040" rx="3"/><text x="366" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">lime</text><text x="366" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#c8e040</text><rect x="405" y="87" width="74" height="34" fill="#c05dd1" rx="3"/><text x="442" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">purple</text><text x="442" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#c05dd1</text><rect x="481" y="87" width="74" height="34" fill="#8a8f98" rx="3"/><text x="518" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">gray</text><text x="518" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#8a8f98</text><rect x="557" y="87" width="74" height="34" fill="#e0473a" rx="3"/><text x="594" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">vermilion</text><text x="594" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#e0473a</text><rect x="633" y="87" width="74" height="34" fill="#7b64ed" rx="3"/><text x="670" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">violet</text><text x="670" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#7b64ed</text><rect x="709" y="87" width="74" height="34" fill="#de7cb0" rx="3"/><text x="746" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">pink</text><text x="746" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#de7cb0</text><rect x="785" y="87" width="74" height="34" fill="#56b4e9" rx="3"/><text x="822" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">sky</text><text x="822" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#56b4e9</text><rect x="861" y="87" width="74" height="34" fill="#4fc89a" rx="3"/><text x="898" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">teal</text><text x="898" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#4fc89a</text><text x="24" y="169" font-size="9" fill="#5d636b" font-weight="400" text-anchor="start">HUE AND COLORFULNESS: angle is hue, distance out is chroma</text><rect x="24" y="177" width="420" height="420" fill="#ffffff" stroke="#d9dbe0"/><path d="M430,387 A196,196 0 0 0 429.2541608259821,369.917474421459" stroke="oklch(0.75 0.13 2.5)" stroke-width="5" fill="none"/><path d="M429.2541608259821,369.917474421459 A196,196 0 0 0 427.0223195903928,352.96495717728163" stroke="oklch(0.75 0.13 7.5)" stroke-width="5" fill="none"/><path d="M427.0223195903928,352.96495717728163 A196,196 0 0 0 423.3214619526574,336.2714671599059" stroke="oklch(0.75 0.13 12.5)" stroke-width="5" fill="none"/><path d="M423.3214619526574,336.2714671599059 A196,196 0 0 0 418.179753674038,319.9640519081689" stroke="oklch(0.75 0.13 17.5)" stroke-width="5" fill="none"/><path d="M418.179753674038,319.9640519081689 A196,196 0 0 0 411.6363262591834,304.1668206988229" stroke="oklch(0.75 0.13 22.5)" stroke-width="5" fill="none"/><path d="M411.6363262591834,304.1668206988229 A196,196 0 0 0 403.74097914175,289" stroke="oklch(0.75 0.13 27.5)" stroke-width="5" fill="none"/><path d="M403.74097914175,289 A196,196 0 0 0 394.5538006806424,274.57901847519497" stroke="oklch(0.75 0.13 32.5)" stroke-width="5" fill="none"/><path d="M394.5538006806424,274.57901847519497 A196,196 0 0 0 384.1447108513197,261.0136285014383" stroke="oklch(0.75 0.13 37.5)" stroke-width="5" fill="none"/><path d="M384.1447108513197,261.0136285014383 A196,196 0 0 0 372.5929291125633,248.4070708874367" stroke="oklch(0.75 0.13 42.5)" stroke-width="5" fill="none"/><path d="M372.5929291125633,248.4070708874367 A196,196 0 0 0 359.9863714985617,236.8552891486803" stroke="oklch(0.75 0.13 47.5)" stroke-width="5" fill="none"/><path d="M359.9863714985617,236.8552891486803 A196,196 0 0 0 346.42098152480503,226.44619931935762" stroke="oklch(0.75 0.13 52.5)" stroke-width="5" fill="none"/><path d="M346.42098152480503,226.44619931935762 A196,196 0 0 0 332,217.25902085825004" stroke="oklch(0.75 0.13 57.5)" stroke-width="5" fill="none"/><path d="M332,217.25902085825004 A196,196 0 0 0 316.8331793011771,209.3636737408166" stroke="oklch(0.75 0.13 62.5)" stroke-width="5" fill="none"/><path d="M316.8331793011771,209.3636737408166 A196,196 0 0 0 301.0359480918311,202.82024632596196" stroke="oklch(0.75 0.13 67.5)" stroke-width="5" fill="none"/><path d="M301.0359480918311,202.82024632596196 A196,196 0 0 0 284.7285328400941,197.6785380473426" stroke="oklch(0.75 0.13 72.5)" stroke-width="5" fill="none"/><path d="M284.7285328400941,197.6785380473426 A196,196 0 0 0 268.03504282271837,193.97768040960722" stroke="oklch(0.75 0.13 77.5)" stroke-width="5" fill="none"/><path d="M268.03504282271837,193.97768040960722 A196,196 0 0 0 251.08252557854098,191.74583917401787" stroke="oklch(0.75 0.13 82.5)" stroke-width="5" fill="none"/><path d="M251.08252557854098,191.74583917401787 A196,196 0 0 0 234,191" stroke="oklch(0.75 0.13 87.5)" stroke-width="5" fill="none"/><path d="M234,191 A196,196 0 0 0 216.917474421459,191.74583917401787" stroke="oklch(0.75 0.13 92.5)" stroke-width="5" fill="none"/><path d="M216.917474421459,191.74583917401787 A196,196 0 0 0 199.96495717728166,193.97768040960722" stroke="oklch(0.75 0.13 97.5)" stroke-width="5" fill="none"/><path d="M199.96495717728166,193.97768040960722 A196,196 0 0 0 183.2714671599059,197.6785380473426" stroke="oklch(0.75 0.13 102.5)" stroke-width="5" fill="none"/><path d="M183.2714671599059,197.6785380473426 A196,196 0 0 0 166.96405190816893,202.82024632596196" stroke="oklch(0.75 0.13 107.5)" stroke-width="5" fill="none"/><path d="M166.96405190816893,202.82024632596196 A196,196 0 0 0 151.16682069882293,209.36367374081658" stroke="oklch(0.75 0.13 112.5)" stroke-width="5" fill="none"/><path d="M151.16682069882293,209.36367374081658 A196,196 0 0 0 136.00000000000006,217.25902085825" stroke="oklch(0.75 0.13 117.5)" stroke-width="5" fill="none"/><path d="M136.00000000000006,217.25902085825 A196,196 0 0 0 121.57901847519501,226.44619931935756" stroke="oklch(0.75 0.13 122.5)" stroke-width="5" fill="none"/><path d="M121.57901847519501,226.44619931935756 A196,196 0 0 0 108.01362850143829,236.8552891486803" stroke="oklch(0.75 0.13 127.5)" stroke-width="5" fill="none"/><path d="M108.01362850143829,236.8552891486803 A196,196 0 0 0 95.4070708874367,248.40707088743667" stroke="oklch(0.75 0.13 132.5)" stroke-width="5" fill="none"/><path d="M95.4070708874367,248.40707088743667 A196,196 0 0 0 83.85528914868033,261.01362850143823" stroke="oklch(0.75 0.13 137.5)" stroke-width="5" fill="none"/><path d="M83.85528914868033,261.01362850143823 A196,196 0 0 0 73.44619931935765,274.5790184751949" stroke="oklch(0.75 0.13 142.5)" stroke-width="5" fill="none"/><path d="M73.44619931935765,274.5790184751949 A196,196 0 0 0 64.25902085825001,289" stroke="oklch(0.75 0.13 147.5)" stroke-width="5" fill="none"/><path d="M64.25902085825001,289 A196,196 0 0 0 56.36367374081661,304.1668206988229" stroke="oklch(0.75 0.13 152.5)" stroke-width="5" fill="none"/><path d="M56.36367374081661,304.1668206988229 A196,196 0 0 0 49.82024632596196,319.9640519081689" stroke="oklch(0.75 0.13 157.5)" stroke-width="5" fill="none"/><path d="M49.82024632596196,319.9640519081689 A196,196 0 0 0 44.67853804734264,336.2714671599059" stroke="oklch(0.75 0.13 162.5)" stroke-width="5" fill="none"/><path d="M44.67853804734264,336.2714671599059 A196,196 0 0 0 40.97768040960722,352.9649571772817" stroke="oklch(0.75 0.13 167.5)" stroke-width="5" fill="none"/><path d="M40.97768040960722,352.9649571772817 A196,196 0 0 0 38.745839174017874,369.9174744214589" stroke="oklch(0.75 0.13 172.5)" stroke-width="5" fill="none"/><path d="M38.745839174017874,369.9174744214589 A196,196 0 0 0 38,387" stroke="oklch(0.75 0.13 177.5)" stroke-width="5" fill="none"/><path d="M38,387 A196,196 0 0 0 38.745839174017874,404.082525578541" stroke="oklch(0.75 0.13 182.5)" stroke-width="5" fill="none"/><path d="M38.745839174017874,404.082525578541 A196,196 0 0 0 40.97768040960722,421.03504282271837" stroke="oklch(0.75 0.13 187.5)" stroke-width="5" fill="none"/><path d="M40.97768040960722,421.03504282271837 A196,196 0 0 0 44.678538047342585,437.728532840094" stroke="oklch(0.75 0.13 192.5)" stroke-width="5" fill="none"/><path d="M44.678538047342585,437.728532840094 A196,196 0 0 0 49.82024632596196,454.0359480918311" stroke="oklch(0.75 0.13 197.5)" stroke-width="5" fill="none"/><path d="M49.82024632596196,454.0359480918311 A196,196 0 0 0 56.36367374081658,469.83317930117704" stroke="oklch(0.75 0.13 202.5)" stroke-width="5" fill="none"/><path d="M56.36367374081658,469.83317930117704 A196,196 0 0 0 64.25902085825004,485" stroke="oklch(0.75 0.13 207.5)" stroke-width="5" fill="none"/><path d="M64.25902085825004,485 A196,196 0 0 0 73.44619931935756,499.420981524805" stroke="oklch(0.75 0.13 212.5)" stroke-width="5" fill="none"/><path d="M73.44619931935756,499.420981524805 A196,196 0 0 0 83.8552891486803,512.9863714985617" stroke="oklch(0.75 0.13 217.5)" stroke-width="5" fill="none"/><path d="M83.8552891486803,512.9863714985617 A196,196 0 0 0 95.40707088743665,525.5929291125633" stroke="oklch(0.75 0.13 222.5)" stroke-width="5" fill="none"/><path d="M95.40707088743665,525.5929291125633 A196,196 0 0 0 108.01362850143826,537.1447108513197" stroke="oklch(0.75 0.13 227.5)" stroke-width="5" fill="none"/><path d="M108.01362850143826,537.1447108513197 A196,196 0 0 0 121.57901847519491,547.5538006806423" stroke="oklch(0.75 0.13 232.5)" stroke-width="5" fill="none"/><path d="M121.57901847519491,547.5538006806423 A196,196 0 0 0 135.99999999999991,556.7409791417499" stroke="oklch(0.75 0.13 237.5)" stroke-width="5" fill="none"/><path d="M135.99999999999991,556.7409791417499 A196,196 0 0 0 151.16682069882282,564.6363262591833" stroke="oklch(0.75 0.13 242.5)" stroke-width="5" fill="none"/><path d="M151.16682069882282,564.6363262591833 A196,196 0 0 0 166.9640519081688,571.179753674038" stroke="oklch(0.75 0.13 247.5)" stroke-width="5" fill="none"/><path d="M166.9640519081688,571.179753674038 A196,196 0 0 0 183.27146715990597,576.3214619526574" stroke="oklch(0.75 0.13 252.5)" stroke-width="5" fill="none"/><path d="M183.27146715990597,576.3214619526574 A196,196 0 0 0 199.96495717728166,580.0223195903927" stroke="oklch(0.75 0.13 257.5)" stroke-width="5" fill="none"/><path d="M199.96495717728166,580.0223195903927 A196,196 0 0 0 216.917474421459,582.2541608259821" stroke="oklch(0.75 0.13 262.5)" stroke-width="5" fill="none"/><path d="M216.917474421459,582.2541608259821 A196,196 0 0 0 233.99999999999997,583" stroke="oklch(0.75 0.13 267.5)" stroke-width="5" fill="none"/><path d="M233.99999999999997,583 A196,196 0 0 0 251.08252557854095,582.2541608259821" stroke="oklch(0.75 0.13 272.5)" stroke-width="5" fill="none"/><path d="M251.08252557854095,582.2541608259821 A196,196 0 0 0 268.03504282271825,580.0223195903927" stroke="oklch(0.75 0.13 277.5)" stroke-width="5" fill="none"/><path d="M268.03504282271825,580.0223195903927 A196,196 0 0 0 284.72853284009415,576.3214619526574" stroke="oklch(0.75 0.13 282.5)" stroke-width="5" fill="none"/><path d="M284.72853284009415,576.3214619526574 A196,196 0 0 0 301.03594809183096,571.179753674038" stroke="oklch(0.75 0.13 287.5)" stroke-width="5" fill="none"/><path d="M301.03594809183096,571.179753674038 A196,196 0 0 0 316.8331793011771,564.6363262591833" stroke="oklch(0.75 0.13 292.5)" stroke-width="5" fill="none"/><path d="M316.8331793011771,564.6363262591833 A196,196 0 0 0 332,556.7409791417499" stroke="oklch(0.75 0.13 297.5)" stroke-width="5" fill="none"/><path d="M332,556.7409791417499 A196,196 0 0 0 346.42098152480503,547.5538006806423" stroke="oklch(0.75 0.13 302.5)" stroke-width="5" fill="none"/><path d="M346.42098152480503,547.5538006806423 A196,196 0 0 0 359.9863714985617,537.1447108513197" stroke="oklch(0.75 0.13 307.5)" stroke-width="5" fill="none"/><path d="M359.9863714985617,537.1447108513197 A196,196 0 0 0 372.5929291125633,525.5929291125633" stroke="oklch(0.75 0.13 312.5)" stroke-width="5" fill="none"/><path d="M372.5929291125633,525.5929291125633 A196,196 0 0 0 384.14471085131964,512.9863714985618" stroke="oklch(0.75 0.13 317.5)" stroke-width="5" fill="none"/><path d="M384.14471085131964,512.9863714985618 A196,196 0 0 0 394.5538006806423,499.42098152480514" stroke="oklch(0.75 0.13 322.5)" stroke-width="5" fill="none"/><path d="M394.5538006806423,499.42098152480514 A196,196 0 0 0 403.7409791417499,485.0000000000001" stroke="oklch(0.75 0.13 327.5)" stroke-width="5" fill="none"/><path d="M403.7409791417499,485.0000000000001 A196,196 0 0 0 411.6363262591833,469.8331793011772" stroke="oklch(0.75 0.13 332.5)" stroke-width="5" fill="none"/><path d="M411.6363262591833,469.8331793011772 A196,196 0 0 0 418.179753674038,454.0359480918311" stroke="oklch(0.75 0.13 337.5)" stroke-width="5" fill="none"/><path d="M418.179753674038,454.0359480918311 A196,196 0 0 0 423.3214619526574,437.72853284009403" stroke="oklch(0.75 0.13 342.5)" stroke-width="5" fill="none"/><path d="M423.3214619526574,437.72853284009403 A196,196 0 0 0 427.0223195903927,421.03504282271854" stroke="oklch(0.75 0.13 347.5)" stroke-width="5" fill="none"/><path d="M427.0223195903927,421.03504282271854 A196,196 0 0 0 429.2541608259821,404.08252557854104" stroke="oklch(0.75 0.13 352.5)" stroke-width="5" fill="none"/><path d="M429.2541608259821,404.08252557854104 A196,196 0 0 0 430,387.00000000000006" stroke="oklch(0.75 0.13 357.5)" stroke-width="5" fill="none"/><circle cx="234" cy="387" r="61.546224316508415" fill="none" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="234" cy="387" r="123.09244863301683" fill="none" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="234" cy="387" r="1.5" fill="#5d636b"/><text x="238" y="399" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">gray</text><text x="468" y="169" font-size="9" fill="#5d636b" font-weight="400" text-anchor="start">LIGHTNESS: up is lighter</text><rect x="468" y="177" width="468" height="420" fill="#ffffff" stroke="#d9dbe0"/><line x1="468" x2="936" y1="529.8571428571429" y2="529.8571428571429" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="527.8571428571429" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.4</text><line x1="468" x2="936" y1="415.57142857142856" y2="415.57142857142856" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="413.57142857142856" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.6</text><line x1="468" x2="936" y1="301.2857142857143" y2="301.2857142857143" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="299.2857142857143" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.8</text><line x1="468" x2="936" y1="187" y2="187" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="185" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">1.0</text><circle cx="243.8894420255437" cy="285.99762123784905" r="5" fill="#f5b914" stroke="#1d1f23" stroke-width="0.6"/><circle cx="510.5" cy="290.6435427405293" r="5" fill="#f5b914" stroke="#1d1f23" stroke-width="0.6"/><text x="510.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">gold</text><circle cx="137.07017404316508" cy="337.492087925066" r="5" fill="#00b862" stroke="#1d1f23" stroke-width="0.6"/><circle cx="547.5" cy="366.40156268900694" r="5" fill="#00b862" stroke="#1d1f23" stroke-width="0.6"/><text x="547.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">green</text><circle cx="291.11862701388526" cy="313.9483047029116" r="5" fill="#d9742b" stroke="#1d1f23" stroke-width="0.6"/><circle cx="584.5" cy="379.84817399174653" r="5" fill="#d9742b" stroke="#1d1f23" stroke-width="0.6"/><text x="584.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">amber</text><circle cx="214.80389834704386" cy="495.785607618824" r="5" fill="#3173e0" stroke="#1d1f23" stroke-width="0.6"/><circle cx="621.5" cy="430.7787649554144" r="5" fill="#3173e0" stroke="#1d1f23" stroke-width="0.6"/><text x="621.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">blue</text><circle cx="182.71123135713376" cy="289.78558038792653" r="5" fill="#c8e040" stroke="#1d1f23" stroke-width="0.6"/><circle cx="658.5" cy="266.4597094750077" r="5" fill="#c8e040" stroke="#1d1f23" stroke-width="0.6"/><text x="658.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">lime</text><circle cx="326.39018398333184" cy="460.28385642976934" r="5" fill="#c05dd1" stroke="#1d1f23" stroke-width="0.6"/><circle cx="695.5" cy="391.5064550224851" r="5" fill="#c05dd1" stroke="#1d1f23" stroke-width="0.6"/><text x="695.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">purple</text><circle cx="232.80582463359374" cy="395.90184665533434" r="5" fill="#8a8f98" stroke="#1d1f23" stroke-width="0.6"/><circle cx="732.5" cy="387.67866853422015" r="5" fill="#8a8f98" stroke="#1d1f23" stroke-width="0.6"/><text x="732.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">gray</text><circle cx="337.44712259486664" cy="330.2282817642153" r="5" fill="#e0473a" stroke="#1d1f23" stroke-width="0.6"/><circle cx="769.5" cy="407.77588621044686" r="5" fill="#e0473a" stroke="#1d1f23" stroke-width="0.6"/><text x="769.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">vermilion</text><circle cx="268.52656774320167" cy="503.7974247963141" r="5" fill="#7b64ed" stroke="#1d1f23" stroke-width="0.6"/><circle cx="806.5" cy="417.18105305733604" r="5" fill="#7b64ed" stroke="#1d1f23" stroke-width="0.6"/><text x="806.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">violet</text><circle cx="315.59099570668786" cy="404.27609796291677" r="5" fill="#de7cb0" stroke="#1d1f23" stroke-width="0.6"/><circle cx="843.5" cy="353.1687410144194" r="5" fill="#de7cb0" stroke="#1d1f23" stroke-width="0.6"/><text x="843.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">pink</text><circle cx="193.79014406051468" cy="447.01320488000295" r="5" fill="#56b4e9" stroke="#1d1f23" stroke-width="0.6"/><circle cx="880.5" cy="338.7027524004526" r="5" fill="#56b4e9" stroke="#1d1f23" stroke-width="0.6"/><text x="880.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">sky</text><circle cx="157.9199994188632" cy="366.3529545801298" r="5" fill="#4fc89a" stroke="#1d1f23" stroke-width="0.6"/><circle cx="917.5" cy="328.5836250734305" r="5" fill="#4fc89a" stroke="#1d1f23" stroke-width="0.6"/><text x="917.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">teal</text><text x="24" y="637" font-size="10" fill="#5d636b" font-weight="700" text-anchor="start">WORKBENCH RAMP</text><text x="24" y="651" font-size="11" fill="#5d636b" font-weight="400" text-anchor="start">Default's own neutral ramp, which every palette without one of its own wears.</text><text x="24" y="673" font-size="10" fill="#5d636b" font-weight="600" text-anchor="start">dark</text><rect x="64" y="661" width="56.61538461538461" height="30" fill="#141414" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="92.3076923076923" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><rect x="122.61538461538461" y="661" width="56.61538461538461" height="30" fill="#0b0b0b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="150.9230769230769" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><rect x="181.23076923076923" y="661" width="56.61538461538461" height="30" fill="#2a2a2a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="209.53846153846155" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><rect x="239.84615384615384" y="661" width="56.61538461538461" height="30" fill="#1e1e1e" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="268.15384615384613" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><rect x="298.46153846153845" y="661" width="56.61538461538461" height="30" fill="#141414" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="326.7692307692308" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><rect x="357.0769230769231" y="661" width="56.61538461538461" height="30" fill="#262626" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="385.3846153846154" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><rect x="415.6923076923077" y="661" width="56.61538461538461" height="30" fill="#2d2d2d" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="444" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><rect x="474.30769230769226" y="661" width="56.61538461538461" height="30" fill="#3a3a3a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="502.6153846153846" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><rect x="532.9230769230769" y="661" width="56.61538461538461" height="30" fill="#2a2a2a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="561.2307692307692" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><rect x="591.5384615384615" y="661" width="56.61538461538461" height="30" fill="#e8e8e8" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="619.8461538461538" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><rect x="650.1538461538462" y="661" width="56.61538461538461" height="30" fill="#f3f4f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="678.4615384615385" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><rect x="708.7692307692307" y="661" width="56.61538461538461" height="30" fill="#9aa0a6" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="737.076923076923" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><rect x="767.3846153846154" y="661" width="56.61538461538461" height="30" fill="#80868e" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="795.6923076923076" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="836" y="655" width="100" height="56" fill="#0b0b0b" rx="4"/><rect x="855" y="665.08" width="62" height="35.84" fill="#1e1e1e" rx="3" stroke="#2d2d2d"/><rect x="855" y="665.08" width="62" height="8.601600000000001" fill="#f5b914" rx="3" fill-opacity="0.45"/><rect x="855" y="665.08" width="62" height="2" fill="#f5b914" /><rect x="861" y="679.416" width="34.1" height="3" fill="#e8e8e8" rx="1.5"/><rect x="861" y="685.8672" width="24.8" height="3" fill="#9aa0a6" rx="1.5"/><rect x="861" y="692.3184" width="43.4" height="5.734400000000001" fill="#141414" rx="2" stroke="#3a3a3a" stroke-width="0.6"/><text x="24" y="733" font-size="10" fill="#5d636b" font-weight="600" text-anchor="start">light</text><rect x="64" y="721" width="56.61538461538461" height="30" fill="#f4f5f7" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="92.3076923076923" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><rect x="122.61538461538461" y="721" width="56.61538461538461" height="30" fill="#eef1f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="150.9230769230769" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><rect x="181.23076923076923" y="721" width="56.61538461538461" height="30" fill="#d3d9e1" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="209.53846153846155" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><rect x="239.84615384615384" y="721" width="56.61538461538461" height="30" fill="#fbfcfd" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="268.15384615384613" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><rect x="298.46153846153845" y="721" width="56.61538461538461" height="30" fill="#ffffff" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="326.7692307692308" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><rect x="357.0769230769231" y="721" width="56.61538461538461" height="30" fill="#eef1f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="385.3846153846154" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><rect x="415.6923076923077" y="721" width="56.61538461538461" height="30" fill="#ccd2da" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="444" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><rect x="474.30769230769226" y="721" width="56.61538461538461" height="30" fill="#b2bac4" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="502.6153846153846" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><rect x="532.9230769230769" y="721" width="56.61538461538461" height="30" fill="#dfe3e9" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="561.2307692307692" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><rect x="591.5384615384615" y="721" width="56.61538461538461" height="30" fill="#1b1e23" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="619.8461538461538" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><rect x="650.1538461538462" y="721" width="56.61538461538461" height="30" fill="#0d0f12" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="678.4615384615385" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><rect x="708.7692307692307" y="721" width="56.61538461538461" height="30" fill="#5b636b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="737.076923076923" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><rect x="767.3846153846154" y="721" width="56.61538461538461" height="30" fill="#6a717b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="795.6923076923076" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="836" y="715" width="100" height="56" fill="#eef1f5" rx="4"/><rect x="855" y="725.08" width="62" height="35.84" fill="#fbfcfd" rx="3" stroke="#ccd2da"/><rect x="855" y="725.08" width="62" height="8.601600000000001" fill="#eab013" rx="3" fill-opacity="0.45"/><rect x="855" y="725.08" width="62" height="2" fill="#eab013" /><rect x="861" y="739.416" width="34.1" height="3" fill="#1b1e23" rx="1.5"/><rect x="861" y="745.8672" width="24.8" height="3" fill="#5b636b" rx="1.5"/><rect x="861" y="752.3184" width="43.4" height="5.734400000000001" fill="#ffffff" rx="2" stroke="#b2bac4" stroke-width="0.6"/><text x="24" y="793" font-size="10" fill="#5d636b" font-weight="400" text-anchor="start">Each key's lightness, ground to ink.</text><rect x="24" y="819" width="444" height="150" fill="#ffffff" stroke="#d9dbe0"/><text x="24" y="814" font-size="9" fill="#5d636b" font-weight="600" text-anchor="start">dark</text><line x1="24" x2="468" y1="927.5" y2="927.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="24" x2="468" y1="894" y2="894" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="24" x2="468" y1="860.5" y2="860.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="54.30769230769231" cy="935.3723260166211" r="4.5" fill="#141414" stroke="#1d1f23" stroke-width="0.6"/><text x="54.30769230769231" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><circle cx="86.92307692307692" cy="940.9566665156811" r="4.5" fill="#0b0b0b" stroke="#1d1f23" stroke-width="0.6"/><text x="86.92307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><circle cx="119.53846153846153" cy="922.8076681135759" r="4.5" fill="#2a2a2a" stroke="#1d1f23" stroke-width="0.6"/><text x="119.53846153846153" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><circle cx="152.15384615384613" cy="929.5058294355016" r="4.5" fill="#1e1e1e" stroke="#1d1f23" stroke-width="0.6"/><text x="152.15384615384613" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><circle cx="184.76923076923077" cy="935.3723260166211" r="4.5" fill="#141414" stroke="#1d1f23" stroke-width="0.6"/><text x="184.76923076923077" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><circle cx="217.38461538461536" cy="925.0051511190109" r="4.5" fill="#262626" stroke="#1d1f23" stroke-width="0.6"/><text x="217.38461538461536" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><circle cx="250" cy="921.1801628038764" r="4.5" fill="#2d2d2d" stroke="#1d1f23" stroke-width="0.6"/><text x="250" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><circle cx="282.6153846153846" cy="914.3064066203902" r="4.5" fill="#3a3a3a" stroke="#1d1f23" stroke-width="0.6"/><text x="282.6153846153846" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><circle cx="315.2307692307692" cy="922.8076681135759" r="4.5" fill="#2a2a2a" stroke="#1d1f23" stroke-width="0.6"/><text x="315.2307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><circle cx="347.84615384615387" cy="836.2461159042105" r="4.5" fill="#e8e8e8" stroke="#1d1f23" stroke-width="0.6"/><text x="347.84615384615387" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><circle cx="380.46153846153845" cy="831.4658435568595" r="4.5" fill="#f3f4f5" stroke="#1d1f23" stroke-width="0.6"/><text x="380.46153846153845" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><circle cx="413.07692307692304" cy="866.8291775110836" r="4.5" fill="#9aa0a6" stroke="#1d1f23" stroke-width="0.6"/><text x="413.07692307692304" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><circle cx="445.6923076923077" cy="878.2318184067324" r="4.5" fill="#80868e" stroke="#1d1f23" stroke-width="0.6"/><text x="445.6923076923077" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="492" y="819" width="444" height="150" fill="#ffffff" stroke="#d9dbe0"/><text x="492" y="814" font-size="9" fill="#5d636b" font-weight="600" text-anchor="start">light</text><line x1="492" x2="936" y1="927.5" y2="927.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="492" x2="936" y1="894" y2="894" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="492" x2="936" y1="860.5" y2="860.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="522.3076923076923" cy="831.0262653785574" r="4.5" fill="#f4f5f7" stroke="#1d1f23" stroke-width="0.6"/><text x="522.3076923076923" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><circle cx="554.9230769230769" cy="832.7613834837304" r="4.5" fill="#eef1f5" stroke="#1d1f23" stroke-width="0.6"/><text x="554.9230769230769" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><circle cx="587.5384615384615" cy="842.6716826000629" r="4.5" fill="#d3d9e1" stroke="#1d1f23" stroke-width="0.6"/><text x="587.5384615384615" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><circle cx="620.1538461538461" cy="828.2607706342126" r="4.5" fill="#fbfcfd" stroke="#1d1f23" stroke-width="0.6"/><text x="620.1538461538461" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><circle cx="652.7692307692307" cy="827.0000008745449" r="4.5" fill="#ffffff" stroke="#1d1f23" stroke-width="0.6"/><text x="652.7692307692307" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><circle cx="685.3846153846154" cy="832.7613834837304" r="4.5" fill="#eef1f5" stroke="#1d1f23" stroke-width="0.6"/><text x="685.3846153846154" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><circle cx="717.9999999999999" cy="845.5574043611224" r="4.5" fill="#ccd2da" stroke="#1d1f23" stroke-width="0.6"/><text x="717.9999999999999" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><circle cx="750.6153846153845" cy="855.7152420690168" r="4.5" fill="#b2bac4" stroke="#1d1f23" stroke-width="0.6"/><text x="750.6153846153845" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><circle cx="783.2307692307692" cy="838.4565182665617" r="4.5" fill="#dfe3e9" stroke="#1d1f23" stroke-width="0.6"/><text x="783.2307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><circle cx="815.8461538461538" cy="929.6345600149465" r="4.5" fill="#1b1e23" stroke="#1d1f23" stroke-width="0.6"/><text x="815.8461538461538" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><circle cx="848.4615384615385" cy="938.5477833064006" r="4.5" fill="#0d0f12" stroke="#1d1f23" stroke-width="0.6"/><text x="848.4615384615385" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><circle cx="881.076923076923" cy="894.5928154370331" r="4.5" fill="#5b636b" stroke="#1d1f23" stroke-width="0.6"/><text x="881.076923076923" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><circle cx="913.6923076923076" cy="887.8233662007535" r="4.5" fill="#6a717b" stroke="#1d1f23" stroke-width="0.6"/><text x="913.6923076923076" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text></svg>[39m
+[31m+ <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1027" viewBox="0 0 960 1027" font-family="system-ui, -apple-system, Segoe UI, sans-serif"><defs><marker id="head" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#1d1f23"/></marker><marker id="headDim" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#5d636b"/></marker><linearGradient id="hues"><stop offset="0" stop-color="oklch(0.75 0.12 0)"/><stop offset="0.041666666666666664" stop-color="oklch(0.75 0.12 15)"/><stop offset="0.08333333333333333" stop-color="oklch(0.75 0.12 30)"/><stop offset="0.125" stop-color="oklch(0.75 0.12 45)"/><stop offset="0.16666666666666666" stop-color="oklch(0.75 0.12 60)"/><stop offset="0.20833333333333334" stop-color="oklch(0.75 0.12 75)"/><stop offset="0.25" stop-color="oklch(0.75 0.12 90)"/><stop offset="0.2916666666666667" stop-color="oklch(0.75 0.12 105)"/><stop offset="0.3333333333333333" stop-color="oklch(0.75 0.12 120)"/><stop offset="0.375" stop-color="oklch(0.75 0.12 135)"/><stop offset="0.4166666666666667" stop-color="oklch(0.75 0.12 150)"/><stop offset="0.4583333333333333" stop-color="oklch(0.75 0.12 165)"/><stop offset="0.5" stop-color="oklch(0.75 0.12 180)"/><stop offset="0.5416666666666666" stop-color="oklch(0.75 0.12 195)"/><stop offset="0.5833333333333334" stop-color="oklch(0.75 0.12 210)"/><stop offset="0.625" stop-color="oklch(0.75 0.12 225)"/><stop offset="0.6666666666666666" stop-color="oklch(0.75 0.12 240)"/><stop offset="0.7083333333333334" stop-color="oklch(0.75 0.12 255)"/><stop offset="0.75" stop-color="oklch(0.75 0.12 270)"/><stop offset="0.7916666666666666" stop-color="oklch(0.75 0.12 285)"/><stop offset="0.8333333333333334" stop-color="oklch(0.75 0.12 300)"/><stop offset="0.875" stop-color="oklch(0.75 0.12 315)"/><stop offset="0.9166666666666666" stop-color="oklch(0.75 0.12 330)"/><stop offset="0.9583333333333334" stop-color="oklch(0.75 0.12 345)"/><stop offset="1" stop-color="oklch(0.75 0.12 360)"/></linearGradient><linearGradient id="plasma"><stop offset="0" stop-color="rgb(13,8,135)"/><stop offset="0.03125" stop-color="rgb(29.03125,6.59375,141.75)"/><stop offset="0.0625" stop-color="rgb(45.0625,5.1875,148.5)"/><stop offset="0.09375" stop-color="rgb(61.09375,3.78125,155.25)"/><stop offset="0.125" stop-color="rgb(75.5,2.75,160.125)"/><stop offset="0.15625" stop-color="rgb(87.875,2.1875,162.65625)"/><stop offset="0.1875" stop-color="rgb(100.25,1.625,165.1875)"/><stop offset="0.21875" stop-color="rgb(112.625,1.0625,167.71875)"/><stop offset="0.25" stop-color="rgb(124.5,6.5,165.5)"/><stop offset="0.28125" stop-color="rgb(136.3125,12.6875,162.6875)"/><stop offset="0.3125" stop-color="rgb(148.125,18.875,159.875)"/><stop offset="0.34375" stop-color="rgb(159.09375,26,155.75)"/><stop offset="0.375" stop-color="rgb(168.375,35,149)"/><stop offset="0.40625" stop-color="rgb(177.65625,44,142.25)"/><stop offset="0.4375" stop-color="rgb(186.9375,53,135.5)"/><stop offset="0.46875" stop-color="rgb(194.90625,62,128.09375)"/><stop offset="0.5" stop-color="rgb(202.5,71,120.5)"/><stop offset="0.53125" stop-color="rgb(210.09375,80,112.90625)"/><stop offset="0.5625" stop-color="rgb(217.3125,89.125,105.5)"/><stop offset="0.59375" stop-color="rgb(223.21875,98.6875,98.75)"/><stop offset="0.625" stop-color="rgb(229.125,108.25,92)"/><stop offset="0.65625" stop-color="rgb(235.03125,117.8125,85.25)"/><stop offset="0.6875" stop-color="rgb(239.625,128.125,78.3125)"/><stop offset="0.71875" stop-color="rgb(243.5625,138.8125,71.28125)"/><stop offset="0.75" stop-color="rgb(247.5,149.5,64.25)"/><stop offset="0.78125" stop-color="rgb(251.0625,160.34375,57.375)"/><stop offset="0.8125" stop-color="rgb(251.625,172.4375,51.75)"/><stop offset="0.84375" stop-color="rgb(252.1875,184.53125,46.125)"/><stop offset="0.875" stop-color="rgb(252.75,196.625,40.5)"/><stop offset="0.90625" stop-color="rgb(250.96875,209.34375,37.21875)"/><stop offset="0.9375" stop-color="rgb(247.3125,222.5625,35.8125)"/><stop offset="0.96875" stop-color="rgb(243.65625,235.78125,34.40625)"/><stop offset="1" stop-color="rgb(240,249,33)"/></linearGradient></defs><rect x="0" y="0" width="960" height="1027" fill="#f7f7f5" /><text x="24" y="34" font-size="20" fill="#1d1f23" font-weight="700" text-anchor="start">Default</text><text x="24" y="58" font-size="10" fill="#5d636b" font-weight="700" text-anchor="start">FROM DEFAULT</text><text x="24" y="75" font-size="12" fill="#1d1f23" font-weight="600" text-anchor="start">The original set. Every other palette is drawn as what it does to these colors.</text><rect x="25" y="87" width="74" height="34" fill="#f5b914" rx="3"/><text x="62" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">gold</text><text x="62" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#f5b914</text><rect x="101" y="87" width="74" height="34" fill="#00b862" rx="3"/><text x="138" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">green</text><text x="138" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#00b862</text><rect x="177" y="87" width="74" height="34" fill="#d9742b" rx="3"/><text x="214" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">amber</text><text x="214" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#d9742b</text><rect x="253" y="87" width="74" height="34" fill="#3173e0" rx="3"/><text x="290" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">blue</text><text x="290" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#3173e0</text><rect x="329" y="87" width="74" height="34" fill="#c8e040" rx="3"/><text x="366" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">lime</text><text x="366" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#c8e040</text><rect x="405" y="87" width="74" height="34" fill="#c05dd1" rx="3"/><text x="442" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">purple</text><text x="442" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#c05dd1</text><rect x="481" y="87" width="74" height="34" fill="#8a8f98" rx="3"/><text x="518" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">gray</text><text x="518" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#8a8f98</text><rect x="557" y="87" width="74" height="34" fill="#e0473a" rx="3"/><text x="594" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">vermilion</text><text x="594" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#e0473a</text><rect x="633" y="87" width="74" height="34" fill="#7b64ed" rx="3"/><text x="670" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">violet</text><text x="670" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#7b64ed</text><rect x="709" y="87" width="74" height="34" fill="#de7cb0" rx="3"/><text x="746" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">pink</text><text x="746" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#de7cb0</text><rect x="785" y="87" width="74" height="34" fill="#56b4e9" rx="3"/><text x="822" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">sky</text><text x="822" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#56b4e9</text><rect x="861" y="87" width="74" height="34" fill="#4fc89a" rx="3"/><text x="898" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">teal</text><text x="898" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#4fc89a</text><text x="24" y="169" font-size="9" fill="#5d636b" font-weight="400" text-anchor="start">HUE AND COLORFULNESS: angle is hue, distance out is chroma</text><rect x="24" y="177" width="420" height="420" fill="#ffffff" stroke="#d9dbe0"/><path d="M430,387 A196,196 0 0 0 429.2541608259821,369.917474421459" stroke="oklch(0.75 0.13 2.5)" stroke-width="5" fill="none"/><path d="M429.2541608259821,369.917474421459 A196,196 0 0 0 427.0223195903928,352.96495717728163" stroke="oklch(0.75 0.13 7.5)" stroke-width="5" fill="none"/><path d="M427.0223195903928,352.96495717728163 A196,196 0 0 0 423.3214619526574,336.2714671599059" stroke="oklch(0.75 0.13 12.5)" stroke-width="5" fill="none"/><path d="M423.3214619526574,336.2714671599059 A196,196 0 0 0 418.179753674038,319.9640519081689" stroke="oklch(0.75 0.13 17.5)" stroke-width="5" fill="none"/><path d="M418.179753674038,319.9640519081689 A196,196 0 0 0 411.6363262591834,304.1668206988229" stroke="oklch(0.75 0.13 22.5)" stroke-width="5" fill="none"/><path d="M411.6363262591834,304.1668206988229 A196,196 0 0 0 403.74097914175,289" stroke="oklch(0.75 0.13 27.5)" stroke-width="5" fill="none"/><path d="M403.74097914175,289 A196,196 0 0 0 394.5538006806424,274.57901847519497" stroke="oklch(0.75 0.13 32.5)" stroke-width="5" fill="none"/><path d="M394.5538006806424,274.57901847519497 A196,196 0 0 0 384.1447108513197,261.0136285014383" stroke="oklch(0.75 0.13 37.5)" stroke-width="5" fill="none"/><path d="M384.1447108513197,261.0136285014383 A196,196 0 0 0 372.5929291125633,248.4070708874367" stroke="oklch(0.75 0.13 42.5)" stroke-width="5" fill="none"/><path d="M372.5929291125633,248.4070708874367 A196,196 0 0 0 359.9863714985617,236.8552891486803" stroke="oklch(0.75 0.13 47.5)" stroke-width="5" fill="none"/><path d="M359.9863714985617,236.8552891486803 A196,196 0 0 0 346.42098152480503,226.44619931935762" stroke="oklch(0.75 0.13 52.5)" stroke-width="5" fill="none"/><path d="M346.42098152480503,226.44619931935762 A196,196 0 0 0 332,217.25902085825004" stroke="oklch(0.75 0.13 57.5)" stroke-width="5" fill="none"/><path d="M332,217.25902085825004 A196,196 0 0 0 316.8331793011771,209.3636737408166" stroke="oklch(0.75 0.13 62.5)" stroke-width="5" fill="none"/><path d="M316.8331793011771,209.3636737408166 A196,196 0 0 0 301.0359480918311,202.82024632596196" stroke="oklch(0.75 0.13 67.5)" stroke-width="5" fill="none"/><path d="M301.0359480918311,202.82024632596196 A196,196 0 0 0 284.7285328400941,197.6785380473426" stroke="oklch(0.75 0.13 72.5)" stroke-width="5" fill="none"/><path d="M284.7285328400941,197.6785380473426 A196,196 0 0 0 268.03504282271837,193.97768040960722" stroke="oklch(0.75 0.13 77.5)" stroke-width="5" fill="none"/><path d="M268.03504282271837,193.97768040960722 A196,196 0 0 0 251.08252557854098,191.74583917401787" stroke="oklch(0.75 0.13 82.5)" stroke-width="5" fill="none"/><path d="M251.08252557854098,191.74583917401787 A196,196 0 0 0 234,191" stroke="oklch(0.75 0.13 87.5)" stroke-width="5" fill="none"/><path d="M234,191 A196,196 0 0 0 216.917474421459,191.74583917401787" stroke="oklch(0.75 0.13 92.5)" stroke-width="5" fill="none"/><path d="M216.917474421459,191.74583917401787 A196,196 0 0 0 199.96495717728166,193.97768040960722" stroke="oklch(0.75 0.13 97.5)" stroke-width="5" fill="none"/><path d="M199.96495717728166,193.97768040960722 A196,196 0 0 0 183.2714671599059,197.6785380473426" stroke="oklch(0.75 0.13 102.5)" stroke-width="5" fill="none"/><path d="M183.2714671599059,197.6785380473426 A196,196 0 0 0 166.96405190816893,202.82024632596196" stroke="oklch(0.75 0.13 107.5)" stroke-width="5" fill="none"/><path d="M166.96405190816893,202.82024632596196 A196,196 0 0 0 151.16682069882293,209.36367374081658" stroke="oklch(0.75 0.13 112.5)" stroke-width="5" fill="none"/><path d="M151.16682069882293,209.36367374081658 A196,196 0 0 0 136.00000000000006,217.25902085825" stroke="oklch(0.75 0.13 117.5)" stroke-width="5" fill="none"/><path d="M136.00000000000006,217.25902085825 A196,196 0 0 0 121.57901847519501,226.44619931935756" stroke="oklch(0.75 0.13 122.5)" stroke-width="5" fill="none"/><path d="M121.57901847519501,226.44619931935756 A196,196 0 0 0 108.01362850143829,236.8552891486803" stroke="oklch(0.75 0.13 127.5)" stroke-width="5" fill="none"/><path d="M108.01362850143829,236.8552891486803 A196,196 0 0 0 95.4070708874367,248.40707088743667" stroke="oklch(0.75 0.13 132.5)" stroke-width="5" fill="none"/><path d="M95.4070708874367,248.40707088743667 A196,196 0 0 0 83.85528914868033,261.01362850143823" stroke="oklch(0.75 0.13 137.5)" stroke-width="5" fill="none"/><path d="M83.85528914868033,261.01362850143823 A196,196 0 0 0 73.44619931935765,274.5790184751949" stroke="oklch(0.75 0.13 142.5)" stroke-width="5" fill="none"/><path d="M73.44619931935765,274.5790184751949 A196,196 0 0 0 64.25902085825001,289" stroke="oklch(0.75 0.13 147.5)" stroke-width="5" fill="none"/><path d="M64.25902085825001,289 A196,196 0 0 0 56.36367374081661,304.1668206988229" stroke="oklch(0.75 0.13 152.5)" stroke-width="5" fill="none"/><path d="M56.36367374081661,304.1668206988229 A196,196 0 0 0 49.82024632596196,319.9640519081689" stroke="oklch(0.75 0.13 157.5)" stroke-width="5" fill="none"/><path d="M49.82024632596196,319.9640519081689 A196,196 0 0 0 44.67853804734264,336.2714671599059" stroke="oklch(0.75 0.13 162.5)" stroke-width="5" fill="none"/><path d="M44.67853804734264,336.2714671599059 A196,196 0 0 0 40.97768040960722,352.9649571772817" stroke="oklch(0.75 0.13 167.5)" stroke-width="5" fill="none"/><path d="M40.97768040960722,352.9649571772817 A196,196 0 0 0 38.745839174017874,369.9174744214589" stroke="oklch(0.75 0.13 172.5)" stroke-width="5" fill="none"/><path d="M38.745839174017874,369.9174744214589 A196,196 0 0 0 38,387" stroke="oklch(0.75 0.13 177.5)" stroke-width="5" fill="none"/><path d="M38,387 A196,196 0 0 0 38.745839174017874,404.082525578541" stroke="oklch(0.75 0.13 182.5)" stroke-width="5" fill="none"/><path d="M38.745839174017874,404.082525578541 A196,196 0 0 0 40.97768040960722,421.03504282271837" stroke="oklch(0.75 0.13 187.5)" stroke-width="5" fill="none"/><path d="M40.97768040960722,421.03504282271837 A196,196 0 0 0 44.678538047342585,437.728532840094" stroke="oklch(0.75 0.13 192.5)" stroke-width="5" fill="none"/><path d="M44.678538047342585,437.728532840094 A196,196 0 0 0 49.82024632596196,454.0359480918311" stroke="oklch(0.75 0.13 197.5)" stroke-width="5" fill="none"/><path d="M49.82024632596196,454.0359480918311 A196,196 0 0 0 56.36367374081658,469.83317930117704" stroke="oklch(0.75 0.13 202.5)" stroke-width="5" fill="none"/><path d="M56.36367374081658,469.83317930117704 A196,196 0 0 0 64.25902085825004,485" stroke="oklch(0.75 0.13 207.5)" stroke-width="5" fill="none"/><path d="M64.25902085825004,485 A196,196 0 0 0 73.44619931935756,499.420981524805" stroke="oklch(0.75 0.13 212.5)" stroke-width="5" fill="none"/><path d="M73.44619931935756,499.420981524805 A196,196 0 0 0 83.8552891486803,512.9863714985617" stroke="oklch(0.75 0.13 217.5)" stroke-width="5" fill="none"/><path d="M83.8552891486803,512.9863714985617 A196,196 0 0 0 95.40707088743665,525.5929291125633" stroke="oklch(0.75 0.13 222.5)" stroke-width="5" fill="none"/><path d="M95.40707088743665,525.5929291125633 A196,196 0 0 0 108.01362850143826,537.1447108513197" stroke="oklch(0.75 0.13 227.5)" stroke-width="5" fill="none"/><path d="M108.01362850143826,537.1447108513197 A196,196 0 0 0 121.57901847519491,547.5538006806423" stroke="oklch(0.75 0.13 232.5)" stroke-width="5" fill="none"/><path d="M121.57901847519491,547.5538006806423 A196,196 0 0 0 135.99999999999991,556.7409791417499" stroke="oklch(0.75 0.13 237.5)" stroke-width="5" fill="none"/><path d="M135.99999999999991,556.7409791417499 A196,196 0 0 0 151.16682069882282,564.6363262591833" stroke="oklch(0.75 0.13 242.5)" stroke-width="5" fill="none"/><path d="M151.16682069882282,564.6363262591833 A196,196 0 0 0 166.9640519081688,571.179753674038" stroke="oklch(0.75 0.13 247.5)" stroke-width="5" fill="none"/><path d="M166.9640519081688,571.179753674038 A196,196 0 0 0 183.27146715990597,576.3214619526574" stroke="oklch(0.75 0.13 252.5)" stroke-width="5" fill="none"/><path d="M183.27146715990597,576.3214619526574 A196,196 0 0 0 199.96495717728166,580.0223195903927" stroke="oklch(0.75 0.13 257.5)" stroke-width="5" fill="none"/><path d="M199.96495717728166,580.0223195903927 A196,196 0 0 0 216.917474421459,582.2541608259821" stroke="oklch(0.75 0.13 262.5)" stroke-width="5" fill="none"/><path d="M216.917474421459,582.2541608259821 A196,196 0 0 0 233.99999999999997,583" stroke="oklch(0.75 0.13 267.5)" stroke-width="5" fill="none"/><path d="M233.99999999999997,583 A196,196 0 0 0 251.08252557854095,582.2541608259821" stroke="oklch(0.75 0.13 272.5)" stroke-width="5" fill="none"/><path d="M251.08252557854095,582.2541608259821 A196,196 0 0 0 268.03504282271825,580.0223195903927" stroke="oklch(0.75 0.13 277.5)" stroke-width="5" fill="none"/><path d="M268.03504282271825,580.0223195903927 A196,196 0 0 0 284.72853284009415,576.3214619526574" stroke="oklch(0.75 0.13 282.5)" stroke-width="5" fill="none"/><path d="M284.72853284009415,576.3214619526574 A196,196 0 0 0 301.03594809183096,571.179753674038" stroke="oklch(0.75 0.13 287.5)" stroke-width="5" fill="none"/><path d="M301.03594809183096,571.179753674038 A196,196 0 0 0 316.8331793011771,564.6363262591833" stroke="oklch(0.75 0.13 292.5)" stroke-width="5" fill="none"/><path d="M316.8331793011771,564.6363262591833 A196,196 0 0 0 332,556.7409791417499" stroke="oklch(0.75 0.13 297.5)" stroke-width="5" fill="none"/><path d="M332,556.7409791417499 A196,196 0 0 0 346.42098152480503,547.5538006806423" stroke="oklch(0.75 0.13 302.5)" stroke-width="5" fill="none"/><path d="M346.42098152480503,547.5538006806423 A196,196 0 0 0 359.9863714985617,537.1447108513197" stroke="oklch(0.75 0.13 307.5)" stroke-width="5" fill="none"/><path d="M359.9863714985617,537.1447108513197 A196,196 0 0 0 372.5929291125633,525.5929291125633" stroke="oklch(0.75 0.13 312.5)" stroke-width="5" fill="none"/><path d="M372.5929291125633,525.5929291125633 A196,196 0 0 0 384.14471085131964,512.9863714985618" stroke="oklch(0.75 0.13 317.5)" stroke-width="5" fill="none"/><path d="M384.14471085131964,512.9863714985618 A196,196 0 0 0 394.5538006806423,499.42098152480514" stroke="oklch(0.75 0.13 322.5)" stroke-width="5" fill="none"/><path d="M394.5538006806423,499.42098152480514 A196,196 0 0 0 403.7409791417499,485.0000000000001" stroke="oklch(0.75 0.13 327.5)" stroke-width="5" fill="none"/><path d="M403.7409791417499,485.0000000000001 A196,196 0 0 0 411.6363262591833,469.8331793011772" stroke="oklch(0.75 0.13 332.5)" stroke-width="5" fill="none"/><path d="M411.6363262591833,469.8331793011772 A196,196 0 0 0 418.179753674038,454.0359480918311" stroke="oklch(0.75 0.13 337.5)" stroke-width="5" fill="none"/><path d="M418.179753674038,454.0359480918311 A196,196 0 0 0 423.3214619526574,437.72853284009403" stroke="oklch(0.75 0.13 342.5)" stroke-width="5" fill="none"/><path d="M423.3214619526574,437.72853284009403 A196,196 0 0 0 427.0223195903927,421.03504282271854" stroke="oklch(0.75 0.13 347.5)" stroke-width="5" fill="none"/><path d="M427.0223195903927,421.03504282271854 A196,196 0 0 0 429.2541608259821,404.08252557854104" stroke="oklch(0.75 0.13 352.5)" stroke-width="5" fill="none"/><path d="M429.2541608259821,404.08252557854104 A196,196 0 0 0 430,387.00000000000006" stroke="oklch(0.75 0.13 357.5)" stroke-width="5" fill="none"/><circle cx="234" cy="387" r="61.546224316508415" fill="none" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="234" cy="387" r="123.09244863301683" fill="none" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="234" cy="387" r="1.5" fill="#5d636b"/><text x="238" y="399" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">gray</text><text x="468" y="169" font-size="9" fill="#5d636b" font-weight="400" text-anchor="start">LIGHTNESS: up is lighter</text><rect x="468" y="177" width="468" height="420" fill="#ffffff" stroke="#d9dbe0"/><line x1="468" x2="936" y1="529.8571428571429" y2="529.8571428571429" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="527.8571428571429" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.4</text><line x1="468" x2="936" y1="415.57142857142856" y2="415.57142857142856" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="413.57142857142856" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.6</text><line x1="468" x2="936" y1="301.2857142857143" y2="301.2857142857143" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="299.2857142857143" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.8</text><line x1="468" x2="936" y1="187" y2="187" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="185" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">1.0</text><circle cx="243.8894420255437" cy="285.99762123784905" r="5" fill="#f5b914" stroke="#1d1f23" stroke-width="0.6"/><circle cx="510.5" cy="290.6435427405293" r="5" fill="#f5b914" stroke="#1d1f23" stroke-width="0.6"/><text x="510.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">gold</text><circle cx="137.07017404316508" cy="337.492087925066" r="5" fill="#00b862" stroke="#1d1f23" stroke-width="0.6"/><circle cx="547.5" cy="366.40156268900694" r="5" fill="#00b862" stroke="#1d1f23" stroke-width="0.6"/><text x="547.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">green</text><circle cx="291.11862701388526" cy="313.9483047029116" r="5" fill="#d9742b" stroke="#1d1f23" stroke-width="0.6"/><circle cx="584.5" cy="379.84817399174653" r="5" fill="#d9742b" stroke="#1d1f23" stroke-width="0.6"/><text x="584.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">amber</text><circle cx="214.80389834704386" cy="495.785607618824" r="5" fill="#3173e0" stroke="#1d1f23" stroke-width="0.6"/><circle cx="621.5" cy="430.7787649554144" r="5" fill="#3173e0" stroke="#1d1f23" stroke-width="0.6"/><text x="621.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">blue</text><circle cx="182.71123135713376" cy="289.78558038792653" r="5" fill="#c8e040" stroke="#1d1f23" stroke-width="0.6"/><circle cx="658.5" cy="266.4597094750077" r="5" fill="#c8e040" stroke="#1d1f23" stroke-width="0.6"/><text x="658.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">lime</text><circle cx="326.39018398333184" cy="460.28385642976934" r="5" fill="#c05dd1" stroke="#1d1f23" stroke-width="0.6"/><circle cx="695.5" cy="391.5064550224851" r="5" fill="#c05dd1" stroke="#1d1f23" stroke-width="0.6"/><text x="695.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">purple</text><circle cx="232.80582463359374" cy="395.90184665533434" r="5" fill="#8a8f98" stroke="#1d1f23" stroke-width="0.6"/><circle cx="732.5" cy="387.67866853422015" r="5" fill="#8a8f98" stroke="#1d1f23" stroke-width="0.6"/><text x="732.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">gray</text><circle cx="337.44712259486664" cy="330.2282817642153" r="5" fill="#e0473a" stroke="#1d1f23" stroke-width="0.6"/><circle cx="769.5" cy="407.77588621044686" r="5" fill="#e0473a" stroke="#1d1f23" stroke-width="0.6"/><text x="769.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">vermilion</text><circle cx="268.52656774320167" cy="503.7974247963141" r="5" fill="#7b64ed" stroke="#1d1f23" stroke-width="0.6"/><circle cx="806.5" cy="417.18105305733604" r="5" fill="#7b64ed" stroke="#1d1f23" stroke-width="0.6"/><text x="806.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">violet</text><circle cx="315.59099570668786" cy="404.2760979629167" r="5" fill="#de7cb0" stroke="#1d1f23" stroke-width="0.6"/><circle cx="843.5" cy="353.1687410144194" r="5" fill="#de7cb0" stroke="#1d1f23" stroke-width="0.6"/><text x="843.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">pink</text><circle cx="193.79014406051468" cy="447.01320488000295" r="5" fill="#56b4e9" stroke="#1d1f23" stroke-width="0.6"/><circle cx="880.5" cy="338.7027524004526" r="5" fill="#56b4e9" stroke="#1d1f23" stroke-width="0.6"/><text x="880.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">sky</text><circle cx="157.9199994188632" cy="366.3529545801298" r="5" fill="#4fc89a" stroke="#1d1f23" stroke-width="0.6"/><circle cx="917.5" cy="328.5836250734305" r="5" fill="#4fc89a" stroke="#1d1f23" stroke-width="0.6"/><text x="917.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">teal</text><text x="24" y="637" font-size="10" fill="#5d636b" font-weight="700" text-anchor="start">WORKBENCH RAMP</text><text x="24" y="651" font-size="11" fill="#5d636b" font-weight="400" text-anchor="start">Default's own neutral ramp, which every palette without one of its own wears.</text><text x="24" y="673" font-size="10" fill="#5d636b" font-weight="600" text-anchor="start">dark</text><rect x="64" y="661" width="56.61538461538461" height="30" fill="#141414" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="92.3076923076923" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><rect x="122.61538461538461" y="661" width="56.61538461538461" height="30" fill="#0b0b0b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="150.9230769230769" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><rect x="181.23076923076923" y="661" width="56.61538461538461" height="30" fill="#2a2a2a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="209.53846153846155" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><rect x="239.84615384615384" y="661" width="56.61538461538461" height="30" fill="#1e1e1e" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="268.15384615384613" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><rect x="298.46153846153845" y="661" width="56.61538461538461" height="30" fill="#141414" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="326.7692307692308" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><rect x="357.0769230769231" y="661" width="56.61538461538461" height="30" fill="#262626" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="385.3846153846154" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><rect x="415.6923076923077" y="661" width="56.61538461538461" height="30" fill="#2d2d2d" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="444" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><rect x="474.30769230769226" y="661" width="56.61538461538461" height="30" fill="#3a3a3a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="502.6153846153846" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><rect x="532.9230769230769" y="661" width="56.61538461538461" height="30" fill="#2a2a2a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="561.2307692307692" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><rect x="591.5384615384615" y="661" width="56.61538461538461" height="30" fill="#e8e8e8" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="619.8461538461538" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><rect x="650.1538461538462" y="661" width="56.61538461538461" height="30" fill="#f3f4f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="678.4615384615385" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><rect x="708.7692307692307" y="661" width="56.61538461538461" height="30" fill="#9aa0a6" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="737.076923076923" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><rect x="767.3846153846154" y="661" width="56.61538461538461" height="30" fill="#80868e" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="795.6923076923076" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="836" y="655" width="100" height="56" fill="#0b0b0b" rx="4"/><rect x="855" y="665.08" width="62" height="35.84" fill="#1e1e1e" rx="3" stroke="#2d2d2d"/><rect x="855" y="665.08" width="62" height="8.601600000000001" fill="#f5b914" rx="3" fill-opacity="0.45"/><rect x="855" y="665.08" width="62" height="2" fill="#f5b914" /><rect x="861" y="679.416" width="34.1" height="3" fill="#e8e8e8" rx="1.5"/><rect x="861" y="685.8672" width="24.8" height="3" fill="#9aa0a6" rx="1.5"/><rect x="861" y="692.3184" width="43.4" height="5.734400000000001" fill="#141414" rx="2" stroke="#3a3a3a" stroke-width="0.6"/><text x="24" y="733" font-size="10" fill="#5d636b" font-weight="600" text-anchor="start">light</text><rect x="64" y="721" width="56.61538461538461" height="30" fill="#f4f5f7" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="92.3076923076923" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><rect x="122.61538461538461" y="721" width="56.61538461538461" height="30" fill="#eef1f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="150.9230769230769" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><rect x="181.23076923076923" y="721" width="56.61538461538461" height="30" fill="#d3d9e1" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="209.53846153846155" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><rect x="239.84615384615384" y="721" width="56.61538461538461" height="30" fill="#fbfcfd" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="268.15384615384613" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><rect x="298.46153846153845" y="721" width="56.61538461538461" height="30" fill="#ffffff" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="326.7692307692308" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><rect x="357.0769230769231" y="721" width="56.61538461538461" height="30" fill="#eef1f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="385.3846153846154" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><rect x="415.6923076923077" y="721" width="56.61538461538461" height="30" fill="#ccd2da" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="444" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><rect x="474.30769230769226" y="721" width="56.61538461538461" height="30" fill="#b2bac4" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="502.6153846153846" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><rect x="532.9230769230769" y="721" width="56.61538461538461" height="30" fill="#dfe3e9" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="561.2307692307692" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><rect x="591.5384615384615" y="721" width="56.61538461538461" height="30" fill="#1b1e23" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="619.8461538461538" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><rect x="650.1538461538462" y="721" width="56.61538461538461" height="30" fill="#0d0f12" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="678.4615384615385" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><rect x="708.7692307692307" y="721" width="56.61538461538461" height="30" fill="#5b636b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="737.076923076923" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><rect x="767.3846153846154" y="721" width="56.61538461538461" height="30" fill="#6a717b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="795.6923076923076" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="836" y="715" width="100" height="56" fill="#eef1f5" rx="4"/><rect x="855" y="725.08" width="62" height="35.84" fill="#fbfcfd" rx="3" stroke="#ccd2da"/><rect x="855" y="725.08" width="62" height="8.601600000000001" fill="#eab013" rx="3" fill-opacity="0.45"/><rect x="855" y="725.08" width="62" height="2" fill="#eab013" /><rect x="861" y="739.416" width="34.1" height="3" fill="#1b1e23" rx="1.5"/><rect x="861" y="745.8672" width="24.8" height="3" fill="#5b636b" rx="1.5"/><rect x="861" y="752.3184" width="43.4" height="5.734400000000001" fill="#ffffff" rx="2" stroke="#b2bac4" stroke-width="0.6"/><text x="24" y="793" font-size="10" fill="#5d636b" font-weight="400" text-anchor="start">Each key's lightness, ground to ink.</text><rect x="24" y="819" width="444" height="150" fill="#ffffff" stroke="#d9dbe0"/><text x="24" y="814" font-size="9" fill="#5d636b" font-weight="600" text-anchor="start">dark</text><line x1="24" x2="468" y1="927.5" y2="927.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="24" x2="468" y1="894" y2="894" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="24" x2="468" y1="860.5" y2="860.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="54.30769230769231" cy="935.3723260166211" r="4.5" fill="#141414" stroke="#1d1f23" stroke-width="0.6"/><text x="54.30769230769231" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><circle cx="86.92307692307692" cy="940.9566665156811" r="4.5" fill="#0b0b0b" stroke="#1d1f23" stroke-width="0.6"/><text x="86.92307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><circle cx="119.53846153846153" cy="922.8076681135759" r="4.5" fill="#2a2a2a" stroke="#1d1f23" stroke-width="0.6"/><text x="119.53846153846153" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><circle cx="152.15384615384613" cy="929.5058294355016" r="4.5" fill="#1e1e1e" stroke="#1d1f23" stroke-width="0.6"/><text x="152.15384615384613" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><circle cx="184.76923076923077" cy="935.3723260166211" r="4.5" fill="#141414" stroke="#1d1f23" stroke-width="0.6"/><text x="184.76923076923077" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><circle cx="217.38461538461536" cy="925.0051511190109" r="4.5" fill="#262626" stroke="#1d1f23" stroke-width="0.6"/><text x="217.38461538461536" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><circle cx="250" cy="921.1801628038764" r="4.5" fill="#2d2d2d" stroke="#1d1f23" stroke-width="0.6"/><text x="250" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><circle cx="282.6153846153846" cy="914.3064066203902" r="4.5" fill="#3a3a3a" stroke="#1d1f23" stroke-width="0.6"/><text x="282.6153846153846" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><circle cx="315.2307692307692" cy="922.8076681135759" r="4.5" fill="#2a2a2a" stroke="#1d1f23" stroke-width="0.6"/><text x="315.2307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><circle cx="347.84615384615387" cy="836.2461159042105" r="4.5" fill="#e8e8e8" stroke="#1d1f23" stroke-width="0.6"/><text x="347.84615384615387" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><circle cx="380.46153846153845" cy="831.4658435568595" r="4.5" fill="#f3f4f5" stroke="#1d1f23" stroke-width="0.6"/><text x="380.46153846153845" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><circle cx="413.07692307692304" cy="866.8291775110836" r="4.5" fill="#9aa0a6" stroke="#1d1f23" stroke-width="0.6"/><text x="413.07692307692304" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><circle cx="445.6923076923077" cy="878.2318184067324" r="4.5" fill="#80868e" stroke="#1d1f23" stroke-width="0.6"/><text x="445.6923076923077" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="492" y="819" width="444" height="150" fill="#ffffff" stroke="#d9dbe0"/><text x="492" y="814" font-size="9" fill="#5d636b" font-weight="600" text-anchor="start">light</text><line x1="492" x2="936" y1="927.5" y2="927.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="492" x2="936" y1="894" y2="894" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="492" x2="936" y1="860.5" y2="860.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="522.3076923076923" cy="831.0262653785574" r="4.5" fill="#f4f5f7" stroke="#1d1f23" stroke-width="0.6"/><text x="522.3076923076923" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><circle cx="554.9230769230769" cy="832.7613834837304" r="4.5" fill="#eef1f5" stroke="#1d1f23" stroke-width="0.6"/><text x="554.9230769230769" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><circle cx="587.5384615384615" cy="842.6716826000629" r="4.5" fill="#d3d9e1" stroke="#1d1f23" stroke-width="0.6"/><text x="587.5384615384615" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><circle cx="620.1538461538461" cy="828.2607706342126" r="4.5" fill="#fbfcfd" stroke="#1d1f23" stroke-width="0.6"/><text x="620.1538461538461" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><circle cx="652.7692307692307" cy="827.0000008745449" r="4.5" fill="#ffffff" stroke="#1d1f23" stroke-width="0.6"/><text x="652.7692307692307" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><circle cx="685.3846153846154" cy="832.7613834837304" r="4.5" fill="#eef1f5" stroke="#1d1f23" stroke-width="0.6"/><text x="685.3846153846154" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><circle cx="717.9999999999999" cy="845.5574043611224" r="4.5" fill="#ccd2da" stroke="#1d1f23" stroke-width="0.6"/><text x="717.9999999999999" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><circle cx="750.6153846153845" cy="855.7152420690168" r="4.5" fill="#b2bac4" stroke="#1d1f23" stroke-width="0.6"/><text x="750.6153846153845" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><circle cx="783.2307692307692" cy="838.4565182665617" r="4.5" fill="#dfe3e9" stroke="#1d1f23" stroke-width="0.6"/><text x="783.2307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><circle cx="815.8461538461538" cy="929.6345600149465" r="4.5" fill="#1b1e23" stroke="#1d1f23" stroke-width="0.6"/><text x="815.8461538461538" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><circle cx="848.4615384615385" cy="938.5477833064006" r="4.5" fill="#0d0f12" stroke="#1d1f23" stroke-width="0.6"/><text x="848.4615384615385" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><circle cx="881.076923076923" cy="894.5928154370331" r="4.5" fill="#5b636b" stroke="#1d1f23" stroke-width="0.6"/><text x="881.076923076923" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><circle cx="913.6923076923076" cy="887.8233662007535" r="4.5" fill="#6a717b" stroke="#1d1f23" stroke-width="0.6"/><text x="913.6923076923076" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text></svg>[39m
+
+
+[36m [2m❯[22m tests/graph/paletteDiagrams.test.ts:[2m8:107[22m[39m
+    [90m  6|[39m [34mdescribe[39m([32m"the palette spec's diagrams"[39m[33m,[39m () [33m=>[39m {
+    [90m  7|[39m   it("are what palette.ts draws now (rerun `node scripts/vite-run.mjs …
+    [90m  8|[39m     for (const [file, svg] of Object.entries(paletteDiagrams())) expec…
+    [90m   |[39m                                                                                                           [31m^[39m
+    [90m  9|[39m   })[33m;[39m
+    [90m 10|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+```
+
+</details>
+
+<details><summary>33 npm direct dependencies ahead of develop</summary>
 
 | Package | On base | Here |
 |---|---|---|
-| `@anthropic-ai/sdk` | ^1.3.0 | ^1.6.0 |
-| `@lezer/common` | ^1.5.3 | ^1.5.5 |
-| `@tauri-apps/api` | ^2.12.2 | ^2.12.4 |
-| `@tauri-apps/cli` | ^2.12.1 | ^2.12.4 |
+| `@anthropic-ai/sdk` | ^1.5.0 | ^1.12.0 |
+| `@lezer/common` | ^1.5.5 | ^1.5.6 |
+| `@tauri-apps/api` | ^2.12.2 | ^2.12.5 |
+| `@tauri-apps/cli` | ^2.12.1 | ^2.12.6 |
 | `@tauri-apps/plugin-dialog` | ^2.8.1 | ^2.8.4 |
 | `@tauri-apps/plugin-fs` | ^2.6.0 | ^2.7.1 |
-| `@tauri-apps/plugin-opener` | ^2.7.0 | ^2.7.2 |
+| `@tauri-apps/plugin-opener` | ^2.7.0 | ^2.7.3 |
 | `@types/node` | ^26.6.5 | ^26.6.6 |
 | `@types/react` | ^19.2.18 | ^19.3.0 |
 | `@types/react-dom` | ^19.2.7 | ^19.3.0 |
-| `@vitejs/plugin-react` | ^6.1.2 | ^6.2.1 |
-| `@xyflow/react` | ^12.12.0 | ^12.12.1 |
-| `@xyflow/system` | 0.0.83 | 0.0.84 |
-| `dompurify` | ^3.4.16 | ^3.4.17 |
+| `@vitejs/plugin-react` | ^6.2.1 | ^6.3.0 |
+| `@xyflow/react` | ^13.0.1 | 13.0.2 |
+| `colord` | ^2.10.0 | ^2.14.0 |
+| `dompurify` | ^3.4.16 | ^3.4.18 |
 | `elkjs` | ^0.12.0 | ^0.12.1 |
+| `eslint` | ^9.39.5 | ^10.15.0 |
+| `eslint-plugin-obsidianmd` | ^0.5.1 | ^0.6.0 |
 | `katex` | ^0.19.0 | ^0.19.1 |
 | `magic-string` | 0.30.21 | 1.4.5 |
-| `marked` | ^18.1.0 | ^18.1.3 |
-| `puppeteer-core` | ^25.13.0 | ^25.16.0 |
+| `marked` | ^18.1.3 | ^18.2.1 |
+| `papaparse` | ^5.7.0 | ^5.7.1 |
+| `postcss` | 8.5.32 | 8.5.33 |
+| `puppeteer-core` | ^25.13.0 | ^25.18.1 |
 | `react` | ^19.3.0 | ^19.3.1 |
 | `react-dom` | ^19.3.0 | ^19.3.1 |
 | `react-is` | ^19.3.0 | ^19.3.1 |
+| `recharts` | ^3.10.1 | ^3.11.0 |
+| `rollup-plugin-license` | ^3.7.1 | ^3.7.2 |
 | `three` | 0.186.1 | 0.187.0 |
-| `tsrs` | 0.20.1-ts7.1.0-beta | 0.23.0-ts7.1.0-beta |
-| `vite` | ^8.3.4 | ^8.3.6 |
-| `vitest` | ^5.0.3 | ^5.1.0 |
+| `tsrs` | 0.20.1-ts7.1.0-beta | 7.1.0-beta.tsrs4 |
+| `typescript-eslint` | ^8.72.2 | ^8.73.0 |
+| `vite` | ^8.3.4 | ^8.3.8 |
+| `vitest` | ^5.1.0 | ^5.1.1 |
 
 </details>
 
@@ -69,76 +167,1030 @@ Rebased from `d493e6290` onto `develop` @ `ef6f3104a`: 23 commits carried, one b
 
 | | Check | Time |
 |---|---|---|
-| ✅ | Engine module builds (npm run build:wasm) | 89s |
-| ✅ | Site snapshots regenerate (node scripts/prerender-site.mjs) | 32s |
+| ❌ | Engine module builds (npm run build:wasm) | 34s |
+| ✅ | Site snapshots regenerate (node scripts/prerender-site.mjs) | 20s |
 | ✅ | Typecheck | 1s |
-| ✅ | Unit tests | 34s |
-| ✅ | Site build | 5s |
+| ❌ | Unit tests | 36s |
+| ✅ | Site build | 4s |
 | ✅ | Headless CLI build | 2s |
-| ✅ | Obsidian plugin build | 2s |
-| ✅ | crates/solenoid-core: clippy | 39s |
-| ✅ | crates/solenoid-core: tests | 133s |
-| ✅ | crates/solenoid-graph: clippy | 39s |
-| ✅ | crates/solenoid-graph: tests | 115s |
-| ✅ | crates/solenoid-parquet: clippy | 28s |
-| ✅ | crates/solenoid-parquet: tests | 53s |
-| ✅ | crates/solenoid-schedule: clippy | 3s |
-| ✅ | crates/solenoid-schedule: tests | 4s |
-| ✅ | crates/solenoid-core: clippy (wasm) | 82s |
-| ✅ | Desktop shell compiles (src-tauri) | 104s |
+| ❌ | Obsidian plugin build | 30s |
+| ❌ | crates/solenoid-core: clippy | 31s |
+| ❌ | crates/solenoid-core: tests | 39s |
+| ❌ | crates/solenoid-graph: clippy | 32s |
+| ❌ | crates/solenoid-graph: tests | 38s |
+| ❌ | crates/solenoid-parquet: clippy | 21s |
+| ❌ | crates/solenoid-parquet: tests | 33s |
+| ✅ | crates/solenoid-schedule: clippy | 2s |
+| ✅ | crates/solenoid-schedule: tests | 3s |
+| ❌ | crates/solenoid-core: clippy (wasm) | 63s |
+| ❌ | Desktop shell compiles (src-tauri) | 0s |
+
+Setup steps that failed:
+
+- ❌ cargo: src-tauri lockfile
 
 ## Direct dependencies that moved today
 
 | | Package | Where | From | To | Notes |
 |---|---|---|---|---|---|
-|  | `jiff` | solenoid-core | 0.2.39 | 0.2.40 | [releases](https://github.com/BurntSushi/jiff/releases) |
+|  | `arrow-array` | solenoid-parquet | 60.1.0 | 60.2.0 | [releases](https://github.com/apache/arrow-rs/releases) |
+|  | `arrow-cast` | solenoid-parquet | 60.1.0 | 60.2.0 | [releases](https://github.com/apache/arrow-rs/releases) |
+|  | `arrow-schema` | solenoid-parquet | 60.1.0 | 60.2.0 | [releases](https://github.com/apache/arrow-rs/releases) |
+|  | `jiff` | solenoid-core | 0.2.46, 1.0.1 | 0.2.46, 1.0.2 | [releases](https://github.com/BurntSushi/jiff/releases) |
+|  | `parquet` | solenoid-parquet | 60.1.0 | 60.2.0 | [releases](https://github.com/apache/arrow-rs/releases) |
+|  | `tsrs` | npm | 7.1.0-beta.tsrs3 | 7.1.0-beta.tsrs4 | [releases](https://github.com/oxc-project/tsrs/releases) |
 
-<details><summary>34 transitive changes</summary>
+<details><summary>48 transitive changes</summary>
 
 | Package | Where | From | To |
 |---|---|---|---|
-| `ansi-regex` | npm | 6.5.0 | 6.6.0 |
-| `bitflags` | solenoid-core | 1.3.2 | (gone) |
-| `bitflags` | solenoid-graph | 1.3.2 | (gone) |
-| `bitflags` | solenoid-parquet | 1.3.2, 2.13.2 | 2.13.2 |
-| `defmt` | solenoid-core | 1.2.0 | (gone) |
-| `defmt` | solenoid-graph | 1.2.0 | (gone) |
-| `defmt` | solenoid-parquet | 1.2.0 | (gone) |
-| `defmt` | src-tauri | 1.2.0 | (gone) |
-| `defmt-macros` | solenoid-core | 1.2.0 | (gone) |
-| `defmt-macros` | solenoid-graph | 1.2.0 | (gone) |
-| `defmt-macros` | solenoid-parquet | 1.2.0 | (gone) |
-| `defmt-macros` | src-tauri | 1.2.0 | (gone) |
-| `defmt-parser` | solenoid-core | 1.1.0 | (gone) |
-| `defmt-parser` | solenoid-graph | 1.1.0 | (gone) |
-| `defmt-parser` | solenoid-parquet | 1.1.0 | (gone) |
-| `defmt-parser` | src-tauri | 1.1.0 | (gone) |
-| `jiff` | solenoid-graph | 0.2.39 | 0.2.40 |
-| `jiff` | solenoid-parquet | 0.2.39 | 0.2.40 |
-| `jiff` | src-tauri | 0.2.39 | 0.2.40 |
-| `jiff-core` | solenoid-core | 0.1.2 | 0.1.3 |
-| `jiff-core` | solenoid-graph | 0.1.2 | 0.1.3 |
-| `jiff-core` | solenoid-parquet | 0.1.2 | 0.1.3 |
-| `jiff-core` | src-tauri | 0.1.2 | 0.1.3 |
-| `jiff-static` | solenoid-core | 0.2.39 | 0.2.40 |
-| `jiff-static` | solenoid-graph | 0.2.39 | 0.2.40 |
-| `jiff-static` | solenoid-parquet | 0.2.39 | 0.2.40 |
-| `jiff-static` | src-tauri | 0.2.39 | 0.2.40 |
-| `thiserror` | solenoid-core | 2.0.21 | (gone) |
-| `thiserror` | solenoid-graph | 2.0.21 | (gone) |
-| `thiserror` | solenoid-parquet | 2.0.21 | (gone) |
-| `thiserror-impl` | solenoid-core | 2.0.21 | (gone) |
-| `thiserror-impl` | solenoid-graph | 2.0.21 | (gone) |
-| `thiserror-impl` | solenoid-parquet | 2.0.21 | (gone) |
-| `ws` | npm | 8.22.1 | 8.22.2 |
+| `@rollup/rollup-android-arm-eabi` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-android-arm64` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-android-x64` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-darwin-arm64` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-darwin-x64` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-freebsd-arm64` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-freebsd-x64` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-arm-gnueabihf` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-arm-musleabihf` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-arm64-gnu` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-arm64-musl` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-loong64-gnu` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-loong64-musl` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-ppc64-gnu` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-ppc64-musl` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-riscv64-gnu` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-riscv64-musl` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-s390x-gnu` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-x64-gnu` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-linux-x64-musl` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-openbsd-x64` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-openharmony-arm64` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-win32-arm64-msvc` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-win32-ia32-msvc` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-win32-x64-gnu` | npm | 4.68.7 | 4.68.8 |
+| `@rollup/rollup-win32-x64-msvc` | npm | 4.68.7 | 4.68.8 |
+| `@tsrs/darwin-arm64` | npm | 7.1.0-beta.tsrs3 | 7.1.0-beta.tsrs4 |
+| `@tsrs/darwin-x64` | npm | 7.1.0-beta.tsrs3 | 7.1.0-beta.tsrs4 |
+| `@tsrs/linux-arm64-gnu` | npm | 7.1.0-beta.tsrs3 | 7.1.0-beta.tsrs4 |
+| `@tsrs/linux-arm64-musl` | npm | 7.1.0-beta.tsrs3 | 7.1.0-beta.tsrs4 |
+| `@tsrs/linux-x64-gnu` | npm | 7.1.0-beta.tsrs3 | 7.1.0-beta.tsrs4 |
+| `@tsrs/linux-x64-musl` | npm | 7.1.0-beta.tsrs3 | 7.1.0-beta.tsrs4 |
+| `@tsrs/win32-arm64` | npm | 7.1.0-beta.tsrs3 | 7.1.0-beta.tsrs4 |
+| `@tsrs/win32-x64` | npm | 7.1.0-beta.tsrs3 | 7.1.0-beta.tsrs4 |
+| `arrow-buffer` | solenoid-parquet | 60.1.0 | 60.2.0 |
+| `arrow-cmp` | solenoid-parquet | 60.1.0 | 60.2.0 |
+| `arrow-data` | solenoid-parquet | 60.1.0 | 60.2.0 |
+| `arrow-ipc` | solenoid-parquet | 60.1.0 | 60.2.0 |
+| `arrow-ord` | solenoid-parquet | 60.1.0 | 60.2.0 |
+| `arrow-select` | solenoid-parquet | 60.1.0 | 60.2.0 |
+| `jiff` | solenoid-graph | 0.2.46, 1.0.1 | 0.2.46, 1.0.2 |
+| `jiff` | solenoid-parquet | 0.2.46, 1.0.1 | 0.2.46, 1.0.2 |
+| `jiff-static` | solenoid-core | 0.2.46, 1.0.1 | 0.2.46, 1.0.2 |
+| `jiff-static` | solenoid-graph | 0.2.46, 1.0.1 | 0.2.46, 1.0.2 |
+| `jiff-static` | solenoid-parquet | 0.2.46, 1.0.1 | 0.2.46, 1.0.2 |
+| `rollup` | npm | 4.68.7 | 4.68.8 |
+| `zerocopy` | solenoid-parquet | 0.8.63 | 0.8.64 |
+| `zerocopy-derive` | solenoid-parquet | 0.8.63 | 0.8.64 |
 
 </details>
 
 ## Security audits
 
-- npm: none
+- npm: 4 moderate, 4 total
 - crates/solenoid-core: none
 - crates/solenoid-graph: none
 - crates/solenoid-parquet: none
 - crates/solenoid-schedule: none
 - src-tauri: none
+
+## Failure logs
+
+<details><summary>❌ cargo: src-tauri lockfile</summary>
+
+`cargo update --manifest-path src-tauri/Cargo.toml`
+
+```
+[1m[92m    Updating[0m crates.io index
+[1m[91merror[0m: failed to select a version for `reqwest`.
+    ... required by package `solenoid v1.6.2 (/home/runner/work/solenoid/solenoid/src-tauri)`
+versions that meet the requirements `^0.13` are: 0.13.5, 0.13.4, 0.13.3, 0.13.2, 0.13.1, 0.13.0
+
+package `solenoid` depends on `reqwest` with feature `rustls-tls` but `reqwest` does not have that feature.
+help: available features: __native-tls, __native-tls-alpn, __rustls, __rustls-aws-lc-rs, __tls, blocking, brotli, charset, cookies, default, default-tls, deflate, form, gzip, h2, hickory-dns, http2, http3, json, multipart, native-tls, native-tls-no-alpn, native-tls-vendored, native-tls-vendored-no-alpn, query, rustls, rustls-native-certs, rustls-no-provider, socks, stream, system-proxy, webpki-roots, zstd
+
+
+failed to select a version for `reqwest` which could resolve this conflict
+```
+
+</details>
+
+<details><summary>❌ Engine module builds (npm run build:wasm)</summary>
+
+`npm run build:wasm`
+
+```
+[1m[92m   Compiling[0m typed-path v0.13.0
+[1m[92m   Compiling[0m jiff-core v0.1.8
+[1m[92m   Compiling[0m debug_unsafe v0.1.4
+[1m[92m   Compiling[0m itoa v1.0.19
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m   Compiling[0m unicode-general-category v1.1.0
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m bit-set v0.8.0
+[1m[92m   Compiling[0m atoi_simd v0.18.1
+[1m[92m   Compiling[0m zip v9.8.1
+[1m[92m   Compiling[0m jiff v0.2.46
+[1m[92m   Compiling[0m logos v0.15.1
+[1m[92m   Compiling[0m js-sys v0.3.107
+[1m[92m   Compiling[0m regex-automata v0.4.19
+[1m[92m   Compiling[0m quick-xml v0.42.0
+[1m[92m   Compiling[0m codepage v0.1.3
+[1m[92m   Compiling[0m csv-core v0.1.13
+[1m[92m   Compiling[0m foldhash v0.2.0
+[1m[92m   Compiling[0m jiff-tzdb v1.0.0
+[1m[92m   Compiling[0m ryu-js v1.0.3
+[1m[92m   Compiling[0m ryu v1.0.23
+[1m[92m   Compiling[0m jiff-core v1.0.1
+[1m[92m   Compiling[0m tinyvec v1.13.3
+[1m[92m   Compiling[0m byteorder v1.5.0
+[1m[92m   Compiling[0m fast-float2 v0.2.4
+[1m[92m   Compiling[0m jiff v1.0.2
+[1m[92m   Compiling[0m calamine v0.38.0
+[1m[92m   Compiling[0m unicode-normalization v0.1.26
+[1m[92m   Compiling[0m csv v1.4.0
+[1m[92m   Compiling[0m solenoid-schedule v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-schedule)
+[1m[92m   Compiling[0m fancy-regex v0.20.2
+[1m[92m   Compiling[0m interim v0.2.1 (/home/runner/work/solenoid/solenoid/crates/vendor/interim)
+[1m[92m   Compiling[0m netcore v0.1.0 (https://github.com/bubba8587/netcore-rs?rev=68e667f650dda9a3e2534b633af7da076ba4e2a1#68e667f6)
+[1m[92m   Compiling[0m sha1 v0.11.0
+[1m[92m   Compiling[0m sha2 v0.11.1
+[1m[92m   Compiling[0m md-5 v0.11.0
+[1m[92m   Compiling[0m base64 v0.23.1
+[1m[92m   Compiling[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m qrcodegen v1.8.0
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m   Compiling[0m uuid v1.29.3
+[1m[92m   Compiling[0m netcore-engine v0.1.0 (https://github.com/bubba8587/netcore-rs?rev=68e667f650dda9a3e2534b633af7da076ba4e2a1#68e667f6)
+[1m[92m   Compiling[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)
+[1m[92m   Compiling[0m wasm-bindgen-futures v0.4.80
+[1m[91merror[E0599][0m[1m: no method named `to_zoned` found for struct `jiff::Timestamp` in the current scope[0m
+  [1m[94m--> [0m/home/runner/work/solenoid/solenoid/crates/solenoid-core/src/relative_date.rs:81:72
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m     let base = Timestamp::from_millisecond(local.floor() as i64).ok()?.to_zoned(TimeZone::UTC);
+   [1m[94m|[0m                                                                        [1m[91m^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: there is a method `to_owned` with a similar name, but with different arguments
+  [1m[94m--> [0m/rustc/0ef1bc386059596dada8fb65b50425aab2ea637a/library/alloc/src/borrow.rs:48:4
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `solenoid-core` (lib) due to 1 previous error
+node:internal/errors:999
+  const err = new Error(message);
+              ^
+
+Error: Command failed: cargo build --profile release --target wasm32-unknown-unknown --manifest-path crates/solenoid-graph/Cargo.toml --target-dir crates/solenoid-graph/target
+    at genericNodeError (node:internal/errors:999:15)
+    at wrappedFn (node:internal/errors:544:14)
+    at checkExecSyncError (node:child_process:990:11)
+    at execFileSync (node:child_process:1026:15)
+    at run (file:///home/runner/work/solenoid/solenoid/scripts/build-wasm.mjs:12:28)
+    at build (file:///home/runner/work/solenoid/solenoid/scripts/build-wasm.mjs:75:3)
+    at file:///home/runner/work/solenoid/solenoid/scripts/build-wasm.mjs:93:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5) {
+  status: 101,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 7812,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v26.13.1
+```
+
+</details>
+
+<details><summary>❌ Unit tests</summary>
+
+`npx vitest run`
+
+```
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"SliderInput_1","type":"SliderInputNode","name":"SliderInput_1","x":-5512,"y":-2305,"init":{"label":"Reading","value":1,"width":200,"height":258},"literals":{"max":1,"min":0,"step":0.01}},"want":"{\"id\":\"SliderInput_1\",\"type\":\"SliderInputNode\",\"name\":\"SliderInput_1\",\"x\":-5512,\"y\":-2305,\"init\":{\"label\":\"Reading\",\"value\":6,\"width\":200,\"height\":258},\"literals\":{\"max\":1,\"min\":0,\"step\":0.01}}"}]}
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed famous-math
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"FormatController_15","type":"FormatControllerNode","name":"FormatController_15","x":3426,"y":2366,"init":{"label":"Format","hostNodeId":"","socketKey":"","side":"output","format":"scientific","customPattern":"0.00","decimalDigits":3,"decimalMode":"places","unit":"custom","customUnit":" J","socketDataType":"numlist","textCase":"none","bold":false,"italic":false,"textScale":14,"textAlign":"right","textMarkdown":false,"textMono":false,"logicalStyle":"truefalse","lambdaView":"signature","chartFontScale":1,"grouping":true,"negativeStyle":"minus","scaleMode":"none","advancedOpen":false,"width":116,"height":64,"inheritFormat":false,"chip":false}},"want":"{\"id\":\"FormatController_15\",\"type\":\"FormatControllerNode\",\"name\":\"FormatController_15\",\"x\":3426,\"y\":2366,\"init\":{\"label\":\"Format\",\"hostNodeId\":\"Display_15\",\"socketKey\":\"out\",\"side\":\"output\",\"format\":\"scientific\",\"customPattern\":\"0.00\",\"decimalDigits\":3,\"decimalMode\":\"places\",\"unit\":\"custom\",\"customUnit\":\" J\",\"socketDataType\":\"numlist\",\"textCase\":\"none\",\"bold\":false,\"italic\":false,\"textScale\":14,\"textAlign\":\"right\",\"textMarkdown\":false,\"textMono\":false,\"logicalStyle\":\"truefalse\",\"lambdaView\":\"signature\",\"chartFontScale\":1,\"grouping\":true,\"negativeStyle\":\"minus\",\"scaleMode\":\"none\",\"advancedOpen\":false,\"width\":116,\"height\":64,\"inheritFormat\":false,\"chip\":false}}"},{"got":{"id":"Group_8","type":"GroupNode","name":"Group_8","x":3219,"y":2163,"init":{"label":"Results","members":["Display_12","Display_13","Display_14","FormatController_12","FormatController_13","FormatController_14","FormatController_15"],"color":"green","collapsed":false,"width":425,"height":673,"lockedPosition":false}},"want":"{\"id\":\"Group_8\",\"type\":\"GroupNode\",\"name\":\"Group_8\",\"x\":3219,\"y\":2163,\"init\":{\"label\":\"Results\",\"members\":[\"Display_12\",\"Display_13\",\"Display_14\",\"Display_15\",\"FormatController_12\",\"FormatController_13\",\"FormatController_14\",\"FormatController_15\"],\"color\":\"green\",\"collapsed\":false,\"width\":425,\"height\":673,\"lockedPosition\":false}}"}]}
+
+[90mstderr[2m | tests/graph/graphDeltaChain.test.ts[2m > [22m[2ma run of edits undone and redone by delta[2m > [22m[2mseed product-launch-gantt
+[22m[39m[solenoid] undo delta missed its target; loading it whole {"fields":[],"cables":{"missing":[],"extra":[]},"cableOrder":"same","order":"same","off":[{"got":{"id":"Group_1","type":"GroupNode","name":"Group_1","x":395,"y":985,"init":{"label":"The plan","members":["CubeInput_1","ValueInput_1"],"color":"amber","collapsed":false,"width":511,"height":414,"lockedPosition":false}},"want":"{\"id\":\"Group_1\",\"type\":\"GroupNode\",\"name\":\"Group_1\",\"x\":395,\"y\":985,\"init\":{\"label\":\"The plan\",\"members\":[\"CubeInput_1\",\"ValueInput_1\",\"ValueInput_2\"],\"color\":\"amber\",\"collapsed\":false,\"width\":511,\"height\":414,\"lockedPosition\":false}}"}]}
+
+[90mstderr[2m | tests/graph/draftFlush.test.ts[2m > [22m[2mopen drafts flush before a capture[2m > [22m[2mcommits every registered draft once, and a failing one never blocks the rest
+[22m[39m[solenoid] draft flush failed Error: boom
+    at [90m/home/runner/work/solenoid/solenoid/[39mtests/graph/draftFlush.test.ts:9:44
+    at flushDrafts [90m(/home/runner/work/solenoid/solenoid/[39msrc/graph/draftFlush.ts:11:11[90m)[39m
+    at [90m/home/runner/work/solenoid/solenoid/[39mtests/graph/draftFlush.test.ts:11:12
+    at [90mfile:///home/runner/work/solenoid/solenoid/[39mnode_modules/[4mvitest[24m/dist/chunks/run.zBhXlcZQ.js:1695:35
+    at [90mfile:///home/runner/work/solenoid/solenoid/[39mnode_modules/[4mvitest[24m/dist/chunks/run.zBhXlcZQ.js:2864:26
+    at [90mfile:///home/runner/work/solenoid/solenoid/[39mnode_modules/[4mvitest[24m/dist/chunks/run.zBhXlcZQ.js:3402:20
+    at new Promise (<anonymous>)
+    at runWithCancel [90m(file:///home/runner/work/solenoid/solenoid/[39mnode_modules/[4mvitest[24m/dist/chunks/run.zBhXlcZQ.js:3397:10[90m)[39m
+    at [90mfile:///home/runner/work/solenoid/solenoid/[39mnode_modules/[4mvitest[24m/dist/chunks/run.zBhXlcZQ.js:3381:20
+    at new Promise (<anonymous>)
+
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 3 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[42m shared [49m[39m tests/graph/cargoLabels.test.ts[2m > [22mevery Rust test file of the core and the graph core has a plain-English name
+[31m[1mAssertionError[22m: add a line to LABELS in scripts/cargo-test.mjs: expected [ Array(1) ] to deeply equal [][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [][39m
+[31m+ [[39m
+[31m+   "solenoid-core/tests/alloc_probe.rs",[39m
+[31m+ ][39m
+
+[36m [2m❯[22m tests/graph/cargoLabels.test.ts:[2m16:69[22m[39m
+    [90m 14|[39m     }
+    [90m 15|[39m   }
+    [90m 16|[39m   expect(missing, "add a line to LABELS in scripts/cargo-test.mjs").to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m 17|[39m })[33m;[39m
+    [90m 18|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[42m shared [49m[39m tests/graph/paletteDiagrams.test.ts[2m > [22mthe palette spec's diagrams[2m > [22mare what palette.ts draws now (rerun `node scripts/vite-run.mjs scripts/palette-diagrams.ts`)
+[31m[1mAssertionError[22m: tree/specs/canvas/palettes/default.svg: expected '<svg xmlns="http://www.w3.org/2000/sv…' to be '<svg xmlns="http://www.w3.org/2000/sv…' // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1027" viewBox="0 0 960 1027" font-family="system-ui, -apple-system, Segoe UI, sans-serif"><defs><marker id="head" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#1d1f23"/></marker><marker id="headDim" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#5d636b"/></marker><linearGradient id="hues"><stop offset="0" stop-color="oklch(0.75 0.12 0)"/><stop offset="0.041666666666666664" stop-color="oklch(0.75 0.12 15)"/><stop offset="0.08333333333333333" stop-color="oklch(0.75 0.12 30)"/><stop offset="0.125" stop-color="oklch(0.75 0.12 45)"/><stop offset="0.16666666666666666" stop-color="oklch(0.75 0.12 60)"/><stop offset="0.20833333333333334" stop-color="oklch(0.75 0.12 75)"/><stop offset="0.25" stop-color="oklch(0.75 0.12 90)"/><stop offset="0.2916666666666667" stop-color="oklch(0.75 0.12 105)"/><stop offset="0.3333333333333333" stop-color="oklch(0.75 0.12 120)"/><stop offset="0.375" stop-color="oklch(0.75 0.12 135)"/><stop offset="0.4166666666666667" stop-color="oklch(0.75 0.12 150)"/><stop offset="0.4583333333333333" stop-color="oklch(0.75 0.12 165)"/><stop offset="0.5" stop-color="oklch(0.75 0.12 180)"/><stop offset="0.5416666666666666" stop-color="oklch(0.75 0.12 195)"/><stop offset="0.5833333333333334" stop-color="oklch(0.75 0.12 210)"/><stop offset="0.625" stop-color="oklch(0.75 0.12 225)"/><stop offset="0.6666666666666666" stop-color="oklch(0.75 0.12 240)"/><stop offset="0.7083333333333334" stop-color="oklch(0.75 0.12 255)"/><stop offset="0.75" stop-color="oklch(0.75 0.12 270)"/><stop offset="0.7916666666666666" stop-color="oklch(0.75 0.12 285)"/><stop offset="0.8333333333333334" stop-color="oklch(0.75 0.12 300)"/><stop offset="0.875" stop-color="oklch(0.75 0.12 315)"/><stop offset="0.9166666666666666" stop-color="oklch(0.75 0.12 330)"/><stop offset="0.9583333333333334" stop-color="oklch(0.75 0.12 345)"/><stop offset="1" stop-color="oklch(0.75 0.12 360)"/></linearGradient><linearGradient id="plasma"><stop offset="0" stop-color="rgb(13,8,135)"/><stop offset="0.03125" stop-color="rgb(29.03125,6.59375,141.75)"/><stop offset="0.0625" stop-color="rgb(45.0625,5.1875,148.5)"/><stop offset="0.09375" stop-color="rgb(61.09375,3.78125,155.25)"/><stop offset="0.125" stop-color="rgb(75.5,2.75,160.125)"/><stop offset="0.15625" stop-color="rgb(87.875,2.1875,162.65625)"/><stop offset="0.1875" stop-color="rgb(100.25,1.625,165.1875)"/><stop offset="0.21875" stop-color="rgb(112.625,1.0625,167.71875)"/><stop offset="0.25" stop-color="rgb(124.5,6.5,165.5)"/><stop offset="0.28125" stop-color="rgb(136.3125,12.6875,162.6875)"/><stop offset="0.3125" stop-color="rgb(148.125,18.875,159.875)"/><stop offset="0.34375" stop-color="rgb(159.09375,26,155.75)"/><stop offset="0.375" stop-color="rgb(168.375,35,149)"/><stop offset="0.40625" stop-color="rgb(177.65625,44,142.25)"/><stop offset="0.4375" stop-color="rgb(186.9375,53,135.5)"/><stop offset="0.46875" stop-color="rgb(194.90625,62,128.09375)"/><stop offset="0.5" stop-color="rgb(202.5,71,120.5)"/><stop offset="0.53125" stop-color="rgb(210.09375,80,112.90625)"/><stop offset="0.5625" stop-color="rgb(217.3125,89.125,105.5)"/><stop offset="0.59375" stop-color="rgb(223.21875,98.6875,98.75)"/><stop offset="0.625" stop-color="rgb(229.125,108.25,92)"/><stop offset="0.65625" stop-color="rgb(235.03125,117.8125,85.25)"/><stop offset="0.6875" stop-color="rgb(239.625,128.125,78.3125)"/><stop offset="0.71875" stop-color="rgb(243.5625,138.8125,71.28125)"/><stop offset="0.75" stop-color="rgb(247.5,149.5,64.25)"/><stop offset="0.78125" stop-color="rgb(251.0625,160.34375,57.375)"/><stop offset="0.8125" stop-color="rgb(251.625,172.4375,51.75)"/><stop offset="0.84375" stop-color="rgb(252.1875,184.53125,46.125)"/><stop offset="0.875" stop-color="rgb(252.75,196.625,40.5)"/><stop offset="0.90625" stop-color="rgb(250.96875,209.34375,37.21875)"/><stop offset="0.9375" stop-color="rgb(247.3125,222.5625,35.8125)"/><stop offset="0.96875" stop-color="rgb(243.65625,235.78125,34.40625)"/><stop offset="1" stop-color="rgb(240,249,33)"/></linearGradient></defs><rect x="0" y="0" width="960" height="1027" fill="#f7f7f5" /><text x="24" y="34" font-size="20" fill="#1d1f23" font-weight="700" text-anchor="start">Default</text><text x="24" y="58" font-size="10" fill="#5d636b" font-weight="700" text-anchor="start">FROM DEFAULT</text><text x="24" y="75" font-size="12" fill="#1d1f23" font-weight="600" text-anchor="start">The original set. Every other palette is drawn as what it does to these colors.</text><rect x="25" y="87" width="74" height="34" fill="#f5b914" rx="3"/><text x="62" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">gold</text><text x="62" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#f5b914</text><rect x="101" y="87" width="74" height="34" fill="#00b862" rx="3"/><text x="138" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">green</text><text x="138" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#00b862</text><rect x="177" y="87" width="74" height="34" fill="#d9742b" rx="3"/><text x="214" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">amber</text><text x="214" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#d9742b</text><rect x="253" y="87" width="74" height="34" fill="#3173e0" rx="3"/><text x="290" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">blue</text><text x="290" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#3173e0</text><rect x="329" y="87" width="74" height="34" fill="#c8e040" rx="3"/><text x="366" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">lime</text><text x="366" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#c8e040</text><rect x="405" y="87" width="74" height="34" fill="#c05dd1" rx="3"/><text x="442" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">purple</text><text x="442" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#c05dd1</text><rect x="481" y="87" width="74" height="34" fill="#8a8f98" rx="3"/><text x="518" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">gray</text><text x="518" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#8a8f98</text><rect x="557" y="87" width="74" height="34" fill="#e0473a" rx="3"/><text x="594" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">vermilion</text><text x="594" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#e0473a</text><rect x="633" y="87" width="74" height="34" fill="#7b64ed" rx="3"/><text x="670" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">violet</text><text x="670" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#7b64ed</text><rect x="709" y="87" width="74" height="34" fill="#de7cb0" rx="3"/><text x="746" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">pink</text><text x="746" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#de7cb0</text><rect x="785" y="87" width="74" height="34" fill="#56b4e9" rx="3"/><text x="822" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">sky</text><text x="822" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#56b4e9</text><rect x="861" y="87" width="74" height="34" fill="#4fc89a" rx="3"/><text x="898" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">teal</text><text x="898" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#4fc89a</text><text x="24" y="169" font-size="9" fill="#5d636b" font-weight="400" text-anchor="start">HUE AND COLORFULNESS: angle is hue, distance out is chroma</text><rect x="24" y="177" width="420" height="420" fill="#ffffff" stroke="#d9dbe0"/><path d="M430,387 A196,196 0 0 0 429.2541608259821,369.917474421459" stroke="oklch(0.75 0.13 2.5)" stroke-width="5" fill="none"/><path d="M429.2541608259821,369.917474421459 A196,196 0 0 0 427.0223195903928,352.96495717728163" stroke="oklch(0.75 0.13 7.5)" stroke-width="5" fill="none"/><path d="M427.0223195903928,352.96495717728163 A196,196 0 0 0 423.3214619526574,336.2714671599059" stroke="oklch(0.75 0.13 12.5)" stroke-width="5" fill="none"/><path d="M423.3214619526574,336.2714671599059 A196,196 0 0 0 418.179753674038,319.9640519081689" stroke="oklch(0.75 0.13 17.5)" stroke-width="5" fill="none"/><path d="M418.179753674038,319.9640519081689 A196,196 0 0 0 411.6363262591834,304.1668206988229" stroke="oklch(0.75 0.13 22.5)" stroke-width="5" fill="none"/><path d="M411.6363262591834,304.1668206988229 A196,196 0 0 0 403.74097914175,289" stroke="oklch(0.75 0.13 27.5)" stroke-width="5" fill="none"/><path d="M403.74097914175,289 A196,196 0 0 0 394.5538006806424,274.57901847519497" stroke="oklch(0.75 0.13 32.5)" stroke-width="5" fill="none"/><path d="M394.5538006806424,274.57901847519497 A196,196 0 0 0 384.1447108513197,261.0136285014383" stroke="oklch(0.75 0.13 37.5)" stroke-width="5" fill="none"/><path d="M384.1447108513197,261.0136285014383 A196,196 0 0 0 372.5929291125633,248.4070708874367" stroke="oklch(0.75 0.13 42.5)" stroke-width="5" fill="none"/><path d="M372.5929291125633,248.4070708874367 A196,196 0 0 0 359.9863714985617,236.8552891486803" stroke="oklch(0.75 0.13 47.5)" stroke-width="5" fill="none"/><path d="M359.9863714985617,236.8552891486803 A196,196 0 0 0 346.42098152480503,226.44619931935762" stroke="oklch(0.75 0.13 52.5)" stroke-width="5" fill="none"/><path d="M346.42098152480503,226.44619931935762 A196,196 0 0 0 332,217.25902085825004" stroke="oklch(0.75 0.13 57.5)" stroke-width="5" fill="none"/><path d="M332,217.25902085825004 A196,196 0 0 0 316.8331793011771,209.3636737408166" stroke="oklch(0.75 0.13 62.5)" stroke-width="5" fill="none"/><path d="M316.8331793011771,209.3636737408166 A196,196 0 0 0 301.0359480918311,202.82024632596196" stroke="oklch(0.75 0.13 67.5)" stroke-width="5" fill="none"/><path d="M301.0359480918311,202.82024632596196 A196,196 0 0 0 284.7285328400941,197.6785380473426" stroke="oklch(0.75 0.13 72.5)" stroke-width="5" fill="none"/><path d="M284.7285328400941,197.6785380473426 A196,196 0 0 0 268.03504282271837,193.97768040960722" stroke="oklch(0.75 0.13 77.5)" stroke-width="5" fill="none"/><path d="M268.03504282271837,193.97768040960722 A196,196 0 0 0 251.08252557854098,191.74583917401787" stroke="oklch(0.75 0.13 82.5)" stroke-width="5" fill="none"/><path d="M251.08252557854098,191.74583917401787 A196,196 0 0 0 234,191" stroke="oklch(0.75 0.13 87.5)" stroke-width="5" fill="none"/><path d="M234,191 A196,196 0 0 0 216.917474421459,191.74583917401787" stroke="oklch(0.75 0.13 92.5)" stroke-width="5" fill="none"/><path d="M216.917474421459,191.74583917401787 A196,196 0 0 0 199.96495717728166,193.97768040960722" stroke="oklch(0.75 0.13 97.5)" stroke-width="5" fill="none"/><path d="M199.96495717728166,193.97768040960722 A196,196 0 0 0 183.2714671599059,197.6785380473426" stroke="oklch(0.75 0.13 102.5)" stroke-width="5" fill="none"/><path d="M183.2714671599059,197.6785380473426 A196,196 0 0 0 166.96405190816893,202.82024632596196" stroke="oklch(0.75 0.13 107.5)" stroke-width="5" fill="none"/><path d="M166.96405190816893,202.82024632596196 A196,196 0 0 0 151.16682069882293,209.36367374081658" stroke="oklch(0.75 0.13 112.5)" stroke-width="5" fill="none"/><path d="M151.16682069882293,209.36367374081658 A196,196 0 0 0 136.00000000000006,217.25902085825" stroke="oklch(0.75 0.13 117.5)" stroke-width="5" fill="none"/><path d="M136.00000000000006,217.25902085825 A196,196 0 0 0 121.57901847519501,226.44619931935756" stroke="oklch(0.75 0.13 122.5)" stroke-width="5" fill="none"/><path d="M121.57901847519501,226.44619931935756 A196,196 0 0 0 108.01362850143829,236.8552891486803" stroke="oklch(0.75 0.13 127.5)" stroke-width="5" fill="none"/><path d="M108.01362850143829,236.8552891486803 A196,196 0 0 0 95.4070708874367,248.40707088743667" stroke="oklch(0.75 0.13 132.5)" stroke-width="5" fill="none"/><path d="M95.4070708874367,248.40707088743667 A196,196 0 0 0 83.85528914868033,261.01362850143823" stroke="oklch(0.75 0.13 137.5)" stroke-width="5" fill="none"/><path d="M83.85528914868033,261.01362850143823 A196,196 0 0 0 73.44619931935765,274.5790184751949" stroke="oklch(0.75 0.13 142.5)" stroke-width="5" fill="none"/><path d="M73.44619931935765,274.5790184751949 A196,196 0 0 0 64.25902085825001,289" stroke="oklch(0.75 0.13 147.5)" stroke-width="5" fill="none"/><path d="M64.25902085825001,289 A196,196 0 0 0 56.36367374081661,304.1668206988229" stroke="oklch(0.75 0.13 152.5)" stroke-width="5" fill="none"/><path d="M56.36367374081661,304.1668206988229 A196,196 0 0 0 49.82024632596196,319.9640519081689" stroke="oklch(0.75 0.13 157.5)" stroke-width="5" fill="none"/><path d="M49.82024632596196,319.9640519081689 A196,196 0 0 0 44.67853804734264,336.2714671599059" stroke="oklch(0.75 0.13 162.5)" stroke-width="5" fill="none"/><path d="M44.67853804734264,336.2714671599059 A196,196 0 0 0 40.97768040960722,352.9649571772817" stroke="oklch(0.75 0.13 167.5)" stroke-width="5" fill="none"/><path d="M40.97768040960722,352.9649571772817 A196,196 0 0 0 38.745839174017874,369.9174744214589" stroke="oklch(0.75 0.13 172.5)" stroke-width="5" fill="none"/><path d="M38.745839174017874,369.9174744214589 A196,196 0 0 0 38,387" stroke="oklch(0.75 0.13 177.5)" stroke-width="5" fill="none"/><path d="M38,387 A196,196 0 0 0 38.745839174017874,404.082525578541" stroke="oklch(0.75 0.13 182.5)" stroke-width="5" fill="none"/><path d="M38.745839174017874,404.082525578541 A196,196 0 0 0 40.97768040960722,421.03504282271837" stroke="oklch(0.75 0.13 187.5)" stroke-width="5" fill="none"/><path d="M40.97768040960722,421.03504282271837 A196,196 0 0 0 44.678538047342585,437.728532840094" stroke="oklch(0.75 0.13 192.5)" stroke-width="5" fill="none"/><path d="M44.678538047342585,437.728532840094 A196,196 0 0 0 49.82024632596196,454.0359480918311" stroke="oklch(0.75 0.13 197.5)" stroke-width="5" fill="none"/><path d="M49.82024632596196,454.0359480918311 A196,196 0 0 0 56.36367374081658,469.83317930117704" stroke="oklch(0.75 0.13 202.5)" stroke-width="5" fill="none"/><path d="M56.36367374081658,469.83317930117704 A196,196 0 0 0 64.25902085825004,485" stroke="oklch(0.75 0.13 207.5)" stroke-width="5" fill="none"/><path d="M64.25902085825004,485 A196,196 0 0 0 73.44619931935756,499.420981524805" stroke="oklch(0.75 0.13 212.5)" stroke-width="5" fill="none"/><path d="M73.44619931935756,499.420981524805 A196,196 0 0 0 83.8552891486803,512.9863714985617" stroke="oklch(0.75 0.13 217.5)" stroke-width="5" fill="none"/><path d="M83.8552891486803,512.9863714985617 A196,196 0 0 0 95.40707088743665,525.5929291125633" stroke="oklch(0.75 0.13 222.5)" stroke-width="5" fill="none"/><path d="M95.40707088743665,525.5929291125633 A196,196 0 0 0 108.01362850143826,537.1447108513197" stroke="oklch(0.75 0.13 227.5)" stroke-width="5" fill="none"/><path d="M108.01362850143826,537.1447108513197 A196,196 0 0 0 121.57901847519491,547.5538006806423" stroke="oklch(0.75 0.13 232.5)" stroke-width="5" fill="none"/><path d="M121.57901847519491,547.5538006806423 A196,196 0 0 0 135.99999999999991,556.7409791417499" stroke="oklch(0.75 0.13 237.5)" stroke-width="5" fill="none"/><path d="M135.99999999999991,556.7409791417499 A196,196 0 0 0 151.16682069882282,564.6363262591833" stroke="oklch(0.75 0.13 242.5)" stroke-width="5" fill="none"/><path d="M151.16682069882282,564.6363262591833 A196,196 0 0 0 166.9640519081688,571.179753674038" stroke="oklch(0.75 0.13 247.5)" stroke-width="5" fill="none"/><path d="M166.9640519081688,571.179753674038 A196,196 0 0 0 183.27146715990597,576.3214619526574" stroke="oklch(0.75 0.13 252.5)" stroke-width="5" fill="none"/><path d="M183.27146715990597,576.3214619526574 A196,196 0 0 0 199.96495717728166,580.0223195903927" stroke="oklch(0.75 0.13 257.5)" stroke-width="5" fill="none"/><path d="M199.96495717728166,580.0223195903927 A196,196 0 0 0 216.917474421459,582.2541608259821" stroke="oklch(0.75 0.13 262.5)" stroke-width="5" fill="none"/><path d="M216.917474421459,582.2541608259821 A196,196 0 0 0 233.99999999999997,583" stroke="oklch(0.75 0.13 267.5)" stroke-width="5" fill="none"/><path d="M233.99999999999997,583 A196,196 0 0 0 251.08252557854095,582.2541608259821" stroke="oklch(0.75 0.13 272.5)" stroke-width="5" fill="none"/><path d="M251.08252557854095,582.2541608259821 A196,196 0 0 0 268.03504282271825,580.0223195903927" stroke="oklch(0.75 0.13 277.5)" stroke-width="5" fill="none"/><path d="M268.03504282271825,580.0223195903927 A196,196 0 0 0 284.72853284009415,576.3214619526574" stroke="oklch(0.75 0.13 282.5)" stroke-width="5" fill="none"/><path d="M284.72853284009415,576.3214619526574 A196,196 0 0 0 301.03594809183096,571.179753674038" stroke="oklch(0.75 0.13 287.5)" stroke-width="5" fill="none"/><path d="M301.03594809183096,571.179753674038 A196,196 0 0 0 316.8331793011771,564.6363262591833" stroke="oklch(0.75 0.13 292.5)" stroke-width="5" fill="none"/><path d="M316.8331793011771,564.6363262591833 A196,196 0 0 0 332,556.7409791417499" stroke="oklch(0.75 0.13 297.5)" stroke-width="5" fill="none"/><path d="M332,556.7409791417499 A196,196 0 0 0 346.42098152480503,547.5538006806423" stroke="oklch(0.75 0.13 302.5)" stroke-width="5" fill="none"/><path d="M346.42098152480503,547.5538006806423 A196,196 0 0 0 359.9863714985617,537.1447108513197" stroke="oklch(0.75 0.13 307.5)" stroke-width="5" fill="none"/><path d="M359.9863714985617,537.1447108513197 A196,196 0 0 0 372.5929291125633,525.5929291125633" stroke="oklch(0.75 0.13 312.5)" stroke-width="5" fill="none"/><path d="M372.5929291125633,525.5929291125633 A196,196 0 0 0 384.14471085131964,512.9863714985618" stroke="oklch(0.75 0.13 317.5)" stroke-width="5" fill="none"/><path d="M384.14471085131964,512.9863714985618 A196,196 0 0 0 394.5538006806423,499.42098152480514" stroke="oklch(0.75 0.13 322.5)" stroke-width="5" fill="none"/><path d="M394.5538006806423,499.42098152480514 A196,196 0 0 0 403.7409791417499,485.0000000000001" stroke="oklch(0.75 0.13 327.5)" stroke-width="5" fill="none"/><path d="M403.7409791417499,485.0000000000001 A196,196 0 0 0 411.6363262591833,469.8331793011772" stroke="oklch(0.75 0.13 332.5)" stroke-width="5" fill="none"/><path d="M411.6363262591833,469.8331793011772 A196,196 0 0 0 418.179753674038,454.0359480918311" stroke="oklch(0.75 0.13 337.5)" stroke-width="5" fill="none"/><path d="M418.179753674038,454.0359480918311 A196,196 0 0 0 423.3214619526574,437.72853284009403" stroke="oklch(0.75 0.13 342.5)" stroke-width="5" fill="none"/><path d="M423.3214619526574,437.72853284009403 A196,196 0 0 0 427.0223195903927,421.03504282271854" stroke="oklch(0.75 0.13 347.5)" stroke-width="5" fill="none"/><path d="M427.0223195903927,421.03504282271854 A196,196 0 0 0 429.2541608259821,404.08252557854104" stroke="oklch(0.75 0.13 352.5)" stroke-width="5" fill="none"/><path d="M429.2541608259821,404.08252557854104 A196,196 0 0 0 430,387.00000000000006" stroke="oklch(0.75 0.13 357.5)" stroke-width="5" fill="none"/><circle cx="234" cy="387" r="61.546224316508415" fill="none" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="234" cy="387" r="123.09244863301683" fill="none" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="234" cy="387" r="1.5" fill="#5d636b"/><text x="238" y="399" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">gray</text><text x="468" y="169" font-size="9" fill="#5d636b" font-weight="400" text-anchor="start">LIGHTNESS: up is lighter</text><rect x="468" y="177" width="468" height="420" fill="#ffffff" stroke="#d9dbe0"/><line x1="468" x2="936" y1="529.8571428571429" y2="529.8571428571429" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="527.8571428571429" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.4</text><line x1="468" x2="936" y1="415.57142857142856" y2="415.57142857142856" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="413.57142857142856" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.6</text><line x1="468" x2="936" y1="301.2857142857143" y2="301.2857142857143" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="299.2857142857143" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.8</text><line x1="468" x2="936" y1="187" y2="187" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="185" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">1.0</text><circle cx="243.8894420255437" cy="285.99762123784905" r="5" fill="#f5b914" stroke="#1d1f23" stroke-width="0.6"/><circle cx="510.5" cy="290.6435427405293" r="5" fill="#f5b914" stroke="#1d1f23" stroke-width="0.6"/><text x="510.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">gold</text><circle cx="137.07017404316508" cy="337.492087925066" r="5" fill="#00b862" stroke="#1d1f23" stroke-width="0.6"/><circle cx="547.5" cy="366.40156268900694" r="5" fill="#00b862" stroke="#1d1f23" stroke-width="0.6"/><text x="547.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">green</text><circle cx="291.11862701388526" cy="313.9483047029116" r="5" fill="#d9742b" stroke="#1d1f23" stroke-width="0.6"/><circle cx="584.5" cy="379.84817399174653" r="5" fill="#d9742b" stroke="#1d1f23" stroke-width="0.6"/><text x="584.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">amber</text><circle cx="214.80389834704386" cy="495.785607618824" r="5" fill="#3173e0" stroke="#1d1f23" stroke-width="0.6"/><circle cx="621.5" cy="430.7787649554144" r="5" fill="#3173e0" stroke="#1d1f23" stroke-width="0.6"/><text x="621.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">blue</text><circle cx="182.71123135713376" cy="289.78558038792653" r="5" fill="#c8e040" stroke="#1d1f23" stroke-width="0.6"/><circle cx="658.5" cy="266.4597094750077" r="5" fill="#c8e040" stroke="#1d1f23" stroke-width="0.6"/><text x="658.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">lime</text><circle cx="326.39018398333184" cy="460.28385642976934" r="5" fill="#c05dd1" stroke="#1d1f23" stroke-width="0.6"/><circle cx="695.5" cy="391.5064550224851" r="5" fill="#c05dd1" stroke="#1d1f23" stroke-width="0.6"/><text x="695.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">purple</text><circle cx="232.80582463359374" cy="395.90184665533434" r="5" fill="#8a8f98" stroke="#1d1f23" stroke-width="0.6"/><circle cx="732.5" cy="387.67866853422015" r="5" fill="#8a8f98" stroke="#1d1f23" stroke-width="0.6"/><text x="732.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">gray</text><circle cx="337.44712259486664" cy="330.2282817642153" r="5" fill="#e0473a" stroke="#1d1f23" stroke-width="0.6"/><circle cx="769.5" cy="407.77588621044686" r="5" fill="#e0473a" stroke="#1d1f23" stroke-width="0.6"/><text x="769.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">vermilion</text><circle cx="268.52656774320167" cy="503.7974247963141" r="5" fill="#7b64ed" stroke="#1d1f23" stroke-width="0.6"/><circle cx="806.5" cy="417.18105305733604" r="5" fill="#7b64ed" stroke="#1d1f23" stroke-width="0.6"/><text x="806.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">violet</text><circle cx="315.59099570668786" cy="404.27609796291677" r="5" fill="#de7cb0" stroke="#1d1f23" stroke-width="0.6"/><circle cx="843.5" cy="353.1687410144194" r="5" fill="#de7cb0" stroke="#1d1f23" stroke-width="0.6"/><text x="843.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">pink</text><circle cx="193.79014406051468" cy="447.01320488000295" r="5" fill="#56b4e9" stroke="#1d1f23" stroke-width="0.6"/><circle cx="880.5" cy="338.7027524004526" r="5" fill="#56b4e9" stroke="#1d1f23" stroke-width="0.6"/><text x="880.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">sky</text><circle cx="157.9199994188632" cy="366.3529545801298" r="5" fill="#4fc89a" stroke="#1d1f23" stroke-width="0.6"/><circle cx="917.5" cy="328.5836250734305" r="5" fill="#4fc89a" stroke="#1d1f23" stroke-width="0.6"/><text x="917.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">teal</text><text x="24" y="637" font-size="10" fill="#5d636b" font-weight="700" text-anchor="start">WORKBENCH RAMP</text><text x="24" y="651" font-size="11" fill="#5d636b" font-weight="400" text-anchor="start">Default's own neutral ramp, which every palette without one of its own wears.</text><text x="24" y="673" font-size="10" fill="#5d636b" font-weight="600" text-anchor="start">dark</text><rect x="64" y="661" width="56.61538461538461" height="30" fill="#141414" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="92.3076923076923" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><rect x="122.61538461538461" y="661" width="56.61538461538461" height="30" fill="#0b0b0b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="150.9230769230769" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><rect x="181.23076923076923" y="661" width="56.61538461538461" height="30" fill="#2a2a2a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="209.53846153846155" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><rect x="239.84615384615384" y="661" width="56.61538461538461" height="30" fill="#1e1e1e" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="268.15384615384613" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><rect x="298.46153846153845" y="661" width="56.61538461538461" height="30" fill="#141414" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="326.7692307692308" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><rect x="357.0769230769231" y="661" width="56.61538461538461" height="30" fill="#262626" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="385.3846153846154" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><rect x="415.6923076923077" y="661" width="56.61538461538461" height="30" fill="#2d2d2d" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="444" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><rect x="474.30769230769226" y="661" width="56.61538461538461" height="30" fill="#3a3a3a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="502.6153846153846" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><rect x="532.9230769230769" y="661" width="56.61538461538461" height="30" fill="#2a2a2a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="561.2307692307692" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><rect x="591.5384615384615" y="661" width="56.61538461538461" height="30" fill="#e8e8e8" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="619.8461538461538" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><rect x="650.1538461538462" y="661" width="56.61538461538461" height="30" fill="#f3f4f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="678.4615384615385" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><rect x="708.7692307692307" y="661" width="56.61538461538461" height="30" fill="#9aa0a6" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="737.076923076923" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><rect x="767.3846153846154" y="661" width="56.61538461538461" height="30" fill="#80868e" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="795.6923076923076" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="836" y="655" width="100" height="56" fill="#0b0b0b" rx="4"/><rect x="855" y="665.08" width="62" height="35.84" fill="#1e1e1e" rx="3" stroke="#2d2d2d"/><rect x="855" y="665.08" width="62" height="8.601600000000001" fill="#f5b914" rx="3" fill-opacity="0.45"/><rect x="855" y="665.08" width="62" height="2" fill="#f5b914" /><rect x="861" y="679.416" width="34.1" height="3" fill="#e8e8e8" rx="1.5"/><rect x="861" y="685.8672" width="24.8" height="3" fill="#9aa0a6" rx="1.5"/><rect x="861" y="692.3184" width="43.4" height="5.734400000000001" fill="#141414" rx="2" stroke="#3a3a3a" stroke-width="0.6"/><text x="24" y="733" font-size="10" fill="#5d636b" font-weight="600" text-anchor="start">light</text><rect x="64" y="721" width="56.61538461538461" height="30" fill="#f4f5f7" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="92.3076923076923" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><rect x="122.61538461538461" y="721" width="56.61538461538461" height="30" fill="#eef1f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="150.9230769230769" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><rect x="181.23076923076923" y="721" width="56.61538461538461" height="30" fill="#d3d9e1" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="209.53846153846155" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><rect x="239.84615384615384" y="721" width="56.61538461538461" height="30" fill="#fbfcfd" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="268.15384615384613" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><rect x="298.46153846153845" y="721" width="56.61538461538461" height="30" fill="#ffffff" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="326.7692307692308" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><rect x="357.0769230769231" y="721" width="56.61538461538461" height="30" fill="#eef1f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="385.3846153846154" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><rect x="415.6923076923077" y="721" width="56.61538461538461" height="30" fill="#ccd2da" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="444" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><rect x="474.30769230769226" y="721" width="56.61538461538461" height="30" fill="#b2bac4" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="502.6153846153846" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><rect x="532.9230769230769" y="721" width="56.61538461538461" height="30" fill="#dfe3e9" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="561.2307692307692" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><rect x="591.5384615384615" y="721" width="56.61538461538461" height="30" fill="#1b1e23" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="619.8461538461538" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><rect x="650.1538461538462" y="721" width="56.61538461538461" height="30" fill="#0d0f12" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="678.4615384615385" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><rect x="708.7692307692307" y="721" width="56.61538461538461" height="30" fill="#5b636b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="737.076923076923" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><rect x="767.3846153846154" y="721" width="56.61538461538461" height="30" fill="#6a717b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="795.6923076923076" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="836" y="715" width="100" height="56" fill="#eef1f5" rx="4"/><rect x="855" y="725.08" width="62" height="35.84" fill="#fbfcfd" rx="3" stroke="#ccd2da"/><rect x="855" y="725.08" width="62" height="8.601600000000001" fill="#eab013" rx="3" fill-opacity="0.45"/><rect x="855" y="725.08" width="62" height="2" fill="#eab013" /><rect x="861" y="739.416" width="34.1" height="3" fill="#1b1e23" rx="1.5"/><rect x="861" y="745.8672" width="24.8" height="3" fill="#5b636b" rx="1.5"/><rect x="861" y="752.3184" width="43.4" height="5.734400000000001" fill="#ffffff" rx="2" stroke="#b2bac4" stroke-width="0.6"/><text x="24" y="793" font-size="10" fill="#5d636b" font-weight="400" text-anchor="start">Each key's lightness, ground to ink.</text><rect x="24" y="819" width="444" height="150" fill="#ffffff" stroke="#d9dbe0"/><text x="24" y="814" font-size="9" fill="#5d636b" font-weight="600" text-anchor="start">dark</text><line x1="24" x2="468" y1="927.5" y2="927.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="24" x2="468" y1="894" y2="894" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="24" x2="468" y1="860.5" y2="860.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="54.30769230769231" cy="935.3723260166211" r="4.5" fill="#141414" stroke="#1d1f23" stroke-width="0.6"/><text x="54.30769230769231" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><circle cx="86.92307692307692" cy="940.9566665156811" r="4.5" fill="#0b0b0b" stroke="#1d1f23" stroke-width="0.6"/><text x="86.92307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><circle cx="119.53846153846153" cy="922.8076681135759" r="4.5" fill="#2a2a2a" stroke="#1d1f23" stroke-width="0.6"/><text x="119.53846153846153" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><circle cx="152.15384615384613" cy="929.5058294355016" r="4.5" fill="#1e1e1e" stroke="#1d1f23" stroke-width="0.6"/><text x="152.15384615384613" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><circle cx="184.76923076923077" cy="935.3723260166211" r="4.5" fill="#141414" stroke="#1d1f23" stroke-width="0.6"/><text x="184.76923076923077" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><circle cx="217.38461538461536" cy="925.0051511190109" r="4.5" fill="#262626" stroke="#1d1f23" stroke-width="0.6"/><text x="217.38461538461536" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><circle cx="250" cy="921.1801628038764" r="4.5" fill="#2d2d2d" stroke="#1d1f23" stroke-width="0.6"/><text x="250" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><circle cx="282.6153846153846" cy="914.3064066203902" r="4.5" fill="#3a3a3a" stroke="#1d1f23" stroke-width="0.6"/><text x="282.6153846153846" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><circle cx="315.2307692307692" cy="922.8076681135759" r="4.5" fill="#2a2a2a" stroke="#1d1f23" stroke-width="0.6"/><text x="315.2307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><circle cx="347.84615384615387" cy="836.2461159042105" r="4.5" fill="#e8e8e8" stroke="#1d1f23" stroke-width="0.6"/><text x="347.84615384615387" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><circle cx="380.46153846153845" cy="831.4658435568595" r="4.5" fill="#f3f4f5" stroke="#1d1f23" stroke-width="0.6"/><text x="380.46153846153845" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><circle cx="413.07692307692304" cy="866.8291775110836" r="4.5" fill="#9aa0a6" stroke="#1d1f23" stroke-width="0.6"/><text x="413.07692307692304" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><circle cx="445.6923076923077" cy="878.2318184067324" r="4.5" fill="#80868e" stroke="#1d1f23" stroke-width="0.6"/><text x="445.6923076923077" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="492" y="819" width="444" height="150" fill="#ffffff" stroke="#d9dbe0"/><text x="492" y="814" font-size="9" fill="#5d636b" font-weight="600" text-anchor="start">light</text><line x1="492" x2="936" y1="927.5" y2="927.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="492" x2="936" y1="894" y2="894" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="492" x2="936" y1="860.5" y2="860.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="522.3076923076923" cy="831.0262653785574" r="4.5" fill="#f4f5f7" stroke="#1d1f23" stroke-width="0.6"/><text x="522.3076923076923" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><circle cx="554.9230769230769" cy="832.7613834837304" r="4.5" fill="#eef1f5" stroke="#1d1f23" stroke-width="0.6"/><text x="554.9230769230769" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><circle cx="587.5384615384615" cy="842.6716826000629" r="4.5" fill="#d3d9e1" stroke="#1d1f23" stroke-width="0.6"/><text x="587.5384615384615" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><circle cx="620.1538461538461" cy="828.2607706342126" r="4.5" fill="#fbfcfd" stroke="#1d1f23" stroke-width="0.6"/><text x="620.1538461538461" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><circle cx="652.7692307692307" cy="827.0000008745449" r="4.5" fill="#ffffff" stroke="#1d1f23" stroke-width="0.6"/><text x="652.7692307692307" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><circle cx="685.3846153846154" cy="832.7613834837304" r="4.5" fill="#eef1f5" stroke="#1d1f23" stroke-width="0.6"/><text x="685.3846153846154" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><circle cx="717.9999999999999" cy="845.5574043611224" r="4.5" fill="#ccd2da" stroke="#1d1f23" stroke-width="0.6"/><text x="717.9999999999999" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><circle cx="750.6153846153845" cy="855.7152420690168" r="4.5" fill="#b2bac4" stroke="#1d1f23" stroke-width="0.6"/><text x="750.6153846153845" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><circle cx="783.2307692307692" cy="838.4565182665617" r="4.5" fill="#dfe3e9" stroke="#1d1f23" stroke-width="0.6"/><text x="783.2307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><circle cx="815.8461538461538" cy="929.6345600149465" r="4.5" fill="#1b1e23" stroke="#1d1f23" stroke-width="0.6"/><text x="815.8461538461538" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><circle cx="848.4615384615385" cy="938.5477833064006" r="4.5" fill="#0d0f12" stroke="#1d1f23" stroke-width="0.6"/><text x="848.4615384615385" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><circle cx="881.076923076923" cy="894.5928154370331" r="4.5" fill="#5b636b" stroke="#1d1f23" stroke-width="0.6"/><text x="881.076923076923" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><circle cx="913.6923076923076" cy="887.8233662007535" r="4.5" fill="#6a717b" stroke="#1d1f23" stroke-width="0.6"/><text x="913.6923076923076" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text></svg>[39m
+[31m+ <svg xmlns="http://www.w3.org/2000/svg" width="960" height="1027" viewBox="0 0 960 1027" font-family="system-ui, -apple-system, Segoe UI, sans-serif"><defs><marker id="head" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#1d1f23"/></marker><marker id="headDim" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#5d636b"/></marker><linearGradient id="hues"><stop offset="0" stop-color="oklch(0.75 0.12 0)"/><stop offset="0.041666666666666664" stop-color="oklch(0.75 0.12 15)"/><stop offset="0.08333333333333333" stop-color="oklch(0.75 0.12 30)"/><stop offset="0.125" stop-color="oklch(0.75 0.12 45)"/><stop offset="0.16666666666666666" stop-color="oklch(0.75 0.12 60)"/><stop offset="0.20833333333333334" stop-color="oklch(0.75 0.12 75)"/><stop offset="0.25" stop-color="oklch(0.75 0.12 90)"/><stop offset="0.2916666666666667" stop-color="oklch(0.75 0.12 105)"/><stop offset="0.3333333333333333" stop-color="oklch(0.75 0.12 120)"/><stop offset="0.375" stop-color="oklch(0.75 0.12 135)"/><stop offset="0.4166666666666667" stop-color="oklch(0.75 0.12 150)"/><stop offset="0.4583333333333333" stop-color="oklch(0.75 0.12 165)"/><stop offset="0.5" stop-color="oklch(0.75 0.12 180)"/><stop offset="0.5416666666666666" stop-color="oklch(0.75 0.12 195)"/><stop offset="0.5833333333333334" stop-color="oklch(0.75 0.12 210)"/><stop offset="0.625" stop-color="oklch(0.75 0.12 225)"/><stop offset="0.6666666666666666" stop-color="oklch(0.75 0.12 240)"/><stop offset="0.7083333333333334" stop-color="oklch(0.75 0.12 255)"/><stop offset="0.75" stop-color="oklch(0.75 0.12 270)"/><stop offset="0.7916666666666666" stop-color="oklch(0.75 0.12 285)"/><stop offset="0.8333333333333334" stop-color="oklch(0.75 0.12 300)"/><stop offset="0.875" stop-color="oklch(0.75 0.12 315)"/><stop offset="0.9166666666666666" stop-color="oklch(0.75 0.12 330)"/><stop offset="0.9583333333333334" stop-color="oklch(0.75 0.12 345)"/><stop offset="1" stop-color="oklch(0.75 0.12 360)"/></linearGradient><linearGradient id="plasma"><stop offset="0" stop-color="rgb(13,8,135)"/><stop offset="0.03125" stop-color="rgb(29.03125,6.59375,141.75)"/><stop offset="0.0625" stop-color="rgb(45.0625,5.1875,148.5)"/><stop offset="0.09375" stop-color="rgb(61.09375,3.78125,155.25)"/><stop offset="0.125" stop-color="rgb(75.5,2.75,160.125)"/><stop offset="0.15625" stop-color="rgb(87.875,2.1875,162.65625)"/><stop offset="0.1875" stop-color="rgb(100.25,1.625,165.1875)"/><stop offset="0.21875" stop-color="rgb(112.625,1.0625,167.71875)"/><stop offset="0.25" stop-color="rgb(124.5,6.5,165.5)"/><stop offset="0.28125" stop-color="rgb(136.3125,12.6875,162.6875)"/><stop offset="0.3125" stop-color="rgb(148.125,18.875,159.875)"/><stop offset="0.34375" stop-color="rgb(159.09375,26,155.75)"/><stop offset="0.375" stop-color="rgb(168.375,35,149)"/><stop offset="0.40625" stop-color="rgb(177.65625,44,142.25)"/><stop offset="0.4375" stop-color="rgb(186.9375,53,135.5)"/><stop offset="0.46875" stop-color="rgb(194.90625,62,128.09375)"/><stop offset="0.5" stop-color="rgb(202.5,71,120.5)"/><stop offset="0.53125" stop-color="rgb(210.09375,80,112.90625)"/><stop offset="0.5625" stop-color="rgb(217.3125,89.125,105.5)"/><stop offset="0.59375" stop-color="rgb(223.21875,98.6875,98.75)"/><stop offset="0.625" stop-color="rgb(229.125,108.25,92)"/><stop offset="0.65625" stop-color="rgb(235.03125,117.8125,85.25)"/><stop offset="0.6875" stop-color="rgb(239.625,128.125,78.3125)"/><stop offset="0.71875" stop-color="rgb(243.5625,138.8125,71.28125)"/><stop offset="0.75" stop-color="rgb(247.5,149.5,64.25)"/><stop offset="0.78125" stop-color="rgb(251.0625,160.34375,57.375)"/><stop offset="0.8125" stop-color="rgb(251.625,172.4375,51.75)"/><stop offset="0.84375" stop-color="rgb(252.1875,184.53125,46.125)"/><stop offset="0.875" stop-color="rgb(252.75,196.625,40.5)"/><stop offset="0.90625" stop-color="rgb(250.96875,209.34375,37.21875)"/><stop offset="0.9375" stop-color="rgb(247.3125,222.5625,35.8125)"/><stop offset="0.96875" stop-color="rgb(243.65625,235.78125,34.40625)"/><stop offset="1" stop-color="rgb(240,249,33)"/></linearGradient></defs><rect x="0" y="0" width="960" height="1027" fill="#f7f7f5" /><text x="24" y="34" font-size="20" fill="#1d1f23" font-weight="700" text-anchor="start">Default</text><text x="24" y="58" font-size="10" fill="#5d636b" font-weight="700" text-anchor="start">FROM DEFAULT</text><text x="24" y="75" font-size="12" fill="#1d1f23" font-weight="600" text-anchor="start">The original set. Every other palette is drawn as what it does to these colors.</text><rect x="25" y="87" width="74" height="34" fill="#f5b914" rx="3"/><text x="62" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">gold</text><text x="62" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#f5b914</text><rect x="101" y="87" width="74" height="34" fill="#00b862" rx="3"/><text x="138" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">green</text><text x="138" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#00b862</text><rect x="177" y="87" width="74" height="34" fill="#d9742b" rx="3"/><text x="214" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">amber</text><text x="214" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#d9742b</text><rect x="253" y="87" width="74" height="34" fill="#3173e0" rx="3"/><text x="290" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">blue</text><text x="290" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#3173e0</text><rect x="329" y="87" width="74" height="34" fill="#c8e040" rx="3"/><text x="366" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">lime</text><text x="366" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#c8e040</text><rect x="405" y="87" width="74" height="34" fill="#c05dd1" rx="3"/><text x="442" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">purple</text><text x="442" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#c05dd1</text><rect x="481" y="87" width="74" height="34" fill="#8a8f98" rx="3"/><text x="518" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">gray</text><text x="518" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#8a8f98</text><rect x="557" y="87" width="74" height="34" fill="#e0473a" rx="3"/><text x="594" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">vermilion</text><text x="594" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#e0473a</text><rect x="633" y="87" width="74" height="34" fill="#7b64ed" rx="3"/><text x="670" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">violet</text><text x="670" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#7b64ed</text><rect x="709" y="87" width="74" height="34" fill="#de7cb0" rx="3"/><text x="746" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">pink</text><text x="746" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#de7cb0</text><rect x="785" y="87" width="74" height="34" fill="#56b4e9" rx="3"/><text x="822" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">sky</text><text x="822" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#56b4e9</text><rect x="861" y="87" width="74" height="34" fill="#4fc89a" rx="3"/><text x="898" y="133" font-size="9" fill="#5d636b" font-weight="400" text-anchor="middle">teal</text><text x="898" y="144" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">#4fc89a</text><text x="24" y="169" font-size="9" fill="#5d636b" font-weight="400" text-anchor="start">HUE AND COLORFULNESS: angle is hue, distance out is chroma</text><rect x="24" y="177" width="420" height="420" fill="#ffffff" stroke="#d9dbe0"/><path d="M430,387 A196,196 0 0 0 429.2541608259821,369.917474421459" stroke="oklch(0.75 0.13 2.5)" stroke-width="5" fill="none"/><path d="M429.2541608259821,369.917474421459 A196,196 0 0 0 427.0223195903928,352.96495717728163" stroke="oklch(0.75 0.13 7.5)" stroke-width="5" fill="none"/><path d="M427.0223195903928,352.96495717728163 A196,196 0 0 0 423.3214619526574,336.2714671599059" stroke="oklch(0.75 0.13 12.5)" stroke-width="5" fill="none"/><path d="M423.3214619526574,336.2714671599059 A196,196 0 0 0 418.179753674038,319.9640519081689" stroke="oklch(0.75 0.13 17.5)" stroke-width="5" fill="none"/><path d="M418.179753674038,319.9640519081689 A196,196 0 0 0 411.6363262591834,304.1668206988229" stroke="oklch(0.75 0.13 22.5)" stroke-width="5" fill="none"/><path d="M411.6363262591834,304.1668206988229 A196,196 0 0 0 403.74097914175,289" stroke="oklch(0.75 0.13 27.5)" stroke-width="5" fill="none"/><path d="M403.74097914175,289 A196,196 0 0 0 394.5538006806424,274.57901847519497" stroke="oklch(0.75 0.13 32.5)" stroke-width="5" fill="none"/><path d="M394.5538006806424,274.57901847519497 A196,196 0 0 0 384.1447108513197,261.0136285014383" stroke="oklch(0.75 0.13 37.5)" stroke-width="5" fill="none"/><path d="M384.1447108513197,261.0136285014383 A196,196 0 0 0 372.5929291125633,248.4070708874367" stroke="oklch(0.75 0.13 42.5)" stroke-width="5" fill="none"/><path d="M372.5929291125633,248.4070708874367 A196,196 0 0 0 359.9863714985617,236.8552891486803" stroke="oklch(0.75 0.13 47.5)" stroke-width="5" fill="none"/><path d="M359.9863714985617,236.8552891486803 A196,196 0 0 0 346.42098152480503,226.44619931935762" stroke="oklch(0.75 0.13 52.5)" stroke-width="5" fill="none"/><path d="M346.42098152480503,226.44619931935762 A196,196 0 0 0 332,217.25902085825004" stroke="oklch(0.75 0.13 57.5)" stroke-width="5" fill="none"/><path d="M332,217.25902085825004 A196,196 0 0 0 316.8331793011771,209.3636737408166" stroke="oklch(0.75 0.13 62.5)" stroke-width="5" fill="none"/><path d="M316.8331793011771,209.3636737408166 A196,196 0 0 0 301.0359480918311,202.82024632596196" stroke="oklch(0.75 0.13 67.5)" stroke-width="5" fill="none"/><path d="M301.0359480918311,202.82024632596196 A196,196 0 0 0 284.7285328400941,197.6785380473426" stroke="oklch(0.75 0.13 72.5)" stroke-width="5" fill="none"/><path d="M284.7285328400941,197.6785380473426 A196,196 0 0 0 268.03504282271837,193.97768040960722" stroke="oklch(0.75 0.13 77.5)" stroke-width="5" fill="none"/><path d="M268.03504282271837,193.97768040960722 A196,196 0 0 0 251.08252557854098,191.74583917401787" stroke="oklch(0.75 0.13 82.5)" stroke-width="5" fill="none"/><path d="M251.08252557854098,191.74583917401787 A196,196 0 0 0 234,191" stroke="oklch(0.75 0.13 87.5)" stroke-width="5" fill="none"/><path d="M234,191 A196,196 0 0 0 216.917474421459,191.74583917401787" stroke="oklch(0.75 0.13 92.5)" stroke-width="5" fill="none"/><path d="M216.917474421459,191.74583917401787 A196,196 0 0 0 199.96495717728166,193.97768040960722" stroke="oklch(0.75 0.13 97.5)" stroke-width="5" fill="none"/><path d="M199.96495717728166,193.97768040960722 A196,196 0 0 0 183.2714671599059,197.6785380473426" stroke="oklch(0.75 0.13 102.5)" stroke-width="5" fill="none"/><path d="M183.2714671599059,197.6785380473426 A196,196 0 0 0 166.96405190816893,202.82024632596196" stroke="oklch(0.75 0.13 107.5)" stroke-width="5" fill="none"/><path d="M166.96405190816893,202.82024632596196 A196,196 0 0 0 151.16682069882293,209.36367374081658" stroke="oklch(0.75 0.13 112.5)" stroke-width="5" fill="none"/><path d="M151.16682069882293,209.36367374081658 A196,196 0 0 0 136.00000000000006,217.25902085825" stroke="oklch(0.75 0.13 117.5)" stroke-width="5" fill="none"/><path d="M136.00000000000006,217.25902085825 A196,196 0 0 0 121.57901847519501,226.44619931935756" stroke="oklch(0.75 0.13 122.5)" stroke-width="5" fill="none"/><path d="M121.57901847519501,226.44619931935756 A196,196 0 0 0 108.01362850143829,236.8552891486803" stroke="oklch(0.75 0.13 127.5)" stroke-width="5" fill="none"/><path d="M108.01362850143829,236.8552891486803 A196,196 0 0 0 95.4070708874367,248.40707088743667" stroke="oklch(0.75 0.13 132.5)" stroke-width="5" fill="none"/><path d="M95.4070708874367,248.40707088743667 A196,196 0 0 0 83.85528914868033,261.01362850143823" stroke="oklch(0.75 0.13 137.5)" stroke-width="5" fill="none"/><path d="M83.85528914868033,261.01362850143823 A196,196 0 0 0 73.44619931935765,274.5790184751949" stroke="oklch(0.75 0.13 142.5)" stroke-width="5" fill="none"/><path d="M73.44619931935765,274.5790184751949 A196,196 0 0 0 64.25902085825001,289" stroke="oklch(0.75 0.13 147.5)" stroke-width="5" fill="none"/><path d="M64.25902085825001,289 A196,196 0 0 0 56.36367374081661,304.1668206988229" stroke="oklch(0.75 0.13 152.5)" stroke-width="5" fill="none"/><path d="M56.36367374081661,304.1668206988229 A196,196 0 0 0 49.82024632596196,319.9640519081689" stroke="oklch(0.75 0.13 157.5)" stroke-width="5" fill="none"/><path d="M49.82024632596196,319.9640519081689 A196,196 0 0 0 44.67853804734264,336.2714671599059" stroke="oklch(0.75 0.13 162.5)" stroke-width="5" fill="none"/><path d="M44.67853804734264,336.2714671599059 A196,196 0 0 0 40.97768040960722,352.9649571772817" stroke="oklch(0.75 0.13 167.5)" stroke-width="5" fill="none"/><path d="M40.97768040960722,352.9649571772817 A196,196 0 0 0 38.745839174017874,369.9174744214589" stroke="oklch(0.75 0.13 172.5)" stroke-width="5" fill="none"/><path d="M38.745839174017874,369.9174744214589 A196,196 0 0 0 38,387" stroke="oklch(0.75 0.13 177.5)" stroke-width="5" fill="none"/><path d="M38,387 A196,196 0 0 0 38.745839174017874,404.082525578541" stroke="oklch(0.75 0.13 182.5)" stroke-width="5" fill="none"/><path d="M38.745839174017874,404.082525578541 A196,196 0 0 0 40.97768040960722,421.03504282271837" stroke="oklch(0.75 0.13 187.5)" stroke-width="5" fill="none"/><path d="M40.97768040960722,421.03504282271837 A196,196 0 0 0 44.678538047342585,437.728532840094" stroke="oklch(0.75 0.13 192.5)" stroke-width="5" fill="none"/><path d="M44.678538047342585,437.728532840094 A196,196 0 0 0 49.82024632596196,454.0359480918311" stroke="oklch(0.75 0.13 197.5)" stroke-width="5" fill="none"/><path d="M49.82024632596196,454.0359480918311 A196,196 0 0 0 56.36367374081658,469.83317930117704" stroke="oklch(0.75 0.13 202.5)" stroke-width="5" fill="none"/><path d="M56.36367374081658,469.83317930117704 A196,196 0 0 0 64.25902085825004,485" stroke="oklch(0.75 0.13 207.5)" stroke-width="5" fill="none"/><path d="M64.25902085825004,485 A196,196 0 0 0 73.44619931935756,499.420981524805" stroke="oklch(0.75 0.13 212.5)" stroke-width="5" fill="none"/><path d="M73.44619931935756,499.420981524805 A196,196 0 0 0 83.8552891486803,512.9863714985617" stroke="oklch(0.75 0.13 217.5)" stroke-width="5" fill="none"/><path d="M83.8552891486803,512.9863714985617 A196,196 0 0 0 95.40707088743665,525.5929291125633" stroke="oklch(0.75 0.13 222.5)" stroke-width="5" fill="none"/><path d="M95.40707088743665,525.5929291125633 A196,196 0 0 0 108.01362850143826,537.1447108513197" stroke="oklch(0.75 0.13 227.5)" stroke-width="5" fill="none"/><path d="M108.01362850143826,537.1447108513197 A196,196 0 0 0 121.57901847519491,547.5538006806423" stroke="oklch(0.75 0.13 232.5)" stroke-width="5" fill="none"/><path d="M121.57901847519491,547.5538006806423 A196,196 0 0 0 135.99999999999991,556.7409791417499" stroke="oklch(0.75 0.13 237.5)" stroke-width="5" fill="none"/><path d="M135.99999999999991,556.7409791417499 A196,196 0 0 0 151.16682069882282,564.6363262591833" stroke="oklch(0.75 0.13 242.5)" stroke-width="5" fill="none"/><path d="M151.16682069882282,564.6363262591833 A196,196 0 0 0 166.9640519081688,571.179753674038" stroke="oklch(0.75 0.13 247.5)" stroke-width="5" fill="none"/><path d="M166.9640519081688,571.179753674038 A196,196 0 0 0 183.27146715990597,576.3214619526574" stroke="oklch(0.75 0.13 252.5)" stroke-width="5" fill="none"/><path d="M183.27146715990597,576.3214619526574 A196,196 0 0 0 199.96495717728166,580.0223195903927" stroke="oklch(0.75 0.13 257.5)" stroke-width="5" fill="none"/><path d="M199.96495717728166,580.0223195903927 A196,196 0 0 0 216.917474421459,582.2541608259821" stroke="oklch(0.75 0.13 262.5)" stroke-width="5" fill="none"/><path d="M216.917474421459,582.2541608259821 A196,196 0 0 0 233.99999999999997,583" stroke="oklch(0.75 0.13 267.5)" stroke-width="5" fill="none"/><path d="M233.99999999999997,583 A196,196 0 0 0 251.08252557854095,582.2541608259821" stroke="oklch(0.75 0.13 272.5)" stroke-width="5" fill="none"/><path d="M251.08252557854095,582.2541608259821 A196,196 0 0 0 268.03504282271825,580.0223195903927" stroke="oklch(0.75 0.13 277.5)" stroke-width="5" fill="none"/><path d="M268.03504282271825,580.0223195903927 A196,196 0 0 0 284.72853284009415,576.3214619526574" stroke="oklch(0.75 0.13 282.5)" stroke-width="5" fill="none"/><path d="M284.72853284009415,576.3214619526574 A196,196 0 0 0 301.03594809183096,571.179753674038" stroke="oklch(0.75 0.13 287.5)" stroke-width="5" fill="none"/><path d="M301.03594809183096,571.179753674038 A196,196 0 0 0 316.8331793011771,564.6363262591833" stroke="oklch(0.75 0.13 292.5)" stroke-width="5" fill="none"/><path d="M316.8331793011771,564.6363262591833 A196,196 0 0 0 332,556.7409791417499" stroke="oklch(0.75 0.13 297.5)" stroke-width="5" fill="none"/><path d="M332,556.7409791417499 A196,196 0 0 0 346.42098152480503,547.5538006806423" stroke="oklch(0.75 0.13 302.5)" stroke-width="5" fill="none"/><path d="M346.42098152480503,547.5538006806423 A196,196 0 0 0 359.9863714985617,537.1447108513197" stroke="oklch(0.75 0.13 307.5)" stroke-width="5" fill="none"/><path d="M359.9863714985617,537.1447108513197 A196,196 0 0 0 372.5929291125633,525.5929291125633" stroke="oklch(0.75 0.13 312.5)" stroke-width="5" fill="none"/><path d="M372.5929291125633,525.5929291125633 A196,196 0 0 0 384.14471085131964,512.9863714985618" stroke="oklch(0.75 0.13 317.5)" stroke-width="5" fill="none"/><path d="M384.14471085131964,512.9863714985618 A196,196 0 0 0 394.5538006806423,499.42098152480514" stroke="oklch(0.75 0.13 322.5)" stroke-width="5" fill="none"/><path d="M394.5538006806423,499.42098152480514 A196,196 0 0 0 403.7409791417499,485.0000000000001" stroke="oklch(0.75 0.13 327.5)" stroke-width="5" fill="none"/><path d="M403.7409791417499,485.0000000000001 A196,196 0 0 0 411.6363262591833,469.8331793011772" stroke="oklch(0.75 0.13 332.5)" stroke-width="5" fill="none"/><path d="M411.6363262591833,469.8331793011772 A196,196 0 0 0 418.179753674038,454.0359480918311" stroke="oklch(0.75 0.13 337.5)" stroke-width="5" fill="none"/><path d="M418.179753674038,454.0359480918311 A196,196 0 0 0 423.3214619526574,437.72853284009403" stroke="oklch(0.75 0.13 342.5)" stroke-width="5" fill="none"/><path d="M423.3214619526574,437.72853284009403 A196,196 0 0 0 427.0223195903927,421.03504282271854" stroke="oklch(0.75 0.13 347.5)" stroke-width="5" fill="none"/><path d="M427.0223195903927,421.03504282271854 A196,196 0 0 0 429.2541608259821,404.08252557854104" stroke="oklch(0.75 0.13 352.5)" stroke-width="5" fill="none"/><path d="M429.2541608259821,404.08252557854104 A196,196 0 0 0 430,387.00000000000006" stroke="oklch(0.75 0.13 357.5)" stroke-width="5" fill="none"/><circle cx="234" cy="387" r="61.546224316508415" fill="none" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="234" cy="387" r="123.09244863301683" fill="none" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="234" cy="387" r="1.5" fill="#5d636b"/><text x="238" y="399" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">gray</text><text x="468" y="169" font-size="9" fill="#5d636b" font-weight="400" text-anchor="start">LIGHTNESS: up is lighter</text><rect x="468" y="177" width="468" height="420" fill="#ffffff" stroke="#d9dbe0"/><line x1="468" x2="936" y1="529.8571428571429" y2="529.8571428571429" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="527.8571428571429" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.4</text><line x1="468" x2="936" y1="415.57142857142856" y2="415.57142857142856" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="413.57142857142856" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.6</text><line x1="468" x2="936" y1="301.2857142857143" y2="301.2857142857143" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="299.2857142857143" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">0.8</text><line x1="468" x2="936" y1="187" y2="187" stroke="#d9dbe0" stroke-dasharray="3 3"/><text x="471" y="185" font-size="8" fill="#5d636b" font-weight="400" text-anchor="start">1.0</text><circle cx="243.8894420255437" cy="285.99762123784905" r="5" fill="#f5b914" stroke="#1d1f23" stroke-width="0.6"/><circle cx="510.5" cy="290.6435427405293" r="5" fill="#f5b914" stroke="#1d1f23" stroke-width="0.6"/><text x="510.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">gold</text><circle cx="137.07017404316508" cy="337.492087925066" r="5" fill="#00b862" stroke="#1d1f23" stroke-width="0.6"/><circle cx="547.5" cy="366.40156268900694" r="5" fill="#00b862" stroke="#1d1f23" stroke-width="0.6"/><text x="547.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">green</text><circle cx="291.11862701388526" cy="313.9483047029116" r="5" fill="#d9742b" stroke="#1d1f23" stroke-width="0.6"/><circle cx="584.5" cy="379.84817399174653" r="5" fill="#d9742b" stroke="#1d1f23" stroke-width="0.6"/><text x="584.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">amber</text><circle cx="214.80389834704386" cy="495.785607618824" r="5" fill="#3173e0" stroke="#1d1f23" stroke-width="0.6"/><circle cx="621.5" cy="430.7787649554144" r="5" fill="#3173e0" stroke="#1d1f23" stroke-width="0.6"/><text x="621.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">blue</text><circle cx="182.71123135713376" cy="289.78558038792653" r="5" fill="#c8e040" stroke="#1d1f23" stroke-width="0.6"/><circle cx="658.5" cy="266.4597094750077" r="5" fill="#c8e040" stroke="#1d1f23" stroke-width="0.6"/><text x="658.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">lime</text><circle cx="326.39018398333184" cy="460.28385642976934" r="5" fill="#c05dd1" stroke="#1d1f23" stroke-width="0.6"/><circle cx="695.5" cy="391.5064550224851" r="5" fill="#c05dd1" stroke="#1d1f23" stroke-width="0.6"/><text x="695.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">purple</text><circle cx="232.80582463359374" cy="395.90184665533434" r="5" fill="#8a8f98" stroke="#1d1f23" stroke-width="0.6"/><circle cx="732.5" cy="387.67866853422015" r="5" fill="#8a8f98" stroke="#1d1f23" stroke-width="0.6"/><text x="732.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">gray</text><circle cx="337.44712259486664" cy="330.2282817642153" r="5" fill="#e0473a" stroke="#1d1f23" stroke-width="0.6"/><circle cx="769.5" cy="407.77588621044686" r="5" fill="#e0473a" stroke="#1d1f23" stroke-width="0.6"/><text x="769.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">vermilion</text><circle cx="268.52656774320167" cy="503.7974247963141" r="5" fill="#7b64ed" stroke="#1d1f23" stroke-width="0.6"/><circle cx="806.5" cy="417.18105305733604" r="5" fill="#7b64ed" stroke="#1d1f23" stroke-width="0.6"/><text x="806.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">violet</text><circle cx="315.59099570668786" cy="404.2760979629167" r="5" fill="#de7cb0" stroke="#1d1f23" stroke-width="0.6"/><circle cx="843.5" cy="353.1687410144194" r="5" fill="#de7cb0" stroke="#1d1f23" stroke-width="0.6"/><text x="843.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">pink</text><circle cx="193.79014406051468" cy="447.01320488000295" r="5" fill="#56b4e9" stroke="#1d1f23" stroke-width="0.6"/><circle cx="880.5" cy="338.7027524004526" r="5" fill="#56b4e9" stroke="#1d1f23" stroke-width="0.6"/><text x="880.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">sky</text><circle cx="157.9199994188632" cy="366.3529545801298" r="5" fill="#4fc89a" stroke="#1d1f23" stroke-width="0.6"/><circle cx="917.5" cy="328.5836250734305" r="5" fill="#4fc89a" stroke="#1d1f23" stroke-width="0.6"/><text x="917.5" y="609" font-size="8" fill="#5d636b" font-weight="400" text-anchor="middle">teal</text><text x="24" y="637" font-size="10" fill="#5d636b" font-weight="700" text-anchor="start">WORKBENCH RAMP</text><text x="24" y="651" font-size="11" fill="#5d636b" font-weight="400" text-anchor="start">Default's own neutral ramp, which every palette without one of its own wears.</text><text x="24" y="673" font-size="10" fill="#5d636b" font-weight="600" text-anchor="start">dark</text><rect x="64" y="661" width="56.61538461538461" height="30" fill="#141414" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="92.3076923076923" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><rect x="122.61538461538461" y="661" width="56.61538461538461" height="30" fill="#0b0b0b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="150.9230769230769" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><rect x="181.23076923076923" y="661" width="56.61538461538461" height="30" fill="#2a2a2a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="209.53846153846155" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><rect x="239.84615384615384" y="661" width="56.61538461538461" height="30" fill="#1e1e1e" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="268.15384615384613" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><rect x="298.46153846153845" y="661" width="56.61538461538461" height="30" fill="#141414" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="326.7692307692308" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><rect x="357.0769230769231" y="661" width="56.61538461538461" height="30" fill="#262626" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="385.3846153846154" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><rect x="415.6923076923077" y="661" width="56.61538461538461" height="30" fill="#2d2d2d" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="444" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><rect x="474.30769230769226" y="661" width="56.61538461538461" height="30" fill="#3a3a3a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="502.6153846153846" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><rect x="532.9230769230769" y="661" width="56.61538461538461" height="30" fill="#2a2a2a" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="561.2307692307692" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><rect x="591.5384615384615" y="661" width="56.61538461538461" height="30" fill="#e8e8e8" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="619.8461538461538" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><rect x="650.1538461538462" y="661" width="56.61538461538461" height="30" fill="#f3f4f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="678.4615384615385" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><rect x="708.7692307692307" y="661" width="56.61538461538461" height="30" fill="#9aa0a6" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="737.076923076923" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><rect x="767.3846153846154" y="661" width="56.61538461538461" height="30" fill="#80868e" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="795.6923076923076" y="702" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="836" y="655" width="100" height="56" fill="#0b0b0b" rx="4"/><rect x="855" y="665.08" width="62" height="35.84" fill="#1e1e1e" rx="3" stroke="#2d2d2d"/><rect x="855" y="665.08" width="62" height="8.601600000000001" fill="#f5b914" rx="3" fill-opacity="0.45"/><rect x="855" y="665.08" width="62" height="2" fill="#f5b914" /><rect x="861" y="679.416" width="34.1" height="3" fill="#e8e8e8" rx="1.5"/><rect x="861" y="685.8672" width="24.8" height="3" fill="#9aa0a6" rx="1.5"/><rect x="861" y="692.3184" width="43.4" height="5.734400000000001" fill="#141414" rx="2" stroke="#3a3a3a" stroke-width="0.6"/><text x="24" y="733" font-size="10" fill="#5d636b" font-weight="600" text-anchor="start">light</text><rect x="64" y="721" width="56.61538461538461" height="30" fill="#f4f5f7" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="92.3076923076923" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><rect x="122.61538461538461" y="721" width="56.61538461538461" height="30" fill="#eef1f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="150.9230769230769" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><rect x="181.23076923076923" y="721" width="56.61538461538461" height="30" fill="#d3d9e1" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="209.53846153846155" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><rect x="239.84615384615384" y="721" width="56.61538461538461" height="30" fill="#fbfcfd" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="268.15384615384613" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><rect x="298.46153846153845" y="721" width="56.61538461538461" height="30" fill="#ffffff" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="326.7692307692308" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><rect x="357.0769230769231" y="721" width="56.61538461538461" height="30" fill="#eef1f5" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="385.3846153846154" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><rect x="415.6923076923077" y="721" width="56.61538461538461" height="30" fill="#ccd2da" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="444" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><rect x="474.30769230769226" y="721" width="56.61538461538461" height="30" fill="#b2bac4" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="502.6153846153846" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><rect x="532.9230769230769" y="721" width="56.61538461538461" height="30" fill="#dfe3e9" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="561.2307692307692" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><rect x="591.5384615384615" y="721" width="56.61538461538461" height="30" fill="#1b1e23" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="619.8461538461538" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><rect x="650.1538461538462" y="721" width="56.61538461538461" height="30" fill="#0d0f12" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="678.4615384615385" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><rect x="708.7692307692307" y="721" width="56.61538461538461" height="30" fill="#5b636b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="737.076923076923" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><rect x="767.3846153846154" y="721" width="56.61538461538461" height="30" fill="#6a717b" rx="2" stroke="#d9dbe0" stroke-width="0.6"/><text x="795.6923076923076" y="762" font-size="7.5" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="836" y="715" width="100" height="56" fill="#eef1f5" rx="4"/><rect x="855" y="725.08" width="62" height="35.84" fill="#fbfcfd" rx="3" stroke="#ccd2da"/><rect x="855" y="725.08" width="62" height="8.601600000000001" fill="#eab013" rx="3" fill-opacity="0.45"/><rect x="855" y="725.08" width="62" height="2" fill="#eab013" /><rect x="861" y="739.416" width="34.1" height="3" fill="#1b1e23" rx="1.5"/><rect x="861" y="745.8672" width="24.8" height="3" fill="#5b636b" rx="1.5"/><rect x="861" y="752.3184" width="43.4" height="5.734400000000001" fill="#ffffff" rx="2" stroke="#b2bac4" stroke-width="0.6"/><text x="24" y="793" font-size="10" fill="#5d636b" font-weight="400" text-anchor="start">Each key's lightness, ground to ink.</text><rect x="24" y="819" width="444" height="150" fill="#ffffff" stroke="#d9dbe0"/><text x="24" y="814" font-size="9" fill="#5d636b" font-weight="600" text-anchor="start">dark</text><line x1="24" x2="468" y1="927.5" y2="927.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="24" x2="468" y1="894" y2="894" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="24" x2="468" y1="860.5" y2="860.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="54.30769230769231" cy="935.3723260166211" r="4.5" fill="#141414" stroke="#1d1f23" stroke-width="0.6"/><text x="54.30769230769231" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><circle cx="86.92307692307692" cy="940.9566665156811" r="4.5" fill="#0b0b0b" stroke="#1d1f23" stroke-width="0.6"/><text x="86.92307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><circle cx="119.53846153846153" cy="922.8076681135759" r="4.5" fill="#2a2a2a" stroke="#1d1f23" stroke-width="0.6"/><text x="119.53846153846153" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><circle cx="152.15384615384613" cy="929.5058294355016" r="4.5" fill="#1e1e1e" stroke="#1d1f23" stroke-width="0.6"/><text x="152.15384615384613" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><circle cx="184.76923076923077" cy="935.3723260166211" r="4.5" fill="#141414" stroke="#1d1f23" stroke-width="0.6"/><text x="184.76923076923077" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><circle cx="217.38461538461536" cy="925.0051511190109" r="4.5" fill="#262626" stroke="#1d1f23" stroke-width="0.6"/><text x="217.38461538461536" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><circle cx="250" cy="921.1801628038764" r="4.5" fill="#2d2d2d" stroke="#1d1f23" stroke-width="0.6"/><text x="250" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><circle cx="282.6153846153846" cy="914.3064066203902" r="4.5" fill="#3a3a3a" stroke="#1d1f23" stroke-width="0.6"/><text x="282.6153846153846" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><circle cx="315.2307692307692" cy="922.8076681135759" r="4.5" fill="#2a2a2a" stroke="#1d1f23" stroke-width="0.6"/><text x="315.2307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><circle cx="347.84615384615387" cy="836.2461159042105" r="4.5" fill="#e8e8e8" stroke="#1d1f23" stroke-width="0.6"/><text x="347.84615384615387" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><circle cx="380.46153846153845" cy="831.4658435568595" r="4.5" fill="#f3f4f5" stroke="#1d1f23" stroke-width="0.6"/><text x="380.46153846153845" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><circle cx="413.07692307692304" cy="866.8291775110836" r="4.5" fill="#9aa0a6" stroke="#1d1f23" stroke-width="0.6"/><text x="413.07692307692304" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><circle cx="445.6923076923077" cy="878.2318184067324" r="4.5" fill="#80868e" stroke="#1d1f23" stroke-width="0.6"/><text x="445.6923076923077" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text><rect x="492" y="819" width="444" height="150" fill="#ffffff" stroke="#d9dbe0"/><text x="492" y="814" font-size="9" fill="#5d636b" font-weight="600" text-anchor="start">light</text><line x1="492" x2="936" y1="927.5" y2="927.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="492" x2="936" y1="894" y2="894" stroke="#d9dbe0" stroke-dasharray="3 3"/><line x1="492" x2="936" y1="860.5" y2="860.5" stroke="#d9dbe0" stroke-dasharray="3 3"/><circle cx="522.3076923076923" cy="831.0262653785574" r="4.5" fill="#f4f5f7" stroke="#1d1f23" stroke-width="0.6"/><text x="522.3076923076923" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">app</text><circle cx="554.9230769230769" cy="832.7613834837304" r="4.5" fill="#eef1f5" stroke="#1d1f23" stroke-width="0.6"/><text x="554.9230769230769" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvas</text><circle cx="587.5384615384615" cy="842.6716826000629" r="4.5" fill="#d3d9e1" stroke="#1d1f23" stroke-width="0.6"/><text x="587.5384615384615" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">canvasDot</text><circle cx="620.1538461538461" cy="828.2607706342126" r="4.5" fill="#fbfcfd" stroke="#1d1f23" stroke-width="0.6"/><text x="620.1538461538461" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">s</text><circle cx="652.7692307692307" cy="827.0000008745449" r="4.5" fill="#ffffff" stroke="#1d1f23" stroke-width="0.6"/><text x="652.7692307692307" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sSunken</text><circle cx="685.3846153846154" cy="832.7613834837304" r="4.5" fill="#eef1f5" stroke="#1d1f23" stroke-width="0.6"/><text x="685.3846153846154" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">sRaised</text><circle cx="717.9999999999999" cy="845.5574043611224" r="4.5" fill="#ccd2da" stroke="#1d1f23" stroke-width="0.6"/><text x="717.9999999999999" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">b</text><circle cx="750.6153846153845" cy="855.7152420690168" r="4.5" fill="#b2bac4" stroke="#1d1f23" stroke-width="0.6"/><text x="750.6153846153845" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bStrong</text><circle cx="783.2307692307692" cy="838.4565182665617" r="4.5" fill="#dfe3e9" stroke="#1d1f23" stroke-width="0.6"/><text x="783.2307692307692" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">bSubtle</text><circle cx="815.8461538461538" cy="929.6345600149465" r="4.5" fill="#1b1e23" stroke="#1d1f23" stroke-width="0.6"/><text x="815.8461538461538" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">t</text><circle cx="848.4615384615385" cy="938.5477833064006" r="4.5" fill="#0d0f12" stroke="#1d1f23" stroke-width="0.6"/><text x="848.4615384615385" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tBright</text><circle cx="881.076923076923" cy="894.5928154370331" r="4.5" fill="#5b636b" stroke="#1d1f23" stroke-width="0.6"/><text x="881.076923076923" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tDim</text><circle cx="913.6923076923076" cy="887.8233662007535" r="4.5" fill="#6a717b" stroke="#1d1f23" stroke-width="0.6"/><text x="913.6923076923076" y="980" font-size="7" fill="#5d636b" font-weight="400" text-anchor="middle">tMuted</text></svg>[39m
+
+
+[36m [2m❯[22m tests/graph/paletteDiagrams.test.ts:[2m8:107[22m[39m
+    [90m  6|[39m [34mdescribe[39m([32m"the palette spec's diagrams"[39m[33m,[39m () [33m=>[39m {
+    [90m  7|[39m   it("are what palette.ts draws now (rerun `node scripts/vite-run.mjs …
+    [90m  8|[39m     for (const [file, svg] of Object.entries(paletteDiagrams())) expec…
+    [90m   |[39m                                                                                                           [31m^[39m
+    [90m  9|[39m   })[33m;[39m
+    [90m 10|[39m })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[42m shared [49m[39m tests/graph/wasmStamp.test.ts[2m > [22mthe module is current with the crates it links (run npm run build:wasm)
+[31m[1mAssertionError[22m: expected '97d5c3ac1126a5631b14b8fb95ad9cff5abec…' to be '29942908a1890f0d96f7c45e6f01217fcc5d9…' // Object.is equality[39m
+
+Expected: [32m"29942908a1890f0d96f7c45e6f01217fcc5d91d0e7fb0063798e663ac87e5d13"[39m
+Received: [31m"97d5c3ac1126a5631b14b8fb95ad9cff5abecbaeface4fe932bea0728f9da480"[39m
+
+[36m [2m❯[22m tests/graph/wasmStamp.test.ts:[2m11:19[22m[39m
+    [90m  9|[39m   [35mconst[39m root [33m=[39m path[33m.[39m[34mresolve[39m(__dirname[33m,[39m [32m"../.."[39m)[33m;[39m
+    [90m 10|[39m   const stamped = fs.readFileSync(path.join(root, (MODULE as { out: st…
+    [90m 11|[39m   [34mexpect[39m(stamped)[33m.[39m[34mtoBe[39m([34msourceStamp[39m(root))[33m;[39m
+    [90m   |[39m                   [31m^[39m
+    [90m 12|[39m })[33m;[39m
+    [90m 13|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯[22m[39m
+```
+
+</details>
+
+<details><summary>❌ Obsidian plugin build</summary>
+
+`npm run plugin:build`
+
+```
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m typed-path v0.13.0
+[1m[92m   Compiling[0m itoa v1.0.19
+[1m[92m   Compiling[0m unicode-general-category v1.1.0
+[1m[92m   Compiling[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m debug_unsafe v0.1.4
+[1m[92m   Compiling[0m jiff-core v0.1.8
+[1m[92m   Compiling[0m atoi_simd v0.18.1
+[1m[92m   Compiling[0m bit-set v0.8.0
+[1m[92m   Compiling[0m regex-automata v0.4.19
+[1m[92m   Compiling[0m jiff v0.2.46
+[1m[92m   Compiling[0m zip v9.8.1
+[1m[92m   Compiling[0m js-sys v0.3.107
+[1m[92m   Compiling[0m logos v0.15.1
+[1m[92m   Compiling[0m codepage v0.1.3
+[1m[92m   Compiling[0m quick-xml v0.42.0
+[1m[92m   Compiling[0m csv-core v0.1.13
+[1m[92m   Compiling[0m foldhash v0.2.0
+[1m[92m   Compiling[0m jiff-tzdb v1.0.0
+[1m[92m   Compiling[0m ryu-js v1.0.3
+[1m[92m   Compiling[0m fast-float2 v0.2.4
+[1m[92m   Compiling[0m byteorder v1.5.0
+[1m[92m   Compiling[0m ryu v1.0.23
+[1m[92m   Compiling[0m jiff-core v1.0.1
+[1m[92m   Compiling[0m tinyvec v1.13.3
+[1m[92m   Compiling[0m csv v1.4.0
+[1m[92m   Compiling[0m unicode-normalization v0.1.26
+[1m[92m   Compiling[0m calamine v0.38.0
+[1m[92m   Compiling[0m solenoid-schedule v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-schedule)
+[1m[92m   Compiling[0m jiff v1.0.2
+[1m[92m   Compiling[0m interim v0.2.1 (/home/runner/work/solenoid/solenoid/crates/vendor/interim)
+[1m[92m   Compiling[0m netcore v0.1.0 (https://github.com/bubba8587/netcore-rs?rev=68e667f650dda9a3e2534b633af7da076ba4e2a1#68e667f6)
+[1m[92m   Compiling[0m fancy-regex v0.20.2
+[1m[92m   Compiling[0m sha1 v0.11.0
+[1m[92m   Compiling[0m sha2 v0.11.1
+[1m[92m   Compiling[0m md-5 v0.11.0
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m   Compiling[0m base64 v0.23.1
+[1m[92m   Compiling[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m qrcodegen v1.8.0
+[1m[92m   Compiling[0m uuid v1.29.3
+[1m[92m   Compiling[0m netcore-engine v0.1.0 (https://github.com/bubba8587/netcore-rs?rev=68e667f650dda9a3e2534b633af7da076ba4e2a1#68e667f6)
+[1m[92m   Compiling[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)
+[1m[92m   Compiling[0m wasm-bindgen-futures v0.4.80
+[1m[91merror[E0599][0m[1m: no method named `to_zoned` found for struct `jiff::Timestamp` in the current scope[0m
+  [1m[94m--> [0m/home/runner/work/solenoid/solenoid/crates/solenoid-core/src/relative_date.rs:81:72
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m     let base = Timestamp::from_millisecond(local.floor() as i64).ok()?.to_zoned(TimeZone::UTC);
+   [1m[94m|[0m                                                                        [1m[91m^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: there is a method `to_owned` with a similar name, but with different arguments
+  [1m[94m--> [0m/rustc/0ef1bc386059596dada8fb65b50425aab2ea637a/library/alloc/src/borrow.rs:48:4
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `solenoid-core` (lib) due to 1 previous error
+node:internal/errors:999
+  const err = new Error(message);
+              ^
+
+Error: Command failed: cargo build --profile ship --target wasm32-unknown-unknown --manifest-path crates/solenoid-graph/Cargo.toml --target-dir crates/solenoid-graph/target --features plugin
+    at genericNodeError (node:internal/errors:999:15)
+    at wrappedFn (node:internal/errors:544:14)
+    at checkExecSyncError (node:child_process:990:11)
+    at execFileSync (node:child_process:1026:15)
+    at run (file:///home/runner/work/solenoid/solenoid/scripts/build-wasm.mjs:12:28)
+    at build (file:///home/runner/work/solenoid/solenoid/scripts/build-wasm.mjs:75:3)
+    at file:///home/runner/work/solenoid/solenoid/scripts/build-wasm.mjs:93:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5) {
+  status: 101,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 11060,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v26.13.1
+```
+
+</details>
+
+<details><summary>❌ crates/solenoid-core: clippy</summary>
+
+`cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --all-targets -- -D warnings`
+
+```
+[1m[92m    Checking[0m equivalent v1.0.3
+[1m[92m   Compiling[0m beef v0.5.2
+[1m[92m    Checking[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m regex-syntax v0.8.12
+[1m[92m    Checking[0m indexmap v2.14.2
+[1m[92m    Checking[0m miniz_oxide v0.9.1
+[1m[92m    Checking[0m digest v0.11.3
+[1m[92m   Compiling[0m syn v3.0.10
+[1m[92m    Checking[0m log v0.4.35
+[1m[92m    Checking[0m zlib-rs v0.6.8
+[1m[92m    Checking[0m bumpalo v3.20.4
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m    Checking[0m zopfli v0.8.4
+[1m[92m    Checking[0m flate2 v1.1.11
+[1m[92m    Checking[0m aho-corasick v1.1.5
+[1m[92m    Checking[0m debug_unsafe v0.1.4
+[1m[92m    Checking[0m jiff-core v0.1.8
+[1m[92m    Checking[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m g2poly v1.2.2
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m    Checking[0m itoa v1.0.19
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m unicode-general-category v1.1.0
+[1m[92m    Checking[0m typed-path v0.13.0
+[1m[92m    Checking[0m cpufeatures v0.3.1
+[1m[92m    Checking[0m regex-automata v0.4.19
+[1m[92m    Checking[0m bit-set v0.8.0
+[1m[92m    Checking[0m jiff v0.2.46
+[1m[92m    Checking[0m atoi_simd v0.18.1
+[1m[92m    Checking[0m quick-xml v0.42.0
+[1m[92m    Checking[0m codepage v0.1.3
+[1m[92m    Checking[0m csv-core v0.1.13
+[1m[92m    Checking[0m ryu-js v1.0.3
+[1m[92m    Checking[0m fast-float2 v0.2.4
+[1m[92m    Checking[0m byteorder v1.5.0
+[1m[92m    Checking[0m jiff-tzdb v1.0.0
+[1m[92m    Checking[0m tinyvec v1.13.3
+[1m[92m    Checking[0m ryu v1.0.23
+[1m[92m    Checking[0m jiff-core v1.0.1
+[1m[92m    Checking[0m unicode-normalization v0.1.26
+[1m[92m    Checking[0m csv v1.4.0
+[1m[92m    Checking[0m jiff v1.0.2
+[1m[92m    Checking[0m solenoid-schedule v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-schedule)
+[1m[92m    Checking[0m fancy-regex v0.20.2
+[1m[92m    Checking[0m sha1 v0.11.0
+[1m[92m    Checking[0m sha2 v0.11.1
+[1m[92m    Checking[0m md-5 v0.11.0
+[1m[92m    Checking[0m lru v0.18.5
+[1m[92m    Checking[0m qrcodegen v1.8.0
+[1m[92m    Checking[0m base64 v0.23.1
+[1m[92m    Checking[0m uuid v1.29.3
+[1m[92m    Checking[0m fastrand v2.5.0
+[1m[92m    Checking[0m strsim v0.11.1
+[1m[92m    Checking[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m zeroize_derive v1.5.0
+[1m[92m   Compiling[0m logos-derive v0.15.1
+[1m[92m   Compiling[0m g2gen v1.2.2
+[1m[92m    Checking[0m logos v0.15.1
+[1m[92m    Checking[0m interim v0.2.1 (/home/runner/work/solenoid/solenoid/crates/vendor/interim)
+[1m[92m    Checking[0m g2p v1.2.2
+[1m[92m    Checking[0m rqrr v0.11.0
+[1m[92m    Checking[0m zeroize v1.9.2
+[1m[92m    Checking[0m zip v9.8.1
+[1m[92m    Checking[0m calamine v0.38.0
+[1m[92m    Checking[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)
+[1m[91merror[E0599][0m[1m: no method named `to_zoned` found for struct `jiff::Timestamp` in the current scope[0m
+  [1m[94m--> [0msrc/relative_date.rs:81:72
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m     let base = Timestamp::from_millisecond(local.floor() as i64).ok()?.to_zoned(TimeZone::UTC);
+   [1m[94m|[0m                                                                        [1m[91m^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: there is a method `to_owned` with a similar name, but with different arguments
+  [1m[94m--> [0m/rustc/0ef1bc386059596dada8fb65b50425aab2ea637a/library/alloc/src/borrow.rs:48:4
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `solenoid-core` (lib) due to 1 previous error
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+[1m[91merror[0m: could not compile `solenoid-core` (lib test) due to 1 previous error
+```
+
+</details>
+
+<details><summary>❌ crates/solenoid-core: tests</summary>
+
+`cargo test --manifest-path crates/solenoid-core/Cargo.toml`
+
+```
+[1m[92m   Compiling[0m core_detect v1.0.0
+[1m[92m   Compiling[0m simdutf8 v0.1.5
+[1m[92m   Compiling[0m adler2 v2.0.1
+[1m[92m   Compiling[0m miniz_oxide v0.9.1
+[1m[92m   Compiling[0m encoding_rs v0.8.44
+[1m[92m   Compiling[0m digest v0.11.3
+[1m[92m   Compiling[0m indexmap v2.14.2
+[1m[92m   Compiling[0m libc v0.2.191
+[1m[92m   Compiling[0m zlib-rs v0.6.8
+[1m[92m   Compiling[0m bumpalo v3.20.4
+[1m[92m   Compiling[0m log v0.4.35
+[1m[92m   Compiling[0m zopfli v0.8.4
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m   Compiling[0m zeroize v1.9.2
+[1m[92m   Compiling[0m constant_time_eq v0.6.1
+[1m[92m   Compiling[0m aho-corasick v1.1.5
+[1m[92m   Compiling[0m regex-syntax v0.8.12
+[1m[92m   Compiling[0m flate2 v1.1.11
+[1m[92m   Compiling[0m itoa v1.0.19
+[1m[92m   Compiling[0m jiff-core v0.1.8
+[1m[92m   Compiling[0m g2poly v1.2.2
+[1m[92m   Compiling[0m typed-path v0.13.0
+[1m[92m   Compiling[0m cpufeatures v0.3.1
+[1m[92m   Compiling[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m debug_unsafe v0.1.4
+[1m[92m   Compiling[0m atoi_simd v0.18.1
+[1m[92m   Compiling[0m bit-set v0.8.0
+[1m[92m   Compiling[0m g2gen v1.2.2
+[1m[92m   Compiling[0m zip v9.8.1
+[1m[92m   Compiling[0m jiff v0.2.46
+[1m[92m   Compiling[0m regex-automata v0.4.19
+[1m[92m   Compiling[0m logos v0.15.1
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m quick-xml v0.42.0
+[1m[92m   Compiling[0m codepage v0.1.3
+[1m[92m   Compiling[0m csv-core v0.1.13
+[1m[92m   Compiling[0m ryu-js v1.0.3
+[1m[92m   Compiling[0m byteorder v1.5.0
+[1m[92m   Compiling[0m ryu v1.0.23
+[1m[92m   Compiling[0m tinyvec v1.13.3
+[1m[92m   Compiling[0m fast-float2 v0.2.4
+[1m[92m   Compiling[0m jiff-tzdb v1.0.0
+[1m[92m   Compiling[0m jiff-core v1.0.1
+[1m[92m   Compiling[0m unicode-normalization v0.1.26
+[1m[92m   Compiling[0m calamine v0.38.0
+[1m[92m   Compiling[0m csv v1.4.0
+[1m[92m   Compiling[0m jiff v1.0.2
+[1m[92m   Compiling[0m solenoid-schedule v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-schedule)
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m interim v0.2.1 (/home/runner/work/solenoid/solenoid/crates/vendor/interim)
+[1m[92m   Compiling[0m fancy-regex v0.20.2
+[1m[92m   Compiling[0m unicode-general-category v1.1.0
+[1m[92m   Compiling[0m g2p v1.2.2
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m   Compiling[0m sha1 v0.11.0
+[1m[92m   Compiling[0m sha2 v0.11.1
+[1m[92m   Compiling[0m md-5 v0.11.0
+[1m[92m   Compiling[0m lru v0.18.5
+[1m[92m   Compiling[0m qrcodegen v1.8.0
+[1m[92m   Compiling[0m fastrand v2.5.0
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m   Compiling[0m base64 v0.23.1
+[1m[92m   Compiling[0m uuid v1.29.3
+[1m[92m   Compiling[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m rqrr v0.11.0
+[1m[92m   Compiling[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)
+[1m[91merror[E0599][0m[1m: no method named `to_zoned` found for struct `jiff::Timestamp` in the current scope[0m
+  [1m[94m--> [0msrc/relative_date.rs:81:72
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m     let base = Timestamp::from_millisecond(local.floor() as i64).ok()?.to_zoned(TimeZone::UTC);
+   [1m[94m|[0m                                                                        [1m[91m^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: there is a method `to_owned` with a similar name, but with different arguments
+  [1m[94m--> [0m/rustc/0ef1bc386059596dada8fb65b50425aab2ea637a/library/alloc/src/borrow.rs:48:4
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `solenoid-core` (lib) due to 1 previous error
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+[1m[91merror[0m: could not compile `solenoid-core` (lib test) due to 1 previous error
+```
+
+</details>
+
+<details><summary>❌ crates/solenoid-graph: clippy</summary>
+
+`cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --all-targets -- -D warnings`
+
+```
+[1m[92m   Compiling[0m beef v0.5.2
+[1m[92m    Checking[0m equivalent v1.0.3
+[1m[92m   Compiling[0m regex-syntax v0.8.12
+[1m[92m    Checking[0m adler2 v2.0.1
+[1m[92m    Checking[0m hashbrown v0.17.1
+[1m[92m    Checking[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m multiversion_no_op v1.0.0
+[1m[92m    Checking[0m indexmap v2.14.2
+[1m[92m    Checking[0m miniz_oxide v0.9.1
+[1m[92m    Checking[0m digest v0.11.3
+[1m[92m   Compiling[0m syn v3.0.10
+[1m[92m   Compiling[0m getrandom v0.3.4
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m    Checking[0m zlib-rs v0.6.8
+[1m[92m    Checking[0m log v0.4.35
+[1m[92m    Checking[0m bumpalo v3.20.4
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m    Checking[0m zopfli v0.8.4
+[1m[92m    Checking[0m flate2 v1.1.11
+[1m[92m    Checking[0m aho-corasick v1.1.5
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m    Checking[0m typed-path v0.13.0
+[1m[92m   Compiling[0m unicode-general-category v1.1.0
+[1m[92m    Checking[0m debug_unsafe v0.1.4
+[1m[92m    Checking[0m cpufeatures v0.3.1
+[1m[92m    Checking[0m jiff-core v0.1.8
+[1m[92m    Checking[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m    Checking[0m itoa v1.0.19
+[1m[92m    Checking[0m jiff v0.2.46
+[1m[92m    Checking[0m bit-set v0.8.0
+[1m[92m    Checking[0m atoi_simd v0.18.1
+[1m[92m    Checking[0m regex-automata v0.4.19
+[1m[92m    Checking[0m quick-xml v0.42.0
+[1m[92m    Checking[0m codepage v0.1.3
+[1m[92m    Checking[0m csv-core v0.1.13
+[1m[92m    Checking[0m byteorder v1.5.0
+[1m[92m    Checking[0m jiff-tzdb v1.0.0
+[1m[92m    Checking[0m tinyvec v1.13.3
+[1m[92m    Checking[0m foldhash v0.2.0
+[1m[92m    Checking[0m ryu v1.0.23
+[1m[92m    Checking[0m jiff-core v1.0.1
+[1m[92m    Checking[0m ryu-js v1.0.3
+[1m[92m    Checking[0m fast-float2 v0.2.4
+[1m[92m    Checking[0m solenoid-schedule v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-schedule)
+[1m[92m    Checking[0m jiff v1.0.2
+[1m[92m    Checking[0m unicode-normalization v0.1.26
+[1m[92m    Checking[0m csv v1.4.0
+[1m[92m    Checking[0m fancy-regex v0.20.2
+[1m[92m    Checking[0m netcore v0.1.0 (https://github.com/bubba8587/netcore-rs?rev=68e667f650dda9a3e2534b633af7da076ba4e2a1#68e667f6)
+[1m[92m    Checking[0m sha1 v0.11.0
+[1m[92m    Checking[0m sha2 v0.11.1
+[1m[92m    Checking[0m md-5 v0.11.0
+[1m[92m    Checking[0m fastrand v2.5.0
+[1m[92m    Checking[0m base64 v0.23.1
+[1m[92m    Checking[0m uuid v1.29.3
+[1m[92m    Checking[0m rustc-hash v2.1.3
+[1m[92m    Checking[0m strsim v0.11.1
+[1m[92m    Checking[0m qrcodegen v1.8.0
+[1m[92m    Checking[0m netcore-engine v0.1.0 (https://github.com/bubba8587/netcore-rs?rev=68e667f650dda9a3e2534b633af7da076ba4e2a1#68e667f6)
+[1m[92m   Compiling[0m zeroize_derive v1.5.0
+[1m[92m   Compiling[0m logos-derive v0.15.1
+[1m[92m    Checking[0m logos v0.15.1
+[1m[92m    Checking[0m interim v0.2.1 (/home/runner/work/solenoid/solenoid/crates/vendor/interim)
+[1m[92m    Checking[0m zeroize v1.9.2
+[1m[92m    Checking[0m zip v9.8.1
+[1m[92m    Checking[0m calamine v0.38.0
+[1m[92m    Checking[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)
+[1m[91merror[E0599][0m[1m: no method named `to_zoned` found for struct `jiff::Timestamp` in the current scope[0m
+  [1m[94m--> [0m/home/runner/work/solenoid/solenoid/crates/solenoid-core/src/relative_date.rs:81:72
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m     let base = Timestamp::from_millisecond(local.floor() as i64).ok()?.to_zoned(TimeZone::UTC);
+   [1m[94m|[0m                                                                        [1m[91m^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: there is a method `to_owned` with a similar name, but with different arguments
+  [1m[94m--> [0m/rustc/0ef1bc386059596dada8fb65b50425aab2ea637a/library/alloc/src/borrow.rs:48:4
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `solenoid-core` (lib) due to 1 previous error
+```
+
+</details>
+
+<details><summary>❌ crates/solenoid-graph: tests</summary>
+
+`cargo test --manifest-path crates/solenoid-graph/Cargo.toml`
+
+```
+[1m[92m   Compiling[0m block-buffer v0.12.1
+[1m[92m   Compiling[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m equivalent v1.0.3
+[1m[92m   Compiling[0m adler2 v2.0.1
+[1m[92m   Compiling[0m simdutf8 v0.1.5
+[1m[92m   Compiling[0m hashbrown v0.17.1
+[1m[92m   Compiling[0m core_detect v1.0.0
+[1m[92m   Compiling[0m encoding_rs v0.8.44
+[1m[92m   Compiling[0m indexmap v2.14.2
+[1m[92m   Compiling[0m digest v0.11.3
+[1m[92m   Compiling[0m miniz_oxide v0.9.1
+[1m[92m   Compiling[0m log v0.4.35
+[1m[92m   Compiling[0m bumpalo v3.20.4
+[1m[92m   Compiling[0m zlib-rs v0.6.8
+[1m[92m   Compiling[0m zopfli v0.8.4
+[1m[92m   Compiling[0m zeroize v1.9.2
+[1m[92m   Compiling[0m constant_time_eq v0.6.1
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m   Compiling[0m aho-corasick v1.1.5
+[1m[92m   Compiling[0m jiff-core v0.1.8
+[1m[92m   Compiling[0m flate2 v1.1.11
+[1m[92m   Compiling[0m typed-path v0.13.0
+[1m[92m   Compiling[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m cpufeatures v0.3.1
+[1m[92m   Compiling[0m itoa v1.0.19
+[1m[92m   Compiling[0m regex-syntax v0.8.12
+[1m[92m   Compiling[0m debug_unsafe v0.1.4
+[1m[92m   Compiling[0m atoi_simd v0.18.1
+[1m[92m   Compiling[0m zip v9.8.1
+[1m[92m   Compiling[0m regex-automata v0.4.19
+[1m[92m   Compiling[0m bit-set v0.8.0
+[1m[92m   Compiling[0m jiff v0.2.46
+[1m[92m   Compiling[0m logos v0.15.1
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m getrandom v0.3.4
+[1m[92m   Compiling[0m codepage v0.1.3
+[1m[92m   Compiling[0m quick-xml v0.42.0
+[1m[92m   Compiling[0m csv-core v0.1.13
+[1m[92m   Compiling[0m foldhash v0.2.0
+[1m[92m   Compiling[0m ryu-js v1.0.3
+[1m[92m   Compiling[0m jiff-tzdb v1.0.0
+[1m[92m   Compiling[0m tinyvec v1.13.3
+[1m[92m   Compiling[0m ryu v1.0.23
+[1m[92m   Compiling[0m jiff-core v1.0.1
+[1m[92m   Compiling[0m byteorder v1.5.0
+[1m[92m   Compiling[0m fast-float2 v0.2.4
+[1m[92m   Compiling[0m jiff v1.0.2
+[1m[92m   Compiling[0m calamine v0.38.0
+[1m[92m   Compiling[0m csv v1.4.0
+[1m[92m   Compiling[0m unicode-normalization v0.1.26
+[1m[92m   Compiling[0m solenoid-schedule v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-schedule)
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m netcore v0.1.0 (https://github.com/bubba8587/netcore-rs?rev=68e667f650dda9a3e2534b633af7da076ba4e2a1#68e667f6)
+[1m[92m   Compiling[0m interim v0.2.1 (/home/runner/work/solenoid/solenoid/crates/vendor/interim)
+[1m[92m   Compiling[0m fancy-regex v0.20.2
+[1m[92m   Compiling[0m unicode-general-category v1.1.0
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m   Compiling[0m sha2 v0.11.1
+[1m[92m   Compiling[0m sha1 v0.11.0
+[1m[92m   Compiling[0m md-5 v0.11.0
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m   Compiling[0m base64 v0.23.1
+[1m[92m   Compiling[0m fastrand v2.5.0
+[1m[92m   Compiling[0m uuid v1.29.3
+[1m[92m   Compiling[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m qrcodegen v1.8.0
+[1m[92m   Compiling[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)
+[1m[92m   Compiling[0m netcore-engine v0.1.0 (https://github.com/bubba8587/netcore-rs?rev=68e667f650dda9a3e2534b633af7da076ba4e2a1#68e667f6)
+[1m[91merror[E0599][0m[1m: no method named `to_zoned` found for struct `jiff::Timestamp` in the current scope[0m
+  [1m[94m--> [0m/home/runner/work/solenoid/solenoid/crates/solenoid-core/src/relative_date.rs:81:72
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m     let base = Timestamp::from_millisecond(local.floor() as i64).ok()?.to_zoned(TimeZone::UTC);
+   [1m[94m|[0m                                                                        [1m[91m^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: there is a method `to_owned` with a similar name, but with different arguments
+  [1m[94m--> [0m/rustc/0ef1bc386059596dada8fb65b50425aab2ea637a/library/alloc/src/borrow.rs:48:4
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `solenoid-core` (lib) due to 1 previous error
+```
+
+</details>
+
+<details><summary>❌ crates/solenoid-parquet: clippy</summary>
+
+`cargo clippy --manifest-path crates/solenoid-parquet/Cargo.toml --all-targets -- -D warnings`
+
+```
+[1m[92m    Checking[0m zopfli v0.8.4
+[1m[92m    Checking[0m arrow-data v60.2.0
+[1m[92m    Checking[0m zeroize v1.9.2
+[1m[92m   Compiling[0m logos-derive v0.15.1
+[1m[92m    Checking[0m arrow-array v60.2.0
+[1m[92m    Checking[0m lexical-parse-integer v1.0.6
+[1m[92m    Checking[0m lexical-write-integer v1.0.6
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m    Checking[0m aho-corasick v1.1.5
+[1m[92m    Checking[0m base64 v0.23.1
+[1m[92m    Checking[0m typed-path v0.13.0
+[1m[92m    Checking[0m arrow-cmp v60.2.0
+[1m[92m    Checking[0m arrow-select v60.2.0
+[1m[92m    Checking[0m jiff-core v0.1.8
+[1m[92m    Checking[0m bit-vec v0.8.0
+[1m[92m    Checking[0m itoa v1.0.19
+[1m[92m   Compiling[0m unicode-general-category v1.1.0
+[1m[92m    Checking[0m debug_unsafe v0.1.4
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m    Checking[0m ryu v1.0.23
+[1m[92m    Checking[0m cpufeatures v0.3.1
+[1m[92m    Checking[0m bitflags v2.13.2
+[1m[92m   Compiling[0m snap v1.1.2
+[1m[92m    Checking[0m jiff v0.2.46
+[1m[92m    Checking[0m atoi_simd v0.18.1
+[1m[92m    Checking[0m bit-set v0.8.0
+[1m[92m    Checking[0m zip v9.8.1
+[1m[92m    Checking[0m lexical-write-float v1.0.6
+[1m[92m    Checking[0m lexical-parse-float v1.0.6
+[1m[92m    Checking[0m regex-automata v0.4.19
+[1m[92m    Checking[0m logos v0.15.1
+[1m[92m    Checking[0m brotli-decompressor v6.3.2
+[1m[92m    Checking[0m quick-xml v0.42.0
+[1m[92m    Checking[0m codepage v0.1.3
+[1m[92m    Checking[0m csv-core v0.1.13
+[1m[92m    Checking[0m jiff-tzdb v1.0.0
+[1m[92m    Checking[0m jiff-core v1.0.1
+[1m[92m    Checking[0m fast-float2 v0.2.4
+[1m[92m    Checking[0m byteorder v1.5.0
+[1m[92m    Checking[0m tinyvec v1.13.3
+[1m[92m    Checking[0m ryu-js v1.0.3
+[1m[92m    Checking[0m foldhash v0.2.0
+[1m[92m    Checking[0m twox-hash v2.1.5
+[1m[92m    Checking[0m unicode-normalization v0.1.26
+[1m[92m    Checking[0m lz4_flex v0.14.2
+[1m[92m    Checking[0m fancy-regex v0.20.2
+[1m[92m    Checking[0m jiff v1.0.2
+[1m[92m    Checking[0m solenoid-schedule v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-schedule)
+[1m[92m    Checking[0m calamine v0.38.0
+[1m[92m    Checking[0m brotli v9.1.3
+[1m[92m    Checking[0m csv v1.4.0
+[1m[92m    Checking[0m interim v0.2.1 (/home/runner/work/solenoid/solenoid/crates/vendor/interim)
+[1m[92m    Checking[0m lexical-core v1.0.6
+[1m[92m    Checking[0m zstd v0.14.4
+[1m[92m    Checking[0m arrow-ipc v60.2.0
+[1m[92m    Checking[0m arrow-ord v60.2.0
+[1m[92m    Checking[0m sha1 v0.11.0
+[1m[92m    Checking[0m sha2 v0.11.1
+[1m[92m    Checking[0m md-5 v0.11.0
+[1m[92m    Checking[0m atoi v3.1.1
+[1m[92m    Checking[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m seq-macro v0.3.6
+[1m[92m    Checking[0m qrcodegen v1.8.0
+[1m[92m    Checking[0m strsim v0.11.1
+[1m[92m    Checking[0m fastrand v2.5.0
+[1m[92m    Checking[0m uuid v1.29.3
+[1m[92m    Checking[0m arrow-cast v60.2.0
+[1m[92m    Checking[0m parquet v60.2.0
+[1m[92m    Checking[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)
+[1m[91merror[E0599][0m[1m: no method named `to_zoned` found for struct `jiff::Timestamp` in the current scope[0m
+  [1m[94m--> [0m/home/runner/work/solenoid/solenoid/crates/solenoid-core/src/relative_date.rs:81:72
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m     let base = Timestamp::from_millisecond(local.floor() as i64).ok()?.to_zoned(TimeZone::UTC);
+   [1m[94m|[0m                                                                        [1m[91m^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: there is a method `to_owned` with a similar name, but with different arguments
+  [1m[94m--> [0m/rustc/0ef1bc386059596dada8fb65b50425aab2ea637a/library/alloc/src/borrow.rs:48:4
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `solenoid-core` (lib) due to 1 previous error
+```
+
+</details>
+
+<details><summary>❌ crates/solenoid-parquet: tests</summary>
+
+`cargo test --manifest-path crates/solenoid-parquet/Cargo.toml`
+
+```
+[1m[92m   Compiling[0m zeroize v1.9.2
+[1m[92m   Compiling[0m constant_time_eq v0.6.1
+[1m[92m   Compiling[0m zopfli v0.8.4
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m   Compiling[0m lexical-parse-integer v1.0.6
+[1m[92m   Compiling[0m lexical-write-integer v1.0.6
+[1m[92m   Compiling[0m aho-corasick v1.1.5
+[1m[92m   Compiling[0m debug_unsafe v0.1.4
+[1m[92m   Compiling[0m regex-syntax v0.8.12
+[1m[92m   Compiling[0m ryu v1.0.23
+[1m[92m   Compiling[0m cpufeatures v0.3.1
+[1m[92m   Compiling[0m bitflags v2.13.2
+[1m[92m   Compiling[0m base64 v0.23.1
+[1m[92m   Compiling[0m typed-path v0.13.0
+[1m[92m   Compiling[0m jiff-core v0.1.8
+[1m[92m   Compiling[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m itoa v1.0.19
+[1m[92m   Compiling[0m jiff v0.2.46
+[1m[92m   Compiling[0m bit-set v0.8.0
+[1m[92m   Compiling[0m zip v9.8.1
+[1m[92m   Compiling[0m regex-automata v0.4.19
+[1m[92m   Compiling[0m flatbuffers v25.12.19
+[1m[92m   Compiling[0m atoi_simd v0.18.1
+[1m[92m   Compiling[0m lexical-write-float v1.0.6
+[1m[92m   Compiling[0m lexical-parse-float v1.0.6
+[1m[92m   Compiling[0m logos v0.15.1
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m brotli-decompressor v6.3.2
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m codepage v0.1.3
+[1m[92m   Compiling[0m quick-xml v0.42.0
+[1m[92m   Compiling[0m csv-core v0.1.13
+[1m[92m   Compiling[0m ryu-js v1.0.3
+[1m[92m   Compiling[0m foldhash v0.2.0
+[1m[92m   Compiling[0m twox-hash v2.1.5
+[1m[92m   Compiling[0m jiff-tzdb v1.0.0
+[1m[92m   Compiling[0m jiff-core v1.0.1
+[1m[92m   Compiling[0m fast-float2 v0.2.4
+[1m[92m   Compiling[0m byteorder v1.5.0
+[1m[92m   Compiling[0m tinyvec v1.13.3
+[1m[92m   Compiling[0m calamine v0.38.0
+[1m[92m   Compiling[0m unicode-normalization v0.1.26
+[1m[92m   Compiling[0m jiff v1.0.2
+[1m[92m   Compiling[0m lz4_flex v0.14.2
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m solenoid-schedule v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-schedule)
+[1m[92m   Compiling[0m csv v1.4.0
+[1m[92m   Compiling[0m brotli v9.1.3
+[1m[92m   Compiling[0m zstd v0.14.4
+[1m[92m   Compiling[0m lexical-core v1.0.6
+[1m[92m   Compiling[0m interim v0.2.1 (/home/runner/work/solenoid/solenoid/crates/vendor/interim)
+[1m[92m   Compiling[0m arrow-ipc v60.2.0
+[1m[92m   Compiling[0m snap v1.1.2
+[1m[92m   Compiling[0m fancy-regex v0.20.2
+[1m[92m   Compiling[0m unicode-general-category v1.1.0
+[1m[92m   Compiling[0m arrow-ord v60.2.0
+[1m[92m   Compiling[0m sha2 v0.11.1
+[1m[92m   Compiling[0m sha1 v0.11.0
+[1m[92m   Compiling[0m md-5 v0.11.0
+[1m[92m   Compiling[0m atoi v3.1.1
+[1m[92m   Compiling[0m fastrand v2.5.0
+[1m[92m   Compiling[0m uuid v1.29.3
+[1m[92m   Compiling[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m qrcodegen v1.8.0
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m   Compiling[0m parquet v60.2.0
+[1m[92m   Compiling[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)
+[1m[92m   Compiling[0m arrow-cast v60.2.0
+[1m[91merror[E0599][0m[1m: no method named `to_zoned` found for struct `jiff::Timestamp` in the current scope[0m
+  [1m[94m--> [0m/home/runner/work/solenoid/solenoid/crates/solenoid-core/src/relative_date.rs:81:72
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m     let base = Timestamp::from_millisecond(local.floor() as i64).ok()?.to_zoned(TimeZone::UTC);
+   [1m[94m|[0m                                                                        [1m[91m^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: there is a method `to_owned` with a similar name, but with different arguments
+  [1m[94m--> [0m/rustc/0ef1bc386059596dada8fb65b50425aab2ea637a/library/alloc/src/borrow.rs:48:4
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `solenoid-core` (lib) due to 1 previous error
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+```
+
+</details>
+
+<details><summary>❌ crates/solenoid-core: clippy (wasm)</summary>
+
+`cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --target wasm32-unknown-unknown -- -D warnings`
+
+```
+[1m[92m    Checking[0m hashbrown v0.17.1
+[1m[92m   Compiling[0m wasm-bindgen-macro-support v0.2.130
+[1m[92m    Checking[0m equivalent v1.0.3
+[1m[92m   Compiling[0m regex-syntax v0.8.12
+[1m[92m    Checking[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m multiversion_no_op v1.0.0
+[1m[92m    Checking[0m indexmap v2.14.2
+[1m[92m    Checking[0m digest v0.11.3
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m    Checking[0m log v0.4.35
+[1m[92m    Checking[0m bumpalo v3.20.4
+[1m[92m    Checking[0m zlib-rs v0.6.8
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m    Checking[0m simd-adler32 v0.3.10
+[1m[92m    Checking[0m zopfli v0.8.4
+[1m[92m    Checking[0m flate2 v1.1.11
+[1m[92m    Checking[0m aho-corasick v1.1.5
+[1m[92m   Compiling[0m zeroize_derive v1.5.0
+[1m[92m   Compiling[0m logos-derive v0.15.1
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m    Checking[0m itoa v1.0.19
+[1m[92m    Checking[0m slab v0.4.12
+[1m[92m    Checking[0m typed-path v0.13.0
+[1m[92m    Checking[0m pin-project-lite v0.2.18
+[1m[92m   Compiling[0m unicode-general-category v1.1.0
+[1m[92m    Checking[0m jiff-core v0.1.8
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m    Checking[0m debug_unsafe v0.1.4
+[1m[92m    Checking[0m futures-task v0.3.34
+[1m[92m    Checking[0m bit-vec v0.8.0
+[1m[92m    Checking[0m futures-core v0.3.34
+[1m[92m    Checking[0m futures-util v0.3.34
+[1m[92m    Checking[0m bit-set v0.8.0
+[1m[92m    Checking[0m atoi_simd v0.18.1
+[1m[92m    Checking[0m jiff v0.2.46
+[1m[92m    Checking[0m zeroize v1.9.2
+[1m[92m    Checking[0m regex-automata v0.4.19
+[1m[92m    Checking[0m logos v0.15.1
+[1m[92m    Checking[0m codepage v0.1.3
+[1m[92m    Checking[0m quick-xml v0.42.0
+[1m[92m    Checking[0m csv-core v0.1.13
+[1m[92m    Checking[0m jiff-core v1.0.1
+[1m[92m    Checking[0m tinyvec v1.13.3
+[1m[92m    Checking[0m ryu-js v1.0.3
+[1m[92m    Checking[0m ryu v1.0.23
+[1m[92m    Checking[0m jiff-tzdb v1.0.0
+[1m[92m    Checking[0m byteorder v1.5.0
+[1m[92m    Checking[0m fast-float2 v0.2.4
+[1m[92m    Checking[0m foldhash v0.2.0
+[1m[92m    Checking[0m jiff v1.0.2
+[1m[92m    Checking[0m fancy-regex v0.20.2
+[1m[92m    Checking[0m csv v1.4.0
+[1m[92m    Checking[0m solenoid-schedule v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-schedule)
+[1m[92m    Checking[0m unicode-normalization v0.1.26
+[1m[92m    Checking[0m interim v0.2.1 (/home/runner/work/solenoid/solenoid/crates/vendor/interim)
+[1m[92m    Checking[0m sha2 v0.11.1
+[1m[92m    Checking[0m md-5 v0.11.0
+[1m[92m    Checking[0m sha1 v0.11.0
+[1m[92m    Checking[0m uuid v1.29.3
+[1m[92m    Checking[0m rustc-hash v2.1.3
+[1m[92m    Checking[0m qrcodegen v1.8.0
+[1m[92m    Checking[0m base64 v0.23.1
+[1m[92m    Checking[0m strsim v0.11.1
+[1m[92m   Compiling[0m wasm-bindgen-macro v0.2.130
+[1m[92m    Checking[0m js-sys v0.3.107
+[1m[92m    Checking[0m zip v9.8.1
+[1m[92m    Checking[0m calamine v0.38.0
+[1m[92m    Checking[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)
+[1m[91merror[E0599][0m[1m: no method named `to_zoned` found for struct `jiff::Timestamp` in the current scope[0m
+  [1m[94m--> [0msrc/relative_date.rs:81:72
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m     let base = Timestamp::from_millisecond(local.floor() as i64).ok()?.to_zoned(TimeZone::UTC);
+   [1m[94m|[0m                                                                        [1m[91m^^^^^^^^[0m
+   [1m[94m|[0m
+[1m[96mhelp[0m: there is a method `to_owned` with a similar name, but with different arguments
+  [1m[94m--> [0m/rustc/0ef1bc386059596dada8fb65b50425aab2ea637a/library/alloc/src/borrow.rs:48:4
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `solenoid-core` (lib) due to 1 previous error
+```
+
+</details>
+
+<details><summary>❌ Desktop shell compiles (src-tauri)</summary>
+
+`cargo check --manifest-path src-tauri/Cargo.toml`
+
+```
+[1m[92m    Updating[0m crates.io index
+[1m[91merror[0m: failed to select a version for `reqwest`.
+    ... required by package `solenoid v1.6.2 (/home/runner/work/solenoid/solenoid/src-tauri)`
+versions that meet the requirements `^0.13` are: 0.13.5, 0.13.4, 0.13.3, 0.13.2, 0.13.1, 0.13.0
+
+package `solenoid` depends on `reqwest` with feature `rustls-tls` but `reqwest` does not have that feature.
+help: available features: __native-tls, __native-tls-alpn, __rustls, __rustls-aws-lc-rs, __tls, blocking, brotli, charset, cookies, default, default-tls, deflate, form, gzip, h2, hickory-dns, http2, http3, json, multipart, native-tls, native-tls-no-alpn, native-tls-vendored, native-tls-vendored-no-alpn, query, rustls, rustls-native-certs, rustls-no-provider, socks, stream, system-proxy, webpki-roots, zstd
+
+
+failed to select a version for `reqwest` which could resolve this conflict
+```
+
+</details>
+
