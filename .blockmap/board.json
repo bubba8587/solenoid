@@ -63,7 +63,7 @@
         "crates/solenoid-graph/tests/",
         "crates/solenoid-graph/*.toml",
         "src/graph/{graphCompute,process,editReach,passSession,calcModeStore,nodeBoundary,graphEditor,graphModel,dataflowEngine,graphSignals,graphStub,nodeBudget,draftFlush}.ts",
-        "tests/graph/*{pass,Pass,compute,Compute,graphModel,dataflow,calcMode,editReach}*",
+        "tests/graph/*{pass,Pass,compute,Compute,dataflow,calcMode,editReach}*",
         "crates/solenoid-graph/Cargo.lock"
       ],
       "docs": [
@@ -90,7 +90,7 @@
         "src/graph/{sockets,trueAnyAdopt,fcReconcile,fcFacts,settleFacts,socketDocs,socketFlipStore,presentSocketStore,fcDocking,fcExtensions}.ts",
         "scripts/socket-inventory.ts",
         "docs/socket-reference.md",
-        "tests/graph/*{socket,Socket,lattice,Lattice,fcReconcile,settle,retype}*"
+        "tests/graph/*{socket,Socket,lattice,Lattice,fcReconcile,settle}*"
       ],
       "docs": [
         "tree/specs/values/socket-lattice.md",
@@ -260,7 +260,7 @@
         "src/graph/{dateValue,dateOrder,volatileDates,timeZone,holidaysProvider}.ts",
         "src/graph/nodes/{date,dateOps,dateSerial}.ts",
         "src/graph/components/{DateEntry,DateNodes,DateRangeNode,DateTruncNode,DateOrderToggle,EpochNode,CalendarIcon,WeekendPick,DurationNode}*",
-        "tests/graph/*{date,Date,epoch,holiday}*",
+        "tests/graph/*{date,Date,holiday}*",
         "crates/solenoid-core/src/zone.rs"
       ],
       "docs": [
@@ -319,7 +319,7 @@
         "src/graph/nodes/{frame,ladderOps,frameShapeHook}.ts",
         "src/graph/components/{FrameNodes,FrameFromListsNode,FrameHintLayer,frameHint,FilterNode,SortNode,UniqueNode,SliceNode,AggregateNode,DiffNode}*",
         "fixtures/frame-verbs/",
-        "tests/graph/*{frame,Frame,verb,Verb,join,Join,filter,Filter,groupBy}*",
+        "tests/graph/*{frame,Frame,verb,Verb,join,Join,filter,Filter}*",
         "src/graph/components/{SlicerNode,XMatchNode}*"
       ],
       "docs": [
@@ -346,7 +346,7 @@
         "src/graph/{tableEdit,tablePopupStore,cardLayout,recordLayout,recordCardsFromPopup}.ts",
         "src/graph/nodes/matrix.ts",
         "src/graph/components/{TablePopup,TableCards,TableDisplay,TableEditMenu,TableInputNode,CellEditAffix,CellKindMenu,CellSuggest,controlledCell,gridKeyboard,columnHeadControls,columnSort,tableFooterStats,colType,CollapsedCell,FrameDisplay,FrameChip,MatrixNodes,ColumnPickerField,RecordNode,RecordLayoutField,recordNav,SpecialFrameView,CsvEditor}*",
-        "tests/graph/*{tablePopup,TablePopup,tableInput,TableInput,cell,Cell,matrix,Matrix}*",
+        "tests/graph/*{tablePopup,TablePopup,cell,Cell,matrix,Matrix}*",
         "src/graph/nodes/{columnPickerHook,matrixOps}.ts"
       ],
       "docs": [
@@ -413,7 +413,7 @@
       "paths": [
         "crates/solenoid-core/src/nodes/{columns,edit_frame,columnar}.rs",
         "src/graph/components/{editFramePopup,frameEdit}*",
-        "tests/graph/*{computedColumn,ComputedColumn,editFrame,EditFrame,fxColumn}*"
+        "tests/graph/*{computedColumn,ComputedColumn}*"
       ],
       "docs": [
         "tree/specs/computation/computed-columns.md",
@@ -495,12 +495,12 @@
       "about": "The canvas itself: viewport, undo history, selection and canvas commands.",
       "paths": [
         "src/graph/flow/",
-        "src/graph/{view,baseView,canvasCommands,canvasActions,canvasCapture,canvasContextMenu,canvasGeometry,canvasKeyboard,canvasLasso,canvasLock,flowSurface,viewPresets,zoomAt,graphDelta,historyDigest,selectionOps,copyPaste,clipboard,enterKey,modalGuard,escapeLayers}.ts",
+        "src/graph/{view,baseView,canvasCommands,canvasActions,canvasCapture,canvasContextMenu,canvasGeometry,canvasKeyboard,canvasLasso,canvasLock,flowSurface,viewPresets,zoomAt,graphDelta,historyDigest,selectionOps,copyPaste,clipboard,enterKey,modalGuard}.ts",
         "src/graph/canvas.css",
         "src/graph/components/{NodeContextMenu,nodeContext,SelectionActionsBar,selectionActions,Minimap,PinLayer,pinLayer,ComputeOverlay,LoadOverlay,useCoversCanvas,escapeLayers}*",
         "src/graph/{pinStore,computeOverlayStore,loadReveal}.ts",
         "tests/graph/flow/",
-        "tests/graph/*{canvas,Canvas,undo,Undo,history,History,selection,Selection}*"
+        "tests/graph/*{canvas,Canvas,history,History,selection,Selection}*"
       ],
       "docs": [
         "tree/specs/canvas/react-flow-surface-contract.md"
@@ -522,7 +522,7 @@
       "district": "canvas",
       "about": "Cable paths and motion, drawn cables, conduits and lane faces.",
       "paths": [
-        "src/graph/{cableAngleStore,cableEndMotion,cableFlourishStore,cableFlowStore,cablePaths,cablePendingReconnect,cableSettle,cableShape,cableState,cableValueStore,ribbonCable,conduitTrace,edgeTuck,drawnCablePath,drawnCables,canvasDrawn}.ts",
+        "src/graph/{cableAngleStore,cableEndMotion,cableFlourishStore,cableFlowStore,cablePaths,cablePendingReconnect,cableSettle,cableState,cableValueStore,ribbonCable,conduitTrace,drawnCablePath,drawnCables,canvasDrawn}.ts",
         "src/graph/{cableShape}.tsx",
         "src/graph/{CableShapeSelector,AngleDial}.*",
         "src/graph/components/{Cable,cable,Conduit,conduit,DrawnCable,drawnCable,PendingCableLayer,pendingCableLayer,SocketGoo,CableSwitchNode}*",
@@ -588,7 +588,7 @@
         "src/graph/components/{IsolateEndpoints,isolateEndpoints,IsolatePill,isolatePill}*",
         "crates/solenoid-core/src/nodes/fields.rs",
         "tests/graph/components/",
-        "tests/graph/*{literal,Literal,field,Field,chrome,Chrome,isolate,Isolate}*"
+        "tests/graph/*{literal,Literal,field,Field,isolate,Isolate}*"
       ],
       "docs": [
         "tree/specs/floors/components.md",
@@ -617,7 +617,7 @@
         "src/graph/components/{HtmlCanvasLayer,htmlCanvasLayer}*",
         "docs/canvas-frame-cost-findings.md",
         "scripts/zoom-perf-probe.mjs",
-        "tests/graph/*{htmlCanvas,HtmlCanvas,raster,Raster,semanticZoom,hic}*"
+        "tests/graph/*{raster,Raster,hic}*"
       ],
       "docs": [
         "tree/specs/canvas/html-in-canvas.md",
@@ -639,11 +639,11 @@
       "district": "canvas",
       "about": "Pointer and touch gestures, the phone layout and tablet actions.",
       "paths": [
-        "src/graph/{pointerGesture,touchActions,touchScrollChain,touchSelectStore,lasso,coarse,mobileUa,useDeviceMode,phonePanel,mobileMenuStore}.ts",
+        "src/graph/{pointerGesture,touchScrollChain,touchSelectStore,lasso,coarse,mobileUa,useDeviceMode,mobileMenuStore}.ts",
         "src/graph/{MobileControls,MobileMenuSheet,TabletActions}.*",
         "src/mobile.css",
         "scripts/{drag-probe,socket-drag-probe}.mjs",
-        "tests/graph/*{gesture,Gesture,touch,Touch,pinch,mobile,Mobile,pointer,Pointer}*",
+        "tests/graph/*{gesture,Gesture,touch,Touch,pointer,Pointer}*",
         "src/graph/phonePanel.css",
         "src/graph/touchActions.tsx"
       ],
@@ -720,7 +720,7 @@
         "src/graph/nodes/{scalar,logic,control,mathUtils,complex}.ts",
         "src/graph/components/{Arithmetic,TwoInputMath,MathFn,Clamp,RoundN,MRound,Gcd,BaseConvert,Bitwise,Combinatorics,Combinations,Multinomial,Complex,Comparison,Boolean,If,Ifs,Switch,Choose,Not,Between,Exact,Fixed,IsClose,IsEvenOdd,IsTest,Na,Expect,Cross,SumProduct,Weighted,PolyRoots,QuadraticRoots,Trapz,Interpolate,OdeIntegrate,Convolve,Curve,Decompose,Fill,DelayedPass,SetCell,Sets,SetOp}*",
         "crates/solenoid-core/src/nodes/{scalar,logic,control,complex,matrix,measure,values}.rs",
-        "tests/graph/*{math,Math,logic,Logic,complex,Complex,arith,round,Round}*",
+        "tests/graph/*{logic,Logic,complex,Complex,round,Round}*",
         "src/graph/components/{BesselNode,SumIfsNode}*",
         "src/graph/trigMode.ts"
       ],
@@ -750,7 +750,7 @@
         "src/graph/{monteCarlo,tornadoRun,describeProfile}.ts",
         "src/graph/components/{Correl,Linest,Polyfit,Forecast,forecastView,EtsForecast,Ewma,Smooth,Frequency,HypothesisTest,Confidence,Bootstrap,AbTest,Probability,probabilityPlot,Prob,Distributions,FitDistribution,Outliers,TrimMean,RankPercentile,Standardize,Normalize,BinomDistRange,Fisher,DescribeProfile,Mode,Bin,FindPeaks,RandArray,RandBetween,ArgMinMax,Running,Returns}*",
         "crates/solenoid-core/src/nodes/{stats,probability}.rs",
-        "tests/graph/*{stat,Stat,probab,Probab,forecast,Forecast,distribution,Distribution,monte}*"
+        "tests/graph/*{stat,Stat,distribution,Distribution,monte}*"
       ],
       "docs": [
         "tree/specs/computation/probability-pack.md"
@@ -801,7 +801,7 @@
         "src/graph/nodes/{finance,financeOps,allocateOps}.ts",
         "src/graph/components/{Npv,Irr,Mirr,Tvm,Amortization,PaymentBreakdown,BondPricing,Coupon,AccruedInterest,Depreciation,DiscountSecurity,Dollar,FvSchedule,Ispmt}*",
         "crates/solenoid-core/src/nodes/finance.rs",
-        "tests/graph/*{finance,Finance,npv,irr,amort,bond}*"
+        "tests/graph/*{finance,Finance}*"
       ],
       "docs": [
         "docs/node-coverage.md"
@@ -833,7 +833,7 @@
         "docs/pack-composite-plans.md",
         "scripts/gen-pack-seeds.test.ts",
         "tests/graph/packs/",
-        "tests/graph/*{pack,Pack,chem,Chem,thermo,fluid,geometry,Geometry}*"
+        "tests/graph/*{pack,Pack,geometry,Geometry}*"
       ],
       "docs": [
         "docs/pack-architecture.md"
@@ -906,12 +906,12 @@
       "about": "Charts as values, the chart builder, recharts coverage, ladders and maps.",
       "paths": [
         "src/graph/nodes/{visual,visualOps,chartOptions}.ts",
-        "src/graph/{chartValue,chartPopupStore,svgValue,svgSanitize,mermaidValue,seriesColors}.ts",
+        "src/graph/{chartValue,chartPopupStore,svgValue,svgSanitize,mermaidValue}.ts",
         "src/graph/geo/",
         "src/graph/components/{chart,Chart,FigureNodes,SvgFigure,SvgPicker,Sankey,Gauge,Kpi,Sparkline,Histogram,Surface,Tornado,PointPlotter,MergePlots,SeriesNode,ladder,heatmapLayout,usMapView,Mermaid,ConditionalRegions,ConnectedRegions,GridPainter,Spectrum,Image,seriesColors}*",
         "crates/solenoid-core/src/nodes/{visual,widgets}.rs",
         "scripts/gen-us-states.mjs",
-        "tests/graph/*{chart,Chart,figure,Figure,ladder,Ladder,svg,Svg,recharts}*"
+        "tests/graph/*{chart,Chart,svg,Svg}*"
       ],
       "docs": [
         "tree/specs/computation/chart-figures.md"
@@ -940,7 +940,7 @@
         "src/graph/components/{Report,Note,Dashboard,Presentation,HtmlPage,Markdown,Template,useKnapRender,katexLoader,katexRender,CommentsPanel,commentsPanel}*",
         "crates/solenoid-core/src/nodes/docs.rs",
         "docs/knap-upstream.md",
-        "tests/graph/*{report,Report,note,Note,dashboard,Dashboard,knap,Knap,presentation}*"
+        "tests/graph/*{report,Report,note,Note,knap,Knap}*"
       ],
       "docs": [
         "tree/specs/documents/reports-and-notes.md",
@@ -963,11 +963,11 @@
       "district": "figures",
       "about": "The format model, the FC's controls, display formats and the Alert card's HUD.",
       "paths": [
-        "src/graph/{formatModel,formatController,frameFormatStore,formatAnnotationStore,alertStore,locale,categorizeConfig,categorizeEditorStore}.ts",
+        "src/graph/{formatModel,frameFormatStore,formatAnnotationStore,alertStore,locale,categorizeConfig,categorizeEditorStore}.ts",
         "src/graph/nodes/{formatController,formatCarry}.ts",
         "src/graph/components/{fcControls,FormatControllerNode,valueDisplayFormat,format,AlertNode,AlertLayer,alertLayer,HudStack,hudStack,Categorize,CategoryChip}*",
         "crates/solenoid-core/src/excel_format.rs",
-        "tests/graph/*{format,Format,alert,Alert,categorize,Categorize}*"
+        "tests/graph/*{format,Format}*"
       ],
       "docs": [
         "tree/specs/values/format-model.md",
@@ -994,7 +994,7 @@
         "src/graph/{AddNodeMenu,CommandPalette}.*",
         "src/graph/{addMenuStore,catalogSearch,catalogTags,catalogUtils,catalogValidator,commandRecents,menuModel,fuzzy}.ts",
         "scripts/{search-samples,search-samples-table}.*",
-        "tests/graph/*{addMenu,AddMenu,palette,Palette,search,Search,menu,Menu}*"
+        "tests/graph/*{palette,Palette,search,Search,menu,Menu}*"
       ],
       "docs": [
         "tree/specs/canvas/add-menu.md",
@@ -1022,12 +1022,12 @@
         "src/vite-env.d.ts",
         "src/logo/",
         "src/graph/{MenuBar,TopBar,Header,AppToolbar,StatusBar,NavMenu,Settings,ShortcutsOverlay,OutlinePanel,WindowControls,WebDemoBanner}.*",
-        "src/graph/{settingsStore,settingChoices,shortcutsStore,outlineStore,inspectorStore,problemsStore,chromeBottom,chromeToggle,chromeZoom,noticeStore,fullscreen,chunkReloadGuard}.ts",
+        "src/graph/{settingsStore,shortcutsStore,outlineStore,inspectorStore,problemsStore,chromeBottom,chromeToggle,chromeZoom,noticeStore,fullscreen,chunkReloadGuard}.ts",
         "src/graph/chromeZoom.css",
         "src/graph/components/{InspectorPanel,ProblemsPanel,problemsPanel,NoticeToasts,noticeToasts,RecalcButton,RulesPopup,TableEditMenu}*",
         "scripts/setting-choices.*",
         "docs/settings-audit.md",
-        "tests/graph/*{settings,Settings,outline,Outline,menuBar,toolbar,statusBar,chrome,shortcut}*",
+        "tests/graph/*{settings,Settings}*",
         "src/graph/settingChoices.json"
       ],
       "docs": [
@@ -1059,7 +1059,7 @@
         "tree/specs/canvas/palettes/",
         "DESIGN.md",
         "scripts/{card-css-census,dead-css-classes,check-dist-classnames}.mjs",
-        "tests/graph/*{theme,Theme,palette,colormap,css,Css}*"
+        "tests/graph/*{palette,css,Css}*"
       ],
       "docs": [
         "tree/specs/canvas/palette-and-theme.md",
@@ -1115,7 +1115,7 @@
         "src/graph/{documentStore,documentStoreCore,persistence,persistenceCore,fileSession,fileBridge,ipcBridge,recentDocsStore,saveTimeStore,workspacePreview,workspaceRows,workspaceSearch,treeRename,documentSource,docMetaStore,chooseFile,filePickerModel,filePickerStore,desktopDocs,imageAssets,frStore,managedBlock}.ts",
         "src/graph/WorkspaceTree.*",
         "src/graph/components/{DocumentProperties,DocumentTitle,documentTitle,FilePicker}*",
-        "tests/graph/*{document,Document,persist,Persist,fileSession,workspace,Workspace,autosave,save,Save}*"
+        "tests/graph/*{document,Document,persist,Persist,fileSession,workspace,Workspace,save,Save}*"
       ],
       "docs": [
         "tree/specs/documents/per-doc-autosave-persistence.md",
@@ -1145,7 +1145,7 @@
         "scripts/cli-smoke.mjs",
         "scripts/vite-run.mjs",
         ".claude/skills/build-graph/",
-        "tests/graph/*{textForm,TextForm,validate,naming,Naming,nodeName,save-format,roundtrip}*",
+        "tests/graph/*{textForm,TextForm,validate,nodeName}*",
         "scripts/run-graph-vault.test.ts"
       ],
       "docs": [
@@ -1170,7 +1170,18 @@
       "paths": [
         "src/graph/{aiDemo,aiGrounding,aiKey,aiReveal,aiService,apiKeyStore}.ts",
         "scripts/{ai-grounding,ai-prompt}.ts",
-        "tests/graph/*{ai,Ai,AI}{Demo,Grounding,Key,Reveal,Service,.}*"
+        "tests/graph/*aiDemo*",
+        "tests/graph/*aiGrounding*",
+        "tests/graph/*aiKey*",
+        "tests/graph/*aiService*",
+        "tests/graph/*AiDemo*",
+        "tests/graph/*AiGrounding*",
+        "tests/graph/*AiKey*",
+        "tests/graph/*AiService*",
+        "tests/graph/*AIDemo*",
+        "tests/graph/*AIGrounding*",
+        "tests/graph/*AIKey*",
+        "tests/graph/*AIService*"
       ],
       "docs": [],
       "keywords": [
@@ -1189,7 +1200,7 @@
       "paths": [
         "src/graph/{vaultCube,noteBody,dailyNotesConfig,noteFrontmatter,noteMarkdown,noteHtml,noteInlineRefs,obsidianMarkdown,obsidianLinks,vaultTypes,mdbaseTypes,demoVault,demoVaultData}.ts",
         "demo-vault/",
-        "tests/graph/*{vault,Vault,note,obsidian,Obsidian,daily}*"
+        "tests/graph/*{vault,Vault,note,obsidian,Obsidian}*"
       ],
       "docs": [
         "tree/specs/integrations/vault-read.md"
@@ -1215,7 +1226,7 @@
         "src/graph/{obsidianWrite,frontmatterPatch,obsidianTypes,pluginColumnTypes,noteFrontmatterSync,pluginDataPath}.ts",
         "src/graph/nodes/obsidian.ts",
         "src/graph/components/{WriteNodes,ImportObsidianNode}*",
-        "tests/graph/*{obsidianWrite,frontmatter,Frontmatter,vaultBridge,VaultBridge,writeBack}*"
+        "tests/graph/*{obsidianWrite,frontmatter,Frontmatter}*"
       ],
       "docs": [
         "tree/specs/integrations/vault-bridge.md"
@@ -1254,7 +1265,6 @@
       "about": "Solenoid inside Obsidian: the plugin build, its smaller engine and its look.",
       "paths": [
         "obsidian-plugin/",
-        "src/graph/engineWasmPlugin/",
         "scripts/{export-plugin-source,lint-plugin,obsidian-rig,obsidian-rig-mobile}.mjs",
         "tests/obsidian-plugin/"
       ],
@@ -1277,7 +1287,7 @@
         "src/graph/seedGraphs/",
         "src/graph/showcase/",
         "src/graph/{seeds,seedTune}.ts",
-        "scripts/{tune-seeds,shot-graphs,gen-cards-demo,gen-personal-finance-seed}*",
+        "scripts/{tune-seeds,gen-cards-demo,gen-personal-finance-seed}*",
         "scripts/shot-graphs/",
         "scripts/service-territory/",
         "public/thumbs/",
@@ -1309,7 +1319,7 @@
         "index.html",
         "vercel.json",
         "tests/graph/landing/",
-        "tests/graph/*{landing,Landing,site,Site,prerender}*"
+        "tests/graph/*{landing,Landing,site,Site}*"
       ],
       "docs": [],
       "keywords": [
@@ -1367,7 +1377,7 @@
         "scripts/{android-prep,install-linux-launchers}.mjs",
         "docs/android.md",
         ".claude/commands/desktop.md",
-        "tests/graph/*{desktop,Desktop,tauri,Tauri,android,Android}*"
+        "tests/graph/*{desktop,Desktop,android,Android}*"
       ],
       "docs": [
         "docs/android.md",
@@ -1451,7 +1461,7 @@
         "CLAUDE.md",
         "PRODUCT.md",
         "README.md",
-        "tests/graph/*{rules,Rules,docsPointers,dte}*"
+        "tests/graph/*{rules,Rules,docsPointers}*"
       ],
       "docs": [
         "docs/dte.md",

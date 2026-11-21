@@ -29,7 +29,7 @@ export function pageHtml(fragment) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="blockmap" content="server"></head><body>\n${fragment}\n</body></html>`;
 }
 
-export async function serve({ port = 4477, host = '127.0.0.1', open = false, demo = false } = {}) {
+export async function serve({ port = 4477, host = '127.0.0.1', open = false, demo = false, quiet = false } = {}) {
   if (demo) {
     process.env.BLOCKMAP_LIVE = fs.mkdtempSync(path.join(os.tmpdir(), 'blockmap-demo-'));
   }
@@ -246,9 +246,11 @@ export async function serve({ port = 4477, host = '127.0.0.1', open = false, dem
     server.once('error', reject);
     server.listen(port, host, resolve);
   });
-  const where = `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`;
-  console.log(`Blockmap: ${board.name} board at ${where}${demo ? ' (demo: simulated agents, a throwaway log)' : ''}`);
-  console.log(`Log: ${store.eventsPath}`);
+  const where = `http://${host === '0.0.0.0' ? 'localhost' : host}:${server.address().port}`;
+  if (!quiet) {
+    console.log(`Blockmap: ${board.name} board at ${where}${demo ? ' (demo: simulated agents, a throwaway log)' : ''}`);
+    console.log(`Log: ${store.eventsPath}`);
+  }
   if (open) openBrowser(where);
   return server;
 }

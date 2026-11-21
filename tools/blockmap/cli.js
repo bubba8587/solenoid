@@ -476,6 +476,71 @@ const commands = {
     console.log(lines.join('\n'));
   },
 
+  // Whether the board still fits the code: patterns that match nothing, empty blocks, files nobody claims,
+  // the log's size, the hooks, and whether git can do the dry-run merge the merge queue relies on.
+  async doctor(ctx) {
+    const { gitFiles } = await import('./core/files.js');
+    const { compileIndex, expandBraces, globToRegExp } = await import('./core/glob.js');
+    const files = gitFiles(ctx.store.root);
+    const index = compileIndex(ctx.board.blocks);
+    const lines = [];
+    const stale = [];
+    const empty = [];
+    for (const b of ctx.board.blocks) {
+      let owned = 0;
+      for (const raw of b.paths || []) {
+        for (const pat of expandBraces(raw)) {
+          const re = globToRegExp(pat);
+          if (!files.some((f) => re.test(f))) stale.push(`${b.id}: ${pat}`);
+        }
+      }
+      for (const f of files) if (blockForPath(index, f) === b.id) owned++;
+      if (!owned) empty.push(b.id);
+    }
+    const unclaimed = files.filter((f) => !blockForPath(index, f));
+    const byDir = {};
+    for (const f of unclaimed) {
+      const d = f.includes('/') ? f.split('/').slice(0, 2).join('/') : '(top level)';
+      byDir[d] = (byDir[d] || 0) + 1;
+    }
+    lines.push(`${files.length} files, ${ctx.board.blocks.length} blocks, ${unclaimed.length} unclaimed.`);
+    if (unclaimed.length) lines.push(`  Unclaimed: ${Object.entries(byDir).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([d, n]) => `${d} (${n})`).join(', ')}`);
+    if (empty.length) lines.push(`  Blocks that own no file: ${empty.join(', ')}`);
+    if (stale.length) lines.push(`  Patterns that match nothing (${stale.length}): ${stale.slice(0, 10).join('; ')}${stale.length > 10 ? '; …' : ''}`);
+    if (ctx.store.kind === 'local') {
+      let size = 0;
+      try {
+        size = fs.statSync(ctx.store.eventsPath).size;
+      } catch {
+        // No log yet.
+      }
+      lines.push(`Log: ${ctx.events.length} events, ${(size / 1024 / 1024).toFixed(1)} MB at ${ctx.store.eventsPath}`);
+      let hooked = false;
+      try {
+        hooked = fs.readFileSync(path.join(ctx.store.root, '.claude', 'settings.local.json'), 'utf8').includes('blockmap/hooks/claude-code.js');
+      } catch {
+        // No local settings.
+      }
+      lines.push(`Claude Code hooks: ${hooked ? 'installed' : 'not installed (`bm hooks install`)'}`);
+    }
+    const { execFileSync } = await import('node:child_process');
+    let mergeTree = false;
+    try {
+      execFileSync('git', ['merge-tree', '--write-tree', 'HEAD', 'HEAD'], { cwd: ctx.store.root, stdio: 'ignore' });
+      mergeTree = true;
+    } catch {
+      mergeTree = false;
+    }
+    lines.push(`git merge-tree --write-tree: ${mergeTree ? 'available' : 'missing (git 2.38 or newer finds conflicts before a merge)'}`);
+    out(ctx, lines.join('\n'), { files: files.length, unclaimed: unclaimed.length, empty, stale, mergeTree });
+    if (unclaimed.length || empty.length || stale.length) process.exitCode = 1;
+  },
+
+  async version() {
+    const pkg = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+    console.log(`blockmap ${pkg.version}`);
+  },
+
   async serve(ctx) {
     const { serve } = await import('./server.js');
     await serve({ port: Number(ctx.flags.port || process.env.BLOCKMAP_PORT || 4477), host: ctx.flags.host || '127.0.0.1', open: !!ctx.flags.open, demo: !!ctx.flags.demo });
@@ -592,6 +657,7 @@ The human
   bm freeze <block> ["why"]  |  bm unfreeze <block>
   bm hooks install|uninstall|print           Claude Code hooks, in .claude/settings.local.json
   bm snapshot --out <dir>                    board + log for the standalone page
+  bm doctor                                  patterns that match nothing, unclaimed files, the log, the hooks
   bm init [--name N]                         a board for a new repository
 
 Identity: --as <id>, else BLOCKMAP_AGENT, else a Claude Code session, else the worktree you're in, else the human.
@@ -608,7 +674,7 @@ async function main() {
     console.error(`bm: no command "${cmd}". \`bm help\` lists them.`);
     process.exit(2);
   }
-  if (cmd === 'help' || cmd === 'init') return fn({ pos, flags });
+  if (cmd === 'help' || cmd === 'init' || cmd === 'version') return fn({ pos, flags });
   const ctx = await context(flags);
   ctx.pos = pos;
   await fn(ctx);
