@@ -3,7 +3,7 @@
 // Pure: it proposes events from a state and a clock, and every event still passes checkEvent.
 // Runs in Node (`bm serve --demo`) and the browser (the standalone page).
 
-import { HUMAN, UNMAPPED, apply, checkEvent, createState, makeEvent, queue } from '../core/model.js';
+import { HUMAN, SYSTEM, UNMAPPED, apply, checkEvent, createState, makeEvent, queue, mergeQueue } from '../core/model.js';
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
@@ -16,12 +16,16 @@ export function mulberry32(seed) {
   };
 }
 
+// A mixed crew on purpose: the board doesn't care which harness or model an agent runs. Each works in its
+// own worktree on its own branch; the last one has no hooks and is known by its worktree alone.
 const CREW = [
-  { id: 'cc-7f3a91c2', name: 'Heron', model: 'opus', where: 'dev box, develop', pace: 1 },
-  { id: 'cc-2b8e44d0', name: 'Basalt', model: 'opus', where: 'dev box, worktree agent-2', pace: 0.8 },
-  { id: 'cc-c41d07aa', name: 'Juniper', model: 'sonnet', where: 'cloud, develop', pace: 1.2 },
-  { id: 'cc-91e6b3f5', name: 'Wren', model: 'opus', where: 'dev box, worktree agent-4', pace: 0.7 },
+  { id: 'cc-7f3a91c2', name: 'Heron', kind: 'Claude Code', wt: 'agent-1', pace: 1 },
+  { id: 'cx-2b8e44d0', name: 'Basalt', kind: 'Codex', wt: 'agent-2', pace: 0.8 },
+  { id: 'gm-c41d07aa', name: 'Juniper', kind: 'Gemini CLI', wt: 'agent-3', pace: 1.2 },
+  { id: 'wt-agent-4', name: 'Wren', kind: 'Aider', wt: 'agent-4', pace: 0.7 },
 ];
+const ROOT = '/work/solenoid';
+const BASE = 'develop';
 
 const QUESTIONS = [
   'Should this follow Excel here, or keep our answer and note the divergence?',
@@ -39,15 +43,35 @@ const BUGS = [
   'Error chip shows the wrong card name',
   'Tooltip clips at the right edge on a phone',
 ];
-const PERMISSIONS = ['Claude needs your permission to use Bash', 'Claude needs your permission to edit vite.config.ts', 'Claude needs your permission to run npm install'];
+const PERMISSIONS = ['Wants to run npm install', 'Wants to edit vite.config.ts', 'Wants to run a shell command'];
 const ANSWERS = ['Follow Excel, and note it in excel-divergences.', 'The spec wins. Fix the code.', 'Go ahead, refreeze the seeds.', 'Clean change. Pre-alpha, break freely.', 'Small patch now, file the clean change as a task.'];
 
 export function createSim(board, { seed = 7, crew = CREW } = {}) {
   const rand = mulberry32(seed);
   const pick = (list) => list[Math.floor(rand() * list.length)];
-  const plans = Object.fromEntries(crew.map((c, i) => [c.id, { ...c, phase: 'offline', wakeAt: 0, budget: 0, item: null, block: null, extra: null, waitingSince: 0, napUntil: 0, order: i }]));
+  const sha = () => Array.from({ length: 40 }, () => '0123456789abcdef'[Math.floor(rand() * 16)]).join('');
+  const plans = Object.fromEntries(crew.map((c, i) => [c.id, {
+    ...c, phase: 'offline', wakeAt: 0, budget: 0, item: null, block: null, extra: null, waitingSince: 0, napUntil: 0, order: i,
+    // The branch, as git would see it: what it changed since it left the base, what isn't committed, how
+    // many commits it carries, and how many merges into the base it has not caught up with.
+    files: new Set(), dirty: new Set(), add: 0, del: 0, commits: 0, head: sha(), baseAt: 0, lastCommit: null,
+  }]));
   const blocksById = Object.fromEntries(board.blocks.map((b) => [b.id, b]));
+  const landedLog = [];
   let humanAt = 0;
+  let leadAt = 0;
+  const conflictsOf = (p) => {
+    const later = new Set(landedLog.slice(p.baseAt).flatMap((l) => l.files));
+    return [...p.files].filter((f) => later.has(f));
+  };
+  const edit = (state, out, p, file, t) => {
+    const n = { add: 1 + Math.floor(rand() ** 2 * 70), del: Math.floor(rand() ** 2 * 35) };
+    if (!emit(state, out, 'touch', p.id, { files: [file], op: 'edit', ...n }, t)) return;
+    p.files.add(file);
+    p.dirty.add(file);
+    p.add += n.add;
+    p.del += n.del;
+  };
 
   const filesOf = (id) => {
     const b = blocksById[id];
@@ -58,7 +82,6 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
     const t = (blocksById[id]?.sample || []).find((f) => /\.test\.|tests\//.test(f));
     return t || `tests/graph/${id.replace(/-./g, (m) => m[1].toUpperCase())}.test.ts`;
   };
-  const lines = () => ({ add: 1 + Math.floor(rand() ** 2 * 70), del: Math.floor(rand() ** 2 * 35) });
   const short = (s, n = 64) => (s.length > n ? `${s.slice(0, n - 1).replace(/\s+\S*$/, '')}…` : s);
 
   function emit(state, out, type, by, payload, t) {
@@ -88,12 +111,13 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
     }
     switch (p.phase) {
       case 'offline': {
-        emit(state, out, 'agent.join', p.id, { agent: { id: p.id, name: p.name, kind: 'claude-code', model: p.model, where: p.where }, task: '' }, t);
+        emit(state, out, 'agent.join', p.id, { agent: { id: p.id, name: p.name, kind: p.kind, where: p.wt, worktree: `${ROOT}-${p.wt}` }, task: '' }, t);
         p.phase = 'idle';
         p.wakeAt = t + 20_000;
         return;
       }
       case 'idle': {
+        if (landedLog.length > p.baseAt && !state.merges[p.wt]) p.baseAt = landedLog.length;
         const work = chooseWork(state, t);
         if (!work) return;
         const r = emit(state, out, 'block.reserve', p.id, { block: work.block, intent: short(work.title) }, t);
@@ -130,7 +154,7 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
           const held = Object.values(state.blocks).filter((b) => b.holder && b.holder !== p.id && b.holder !== HUMAN);
           if (held.length) {
             const b = pick(held);
-            emit(state, out, 'touch', p.id, { files: [pick(filesOf(b.id))], op: 'edit', ...lines() }, t);
+            edit(state, out, p, pick(filesOf(b.id)), t);
           }
         } else if (roll < 0.13) {
           emit(state, out, 'agent.status', p.id, { status: 'waiting', doing: pick(PERMISSIONS) }, t);
@@ -140,7 +164,7 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
         } else {
           const target = p.extra && rand() < 0.3 ? p.extra : p.block;
           const file = pick(filesOf(target));
-          emit(state, out, 'touch', p.id, { files: [file], op: 'edit', ...lines() }, t);
+          edit(state, out, p, file, t);
           if (rand() < 0.45) emit(state, out, 'agent.status', p.id, { doing: `Editing ${file}` }, t + 1);
           p.budget--;
         }
@@ -159,8 +183,13 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
         emit(state, out, 'touch', p.id, { op: 'run', cmd: `npx vitest run ${test}` }, t);
         const ok = rand() < 0.78;
         emit(state, out, 'test', p.id, { ok, summary: ok ? `${8 + Math.floor(rand() * 60)} passed in ${test.split('/').pop()}` : `1 failed in ${test.split('/').pop()}`, blocks: [p.block, p.extra].filter(Boolean) }, t + 1);
-        if (ok) p.phase = 'landing';
-        else {
+        if (ok) {
+          p.phase = 'landing';
+          p.commits++;
+          p.dirty.clear();
+          p.head = sha();
+          p.lastCommit = { ts: t, subject: short(state.agents[p.id]?.task || 'Work in progress', 60) };
+        } else {
           p.phase = 'working';
           p.budget = 2 + Math.floor(rand() * 3);
           emit(state, out, 'agent.status', p.id, { doing: 'Fixing the failing test' }, t + 2);
@@ -172,6 +201,7 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
         for (const id of [p.block, p.extra].filter(Boolean)) emit(state, out, 'block.release', p.id, { block: id, outcome: 'landed', note: '' }, t);
         if (p.item && state.items[p.item]) emit(state, out, 'item.update', p.id, { item: p.item, status: 'done' }, t + 1);
         emit(state, out, 'agent.status', p.id, { status: 'review', doing: `Committed: ${short(a?.task || 'the change', 60)}` }, t + 2);
+        emit(state, out, 'merge.ready', p.id, { worktree: p.wt, branch: p.wt, commit: p.head }, t + 3);
         p.block = p.item = p.extra = null;
         p.phase = 'idle';
         p.wakeAt = t + (60_000 + rand() * 120_000) / p.pace;
@@ -179,6 +209,29 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
       }
       default:
     }
+  }
+
+  // The lead merges the queue in order. A branch that conflicts goes back to its agent to rebase first.
+  function stepLead(state, t, out) {
+    if (t < leadAt) return;
+    leadAt = t + 300_000 + rand() * 360_000;
+    const next = mergeQueue(state, t).find((m) => m.status === 'ready');
+    if (!next) return;
+    const p = Object.values(plans).find((x) => x.wt === next.worktree);
+    if (!p) return;
+    if (conflictsOf(p).length) {
+      p.baseAt = landedLog.length;
+      p.commits++;
+      p.head = sha();
+      emit(state, out, 'merge.ready', p.id, { worktree: p.wt, branch: p.wt, commit: p.head, note: 'rebased' }, t);
+      return;
+    }
+    emit(state, out, 'merge.landed', SYSTEM, { worktree: p.wt, commit: p.head }, t);
+    landedLog.push({ files: [...p.files] });
+    p.files.clear();
+    p.dirty.clear();
+    p.add = p.del = p.commits = 0;
+    p.baseAt = landedLog.length;
   }
 
   function stepHuman(state, t, out) {
@@ -206,7 +259,21 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
       const out = [];
       for (const p of Object.values(plans)) if (rand() < 0.55) stepAgent(state, p, t + p.order * 7, out);
       stepHuman(state, t, out);
+      stepLead(state, t, out);
       return out;
+    },
+    // The worktrees as `worktreeSnapshot` would report them, for boards with no real git behind them.
+    worktrees(state, now) {
+      const list = [{ name: 'main', path: ROOT, main: true, branch: BASE, head: sha(), ahead: 0, behind: 0, dirty: 0, files: [], add: 0, del: 0, conflicts: [], lastCommit: null }];
+      for (const p of Object.values(plans)) {
+        if (!state.agents[p.id]) continue;
+        list.push({
+          name: p.wt, path: `${ROOT}-${p.wt}`, main: false, branch: p.wt, head: p.head,
+          ahead: p.commits, behind: landedLog.length - p.baseAt, dirty: p.dirty.size,
+          files: [...p.files], add: p.add, del: p.del, conflicts: conflictsOf(p), lastCommit: p.lastCommit,
+        });
+      }
+      return { base: BASE, at: now, list };
     },
     // A plausible past: the last hours of a working session, ending at `to`.
     history(from, to, base = createState(board)) {
@@ -242,6 +309,7 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
         }
         for (const p of Object.values(plans)) if (rand() < 0.6) stepAgent(state, p, t, out);
         stepHuman(state, t, out);
+        stepLead(state, t, out);
         t += 12_000 + rand() * 14_000;
       }
       let last = 0;

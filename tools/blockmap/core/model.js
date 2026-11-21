@@ -9,6 +9,8 @@ import { compileIndex, blockForPath, normalizePath } from './glob.js';
 
 export const SCHEMA = 1;
 export const HUMAN = 'human';
+// The board itself, for what it observes rather than what anyone does (a merge it saw land in git).
+export const SYSTEM = 'system';
 export const UNMAPPED = '_unmapped';
 // Agents are colored by palette slot, not by hex, so a palette change recolors them. Gold, green and vermilion
 // stay out: they mean needs-you, ok and danger. Gray is the human. The five cool hues go first; pink, amber and
@@ -64,6 +66,8 @@ export function createState(board) {
     items,
     trespass: [],
     notes: [],
+    merges: {},
+    mergeSeq: 0,
     queueSeq: 0,
     count: 0,
     firstTs: 0,
@@ -84,7 +88,8 @@ function ensureAgent(state, id, ts, info = {}) {
     a = state.agents[id] = {
       id,
       name: info.name || (id === HUMAN ? 'You' : codename(id)),
-      kind: info.kind || (id === HUMAN ? 'human' : id.startsWith('cc-') ? 'claude-code' : 'agent'),
+      kind: info.kind || (id === HUMAN ? 'human' : id.startsWith('cc-') ? 'Claude Code' : id.startsWith('wt-') ? 'worktree' : 'agent'),
+      worktree: info.worktree || '',
       color: info.color || pickColor(state, id),
       model: info.model || '',
       where: info.where || '',
@@ -105,6 +110,7 @@ function ensureAgent(state, id, ts, info = {}) {
       removed: 0,
       tests: 0,
       lastRun: null,
+      lastTest: null,
     };
   }
   return a;
@@ -164,6 +170,10 @@ export function apply(state, e) {
   if (!state.firstTs) state.firstTs = e.ts;
   state.lastTs = Math.max(state.lastTs, e.ts);
   const actor = e.by || HUMAN;
+  if (actor === SYSTEM) {
+    applySystem(state, e);
+    return state;
+  }
   const me = ensureAgent(state, actor, e.ts, e.type === 'agent.join' ? e.agent : undefined);
   me.lastSeen = Math.max(me.lastSeen, e.ts);
   if (me.leftAt && e.type !== 'agent.leave' && actor !== HUMAN) me.leftAt = 0;
@@ -172,7 +182,7 @@ export function apply(state, e) {
   switch (e.type) {
     case 'agent.join': {
       const info = e.agent || {};
-      for (const k of ['name', 'kind', 'model', 'where', 'color']) if (info[k]) me[k] = info[k];
+      for (const k of ['name', 'kind', 'model', 'where', 'color', 'worktree']) if (info[k]) me[k] = info[k];
       if (me.leftAt || !me.joinedAt) me.joinedAt = e.ts;
       me.leftAt = 0;
       if (e.task) me.task = e.task;
@@ -325,6 +335,7 @@ export function apply(state, e) {
         if (b) b.test = { ok: !!e.ok, ts: e.ts, summary: e.summary || '', agent: target.id };
       }
       target.tests++;
+      target.lastTest = { ok: !!e.ok, ts: e.ts, summary: e.summary || '' };
       break;
     }
     case 'note': {
@@ -341,10 +352,55 @@ export function apply(state, e) {
       target.inbox = target.inbox.filter((m) => !ids.has(m.id) && !(e.upTo && m.ts <= e.upTo));
       break;
     }
+    // The merge queue: a worktree's branch, marked ready at a commit, waits its turn to merge into the base.
+    case 'merge.ready': {
+      const prev = state.merges[e.worktree];
+      state.merges[e.worktree] = {
+        worktree: e.worktree,
+        branch: e.branch || '',
+        commit: e.commit || '',
+        note: e.note || '',
+        agent: typeof e.agent === 'string' ? e.agent : actor,
+        readyAt: e.ts,
+        pos: prev && prev.status === 'ready' ? prev.pos : ++state.mergeSeq,
+        status: 'ready',
+        landedAt: 0,
+      };
+      break;
+    }
+    case 'merge.unready': {
+      delete state.merges[e.worktree];
+      break;
+    }
+    case 'merge.order': {
+      const m = state.merges[e.worktree];
+      if (m) m.pos = Number(e.pos);
+      break;
+    }
+    case 'merge.landed': {
+      const m = state.merges[e.worktree];
+      if (m) {
+        m.status = 'landed';
+        m.landedAt = e.ts;
+        if (e.commit) m.commit = e.commit;
+      }
+      break;
+    }
     default:
       break;
   }
   return state;
+}
+
+function applySystem(state, e) {
+  if (e.type === 'merge.landed') {
+    const m = state.merges[e.worktree];
+    if (m) {
+      m.status = 'landed';
+      m.landedAt = e.ts;
+      if (e.commit) m.commit = e.commit;
+    }
+  }
 }
 
 function recentBlocks(agent, now, windowMs) {
@@ -366,6 +422,7 @@ export function blockMeta(state, id) {
 }
 
 export function agentName(state, id) {
+  if (id === SYSTEM) return 'Blockmap';
   return state.agents[id]?.name || (id === HUMAN ? 'You' : codename(id));
 }
 
@@ -515,6 +572,14 @@ export function alerts(state, now) {
   return out.sort((a, b) => rank[a.severity] - rank[b.severity] || b.ts - a.ts);
 }
 
+// The merge queue in order: ready branches by position, then the two that landed last, for ten minutes.
+export function mergeQueue(state, now) {
+  const all = Object.values(state.merges);
+  const ready = all.filter((m) => m.status === 'ready').sort((a, b) => a.pos - b.pos);
+  const done = all.filter((m) => m.status === 'landed' && now - m.landedAt < 10 * 60_000).sort((a, b) => b.landedAt - a.landedAt).slice(0, 2);
+  return [...ready, ...done];
+}
+
 export function queue(state) {
   return Object.values(state.blocks)
     .filter((b) => b.queued)
@@ -622,6 +687,12 @@ export function checkEvent(state, e, now = Date.now()) {
     case 'agent.status':
       if (e.status && !AGENT_STATUS.includes(e.status)) return `Statuses are ${AGENT_STATUS.join(', ')}.`;
       return null;
+    case 'merge.ready':
+      return e.worktree ? null : 'Name the worktree that is ready.';
+    case 'merge.unready':
+    case 'merge.order':
+    case 'merge.landed':
+      return state.merges[e.worktree] ? null : `${e.worktree} isn't in the merge queue.`;
     case 'msg':
       if (!e.text) return 'A message needs text.';
       if (e.to !== '*' && !state.agents[e.to]) return `No agent "${e.to}".`;
@@ -688,6 +759,14 @@ export function describeEvent(state, e) {
       return `${by} to ${e.to === '*' ? 'everyone' : agentName(state, e.to)}: ${e.text}`;
     case 'msg.read':
       return `${who} read their messages`;
+    case 'merge.ready':
+      return `${who} marked ${e.worktree}${e.branch ? ` (${e.branch})` : ''} ready to merge${e.note ? `: ${e.note}` : ''}`;
+    case 'merge.unready':
+      return `${by} took ${e.worktree} out of the merge queue`;
+    case 'merge.order':
+      return `${by} moved ${e.worktree} in the merge queue`;
+    case 'merge.landed':
+      return `${e.worktree} merged`;
     default:
       return `${who}: ${e.type}`;
   }

@@ -5,13 +5,29 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { HUMAN } from './model.js';
 
-// An explicit `--as`, then BLOCKMAP_AGENT, then a Claude Code session, then the person at the shell.
-export function whoAmI(explicit) {
+// An explicit `--as`, then BLOCKMAP_AGENT, then a Claude Code session, then the worktree the command runs in
+// (any agent, on any model, that works in its own worktree is that worktree), then the person at the shell.
+export function whoAmI(explicit, cwd = process.cwd()) {
   if (explicit) return String(explicit);
   if (process.env.BLOCKMAP_AGENT) return process.env.BLOCKMAP_AGENT;
   const session = process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID;
   if (session) return sessionAgentId(session);
+  const wt = worktreeHere(cwd);
+  if (wt?.linked) return `wt-${path.basename(wt.path)}`;
   return HUMAN;
+}
+
+// The checkout a directory belongs to, and whether it is a linked worktree rather than the main one.
+export function worktreeHere(cwd = process.cwd()) {
+  try {
+    const run = (args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    const top = run(['rev-parse', '--show-toplevel']);
+    const gitDir = path.resolve(cwd, run(['rev-parse', '--git-dir']));
+    const common = path.resolve(cwd, run(['rev-parse', '--git-common-dir']));
+    return { path: top, linked: gitDir !== common };
+  } catch {
+    return null;
+  }
 }
 
 export function sessionAgentId(sessionId) {
@@ -30,8 +46,11 @@ export function whereAmI(cwd = process.cwd()) {
   return [remote, path.basename(cwd), branch].filter(Boolean).join(', ');
 }
 
+// What the agent runs in, as the agent's own environment says; BLOCKMAP_KIND names any other harness.
 export function agentKind(id) {
+  if (process.env.BLOCKMAP_KIND) return process.env.BLOCKMAP_KIND;
   if (id === HUMAN) return 'human';
-  if (id.startsWith('cc-') || process.env.CLAUDECODE) return 'claude-code';
-  return process.env.BLOCKMAP_KIND || 'agent';
+  if (id.startsWith('cc-') || process.env.CLAUDECODE) return 'Claude Code';
+  if (id.startsWith('wt-')) return 'worktree';
+  return 'agent';
 }

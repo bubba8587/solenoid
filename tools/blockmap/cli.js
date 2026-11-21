@@ -12,7 +12,9 @@ import {
 import { blockForPath, matchDetail, normalizePath } from './core/glob.js';
 import { openStore, remoteStore, findBoardDir } from './core/store.js';
 import { changedFiles } from './core/files.js';
-import { whoAmI, whereAmI, agentKind } from './core/identity.js';
+import { worktreeSnapshot } from './core/worktrees.js';
+import { mergeChecks, agentForWorktree, blocksOf, mergeCommand } from './core/merges.js';
+import { whoAmI, whereAmI, agentKind, worktreeHere } from './core/identity.js';
 
 
 // ---------------------------------------------------------------------------------------------
@@ -76,7 +78,7 @@ function joinIfNeeded(ctx, extra = {}) {
   if (a && !a.leftAt && a.joinedAt) return [];
   return [
     makeEvent(ctx.state, 'agent.join', ctx.me, {
-      agent: { id: ctx.me, name: extra.name || a?.name, kind: extra.kind || agentKind(ctx.me), model: extra.model || process.env.BLOCKMAP_MODEL || '', where: whereAmI() },
+      agent: { id: ctx.me, name: extra.name || a?.name || (ctx.me.startsWith('wt-') ? ctx.me.slice(3) : undefined), kind: extra.kind || agentKind(ctx.me), model: extra.model || process.env.BLOCKMAP_MODEL || '', where: whereAmI(), worktree: worktreeHere()?.path || '' },
       task: extra.task || '',
     }, ctx.now),
   ];
@@ -141,7 +143,7 @@ const commands = {
     const events = [];
     const a = ctx.state.agents[ctx.me];
     if (!a || a.leftAt || !a.joinedAt) events.push(...joinIfNeeded(ctx, { name, task, model, kind }));
-    else events.push(ev(ctx, 'agent.join', { agent: { id: ctx.me, name, kind, model, where: whereAmI() }, task: task || a.task }));
+    else events.push(ev(ctx, 'agent.join', { agent: { id: ctx.me, name, kind, model, where: whereAmI(), worktree: worktreeHere()?.path || '' }, task: task || a.task }));
     await commit(ctx, events);
     const me = ctx.state.agents[ctx.me];
     out(ctx, `You are ${me.name} (${me.id}) on the ${ctx.board.name} board.${me.task ? ` Task: ${me.task}.` : ''}\n${protocolHint()}`, me);
@@ -405,6 +407,75 @@ const commands = {
     process.exitCode = 1;
   },
 
+  // Worktrees: each one's branch, agent, distance from the base, uncommitted work, blocks and merge state.
+  async wt(ctx) {
+    const snap = await worktreeSnapshot(ctx.store.root, { base: ctx.board.base });
+    if (ctx.pos[0] === 'path') {
+      const name = ctx.pos[1];
+      const hit = snap.list.find((w) => w.name === name || w.branch === name) || snap.list.find((w) => w.name.includes(name || ''));
+      if (!hit) throw new Refusal(`No worktree "${name}". \`bm wt\` lists them.`);
+      return console.log(hit.path);
+    }
+    const checks = new Map(mergeChecks(ctx.state, snap, ctx.now).map((c) => [c.entry.worktree, c]));
+    const rows = snap.list.map((w) => {
+      const agent = agentForWorktree(ctx.state, w);
+      const blocks = [...blocksOf(ctx.state, w).keys()];
+      const m = checks.get(w.name);
+      return { ...w, agent, blocks, merge: m ? { pos: m.entry.status === 'ready' ? m.entry.pos : null, status: m.entry.status, verdict: m.verdict } : null };
+    });
+    if (ctx.flags.json) return out(ctx, '', { base: snap.base, worktrees: rows });
+    const width = Math.max(4, ...rows.map((r) => r.name.length));
+    const lines = [`Base: ${snap.base}`];
+    for (const r of rows) {
+      const state = [r.ahead ? `${r.ahead} ahead` : '', r.behind ? `${r.behind} behind` : '', r.dirty ? `${r.dirty} uncommitted` : '', r.conflicts.length ? `conflicts in ${r.conflicts.length}` : ''].filter(Boolean).join(', ') || 'even';
+      lines.push(`  ${r.name.padEnd(width)}  ${(r.branch || '-').padEnd(14)} ${(r.agent ? agentName(ctx.state, r.agent) : '-').padEnd(10)} ${state}${r.add || r.del ? `, +${r.add} -${r.del}` : ''}`);
+      if (r.blocks.length) lines.push(`  ${' '.repeat(width)}  blocks: ${r.blocks.slice(0, 6).join(', ')}${r.blocks.length > 6 ? ` and ${r.blocks.length - 6} more` : ''}`);
+      if (r.merge) lines.push(`  ${' '.repeat(width)}  merge: ${r.merge.status === 'landed' ? 'merged' : r.merge.verdict}`);
+    }
+    lines.push('`bm wt path <name>` prints a worktree\'s path: cd "$(tools/blockmap/bm wt path agent-2)"');
+    console.log(lines.join('\n'));
+  },
+
+  // Mark this worktree's branch ready to merge at its current commit.
+  async ready(ctx) {
+    const snap = await worktreeSnapshot(ctx.store.root, { base: ctx.board.base });
+    const here = worktreeHere()?.path;
+    const name = typeof ctx.flags.worktree === 'string' ? ctx.flags.worktree : snap.list.find((w) => w.path === here)?.name;
+    const wt = snap.list.find((w) => w.name === name);
+    if (!wt) throw new Refusal('Run `bm ready` inside the worktree, or name it with --worktree.');
+    if (wt.main) throw new Refusal('The main checkout is where branches merge into, not one that queues.');
+    const note = typeof ctx.flags.note === 'string' ? ctx.flags.note : words(ctx.pos);
+    await commit(ctx, [...joinIfNeeded(ctx), ev(ctx, 'merge.ready', { worktree: wt.name, branch: wt.branch, commit: wt.head, note })]);
+    const warn = [wt.dirty ? `${wt.dirty} uncommitted change(s) won't be in the merge; commit them and run \`bm ready\` again.` : '', wt.conflicts.length ? `It conflicts with ${snap.base} in ${wt.conflicts.join(', ')}.` : ''].filter(Boolean);
+    out(ctx, [`${wt.name} (${wt.branch}) is in the merge queue at ${wt.head.slice(0, 8)}.`, ...warn].join('\n'), { worktree: wt.name });
+  },
+
+  async unready(ctx) {
+    const here = worktreeHere()?.path;
+    const snap = await worktreeSnapshot(ctx.store.root, { base: ctx.board.base });
+    const name = typeof ctx.flags.worktree === 'string' ? ctx.flags.worktree : ctx.pos[0] || snap.list.find((w) => w.path === here)?.name;
+    await commit(ctx, [ev(ctx, 'merge.unready', { worktree: name })]);
+    out(ctx, `${name} is out of the merge queue.`);
+  },
+
+  // The merge queue, in order, with what each branch would run into.
+  async merge(ctx) {
+    const snap = await worktreeSnapshot(ctx.store.root, { base: ctx.board.base });
+    const rows = mergeChecks(ctx.state, snap, ctx.now);
+    if (ctx.flags.json) return out(ctx, '', rows);
+    if (!rows.length) return console.log('The merge queue is empty. In a worktree, `bm ready` puts its branch in it.');
+    const lines = [`Into ${snap.base}:`];
+    rows.forEach((r, i) => {
+      const mark = r.entry.status === 'landed' ? 'merged' : `#${i + 1}`;
+      lines.push(`  ${mark.padEnd(6)} ${r.entry.worktree} (${r.entry.branch || '-'}): ${r.verdict}`);
+      for (const c of r.checks.slice(1)) lines.push(`         ${c.text}`);
+    });
+    const next = rows.find((r) => r.entry.status === 'ready');
+    if (next && next.level === 'danger') lines.push(`Next is ${next.entry.worktree}, which has to fix "${next.verdict}" first.`);
+    else if (next) lines.push(`Next, from the main checkout: ${mergeCommand(next.entry, snap.base)}`);
+    console.log(lines.join('\n'));
+  },
+
   async serve(ctx) {
     const { serve } = await import('./server.js');
     await serve({ port: Number(ctx.flags.port || process.env.BLOCKMAP_PORT || 4477), host: ctx.flags.host || '127.0.0.1', open: !!ctx.flags.open, demo: !!ctx.flags.demo });
@@ -508,6 +579,12 @@ Working (agents)
   bm note "<text>" [--block b]  |  bm msg <agent|all> "<text>"
   bm release [<block...>] [--landed|--parked|--handoff|--dropped] [--note n]
   bm check [--staged | --since <ref>]        changed files outside your blocks (exit 1)
+  bm ready ["note"]  |  bm unready           put this worktree's branch in the merge queue, or take it out
+
+Worktrees
+  bm wt                                      every worktree: branch, agent, ahead/behind, conflicts, blocks
+  bm wt path <name>                          its path: cd "$(tools/blockmap/bm wt path agent-2)"
+  bm merge                                   the merge queue in order, with what each branch would hit
   bm leave
 
 The human
@@ -517,7 +594,8 @@ The human
   bm snapshot --out <dir>                    board + log for the standalone page
   bm init [--name N]                         a board for a new repository
 
-Identity: --as <id>, else BLOCKMAP_AGENT, else the Claude Code session, else the human.
+Identity: --as <id>, else BLOCKMAP_AGENT, else a Claude Code session, else the worktree you're in, else the human.
+Any agent on any model can use bm; BLOCKMAP_KIND names its harness on the board.
 Remote board: BLOCKMAP_URL=http://host:4477 (and BLOCKMAP_TOKEN if the server has one).
 Add --json to any command for machine-readable output.`;
 

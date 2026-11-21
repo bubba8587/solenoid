@@ -10,6 +10,8 @@ import { createTimeline } from './timeline.js';
 import { createInspector } from './inspector.js';
 import { createTethers } from './tethers.js';
 import { enableDnd } from './dnd.js';
+import { createWorktrees, worktreeIndex } from './worktrees.js';
+import { agentForWorktree } from '../core/merges.js';
 import { h, icon, setHtml, setText, toast, storageGet, storageSet, esc, timer, startTimers } from './dom.js';
 import { PALETTE_NAMES, applyPalette } from './palette.js';
 
@@ -41,6 +43,19 @@ const side = createSide(ctx, $('side'));
 const timeline = createTimeline(ctx, $('timeline'));
 const inspector = createInspector(ctx, $('inspector'), $('scrim'));
 const tethers = createTethers(ctx, $('tethers'), $('map-wrap'), $('side'));
+const mergeHost = h('div', { class: 'merge-host', hidden: true });
+$('side').insertBefore(mergeHost, $('side').children[1] || null);
+const trees = createWorktrees(ctx, $('wt-bar'), mergeHost);
+ctx.worktrees = null;
+ctx.focusWt = null;
+
+// Focus one worktree: the map lights the blocks it changed and its agent's window comes into view.
+ctx.focus = (name) => {
+  ctx.focusWt = name && name !== ctx.focusWt ? name : null;
+  render();
+  const wt = ctx.worktrees?.list.find((w) => w.name === ctx.focusWt);
+  if (wt?.agent) document.querySelector(`.win[data-win="${CSS.escape(wt.agent)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+};
 enableDnd(ctx);
 
 // ------------------------------------------------------------------------------------------- state
@@ -149,6 +164,15 @@ ctx.act = {
   updateItem: (id, patch) => commit([{ type: 'item.update', item: id, ...patch }]),
   answer: (id, text) => commit([{ type: 'item.update', item: id, answer: text, status: 'done' }], 'Answered. It lands in the agent’s inbox.'),
   message: (agent, text) => commit([{ type: 'msg', to: agent, text }], `Sent to ${agentName(ctx.live, agent)}.`),
+  mergeReady: (wt) => commit([{ type: 'merge.ready', worktree: wt.name, branch: wt.branch, commit: wt.head, ...(wt.agent ? { agent: wt.agent } : {}) }], `${wt.name} is in the merge queue.`),
+  mergeUnready: (name) => commit([{ type: 'merge.unready', worktree: name }], `${name} is out of the merge queue.`),
+  mergeUp(name) {
+    const ready = Object.values(ctx.live.merges).filter((m) => m.status === 'ready').sort((a, b) => a.pos - b.pos);
+    const i = ready.findIndex((m) => m.worktree === name);
+    if (i <= 0) return Promise.resolve(false);
+    const before = ready[i - 2]?.pos ?? ready[i - 1].pos - 1;
+    return commit([{ type: 'merge.order', worktree: name, pos: (before + ready[i - 1].pos) / 2 }]);
+  },
 };
 
 // ------------------------------------------------------------------------------------------ render
@@ -170,9 +194,12 @@ function doRender() {
   const before = new Map();
   for (const [id, tile] of ctx.map.tiles) before.set(id, tile.getBoundingClientRect());
   ctx.alertList = alerts(ctx.view, ctx.viewNow);
+  if (ctx.worktrees) for (const wt of ctx.worktrees.list) wt.agent = agentForWorktree(ctx.view, wt);
+  ctx.wtIndex = worktreeIndex(ctx.view, ctx.worktrees);
   document.body.dataset.lens = ctx.lens;
   document.body.classList.toggle('inspecting', !!inspector.id);
   side.update();
+  trees.update();
   ctx.map.fit();
   const moved = placeTiles();
   ctx.map.paint();
@@ -523,6 +550,10 @@ async function boot() {
           index(e);
           apply(ctx.live, e);
         }
+        render();
+      },
+      onWorktrees: (snap) => {
+        ctx.worktrees = snap;
         render();
       },
       onStatus: (s, message) => {

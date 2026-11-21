@@ -4,17 +4,17 @@
 import { apply, checkEvent, createState, makeEvent } from '../core/model.js';
 import { createSim } from './sim.js';
 
-export async function connect({ onBoard, onEvents, onReset, onStatus }) {
+export async function connect({ onBoard, onEvents, onReset, onStatus, onWorktrees }) {
   const token = new URLSearchParams(location.search).get('token');
   const q = token ? `?token=${encodeURIComponent(token)}` : '';
   // The board server marks the pages it serves; anywhere else there is no API to ask.
   const served = !!document.querySelector('meta[name="blockmap"][content="server"]');
-  const live = served ? await tryLive(q, { onBoard, onEvents, onReset, onStatus }) : null;
+  const live = served ? await tryLive(q, { onBoard, onEvents, onReset, onStatus, onWorktrees }) : null;
   if (live) return live;
-  return demo({ onEvents, onStatus });
+  return demo({ onEvents, onStatus, onWorktrees });
 }
 
-async function tryLive(q, { onBoard, onEvents, onReset, onStatus }) {
+async function tryLive(q, { onBoard, onEvents, onReset, onStatus, onWorktrees }) {
   let board;
   let events;
   try {
@@ -51,6 +51,7 @@ async function tryLive(q, { onBoard, onEvents, onReset, onStatus }) {
   });
   es.addEventListener('events', (m) => take(JSON.parse(m.data)));
   es.addEventListener('board', (m) => onBoard(JSON.parse(m.data)));
+  es.addEventListener('worktrees', (m) => onWorktrees(JSON.parse(m.data)));
   es.addEventListener('reset', (m) => {
     const list = JSON.parse(m.data).events;
     seen.clear();
@@ -77,7 +78,7 @@ async function tryLive(q, { onBoard, onEvents, onReset, onStatus }) {
   };
 }
 
-async function demo({ onEvents, onStatus }) {
+async function demo({ onEvents, onStatus, onWorktrees }) {
   const res = await fetch('demo/board.json', { cache: 'no-store' });
   if (!res.ok) throw new Error('No board server answered and there is no demo/board.json beside this page.');
   const board = await res.json();
@@ -86,9 +87,11 @@ async function demo({ onEvents, onStatus }) {
   const state = createState(board);
   const events = sim.history(now - 3 * 3600_000, now, state);
   onStatus('demo');
+  setTimeout(() => onWorktrees(sim.worktrees(state, Date.now())), 0);
   setInterval(() => {
     const fresh = sim.step(state, Date.now());
     if (fresh.length) onEvents(fresh);
+    onWorktrees(sim.worktrees(state, Date.now()));
   }, 1600);
   return {
     mode: 'demo',

@@ -23,7 +23,7 @@
       <button type="button" data-lens="work" aria-pressed="true">Work</button>
       <button type="button" data-lens="heat" aria-pressed="false">Heat</button>
       <button type="button" data-lens="issues" aria-pressed="false">Issues</button>
-      <button type="button" data-lens="history" aria-pressed="false">History</button>
+      <button type="button" data-lens="branches" aria-pressed="false">Branches</button>
     </div>
     <label class="search"><span id="search-ic"></span><input id="search" type="search" placeholder="Search" aria-label="Find a block or a file path" autocomplete="off" spellcheck="false"><kbd>/</kbd></label>
     <div class="theme-tools">
@@ -33,6 +33,7 @@
   </header>
   <div class="alerts" id="alerts" aria-live="polite"></div>
   <main class="map-wrap" id="map-wrap" data-drop="map" aria-label="Blocks">
+    <div class="wt-bar" id="wt-bar" hidden></div>
     <div class="map" id="map"><p class="boot">Loading</p></div>
   </main>
   <aside class="side" id="side" aria-label="Agents"></aside>

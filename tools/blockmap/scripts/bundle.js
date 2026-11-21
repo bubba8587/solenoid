@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { openStore, findBoardDir } from '../core/store.js';
 
 const HERE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BROWSER = ['ui/app.js', 'ui/dom.js', 'ui/dnd.js', 'ui/inspector.js', 'ui/map.js', 'ui/palette.js', 'ui/sim.js', 'ui/source.js', 'ui/tethers.js', 'ui/timeline.js', 'ui/windows.js', 'ui/styles.css', 'core/model.js', 'core/glob.js'];
+const BROWSER = ['ui/app.js', 'ui/dom.js', 'ui/dnd.js', 'ui/inspector.js', 'ui/map.js', 'ui/palette.js', 'ui/sim.js', 'ui/source.js', 'ui/tethers.js', 'ui/timeline.js', 'ui/windows.js', 'ui/worktrees.js', 'ui/styles.css', 'core/model.js', 'core/glob.js', 'core/merges.js'];
 
 export function bundle(out) {
   const store = openStore(findBoardDir());

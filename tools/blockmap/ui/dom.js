@@ -78,6 +78,9 @@ const P = {
   conflict: '<path d="M8 2.2 14.2 13H1.8Z"/><path d="M8 6.4v3.2" stroke="var(--surface)" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".85" fill="var(--surface)"/>',
   chev: '<path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
   bell: '<path d="M8 2.4a3.6 3.6 0 0 0-3.6 3.6v2.5L3.2 10.8h9.6L11.6 8.5V6A3.6 3.6 0 0 0 8 2.4Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6.6 12.6a1.4 1.4 0 0 0 2.8 0" fill="none" stroke="currentColor" stroke-width="1.4"/>',
+  branch: '<circle cx="4.6" cy="3.6" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="4.6" cy="12.4" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11.4" cy="5.6" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.6 5.2v5.6M11.4 7.2c0 2.6-2.4 3-4.6 3.6" fill="none" stroke="currentColor" stroke-width="1.3"/>',
+  copy: '<rect x="5.2" y="5.2" width="8" height="8.6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 10.6V3.8C3 3.2 3.4 2.8 4 2.8h6" fill="none" stroke="currentColor" stroke-width="1.4"/>',
+  up: '<path d="m4 10 4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
   mail: '<rect x="2.4" y="3.8" width="11.2" height="8.4" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m2.8 4.6 5.2 4 5.2-4" fill="none" stroke="currentColor" stroke-width="1.4"/>',
 };
 

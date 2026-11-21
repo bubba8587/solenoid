@@ -17,7 +17,7 @@ import path from 'node:path';
 import { openStore, findBoardDir } from '../core/store.js';
 import { reduce, makeEvent, blockMeta, agentName, isStale, clock, itemCounts, HUMAN } from '../core/model.js';
 import { blockForPath, normalizePath } from '../core/glob.js';
-import { sessionAgentId, whereAmI } from '../core/identity.js';
+import { sessionAgentId, whereAmI, worktreeHere } from '../core/identity.js';
 import { lineCounts } from './lines.js';
 
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
@@ -54,7 +54,7 @@ async function main() {
   };
   const ensureJoined = () => {
     if (joined()) return [];
-    return [ev('agent.join', { agent: { id: me, kind: 'claude-code', where: whereAmI(cwd), model: process.env.BLOCKMAP_MODEL || '' }, task: '' })];
+    return [ev('agent.join', { agent: { id: me, kind: 'Claude Code', where: whereAmI(cwd), worktree: worktreeHere(cwd)?.path || '', model: process.env.BLOCKMAP_MODEL || '' }, task: '' })];
   };
 
   switch (input.hook_event_name) {

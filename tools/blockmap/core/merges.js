@@ -1,0 +1,86 @@
+// Worktrees on the board: which agent works in each, which blocks each changed, and whether each queued
+// branch is fit to merge. Pure, so the CLI and the page share it. Runs in Node and the browser.
+
+import { blockForPath } from './glob.js';
+import { HUMAN, UNMAPPED, mergeQueue, agentName } from './model.js';
+
+// The agent working in a worktree: the newest present agent that joined from it, else the watcher's
+// stand-in (`wt-<name>`), which exists for agents that never talk to the board.
+export function agentForWorktree(state, wt) {
+  let best = null;
+  for (const a of Object.values(state.agents)) {
+    if (a.id === HUMAN || a.leftAt || !a.worktree) continue;
+    if (a.worktree !== wt.path && a.worktree !== wt.name) continue;
+    if (!best || a.lastSeen > best.lastSeen) best = a;
+  }
+  if (best) return best.id;
+  const standIn = state.agents[`wt-${wt.name}`];
+  return standIn && !standIn.leftAt ? standIn.id : null;
+}
+
+export function blocksOf(state, wt) {
+  const out = new Map();
+  for (const f of wt.files || []) {
+    const id = blockForPath(state.index, f) || UNMAPPED;
+    out.set(id, (out.get(id) || 0) + 1);
+  }
+  return out;
+}
+
+// Block id to the worktrees (other than the main checkout) that changed something in it.
+export function worktreesByBlock(state, snap) {
+  const out = new Map();
+  for (const wt of snap?.list || []) {
+    if (wt.main) continue;
+    for (const id of blocksOf(state, wt).keys()) {
+      if (!out.has(id)) out.set(id, []);
+      out.get(id).push(wt.name);
+    }
+  }
+  return out;
+}
+
+const RANK = { ok: 0, warn: 1, danger: 2 };
+
+// Each queued branch with the checks a merge would care about, worst first, and a one-word-ish verdict.
+// Overlaps count against branches ahead in the queue: those land first and will move the files under it.
+export function mergeChecks(state, snap, now) {
+  const byName = new Map((snap?.list || []).map((wt) => [wt.name, wt]));
+  const base = snap?.base || 'base';
+  const ahead = [];
+  return mergeQueue(state, now).map((m) => {
+    if (m.status === 'landed') return { entry: m, wt: byName.get(m.worktree) || null, checks: [], level: 'ok', verdict: 'Merged' };
+    const wt = byName.get(m.worktree) || null;
+    const checks = [];
+    if (!wt) checks.push({ level: 'danger', text: 'Worktree gone' });
+    else {
+      if (wt.conflicts.length) checks.push({ level: 'danger', text: `Conflicts with ${base}`, files: wt.conflicts });
+      const agent = agentForWorktree(state, wt);
+      const test = agent ? state.agents[agent]?.lastTest : null;
+      if (test && !test.ok) checks.push({ level: 'danger', text: 'Tests fail', detail: test.summary });
+      if (wt.ahead === 0) checks.push({ level: 'warn', text: 'Nothing to merge' });
+      if (wt.dirty) checks.push({ level: 'warn', text: `${wt.dirty} uncommitted` });
+      if (m.commit && wt.head && !wt.head.startsWith(m.commit) && !m.commit.startsWith(wt.head)) checks.push({ level: 'warn', text: 'Moved since ready' });
+      if (!wt.conflicts.length && wt.behind) checks.push({ level: 'warn', text: `${wt.behind} behind ${base}` });
+      const files = new Set(wt.files);
+      for (const prev of ahead) {
+        const shared = prev.files.filter((f) => files.has(f));
+        if (shared.length) checks.push({ level: 'warn', text: `Overlaps ${prev.name}`, files: shared });
+      }
+      if (!test) checks.push({ level: 'warn', text: 'No test run' });
+      ahead.push({ name: wt.name, files: wt.files });
+    }
+    checks.sort((a, b) => RANK[b.level] - RANK[a.level]);
+    const level = checks[0]?.level || 'ok';
+    return { entry: m, wt, checks, level, verdict: level === 'ok' ? 'Clean' : checks[0].text };
+  });
+}
+
+export function mergeCommand(entry, base) {
+  return `git merge --no-ff ${entry.branch || entry.worktree}${base ? `  # into ${base}` : ''}`;
+}
+
+export function describeWorktreeAgent(state, wt) {
+  const id = agentForWorktree(state, wt);
+  return id ? agentName(state, id) : '';
+}

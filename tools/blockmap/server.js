@@ -9,7 +9,9 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { openStore, findBoardDir } from './core/store.js';
-import { reduce, makeEvent } from './core/model.js';
+import { reduce, makeEvent, SYSTEM } from './core/model.js';
+import { worktreeSnapshot, landed } from './core/worktrees.js';
+import { agentForWorktree } from './core/merges.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MIME = {
@@ -126,9 +128,11 @@ export async function serve({ port = 4477, host = '127.0.0.1', open = false, dem
       const since = Number(url.searchParams.get('since') || 0);
       return json(res, 200, since ? events.filter((e) => e.ts > since) : events);
     }
+    if (req.method === 'GET' && url.pathname === '/api/worktrees') return json(res, 200, worktrees || { base: '', at: 0, list: [] });
     if (req.method === 'GET' && url.pathname === '/api/stream') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
       send(res, 'hello', { count: events.length, demo });
+      if (worktrees) send(res, 'worktrees', worktrees);
       clients.add(res);
       req.on('close', () => clients.delete(res));
       return undefined;
@@ -170,7 +174,73 @@ export async function serve({ port = 4477, host = '127.0.0.1', open = false, dem
     return undefined;
   }
 
-  if (demo) startDemo(store, () => board);
+  // Worktrees, read from git every few seconds. Edits in a worktree whose agent never talks to the board
+  // are recorded for it all the same (a stand-in agent named after the worktree), so any agent on any
+  // model shows up; a queued branch is marked landed once its commit is in the base.
+  let worktrees = null;
+  const mtimes = new Map();
+  let primed = false;
+  let polling = false;
+  async function pollWorktrees() {
+    if (polling) return;
+    polling = true;
+    try {
+      const snap = demo && demoSim ? demoSim.worktrees(reduce(board, store.readEvents()), Date.now()) : await worktreeSnapshot(store.root, { base: board.base });
+      const state = reduce(board, store.readEvents());
+      const now = Date.now();
+      const fresh = [];
+      for (const wt of snap.list) {
+        wt.agent = agentForWorktree(state, wt);
+        if (demo || wt.main) continue;
+        const changed = [];
+        for (const f of wt.files) {
+          let m = 0;
+          try {
+            m = fs.statSync(path.join(wt.path, f)).mtimeMs;
+          } catch {
+            m = -1;
+          }
+          const key = `${wt.path}|${f}`;
+          if (primed && mtimes.get(key) !== m) changed.push(f);
+          mtimes.set(key, m);
+        }
+        if (!changed.length) continue;
+        let agent = wt.agent;
+        if (!agent) {
+          agent = `wt-${wt.name}`;
+          fresh.push(makeEvent(state, 'agent.join', agent, { agent: { id: agent, name: wt.name, kind: 'worktree', worktree: wt.path } }, now));
+          wt.agent = agent;
+        }
+        // Edits the agent's own hooks already reported in the last half minute aren't counted twice.
+        const recent = new Set((state.agents[agent]?.touches || []).filter((t) => now - t.ts < 30_000).map((t) => t.file));
+        const files = changed.filter((f) => !recent.has(f));
+        if (files.length) fresh.push(makeEvent(state, 'touch', agent, { files, op: 'edit', src: 'git' }, now));
+      }
+      for (const m of Object.values(state.merges)) {
+        if (m.status !== 'ready' || !m.commit || demo) continue;
+        if (await landed(store.root, m.commit, board.base)) fresh.push(makeEvent(state, 'merge.landed', SYSTEM, { worktree: m.worktree, commit: m.commit }, now));
+      }
+      if (fresh.length) {
+        try {
+          store.commit(fresh, now);
+          poll();
+        } catch {
+          // A race with an agent's own write; the next poll sees the same changes again.
+        }
+      }
+      primed = true;
+      worktrees = snap;
+      broadcast('worktrees', snap);
+    } catch (err) {
+      broadcast('problem', { message: `Reading the worktrees failed: ${err.message}` });
+    } finally {
+      polling = false;
+    }
+  }
+  let demoSim = null;
+  if (demo) demoSim = await startDemo(store, () => board);
+  pollWorktrees();
+  setInterval(pollWorktrees, Number(process.env.BLOCKMAP_WORKTREE_MS || 4000));
 
   await new Promise((resolve, reject) => {
     server.once('error', reject);
@@ -202,6 +272,7 @@ async function startDemo(store, getBoard) {
       }
     }
   }, 1600);
+  return sim;
 }
 
 function strip(e) {

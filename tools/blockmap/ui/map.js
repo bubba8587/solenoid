@@ -82,7 +82,8 @@ export function createMap(ctx, root) {
   // text would drop under a legible size; past that the map scrolls. Phones scroll at full size.
   function fit() {
     const wrap = root.parentElement;
-    const key = `${wrap.clientWidth}x${wrap.clientHeight}x${tiles.size}`;
+    const barH = wrap.querySelector('.wt-bar:not([hidden])')?.offsetHeight || 0;
+    const key = `${wrap.clientWidth}x${wrap.clientHeight}x${tiles.size}x${barH}`;
     if (key === fitKey) return;
     fitKey = key;
     if (matchMedia('(max-width: 860px)').matches) {
@@ -94,7 +95,7 @@ export function createMap(ctx, root) {
     for (; z > 0.85; z -= 0.03) {
       root.style.zoom = String(z);
       const r = root.getBoundingClientRect();
-      if (r.height <= wrap.clientHeight + 1 && r.width <= wrap.clientWidth + 1) break;
+      if (r.height <= wrap.clientHeight - barH + 1 && r.width <= wrap.clientWidth + 1) break;
     }
     zoom = Math.max(0.85, z);
     root.style.zoom = String(zoom);
@@ -144,6 +145,12 @@ export function createMap(ctx, root) {
       if (c.decision + c.question) parts.push(`<span class="badge you" title="Waiting on ${esc(st.agents[HUMAN].name)}">${icon('decision')}${c.decision + c.question}</span>`);
       if (c.bug) parts.push(`<span class="badge bug" title="Open bugs">${icon('bug')}${c.bug}</span>`);
       if (lens === 'issues' && c.task) parts.push(`<span class="badge" title="Open tasks">${icon('task')}${c.task}</span>`);
+      // Changed in two or more worktrees: those branches will meet at the merge. Red when one already
+      // conflicts with the base in a file of this block.
+      const wtEntry = ctx.wtIndex?.byBlock.get(id);
+      if (wtEntry && (wtEntry.trees.length >= 2 || wtEntry.conflict)) {
+        parts.push(`<span class="badge branches${wtEntry.conflict ? ' fail' : ''}" title="Changed in ${esc(wtEntry.trees.map((w) => w.name).join(', '))}${wtEntry.conflict ? `; conflicts with ${esc(ctx.worktrees.base)}` : ''}">${icon('branch')}${wtEntry.trees.length}</span>`);
+      }
       if (b.frozen) parts.push(`<span class="badge" title="Frozen${b.frozen.note ? `: ${esc(b.frozen.note)}` : ''}">${icon('lock')}</span>`);
       const watchers = Object.keys(b.watchers);
       if (watchers.length) parts.push(`<span class="badge" title="${watchers.map((w) => esc(agentName(st, w))).join(', ')}">${icon('eye')}${watchers.length}</span>`);
@@ -151,8 +158,8 @@ export function createMap(ctx, root) {
       else if (inTray && b.queued) parts.push(timer(b.queued.ts, { cls: 'badge' }, now));
       setHtml(badgesEl, parts.join(''));
 
-      const showWho = lens === 'heat' || lens === 'history';
-      const feet = showWho ? footprints(b, now, 45 * 60_000).slice(0, 3) : [];
+      const showWho = lens === 'heat';
+      const feet = lens === 'branches' ? (wtEntry?.trees || []).slice(0, 3).map((w) => w.agent).filter(Boolean) : showWho ? footprints(b, now, 45 * 60_000).slice(0, 3) : [];
       setHtml(feetEl, feet.map((a) => `<i style="--fc:${colorOf(st, a)}" title="${esc(agentName(st, a))}"></i>`).join(''));
       tile.style.setProperty('--tc', toucher && showWho ? colorOf(st, toucher) : 'var(--text-muted)');
       tile.style.setProperty('--ta', toucher && showWho ? String(Math.min(1, 0.35 + hv * 0.3).toFixed(2)) : '0');
@@ -162,12 +169,11 @@ export function createMap(ctx, root) {
       let lc = '';
       if (lens === 'heat') lv = Math.min(60, hv * 22);
       else if (lens === 'issues') lv = Math.min(50, (c.bug * 3 + c.task + (c.decision + c.question) * 2) * 2.6);
-      else if (lens === 'history') {
-        const prev = b.holder || b.history[b.history.length - 1]?.agent;
-        if (prev) {
-          lc = colorOf(st, prev);
-          lv = b.holder ? 30 : 16;
-        }
+      else if (lens === 'branches' && wtEntry) {
+        // One worktree: its agent's color. Several: gold, since they will meet at the merge.
+        const only = wtEntry.trees.length === 1 ? wtEntry.trees[0].agent : null;
+        lc = wtEntry.conflict ? 'var(--danger)' : wtEntry.trees.length > 1 ? 'var(--warn)' : only ? colorOf(st, only) : 'var(--text-muted)';
+        lv = wtEntry.trees.length > 1 || wtEntry.conflict ? 30 : 20;
       }
       tile.style.setProperty('--lv', `${Math.round(lv)}%`);
       if (lc) tile.style.setProperty('--lc', lc);
@@ -177,8 +183,10 @@ export function createMap(ctx, root) {
       toggle(tile, 'selected', ctx.selected === id);
       const filtered = ctx.filter === 'you' ? c.decision + c.question > 0 : ctx.filter === 'bugs' ? c.bug > 0 : true;
       const matched = q ? q.matches.has(id) : false;
-      toggle(tile, 'dim', (!!q && !matched) || !filtered);
-      toggle(tile, 'match', !!q && matched && q.exact);
+      const focusBlocks = ctx.focusWt ? ctx.wtIndex?.byTree.get(ctx.focusWt) : null;
+      const inFocus = focusBlocks ? focusBlocks.has(id) : true;
+      toggle(tile, 'dim', (!!q && !matched) || !filtered || !inFocus);
+      toggle(tile, 'match', (!!q && matched && q.exact) || (!!focusBlocks && inFocus));
       tile.title = b.holder ? `${meta.name}, held by ${agentName(st, b.holder)}${b.intent ? `: ${b.intent}` : ''}` : meta.name;
 
       const socket = sockets.get(id);

@@ -17,9 +17,18 @@ export function findBoardDir(start = process.cwd()) {
   for (;;) {
     if (fs.existsSync(path.join(dir, '.blockmap', 'board.json'))) return path.join(dir, '.blockmap');
     const up = path.dirname(dir);
-    if (up === dir) return null;
+    if (up === dir) break;
     dir = up;
   }
+  // A worktree whose branch predates the board still belongs to the main checkout's board.
+  try {
+    const common = path.resolve(start, execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: start, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim());
+    const main = path.join(path.dirname(common), '.blockmap');
+    if (fs.existsSync(path.join(main, 'board.json'))) return main;
+  } catch {
+    // Not in git.
+  }
+  return null;
 }
 
 function liveDirFor(boardDir) {

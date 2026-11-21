@@ -319,7 +319,7 @@ button.stat:hover { border-color: var(--border-strong); background: var(--btn-ho
 .tile.unmapped { border-style: dashed; }
 [data-lens="heat"] .tile { background-color: color-mix(in srgb, var(--slot-amber) var(--lv, 0%), var(--surface)); }
 [data-lens="issues"] .tile { background-color: color-mix(in srgb, var(--slot-vermilion) var(--lv, 0%), var(--surface)); }
-[data-lens="history"] .tile { background-color: color-mix(in srgb, var(--lc, var(--surface)) var(--lv, 0%), var(--surface)); }
+[data-lens="branches"] .tile { background-color: color-mix(in srgb, var(--lc, var(--surface)) var(--lv, 0%), var(--surface)); }
 
 /* The slot a reserved tile leaves: tinted inside, so its colored edge never rings a neutral box. */
 .socket {
@@ -571,3 +571,56 @@ body.dragging-tile, body.dragging-tile * { cursor: grabbing !important; }
 /* An empty fixed window is just its header; the whole window is still where a tile drops. */
 .win.compact .tray:empty { min-height: 0; padding: 0; margin: 0; box-shadow: none; background: none; }
 .win.compact:has(.tray:empty) .win-head { border-bottom-color: transparent; }
+
+/* ------------------------------------------------------------------ worktrees */
+.badge.branches { color: color-mix(in srgb, var(--warn) 70%, var(--text)); }
+.badge.branches.fail { color: color-mix(in srgb, var(--danger) 70%, var(--text)); }
+.wt-bar {
+  position: sticky; top: 0; z-index: 3; display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 10px; background: color-mix(in srgb, var(--canvas-bg) 88%, transparent); border-bottom: 1px solid var(--border-subtle);
+}
+.wt-tabs { display: flex; flex-wrap: wrap; gap: 5px; }
+.wt-tab {
+  --ac: var(--slot-gray); --aci: #fff;
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px 0 4px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-dim); font: 600 12px/1 var(--font-sans); white-space: nowrap;
+}
+.wt-tab:first-child { padding-left: 10px; }
+.wt-tab:hover { border-color: var(--border-strong); color: var(--text); }
+.wt-tab[aria-pressed="true"] { background: var(--surface-raised); border-color: var(--border-strong); color: var(--text-bright); box-shadow: 0 0 0 1px var(--border-strong); }
+.wt-tab .disc { width: 18px; height: 18px; font-size: 10px; }
+.wt-tab .disc .ic { width: 11px; height: 11px; }
+.wt-meta { font: 400 11px var(--font-mono); color: var(--text-muted); }
+.wt-dirty { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); }
+.wt-conflict { color: var(--danger); display: inline-flex; }
+.wt-conflict .ic { width: 12px; height: 12px; }
+.wt-q { font: 600 10.5px var(--font-mono); color: var(--text-dim); padding: 1px 5px; border-radius: 999px; background: var(--surface-sunken); box-shadow: inset 0 0 0 1px var(--border); }
+.wt-detail { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; padding: 6px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); }
+.wt-path { font: 400 11.5px var(--font-mono); color: var(--text); cursor: copy; min-width: 0; overflow-wrap: anywhere; }
+.wt-branch { display: inline-flex; align-items: center; gap: 4px; font: 400 11.5px var(--font-mono); color: var(--text-dim); }
+.wt-last .timer, .wt-detail .num { font-size: 11px; color: var(--text-muted); }
+.wt-detail .spacer { flex: 1 1 0; }
+.wt-detail select { height: 26px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-sunken); padding: 0 8px; font: 600 11.5px var(--font-sans); color: var(--text-dim); }
+.wt-detail a.btn { text-decoration: none; }
+.merge-host { display: contents; }
+.mq-list { list-style: none; margin: 0; padding: 4px; display: flex; flex-direction: column; gap: 2px; }
+.mq-row {
+  --ac: var(--slot-gray); --aci: #fff;
+  display: grid; grid-template-columns: 16px 18px auto minmax(0, 1fr) auto auto 22px; align-items: center; gap: 6px;
+  padding: 4px 4px 4px 6px; border-radius: 6px; cursor: pointer; min-width: 0;
+}
+.mq-row:hover, .mq-row.focus { background: var(--surface-raised); }
+.mq-pos { font: 600 11px var(--font-mono); color: var(--text-dim); text-align: center; display: inline-flex; justify-content: center; }
+.mq-pos .ic { width: 12px; height: 12px; color: var(--ok); }
+.mq-row .disc { width: 18px; height: 18px; font-size: 10px; }
+.mq-name { font: 600 12px var(--font-sans); color: var(--text); white-space: nowrap; }
+.mq-verdict { font: 600 11.5px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); }
+.lvl-ok .mq-verdict, .mq-verdict.lvl-ok { color: color-mix(in srgb, var(--ok) 70%, var(--text)); }
+.lvl-warn .mq-verdict, .mq-verdict.lvl-warn { color: color-mix(in srgb, var(--warn) 70%, var(--text)); }
+.lvl-danger .mq-verdict, .mq-verdict.lvl-danger { color: color-mix(in srgb, var(--danger) 70%, var(--text)); }
+.lvl-done { opacity: 0.6; }
+.mq-ab { font-size: 11px; color: var(--text-muted); }
+.mq-row .timer { font-size: 11px; color: var(--text-muted); }
+.mq-row .icon-btn { width: 22px; height: 22px; }
+.mq-row .icon-btn .ic { width: 12px; height: 12px; }
+.win:not(.compact) .tray:empty { min-height: 26px; }

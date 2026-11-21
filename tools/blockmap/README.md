@@ -42,9 +42,8 @@ What it doesn't do, on purpose: start, stop or steer agents beyond messages, sho
 worktrees and pull requests. That's the orchestrator's job.
 
 What it doesn't do yet, and would be worth it:
-- **Git awareness.** It counts the lines each edit adds and removes, but not what's committed, pushed, merged or
-  conflicting with the main branch, which Conductor and Vibe Kanban show per task.
-- **Hooks for other agents.** Claude Code joins on its own; Codex, Cursor or Aider agents have to call `bm` themselves.
+- **Hooks for other harnesses.** Any agent shows up through git and can use the CLI, but only Claude Code reports
+  questions, permission prompts and turn ends without being told to.
 - **Hooks against a remote board.** A cloud session can use the CLI over `BLOCKMAP_URL`, but the hooks still need the
   board on disk.
 - **A board that keeps itself current.** `bm init` drafts one from the folders, and unclaimed files show up on the map,
@@ -70,7 +69,7 @@ What it doesn't do yet, and would be worth it:
 - **Attention:** the tab title counts the agents waiting on you, the bell turns on desktop notifications for them and
   for conflicts, and coming back to the tab after a few minutes shows one line of what changed, with a replay from
   when you left.
-- **Lenses:** Work; Heat (recent edits, with a cap in the color of whoever edited last and dots for who passed through); Issues (open items, tasks included); History (who held each block last).
+- **Lenses:** Work; Heat (recent edits, with a cap in the color of whoever edited last and dots for who passed through); Issues (open items, tasks included); Branches (which worktrees changed each block).
 - **Search** finds blocks by name; a file path finds the block that owns it.
 - **Alerts:** an agent editing inside a block someone else holds (or a frozen one), a holder that has gone quiet,
   failing tests, and questions waiting for you.
@@ -123,11 +122,56 @@ bm check                                              # changed files outside yo
 Identity: `--as <id>`, else `BLOCKMAP_AGENT`, else the Claude Code session (`cc-` + the session id's first 8
 characters), else the person at the shell, who is the human. Any command joins an agent that hasn't joined.
 
+## Worktrees and the merge queue
+
+Blockmap reads every worktree of the repository from git every few seconds (`core/worktrees.js`): its branch, how
+far it is ahead of and behind the base branch (`"base"` in `board.json`, else the remote's default, else main),
+the files and lines it changed since it branched with uncommitted work included, and the files that would conflict
+if it merged now, from a dry-run `git merge-tree` that touches nothing.
+
+- **Quick swap.** The strip over the map lists every worktree with its agent, commits ahead and behind, uncommitted
+  work, conflicts and queue position. A tab focuses the map on the blocks that worktree changed and gives its path,
+  a copied `cd`, and an Open link for VS Code, Cursor or Zed. In a terminal, `cd "$(tools/blockmap/bm wt path agent-2)"`;
+  `bm wt` lists them all.
+- **The merge queue.** `bm ready` in a worktree (or Queue merge on its tab) puts its branch in line at its current
+  commit. Each entry shows the worst of: conflicts with the base, failing tests, nothing to merge, uncommitted work,
+  new commits since it was marked ready, commits behind the base, files it shares with a branch ahead of it in the
+  queue, and no test run. The arrow moves an entry up; the first one copies its merge command. Blockmap never merges:
+  the lead does, and the board marks the entry merged when the commit shows up in the base. `bm merge` prints the
+  same queue.
+- **What is being changed where.** A tile changed in two or more worktrees carries a branch chip (red when one of
+  them already conflicts with the base in that block): those branches will meet at the merge. The Branches lens tints
+  each block by the worktree that changed it, gold where several did.
+
+## Any agent, any model
+
+Nothing in Blockmap depends on which agent or model does the work. There are three levels of taking part:
+
+1. **Nothing at all.** An agent that only edits files in its own worktree still shows up: the server sees the edits in
+   git and records them for a stand-in agent named after the worktree.
+2. **The CLI.** Any agent that can run a command can reserve, report, ask and queue. Inside a worktree it is known
+   by that worktree without configuration; `BLOCKMAP_KIND` names its harness on the board. Paste this into the
+   instructions file your agents read (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, and so on):
+
+   ```
+   This repository has a Blockmap board (tools/blockmap/bm). Before editing in an area, reserve its block:
+   `tools/blockmap/bm which <file>` names the block, `tools/blockmap/bm reserve <block> --for "<what>"` takes it, and a
+   refusal says who holds it. Say what you're doing with `bm doing "<what>"`, record test runs with
+   `bm test pass|fail "<what ran>"`, ask the human with `bm ask "<question>"` and read answers with `bm inbox`. When
+   your branch is ready, commit and run `bm ready`; release your blocks with `bm release --landed`.
+   ```
+3. **Hooks.** A harness with lifecycle hooks can do all of that without the agent's attention.
+   `hooks/claude-code.js` is the one written so far; another harness needs the same mapping: session start to
+   `agent.join`, a prompt to `agent.status working`, an edit about to happen to a reservation check, an edit done to
+   `touch`, a permission prompt to `agent.status waiting`, a turn's end to `agent.status review`, and the session's end
+   to `agent.leave`.
+
 ## The model
 
 The truth is an append-only log, `.blockmap/live/events.jsonl` (ignored by git), one JSON event per line:
 `agent.join`, `agent.status`, `agent.leave`, `block.reserve`, `block.release`, `block.queue`, `block.freeze`,
-`item.add`, `item.update`, `touch`, `test`, `note`, `msg`, `msg.read`. State is never stored: it is the fold of the log
+`item.add`, `item.update`, `touch`, `test`, `note`, `msg`, `msg.read`, `merge.ready`, `merge.unready`, `merge.order`,
+`merge.landed`. Worktree state is not in the log: it is read from git, live. State is never stored: it is the fold of the log
 over the board (`core/model.js`, the same code in Node and the browser), which is what lets the timeline replay any
 moment, and lets a renamed block or moved path re-map old activity.
 

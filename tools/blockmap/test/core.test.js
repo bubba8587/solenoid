@@ -265,3 +265,73 @@ test('edits carry the lines they added and removed', () => {
   assert.equal(st.blocks.pass.added, 12);
   assert.equal(st.blocks.engine.removed, 0);
 });
+
+test('worktrees are read from git: conflicts, uncommitted work, identity', async () => {
+  const { worktreeSnapshot } = await import('../core/worktrees.js');
+  const { whoAmI } = await import('../core/identity.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'blockmap-wt-'));
+  const repo = path.join(dir, 'repo');
+  const sh = (cwd, ...args) => execFileSync('git', args, { cwd, stdio: 'ignore' });
+  try {
+    fs.mkdirSync(repo);
+    sh(repo, 'init', '-q', '-b', 'main');
+    sh(repo, 'config', 'user.email', 't@t');
+    sh(repo, 'config', 'user.name', 't');
+    fs.writeFileSync(path.join(repo, 'a.txt'), 'one\ntwo\nthree\n');
+    sh(repo, 'add', '.');
+    sh(repo, 'commit', '-qm', 'init');
+    sh(repo, 'worktree', 'add', '-q', '-b', 'agent-a', path.join(dir, 'agent-a'));
+    fs.writeFileSync(path.join(dir, 'agent-a', 'a.txt'), 'one\nTWO A\nthree\n');
+    sh(path.join(dir, 'agent-a'), 'commit', '-qam', 'a');
+    fs.writeFileSync(path.join(dir, 'agent-a', 'new.txt'), 'x\n');
+    fs.writeFileSync(path.join(repo, 'a.txt'), 'one\nTWO MAIN\nthree\n');
+    sh(repo, 'commit', '-qam', 'main');
+    const snap = await worktreeSnapshot(repo);
+    assert.equal(snap.base, 'main');
+    const a = snap.list.find((w) => w.name === 'agent-a');
+    assert.deepEqual([a.ahead, a.behind, a.dirty], [1, 1, 1]);
+    assert.deepEqual(a.files.sort(), ['a.txt', 'new.txt']);
+    assert.deepEqual(a.conflicts, ['a.txt']);
+    const prev = { ...process.env };
+    delete process.env.BLOCKMAP_AGENT;
+    delete process.env.CLAUDE_CODE_SESSION_ID;
+    delete process.env.CLAUDE_SESSION_ID;
+    try {
+      assert.equal(whoAmI(undefined, path.join(dir, 'agent-a')), 'wt-agent-a');
+      assert.equal(whoAmI(undefined, repo), HUMAN);
+    } finally {
+      Object.assign(process.env, prev);
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the merge queue checks conflicts, overlaps with branches ahead, and moves since ready', async () => {
+  const { mergeChecks } = await import('../core/merges.js');
+  const st = createState(BOARD);
+  run(st, 'agent.join', 'a1', { agent: { id: 'a1', name: 'Heron', worktree: '/w/one' } }, 0);
+  run(st, 'agent.join', 'a2', { agent: { id: 'a2', name: 'Basalt', worktree: '/w/two' } }, 0);
+  run(st, 'test', 'a1', { ok: true, summary: 'ok' }, 1);
+  run(st, 'test', 'a2', { ok: true, summary: 'ok' }, 1);
+  run(st, 'merge.ready', 'a1', { worktree: 'one', branch: 'one', commit: 'aaa' }, 2);
+  run(st, 'merge.ready', 'a2', { worktree: 'two', branch: 'two', commit: 'bbb' }, 3);
+  const snap = {
+    base: 'main',
+    list: [
+      { name: 'one', path: '/w/one', head: 'aaa111', ahead: 2, behind: 0, dirty: 0, files: ['src/engine/pass.ts'], conflicts: [] },
+      { name: 'two', path: '/w/two', head: 'ccc', ahead: 1, behind: 3, dirty: 0, files: ['src/engine/pass.ts', 'README.md'], conflicts: [] },
+    ],
+  };
+  const [first, second] = mergeChecks(st, snap, at(4));
+  assert.equal(first.verdict, 'Clean');
+  assert.equal(second.level, 'warn');
+  assert.deepEqual(second.checks.map((c) => c.text).sort(), ['3 behind main', 'Moved since ready', 'Overlaps one']);
+  snap.list[1].conflicts = ['README.md'];
+  assert.equal(mergeChecks(st, snap, at(4))[1].verdict, 'Conflicts with main');
+  run(st, 'merge.order', HUMAN, { worktree: 'two', pos: 0.5 }, 5);
+  assert.equal(mergeChecks(st, snap, at(5))[0].entry.worktree, 'two');
+  apply(st, makeEvent(st, 'merge.landed', 'system', { worktree: 'two' }, at(6)));
+  assert.equal(st.merges.two.status, 'landed');
+  assert.equal(st.agents.system, undefined);
+});
