@@ -14,7 +14,7 @@ const RANGES = [
 const STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 180, 360, 720].map((m) => m * 60_000);
 const LABEL = 92;
 const AXIS = 20;
-const LANE = 19;
+const ROW = 13;
 const PAD_R = 14;
 
 export function createTimeline(ctx, root) {
@@ -123,9 +123,9 @@ export function createTimeline(ctx, root) {
     const events = ctx.events;
     const liveNow = ctx.liveNow();
     const W = Math.max(640, Math.round(body.clientWidth || 900));
-    const first = events.length ? events[0].ts : liveNow - 3600_000;
+    const firstTs = events.length ? events[0].ts : liveNow - 3600_000;
     const t1 = liveNow;
-    const t0 = Math.max(t1 - range, first - Math.max(20_000, (t1 - first) * 0.06));
+    const t0 = Math.max(t1 - range, firstTs - Math.max(20_000, (t1 - firstTs) * 0.06));
     const viewTs = ctx.replayTs ?? t1;
     setText(time, clock(viewTs));
     time.hidden = !ctx.replayTs;
@@ -145,60 +145,75 @@ export function createTimeline(ctx, root) {
       for (const hst of b.history) if (hst.to >= t0) holds.push({ block: b.id, agent: hst.agent, from: hst.from, to: hst.to });
       if (b.holder) holds.push({ block: b.id, agent: b.holder, from: b.since, to: null });
     }
-    const active = new Map();
+    const first = new Map();
     for (const e of events) {
       if (e.ts < t0) continue;
       const who = typeof e.agent === 'string' ? e.agent : e.by;
-      if (!who || who === HUMAN) continue;
-      if (!active.has(who)) active.set(who, e.ts);
+      if (who && who !== HUMAN && !first.has(who)) first.set(who, e.ts);
     }
-    for (const hd of holds) if (hd.agent !== HUMAN && !active.has(hd.agent)) active.set(hd.agent, hd.from);
-    const lanes = [...active.keys()].filter((id) => st.agents[id]).sort((a, b) => active.get(a) - active.get(b));
-    lanes.push(HUMAN);
-    const laneY = new Map(lanes.map((id, i) => [id, AXIS + i * LANE]));
-    const H = AXIS + lanes.length * LANE + 6;
+    for (const hd of holds) if (!first.has(hd.agent)) first.set(hd.agent, hd.from);
+    const lanes = [...first.keys()].filter((id) => st.agents[id] && id !== HUMAN).sort((a, b) => first.get(a) - first.get(b));
+    if (first.has(HUMAN)) lanes.push(HUMAN);
+
+    // Holds that overlap in one lane stack in sub-rows, so no label prints over another.
+    const rowsOf = new Map();
+    for (const id of lanes) {
+      const mine = holds.filter((hd) => hd.agent === id).sort((a, b) => a.from - b.from);
+      const ends = [];
+      for (const hd of mine) {
+        let r = ends.findIndex((end) => end <= hd.from);
+        if (r < 0) r = ends.length;
+        ends[r] = hd.to ?? Infinity;
+        hd.row = r;
+      }
+      rowsOf.set(id, Math.max(1, ends.length));
+    }
+    const laneY = new Map();
+    let y = AXIS;
+    for (const id of lanes) {
+      laneY.set(id, y);
+      y += 6 + rowsOf.get(id) * ROW;
+    }
+    const H = y + 4;
     geom = { W, H, t0, t1 };
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.style.height = `${H}px`;
 
     const parts = [];
     lanes.forEach((id, i) => {
-      const y = laneY.get(id);
-      if (i % 2 === 0) parts.push(`<rect class="lane" x="0" y="${y}" width="${W}" height="${LANE}"/>`);
-      const a = st.agents[id];
-      const color = colorOf(st, id);
-      parts.push(`<circle cx="10" cy="${y + LANE / 2}" r="4" fill="${color}"/><text class="lane-label" x="20" y="${y + LANE / 2 + 4}">${esc(a.name.slice(0, 11))}</text>`);
+      const ly = laneY.get(id);
+      const lh = 6 + rowsOf.get(id) * ROW;
+      if (i % 2 === 0) parts.push(`<rect class="lane" x="0" y="${ly}" width="${W}" height="${lh}"/>`);
+      parts.push(`<circle cx="10" cy="${ly + 3 + ROW / 2}" r="4" fill="${colorOf(st, id)}"/><text class="lane-label" x="20" y="${ly + 3 + ROW / 2 + 4}">${esc(st.agents[id].name.slice(0, 11))}</text>`);
     });
     const span = t1 - t0;
-    const step = STEPS.find((s) => span / s <= 8) || STEPS[STEPS.length - 1];
+    const step = STEPS.find((sv) => span / sv <= 8) || STEPS[STEPS.length - 1];
     for (let t = Math.ceil(t0 / step) * step; t <= t1; t += step) {
       const tx = x(t);
       const label = tx < W - PAD_R - 34 ? `<text class="tick-label" x="${tx + 3}" y="${AXIS - 7}">${clock(t)}</text>` : '';
       parts.push(`<line class="tick" x1="${tx}" x2="${tx}" y1="${AXIS - 4}" y2="${H}"/>${label}`);
     }
     for (const hd of holds) {
-      const y = laneY.get(hd.agent);
-      if (y === undefined) continue;
-      const color = colorOf(st, hd.agent);
-      const ink = inkOf(st, hd.agent);
+      const ly = laneY.get(hd.agent);
+      if (ly === undefined) continue;
+      const by = ly + 4 + hd.row * ROW;
       const x0 = Math.max(LABEL, x(hd.from));
-      const x1 = x(hd.to ?? t1);
-      const w = Math.max(2, x1 - x0);
+      const w = Math.max(2, x(hd.to ?? t1) - x0);
       const name = blockMeta(st, hd.block)?.name || hd.block;
-      parts.push(`<g class="hold"><rect x="${x0}" y="${y + 3}" width="${w}" height="${LANE - 8}" rx="2" fill="${color}" opacity="${hd.to ? 0.55 : 0.95}"><title>${esc(name)}: ${clock(hd.from)} to ${hd.to ? clock(hd.to) : 'now'}</title></rect>${w > 46 ? `<text x="${x0 + 4}" y="${y + LANE / 2 + 2.5}" fill="${ink}">${esc(fit(name, w))}</text>` : ''}</g>`);
+      // A finished hold is a tint of its agent's color with ordinary ink; the current one is the color itself.
+      const fill = hd.to ? `color-mix(in srgb, ${colorOf(st, hd.agent)} 32%, var(--surface))` : colorOf(st, hd.agent);
+      const ink = hd.to ? 'var(--text)' : inkOf(st, hd.agent);
+      parts.push(`<g class="hold"><rect x="${x0}" y="${by}" width="${w}" height="${ROW - 2}" rx="2" style="fill:${fill}"><title>${esc(name)}: ${clock(hd.from)} to ${hd.to ? clock(hd.to) : 'now'}</title></rect>${w > 40 ? `<text x="${x0 + 4}" y="${by + ROW / 2 + 2}" style="fill:${ink}">${esc(fit(name, w))}</text>` : ''}</g>`);
     }
+    // Only what asks for attention gets a mark: a failing test (red) and a question for the human (gold), above the bars.
     for (const e of events) {
       if (e.ts < t0) continue;
-      const who = typeof e.agent === 'string' ? e.agent : e.by || HUMAN;
-      const y = laneY.get(who);
-      if (y === undefined) continue;
+      const who = typeof e.agent === 'string' ? e.agent : e.by;
+      const ly = laneY.get(who);
+      if (ly === undefined) continue;
       const ex = x(e.ts);
-      const color = colorOf(st, who);
-      if (e.type === 'touch' && e.op === 'edit') parts.push(`<line class="edit" x1="${ex}" x2="${ex}" y1="${y + LANE - 6}" y2="${y + LANE - 1}" stroke="${color}"/>`);
-      else if (e.type === 'test') parts.push(`<circle class="${e.ok ? 'mk-ok' : 'mk-fail'}" cx="${ex}" cy="${y + 4}" r="2.6"><title>Tests ${e.ok ? 'pass' : 'fail'}${e.summary ? `: ${esc(e.summary)}` : ''}</title></circle>`);
-      else if (e.type === 'item.add' && e.item?.kind === 'question') parts.push(`<path class="mk-ask" d="M${ex} ${y + 1} l4 4 -4 4 -4 -4Z"><title>${esc(e.item.title)}</title></path>`);
-      else if (e.type === 'item.add' && e.item?.kind === 'bug') parts.push(`<path class="mk-bug" d="M${ex - 3.2} ${y + 7} h6.4 l-3.2 -5.5Z"><title>Bug: ${esc(e.item.title)}</title></path>`);
-      else if (who === HUMAN && ['block.queue', 'block.freeze', 'msg', 'item.update', 'block.reserve', 'block.release'].includes(e.type)) parts.push(`<rect class="mk-human" x="${ex - 2.5}" y="${y + LANE / 2 - 2.5}" width="5" height="5" rx="1"><title>${esc(e.type)}</title></rect>`);
+      if (e.type === 'test' && !e.ok) parts.push(`<circle class="mk-fail" cx="${ex}" cy="${ly + 2}" r="2.4"><title>${esc(e.summary || 'Tests fail')}</title></circle>`);
+      else if (e.type === 'item.add' && e.item?.kind === 'question') parts.push(`<path class="mk-ask" d="M${ex} ${ly - 1} l3 3 -3 3 -3 -3Z"><title>${esc(e.item.title)}</title></path>`);
     }
     parts.push(`<line class="now-line" x1="${x(t1)}" x2="${x(t1)}" y1="${AXIS - 4}" y2="${H}"/>`);
     parts.push(`<rect class="past" id="tl-future" x="0" y="${AXIS - 4}" width="0" height="${H}"/>`);

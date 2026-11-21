@@ -11,8 +11,9 @@ export const SCHEMA = 1;
 export const HUMAN = 'human';
 export const UNMAPPED = '_unmapped';
 // Agents are colored by palette slot, not by hex, so a palette change recolors them. Gold, green and vermilion
-// stay out: they mean needs-you, ok and danger. Gray is the human.
-export const PALETTE = ['sky', 'pink', 'violet', 'teal', 'amber', 'lime', 'blue', 'purple'];
+// stay out: they mean needs-you, ok and danger. Gray is the human. The five cool hues go first; pink, amber and
+// lime sit near the status colors and are used only past five agents.
+export const PALETTE = ['sky', 'violet', 'teal', 'purple', 'blue', 'pink', 'amber', 'lime'];
 export const AGENT_STATUS = ['working', 'idle', 'blocked', 'waiting', 'done'];
 export const ITEM_KINDS = ['task', 'bug', 'question', 'decision', 'note'];
 export const ITEM_STATUS = ['open', 'doing', 'blocked', 'done', 'wontfix'];
@@ -106,13 +107,9 @@ function ensureAgent(state, id, ts, info = {}) {
 
 function pickColor(state, id) {
   if (id === HUMAN) return '';
+  // The first slot no present agent wears, in PALETTE's order, so the first agents get the cool hues.
   const used = new Set(Object.values(state.agents).filter((a) => !a.leftAt).map((a) => a.color));
-  const start = hash(id) % PALETTE.length;
-  for (let i = 0; i < PALETTE.length; i++) {
-    const c = PALETTE[(start + i) % PALETTE.length];
-    if (!used.has(c)) return c;
-  }
-  return PALETTE[start];
+  return PALETTE.find((c) => !used.has(c)) || PALETTE[hash(id) % PALETTE.length];
 }
 
 function setStatus(a, status, ts) {
@@ -459,8 +456,8 @@ export function alerts(state, now) {
       agent: t.agent,
       text:
         t.kind === 'frozen'
-          ? `${agentName(state, t.agent)} edited ${t.file} in ${name}, which is frozen`
-          : `${agentName(state, t.agent)} edited ${t.file} in ${name}, held by ${agentName(state, t.holder)}`,
+          ? `${agentName(state, t.agent)} edited ${t.file.split('/').pop()} in frozen ${name}`
+          : `${agentName(state, t.agent)} edited ${t.file.split('/').pop()} in ${agentName(state, t.holder)}'s ${name}`,
     });
   }
   for (const b of Object.values(state.blocks)) {
@@ -472,17 +469,17 @@ export function alerts(state, now) {
         ts: a.lastSeen,
         block: b.id,
         agent: b.holder,
-        text: `${a.name} holds ${blockMeta(state, b.id)?.name || b.id} but hasn't been seen for ${ago(now - a.lastSeen)}`,
+        text: `${a.name} went quiet holding ${blockMeta(state, b.id)?.name || b.id}`,
       });
     }
     if (b.test && !b.test.ok && now - b.test.ts < 6 * 3600_000) {
       out.push({
         kind: 'failing',
-        severity: 'medium',
+        severity: 'high',
         ts: b.test.ts,
         block: b.id,
         agent: b.test.agent,
-        text: `Tests failing in ${blockMeta(state, b.id)?.name || b.id}${b.test.summary ? `: ${b.test.summary}` : ''}`,
+        text: `${blockMeta(state, b.id)?.name || b.id}: ${b.test.summary || 'tests fail'}`,
       });
     }
   }

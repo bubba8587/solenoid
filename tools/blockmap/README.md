@@ -20,21 +20,21 @@ A standalone copy that needs no server (it runs the simulated crew): `node tools
 
 ## What you see
 
-- **The map.** Districts of tiles on a dot-grid canvas, each tile sized by how much code its block covers, scaled to
-  fit the window. A tile shows its open bugs, tasks and items waiting on you, the last test run, a lock when frozen, a
-  warning when someone edited inside it without holding it, small dots for agents who passed through, and a cap in the
-  color of whoever edited it last. A held block leaves a hatched socket in the holder's color with their initial and
-  how long they've held it.
+- **The map.** Districts of tiles on a dot-grid canvas, wide tiles for the blocks with the most code, scaled to fit
+  the window (down to 85%; past that it scrolls). In the Work lens a tile shows only what matters now: a conflict (someone
+  edited inside it without holding it), a failing test, what waits on you (a gold chip), open bugs and a lock when
+  frozen. A held block leaves a hatched socket in the holder's color with their initial and how long they've held it.
+  The top bar's "need you" and "bugs" counts filter the map to the blocks they count.
 - **The windows.** One per agent, built like a Solenoid node card: a header in the agent's color with its state and a
-  live timer (a stopwatch while it works, an age once it goes quiet, needs you or goes stale), then its task, what it's
-  doing this second, the tray of blocks it holds, an hour of edits as a sparkline, its last three actions, its open
-  question with an answer box, and a message box. **Up next** is your queue; **your own window** holds the blocks you
-  keep for yourself.
-- **Tethers** run from each socket to the tile in its holder's window.
+  live timer (a stopwatch while it works, an age once it goes quiet, needs you or goes stale), its task, what it's
+  doing this second, its open question with an answer box, and the tray of blocks it holds. The chevron opens its
+  recent actions and a message box. **Up next** is your queue; **your own window** holds the blocks you keep for
+  yourself. Windows that need you sort to the top.
+- **Tethers** run faintly from each socket to its holder's window; hovering a window or a socket brings that agent's out.
 - **The timeline** has a lane per agent: which blocks it held when, edits as ticks, tests, bugs and questions, and
   your own actions on the bottom lane. Drag across it, or press play (quiet stretches are skipped), to replay the board.
   It folds away; short screens start with it folded.
-- **Lenses:** Work, Heat (recent edits), Issues (open items), History (who held each block last).
+- **Lenses:** Work; Heat (recent edits, with a cap in the color of whoever edited last and dots for who passed through); Issues (open items, tasks included); History (who held each block last).
 - **Search** finds blocks by name; a file path finds the block that owns it.
 - **Alerts:** an agent editing inside a block someone else holds (or a frozen one), a holder that has gone quiet,
   failing tests, and questions waiting for you.

@@ -34,11 +34,11 @@ export function createSide(ctx, root) {
     if (wins.has(id)) return wins.get(id);
     const name = h('div', { class: 'win-name' });
     const state = h('span', { class: 'state' });
+    const more = h('button', { class: 'win-more', type: 'button', 'aria-expanded': 'false', 'aria-label': 'More', html: icon('chev') });
     const task = h('div', { class: 'win-task' });
     const doing = h('div', { class: 'win-doing' });
     const ask = h('div', { class: 'ask', hidden: true });
     const tray = h('div', { class: 'tray', 'data-drop': `agent:${id}` });
-    const spark = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     const feed = h('ul', { class: 'feed' });
     const input = h('input', { class: 'field', id: `msg-${id}`, autocomplete: 'off', 'aria-label': 'Message' });
     const unread = h('span', { class: 'unread', hidden: true });
@@ -51,13 +51,22 @@ export function createSide(ctx, root) {
         if (ok) input.value = '';
       });
     });
+    // The log and the message box sit behind the header's chevron, so every agent fits on screen.
+    const details = h('div', { class: 'win-details', hidden: true }, feed, form);
     const el = h(
       'section',
       { class: 'win', 'data-drop': `agent:${id}`, 'data-win': id },
-      h('div', { class: 'win-head' }, name, state),
-      h('div', { class: 'win-body' }, task, doing, ask, tray, spark, feed, form),
+      h('div', { class: 'win-head' }, name, state, more),
+      h('div', { class: 'win-body' }, task, doing, ask, tray, details),
     );
-    const w = { el, name, state, task, doing, ask, tray, spark, feed, input, unread, askId: null };
+    const w = { el, name, state, more, task, doing, ask, tray, details, feed, input, unread, askId: null, open: false };
+    more.addEventListener('click', () => {
+      w.open = !w.open;
+      details.hidden = !w.open;
+      more.setAttribute('aria-expanded', String(w.open));
+      el.classList.toggle('open', w.open);
+      update();
+    });
     wins.set(id, w);
     return w;
   }
@@ -119,12 +128,15 @@ export function createSide(ctx, root) {
       : p === 'quiet' ? timer(since, { warn: 10 * MIN }, now)
       : p === 'stale' ? timer(since, { over: 2 * 60 * MIN }, now)
       : timer(since, {}, now);
-    setHtml(w.state, `${WORD[p] || p} ${t}`);
+    setHtml(w.state, p === 'working' ? t : `${WORD[p] || p} ${t}`);
+    w.state.title = WORD[p] || p;
 
     setText(w.task, a.task);
+    w.task.title = a.task;
     w.task.hidden = !a.task;
     const doing = a.doing || (a.lastRun && now - a.lastRun.ts < 10 * MIN ? a.lastRun.cmd : '');
-    setText(w.doing, doing);
+    setText(w.doing, doing.replace(/\S*\/(\S+)/g, '$1'));
+    w.doing.title = doing;
     w.doing.hidden = !doing || p === 'gone';
 
     const qItem = openQuestions(st, a.id)[0];
@@ -141,46 +153,21 @@ export function createSide(ctx, root) {
         w.ask.append(h('div', { class: 'q' }, h('span', {}, qItem.title), h('span', { class: 'qt' })), form);
       }
       setHtml(w.ask.querySelector('.qt'), timer(qItem.createdAt, { warn: 5 * MIN, over: 15 * MIN }, now));
+      for (const el of w.ask.querySelectorAll('input,button')) el.disabled = !!ctx.replayTs;
       w.ask.hidden = false;
     } else {
       w.ask.hidden = true;
       w.askId = null;
     }
 
-    paintSpark(w.spark, ctx.eventsOf(a.id), now);
-    const lines = feedLines(st, ctx.eventsOf(a.id), now, 3);
-    setHtml(w.feed, lines.map((l) => `<li class="k-${l.k}"><time>${clock(l.ts)}</time>${icon(l.icon)}<span class="t" title="${esc(l.text)}">${esc(l.text)}</span></li>`).join(''));
+    if (w.open) {
+      const lines = feedLines(st, ctx.eventsOf(a.id), now, 5);
+      setHtml(w.feed, lines.map((l) => `<li class="k-${l.k}"><time>${clock(l.ts)}</time>${icon(l.icon)}<span class="t" title="${esc(l.text)}">${esc(l.text)}</span></li>`).join(''));
+    }
     w.unread.hidden = !a.inbox.length;
-    setHtml(w.unread, a.inbox.length ? `${icon('mail')}${a.inbox.length}` : '');
-    w.unread.title = a.inbox.length ? `${a.inbox.length} unread` : '';
+    setText(w.unread, a.inbox.length ? `${a.inbox.length} unread` : '');
     w.input.placeholder = `Message ${a.name}`;
-    w.input.disabled = !!a.leftAt;
-  }
-
-  function paintSpark(svg, events, now) {
-    const buckets = new Array(12).fill(0);
-    for (let i = events.length - 1; i >= 0; i--) {
-      const e = events[i];
-      if (e.ts > now) continue;
-      const age = now - e.ts;
-      if (age > 60 * MIN) break;
-      if (e.type === 'touch' && e.op !== 'run') buckets[11 - Math.floor(age / (5 * MIN))]++;
-    }
-    const max = Math.max(3, ...buckets);
-    const W = 160;
-    const H = 20;
-    const pts = buckets.map((v, i) => [(i / 11) * (W - 4) + 2, H - 2 - (v / max) * (H - 6)]);
-    const line = pts.map((pt, i) => `${i ? 'L' : 'M'}${pt[0].toFixed(1)} ${pt[1].toFixed(1)}`).join(' ');
-    const area = `${line} L${pts[11][0].toFixed(1)} ${H - 2} L${pts[0][0].toFixed(1)} ${H - 2} Z`;
-    const html = `<path class="area" d="${area}"/><path class="ln" d="${line}"/><circle class="end" cx="${pts[11][0]}" cy="${pts[11][1]}" r="2.2"/>`;
-    if (svg.__html !== html) {
-      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-      svg.setAttribute('class', 'spark');
-      svg.setAttribute('preserveAspectRatio', 'none');
-      svg.setAttribute('aria-label', 'Edits in the last hour');
-      svg.innerHTML = html;
-      svg.__html = html;
-    }
+    w.input.disabled = !!a.leftAt || !!ctx.replayTs;
   }
 
   return {

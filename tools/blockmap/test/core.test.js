@@ -99,7 +99,7 @@ test('editing inside another agent\'s block raises a trespass alert', () => {
   run(st, 'touch', 'a2', { files: ['src/engine/pass.ts'], op: 'edit' }, 2);
   const al = alerts(st, at(3));
   assert.equal(al[0].kind, 'trespass');
-  assert.match(al[0].text, /Basalt edited src\/engine\/pass.ts in The pass, held by Heron/);
+  assert.match(al[0].text, /Basalt edited pass\.ts in Heron's The pass/);
   assert.equal(st.blocks.pass.touches.length, 1);
 });
 

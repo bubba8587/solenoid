@@ -161,6 +161,7 @@ function render() {
 
 function doRender() {
   raf = 0;
+  document.documentElement.style.setProperty('--top-h', `${Math.round(document.querySelector('.topbar').getBoundingClientRect().bottom)}px`);
   if (!ctx.view) return;
   if (!ctx.replayTs) {
     ctx.view = ctx.live;
@@ -257,20 +258,21 @@ function paintTop() {
     if (it.kind === 'bug') bugs++;
     if (it.kind === 'decision' || it.kind === 'question') need++;
   }
-  const al = ctx.alertList;
+  // Needs-you leads; it and bugs are buttons that filter the map to the blocks they count.
+  const pressed = (f) => `aria-pressed="${ctx.filter === f}"`;
   setHtml(
     $('stats'),
     [
+      `<button type="button" class="stat you" data-filter="you" ${pressed('you')}><b>${need}</b>need you</button>`,
       `<span class="stat"><b>${working}</b>working</span>`,
       `<span class="stat"><b>${held}</b>held</span>`,
-      `<span class="stat bug"><b>${bugs}</b>bugs</span>`,
-      `<span class="stat you"><b>${need}</b>need you</span>`,
-      al.length ? `<span class="stat alert"><b>${al.length}</b>alert${al.length === 1 ? '' : 's'}</span>` : '',
+      `<button type="button" class="stat bug" data-filter="bugs" ${pressed('bugs')}><b>${bugs}</b>bugs</button>`,
     ].join(''),
   );
   const conn = $('conn');
   const mode = ctx.replayTs ? 'replay' : ctx.connState || ctx.mode;
   conn.className = `conn ${mode}`;
+  conn.hidden = mode === 'live';
   setText(conn.lastElementChild, { live: 'Live', demo: 'Demo', replay: 'Replay', offline: 'Reconnecting', connecting: 'Connecting' }[mode] || mode);
 }
 
@@ -279,12 +281,19 @@ function paintAlerts() {
   const now = ctx.viewNow;
   const shown = ctx.alertsOpen ? al : al.slice(0, 1);
   const rows = shown.map((a, i) => {
-    const kind = a.kind === 'question' ? 'question' : a.severity;
+    const kind = a.kind === 'question' || a.kind === 'stale' ? 'warn' : 'high';
     const more = i === 0 && al.length > 1 ? `<button class="more" type="button" data-alert-more>${ctx.alertsOpen ? 'Fewer' : `+${al.length - 1}`}</button>` : '';
     return `<div class="alert ${kind}" role="button" tabindex="0" data-alert-block="${esc(a.block || '')}" data-alert-agent="${esc(a.agent || '')}" data-alert-kind="${a.kind}"><span class="sev"></span><span class="txt" title="${esc(a.text)}">${esc(a.text)}</span>${timer(a.ts, {}, now)}${more}</div>`;
   });
   setHtml($('alerts'), rows.join(''));
 }
+
+$('stats').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-filter]');
+  if (!b) return;
+  ctx.filter = ctx.filter === b.dataset.filter ? null : b.dataset.filter;
+  render();
+});
 
 $('alerts').addEventListener('click', (e) => {
   if (e.target.closest('[data-alert-more]')) {

@@ -5,7 +5,6 @@ import { h, icon, setHtml, toggle, initials, esc, timer } from './dom.js';
 
 export function sizeOf(meta) {
   if (meta?.files === undefined) return 'm';
-  if (meta.files >= 300) return 'l';
   if (meta.files >= 60) return 'm';
   return 's';
 }
@@ -79,8 +78,8 @@ export function createMap(ctx, root) {
     fitKey = '';
   }
 
-  // Scale the map down (not below 70%) until every district fits the space it has, so the whole
-  // repository reads at a glance. Phones scroll instead.
+  // Scale the map down until every district fits the space it has, but never below 85%, where its 11px
+  // text would drop under a legible size; past that the map scrolls. Phones scroll at full size.
   function fit() {
     const wrap = root.parentElement;
     const key = `${wrap.clientWidth}x${wrap.clientHeight}x${tiles.size}`;
@@ -92,12 +91,12 @@ export function createMap(ctx, root) {
       return;
     }
     let z = 1;
-    for (; z > 0.7; z -= 0.03) {
+    for (; z > 0.85; z -= 0.03) {
       root.style.zoom = String(z);
       const r = root.getBoundingClientRect();
       if (r.height <= wrap.clientHeight + 1 && r.width <= wrap.clientWidth + 1) break;
     }
-    zoom = Math.max(0.7, z);
+    zoom = Math.max(0.85, z);
     root.style.zoom = String(zoom);
   }
 
@@ -135,31 +134,35 @@ export function createMap(ctx, root) {
       const [nameEl, badgesEl, feetEl, pulse] = tile.children;
       if (nameEl.textContent !== meta.name) nameEl.textContent = meta.name;
 
-      let badges = '';
-      if (conflicted.has(id)) badges += `<span class="badge conflict" title="Edited by an agent that doesn't hold it">${icon('conflict')}</span>`;
-      if (c.bug) badges += `<span class="badge bug" title="Open bugs">${icon('bug')}${c.bug}</span>`;
-      if (c.task) badges += `<span class="badge" title="Open tasks">${icon('task')}${c.task}</span>`;
-      if (c.decision + c.question) badges += `<span class="badge you" title="Waiting on ${esc(st.agents[HUMAN].name)}">${icon('decision')}${c.decision + c.question}</span>`;
-      if (b.test && now - b.test.ts < 6 * 3600_000) badges += b.test.ok ? `<span class="badge ok" title="Tests pass">${icon('check')}</span>` : `<span class="badge fail" title="${esc(b.test.summary || 'Tests fail')}">${icon('cross')}</span>`;
-      if (b.frozen) badges += `<span class="badge" title="Frozen${b.frozen.note ? `: ${esc(b.frozen.note)}` : ''}">${icon('lock')}</span>`;
+      // Work shows what matters now: conflicts, failing tests, bugs, what needs the human, locks. Issues adds the
+      // task count; Heat adds who passed through. Passing tests and other agents' colors stay out of Work.
+      const lens = ctx.lens;
+      const inTray = !!tile.closest('.tray');
+      const parts = [];
+      if (conflicted.has(id)) parts.push(`<span class="badge conflict" title="Edited by an agent that doesn't hold it">${icon('conflict')}</span>`);
+      if (b.test && !b.test.ok && now - b.test.ts < 6 * 3600_000) parts.push(`<span class="badge fail" title="${esc(b.test.summary || 'Tests fail')}">${icon('cross')}</span>`);
+      if (c.decision + c.question) parts.push(`<span class="badge you" title="Waiting on ${esc(st.agents[HUMAN].name)}">${icon('decision')}${c.decision + c.question}</span>`);
+      if (c.bug) parts.push(`<span class="badge bug" title="Open bugs">${icon('bug')}${c.bug}</span>`);
+      if (lens === 'issues' && c.task) parts.push(`<span class="badge" title="Open tasks">${icon('task')}${c.task}</span>`);
+      if (b.frozen) parts.push(`<span class="badge" title="Frozen${b.frozen.note ? `: ${esc(b.frozen.note)}` : ''}">${icon('lock')}</span>`);
       const watchers = Object.keys(b.watchers);
-      if (watchers.length) badges += `<span class="badge" title="${watchers.map((w) => esc(agentName(st, w))).join(', ')}">${icon('eye')}${watchers.length}</span>`;
-      if (b.holder && tile.closest('.tray')) badges += timer(b.since, { cls: 'badge' }, now);
-      else if (b.queued && !b.holder && tile.closest('.tray')) badges += timer(b.queued.ts, { cls: 'badge' }, now);
-      setHtml(badgesEl, badges);
+      if (watchers.length) parts.push(`<span class="badge" title="${watchers.map((w) => esc(agentName(st, w))).join(', ')}">${icon('eye')}${watchers.length}</span>`);
+      if (inTray && b.holder) parts.push(timer(b.since, { cls: 'badge' }, now));
+      else if (inTray && b.queued) parts.push(timer(b.queued.ts, { cls: 'badge' }, now));
+      setHtml(badgesEl, parts.join(''));
 
-      const feet = footprints(b, now, 45 * 60_000).slice(0, 3);
+      const showWho = lens === 'heat' || lens === 'history';
+      const feet = showWho ? footprints(b, now, 45 * 60_000).slice(0, 3) : [];
       setHtml(feetEl, feet.map((a) => `<i style="--fc:${colorOf(st, a)}" title="${esc(agentName(st, a))}"></i>`).join(''));
-
-      tile.style.setProperty('--tc', toucher ? colorOf(st, toucher) : 'var(--text-muted)');
-      tile.style.setProperty('--ta', toucher ? String(Math.min(1, 0.35 + hv * 0.3).toFixed(2)) : '0');
+      tile.style.setProperty('--tc', toucher && showWho ? colorOf(st, toucher) : 'var(--text-muted)');
+      tile.style.setProperty('--ta', toucher && showWho ? String(Math.min(1, 0.35 + hv * 0.3).toFixed(2)) : '0');
       const last = b.touches[b.touches.length - 1];
-      pulse.hidden = !(toucher && last && now - last.ts < 3 * 60_000);
+      pulse.hidden = !(last && now - last.ts < 3 * 60_000);
       let lv = 0;
       let lc = '';
-      if (ctx.lens === 'heat') lv = Math.min(60, hv * 22);
-      else if (ctx.lens === 'issues') lv = Math.min(50, (c.bug * 3 + c.task + (c.decision + c.question) * 2) * 2.6);
-      else if (ctx.lens === 'history') {
+      if (lens === 'heat') lv = Math.min(60, hv * 22);
+      else if (lens === 'issues') lv = Math.min(50, (c.bug * 3 + c.task + (c.decision + c.question) * 2) * 2.6);
+      else if (lens === 'history') {
         const prev = b.holder || b.history[b.history.length - 1]?.agent;
         if (prev) {
           lc = colorOf(st, prev);
@@ -172,8 +175,9 @@ export function createMap(ctx, root) {
       toggle(tile, 'frozen', !!b.frozen);
       toggle(tile, 'conflict', conflicted.has(id));
       toggle(tile, 'selected', ctx.selected === id);
+      const filtered = ctx.filter === 'you' ? c.decision + c.question > 0 : ctx.filter === 'bugs' ? c.bug > 0 : true;
       const matched = q ? q.matches.has(id) : false;
-      toggle(tile, 'dim', !!q && !matched);
+      toggle(tile, 'dim', (!!q && !matched) || !filtered);
       toggle(tile, 'match', !!q && matched && q.exact);
       tile.title = b.holder ? `${meta.name}, held by ${agentName(st, b.holder)}${b.intent ? `: ${b.intent}` : ''}` : meta.name;
 
@@ -196,12 +200,13 @@ export function createMap(ctx, root) {
       socket.title = `${a?.name || b.holder}${b.intent ? `: ${b.intent}` : ''}`;
       setHtml(who, `<span class="dot">${esc(initials(a?.name))}</span>`);
       setHtml(time, timer(b.since, {}, now));
+      socket.classList.add('held');
     } else {
       socket.style.removeProperty('--sc');
       socket.classList.add('queued');
-      socket.classList.remove('stale');
+      socket.classList.remove('stale', 'held');
       socket.title = b.queued.note || 'Up next';
-      setHtml(who, `<span class="badge">${icon('queue')}</span>`);
+      setHtml(who, '<span class="next">Next</span>');
       setHtml(time, timer(b.queued.ts, {}, now));
     }
   }
