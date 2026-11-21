@@ -1,0 +1,34 @@
+/* The kit's own few rules, beside the ones generated from Solenoid (controls.css): the layer its dialogs sit in,
+   and the Custom editor's sample, drawn with plain classes in place of Solenoid's node card, group and note. */
+
+/* Solenoid's dialog overlay fills its app's box; the layer gives it the viewport on any host page. */
+.sol-kit-layer { position: fixed; inset: 0; z-index: 200; }
+.sol-kit-layer > .solenoid-settings { position: absolute; inset: 0; }
+
+/* A group: a tinted box, its header the color itself with its ink (the Tinted-Box Rule). */
+.sol-kit-group { width: 226px; border-radius: 8px; overflow: hidden; border: 2px solid var(--gc-dark); }
+.sol-kit-group__head { padding: 6px 10px; background: var(--gc); color: var(--gc-ink); font: 600 13px/1.2 var(--font-sans); }
+.sol-kit-group__body { padding: 10px; background: var(--gc-wash); }
+
+/* A card: neutral body, header tinted at --header-tint and capped in its color on three sides. */
+.sol-kit-card { position: relative; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); }
+.sol-kit-card__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 6px 9px;
+  border-radius: 6px 6px 0 0; margin: -1px -1px 0;
+  background: color-mix(in srgb, var(--na) var(--header-tint), var(--surface));
+  border: 1px solid var(--na); border-bottom: 1px solid var(--border);
+}
+:root[data-theme="light"] .sol-kit-card__head { border-bottom-color: var(--na-dark); }
+.sol-kit-card__title { font: 600 12px/1.2 var(--font-sans); color: color-mix(in srgb, var(--na) var(--mix-ink), var(--text)); }
+.sol-kit-card__hint { font: 400 10.5px/1.2 var(--font-sans); color: var(--text-muted); }
+.sol-kit-card__body { position: relative; padding: 10px 9px; }
+.sol-kit-card__value {
+  display: block; padding: 4px 8px; border-radius: 4px; background: var(--surface-sunken); border: 1px solid var(--border);
+  font: 400 13px var(--font-mono); color: var(--text-bright); text-align: right;
+}
+.sol-kit-card__socket { position: absolute; right: -6px; top: 50%; margin-top: -6px; overflow: visible; }
+
+/* A note: tinted all over, with a bar in its color. */
+.sol-kit-note { width: 196px; border-radius: 6px; overflow: hidden; background: var(--nc-wash); border: 1px solid var(--nc); }
+.sol-kit-note__bar { padding: 5px 9px; font: 600 12px/1.2 var(--font-sans); color: var(--text-bright); border-bottom: 1px solid color-mix(in srgb, var(--nc) var(--mix-edge), var(--border)); }
+.sol-kit-note__body { padding: 8px 9px 10px; font: 400 12px/1.45 var(--font-sans); color: var(--text); }

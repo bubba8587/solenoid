@@ -1,0 +1,453 @@
+/* GENERATED from AppToolbar.css, SwatchGrid.css, PaletteEditor.css, Settings.css and mobile.css by tools/solenoid-theme/sync.mjs. Edit the source in Solenoid, then sync. */
+
+/* src/graph/AppToolbar.css */
+.solenoid-apptools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.solenoid-apptools__pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+}
+.solenoid-apptools__pill .solenoid-apptools__btn {
+  background: transparent;
+  border: none;
+}
+.solenoid-apptools__pill .solenoid-apptools__btn:first-of-type { border-radius: 999px 0 0 999px; }
+.solenoid-apptools__pill .solenoid-apptools__btn:last-of-type  { border-radius: 0 999px 999px 0; }
+
+.solenoid-apptools__paint { position: relative; }
+.solenoid-apptools__paint-dot {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--surface);
+  pointer-events: none;
+}
+
+.solenoid-apptools__palette {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.solenoid-apptools__palette-theme {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.solenoid-apptools__palette-theme:active { background: var(--btn-hover); }
+
+.solenoid-apptools__btn {
+  width: 28px;
+  height: 28px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.solenoid-apptools__btn:hover {
+  background: var(--btn-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* src/graph/components/SwatchGrid.css */
+.solenoid-swatchgrid {
+  display: grid;
+  /* Cells sized to the swatch, so a grid item can never stretch into an oval; the gap absorbs the hover scale and selected ring. */
+  grid-template-columns: repeat(6, 16px);
+  justify-items: center;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: var(--shadow-pop);
+}
+.solenoid-swatchgrid__opt {
+  /* Only the interaction box: the SVG inside draws the disc and ring (SwatchGrid.tsx) and sizes the box. */
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.solenoid-swatchgrid__opt:hover { transform: scale(1.12); }
+
+/* src/graph/components/PaletteEditor.css */
+.sol-pal-panel { width: min(560px, 94vw); }
+.sol-pal-panel__body { display: flex; flex-direction: column; gap: 16px; }
+
+.sol-pal-editor__slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 18px;
+}
+.sol-pal-editor__slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.sol-pal-editor__well {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+.sol-pal-editor__well::-webkit-color-swatch-wrapper { padding: 0; }
+.sol-pal-editor__well::-webkit-color-swatch { border: none; border-radius: 3px; }
+.sol-pal-editor__well::-moz-color-swatch { border: none; border-radius: 3px; }
+.sol-pal-editor__slot-label { font-size: 12px; color: var(--text); }
+
+/* More wells than slots, with shorter labels, so they run three across on a wide panel and fold down narrow. */
+.sol-pal-editor__chrome { display: flex; flex-direction: column; gap: 7px; }
+.sol-pal-editor__group-label { font-size: 12px; color: var(--text-dim); }
+.sol-pal-editor__chrome-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 7px 18px;
+}
+
+.sol-pal-editor__templates { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sol-pal-editor__templates-label { font-size: 12px; color: var(--text-dim); }
+.sol-pal-editor__template-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.sol-pal-editor__template-btn {
+  height: 24px;
+  padding: 0 9px;
+  font-size: 11px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+.sol-pal-editor__template-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* The drafted ramp is scoped here as inline custom properties; the border is deliberately the live --border, since it belongs to the modal framing the preview. */
+.sol-pal-sample {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 6px;
+  background-color: var(--canvas-bg);
+  background-image: radial-gradient(circle, var(--canvas-dot) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.sol-pal-editor__preview {
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  padding: 1px;
+}
+.sol-pal-sample__nodeslot { padding: 10px; }
+/* The static sample has no transformed wrapper, so the node is its own positioning context and the membership corner lands on it, not the group body. */
+.sol-pal-sample .solenoid-node { position: relative; }
+.sol-pal-sample .solenoid-node__content { position: relative; }
+/* As its own context, the frame reaches back over the transparent 2px grouped border. */
+.sol-pal-sample .solenoid-node { --frame-outset: 2px; }
+.sol-pal-sample__socket {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  margin-top: -6px;
+  width: 12px;
+  height: 12px;
+  line-height: 0;
+}
+/* A static preview: no drag cursors or hover affordances. */
+.sol-pal-sample .solenoid-group,
+.sol-pal-sample .solenoid-node,
+.sol-pal-sample .solenoid-note { cursor: default; }
+.sol-pal-sample .solenoid-group__header { cursor: default; box-shadow: none; }
+
+.sol-pal-panel__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-subtle);
+}
+.sol-pal-panel__btn {
+  height: 28px;
+  padding: 0 14px;
+  font-size: 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+}
+.sol-pal-panel__btn:hover { border-color: var(--border-strong); }
+.sol-pal-panel__btn--primary {
+  background: color-mix(in srgb, var(--accent) 22%, var(--btn-bg));
+  border-color: var(--accent);
+  color: var(--text-bright);
+}
+.sol-pal-panel__btn--primary:hover { background: color-mix(in srgb, var(--accent) 32%, var(--btn-bg)); }
+
+/* src/graph/Settings.css: the Appearance dialog's rules */
+.solenoid-settings {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  /* Hung from the top, not centered, so a search that shortens the body shrinks it from the bottom and the header never moves. */
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+  padding-top: 10dvh;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.solenoid-settings__panel {
+  /* A fixed column of label-left, control-right rows: it never grows with the window, and keeps a 12px gutter on a phone. */
+  width: min(580px, calc(100vw - 24px));
+  max-height: 80vh;
+  max-height: 80dvh;
+  display: flex;
+  flex-direction: column;
+  /* Clip at the panel, not scroll, so the rounded corner clips the body's scrollbar and the header stays pinned. */
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+}
+
+.solenoid-settings__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.solenoid-settings__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.solenoid-settings__close {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.solenoid-settings__close:hover {
+  background: var(--btn-hover);
+  color: var(--accent);
+}
+
+.solenoid-settings__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 8px 16px 16px;
+  /* Own layer and paint containment, so scrolling the body doesn't re-rasterize the overlay's full-screen backdrop-filter every frame. */
+  transform: translateZ(0);
+  contain: paint;
+}
+
+.solenoid-settings__section {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.solenoid-settings__section:last-child { border-bottom: none; }
+
+.solenoid-settings__section-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.solenoid-settings__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.solenoid-settings__row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.solenoid-settings__row-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.solenoid-settings__row-help {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.solenoid-settings__row--palette { align-items: flex-start; }
+
+.solenoid-settings__palette-control {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.solenoid-settings__palette-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.solenoid-settings__palette-edit {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.solenoid-settings__palette-edit:hover { border-color: var(--accent); color: var(--accent); }
+
+.solenoid-settings__select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.solenoid-settings__select {
+  appearance: none;
+  -webkit-appearance: none;
+  margin-top: 1px;
+  height: 28px;
+  padding: 0 30px 0 10px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.solenoid-settings__select-caret {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-top: 1px; /* match the select's margin-top so the glyph sits centered */
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.solenoid-settings__switch {
+  flex: 0 0 auto;
+  position: relative;
+  width: 38px;
+  height: 22px;
+  margin-top: 1px;
+  padding: 0;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.solenoid-settings__switch--on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.solenoid-settings__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--text-bright);
+  border-radius: 50%;
+  transition: transform 120ms ease;
+}
+
+.solenoid-settings__switch--on .solenoid-settings__knob {
+  transform: translateX(16px);
+  background: var(--accent-ink);
+}
+
+/* src/mobile.css: the toolbar pill on a phone (html.is-mobile, see controls.js markDevice) */
+html.is-mobile {
+  .solenoid-apptools { gap: 2px; margin-left: auto; }
+  .solenoid-apptools__btn { width: 32px; height: 32px; }
+  .solenoid-apptools__palette { top: 40px; }
+  .solenoid-apptools__theme { display: none; }
+  .solenoid-apptools__palette-theme { display: flex; }
+  .solenoid-apptools__pill .solenoid-apptools__paint { border-radius: 999px; }
+  @media (max-width: 380px) {
+    .solenoid-apptools__btn { width: 30px; height: 30px; }
+  }
+}

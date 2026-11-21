@@ -21,7 +21,7 @@ export function createTimeline(ctx, root) {
   let range = 3 * 3600_000;
   let playing = null;
   const time = h('span', { class: 'tl-time', hidden: true });
-  const live = h('button', { class: 'btn', type: 'button', hidden: true }, 'Live');
+  const live = h('button', { class: 'btn sm', type: 'button', hidden: true }, 'Live');
   const play = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Replay', html: icon('play') });
   const seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Time range' });
   for (const [label, ms] of RANGES) {

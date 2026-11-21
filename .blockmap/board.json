@@ -1051,9 +1051,11 @@
       "id": "theme",
       "name": "Theme",
       "district": "shell",
-      "about": "App theme, CSS variables, colormaps and the palette editor.",
+      "about": "App theme, CSS variables, colormaps and the palette editor, and the theme kit generated from them for other apps.",
       "paths": [
         "src/graph/{palette,paletteStore,appTheme,themeVars,nativeAccent,colormaps,categoryColor,schemes}.ts",
+        "tools/solenoid-theme/",
+        "tools/blockmap/ui/theme/",
         "src/graph/components/{PaletteEditor,SwatchGrid,themeColor,boxTint,boxFilter}*",
         "scripts/palette-diagrams.ts",
         "tree/specs/canvas/palettes/",

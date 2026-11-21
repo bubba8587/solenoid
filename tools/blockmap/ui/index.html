@@ -3,11 +3,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="ui/theme/theme.css">
+<link rel="stylesheet" href="ui/theme/controls.css">
+<link rel="stylesheet" href="ui/theme/kit.css">
 <link rel="stylesheet" href="ui/styles.css">
+<script>
+  // The saved light or dark mode before the first paint (the theme kit applies the rest once its module loads).
+  try {
+    const mode = JSON.parse(localStorage.getItem('solenoid.theme') || '{}').mode === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = mode;
+    document.documentElement.style.colorScheme = mode;
+  } catch {}
+</script>
 <style>
-  /* Paints before the stylesheet arrives, so the first frame is never a flash of the wrong theme. */
   body { background: #141414; }
-  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) body { background: #f4f5f7; } }
   :root[data-theme="light"] body { background: #f4f5f7; }
 </style>
 <div class="app" id="app">
@@ -27,11 +36,7 @@
     </div>
     <button class="tool" id="active-only" type="button" aria-pressed="false" title="Hide blocks with nothing going on"><span class="box"></span>Active</button>
     <label class="search"><span id="search-ic"></span><input id="search" type="search" placeholder="Search" aria-label="Find a block or a file path" autocomplete="off" spellcheck="false"><kbd>/</kbd></label>
-    <button class="icon-btn" id="menu-btn" type="button" aria-label="Display settings" aria-expanded="false"></button>
-    <div class="theme-tools" id="theme-tools">
-      <select class="pick" id="palette" aria-label="Palette"></select>
-      <button class="icon-btn" id="theme" type="button" aria-label="Switch theme"></button>
-    </div>
+    <div id="app-tools"></div>
   </header>
   <div class="alerts" id="alerts" aria-live="polite"></div>
   <main class="map-wrap" id="map-wrap" data-drop="map" aria-label="Blocks">

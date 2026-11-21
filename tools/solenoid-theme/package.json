@@ -1,0 +1,23 @@
+{
+  "name": "solenoid-theme",
+  "version": "0.1.0",
+  "description": "Solenoid's palette system for any page: nine palettes with their chrome, accent-adaptive ramps, the accent picker, the palette select and the Custom palette editor.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./core/*": "./core/*",
+    "./theme.css": "./theme.css",
+    "./controls.css": "./controls.css",
+    "./kit.css": "./kit.css"
+  },
+  "files": ["index.js", "controls.js", "core/", "theme.css", "controls.css", "kit.css", "README.md"],
+  "sideEffects": ["*.css", "./core/appTheme.js", "./core/palette.js"],
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "sync": "node sync.mjs",
+    "check": "node sync.mjs --check",
+    "test": "node --test test/kit.test.js"
+  }
+}

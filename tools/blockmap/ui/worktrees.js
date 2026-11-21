@@ -6,6 +6,7 @@ import { HUMAN, agentName } from '../core/model.js';
 import { blocksOf } from '../core/merges.js';
 import { icon, setHtml, esc, timer, initials, copyText, storageGet, storageSet } from './dom.js';
 import { colorOf, inkOf } from './map.js';
+import { ICONS } from './theme/index.js';
 
 const EDITORS = { vscode: ['VS Code', 'vscode://file'], cursor: ['Cursor', 'cursor://file'], zed: ['Zed', 'zed://file'] };
 const DOT = { ok: 'dot-ok', info: 'dot-ok', warn: 'dot-warn', danger: 'dot-danger' };
@@ -125,7 +126,7 @@ export function createWorktrees(ctx, bar, mergeHost) {
     if (wt) {
       const m = byName.get(wt.name);
       const queued = m && m.entry.status === 'ready';
-      const open = `<span class="wt-open"><select class="pick" id="wt-editor" aria-label="Editor">${Object.entries(EDITORS).map(([k, [label]]) => `<option value="${k}"${k === editor ? ' selected' : ''}>${label}</option>`).join('')}</select><a class="btn" href="${EDITORS[editor][1]}${encodeURI(wt.path)}">Open</a></span>`;
+      const open = `<span class="wt-open"><span class="solenoid-settings__select-wrap"><select class="solenoid-settings__select" id="wt-editor" aria-label="Editor">${Object.entries(EDITORS).map(([k, [label]]) => `<option value="${k}"${k === editor ? ' selected' : ''}>${label}</option>`).join('')}</select>${ICONS.caret}</span><a class="btn" href="${EDITORS[editor][1]}${encodeURI(wt.path)}">Open</a></span>`;
       const merge = wt.main ? '' : queued ? `<span class="wt-verdict"><i class="${DOT[m.level]}"></i>${esc(m.verdict)}</span><button class="btn" type="button" data-unready>Unqueue</button>` : `<button class="btn" type="button" data-ready>Queue merge</button>`;
       detail = `<div class="wt-detail"><code class="wt-path" data-copy-path title="Copy the path">${esc(wt.path)}</code><span class="wt-branch">${icon('branch')}${esc(wt.branch || '')}</span>${wt.add || wt.del ? `<span class="num" title="Lines changed against ${esc(snap.base)}">+${wt.add} −${wt.del}</span>` : ''}${wt.lastCommit ? `<span class="wt-last" title="${esc(wt.lastCommit.subject)}">${timer(wt.lastCommit.ts, {}, now)}</span>` : ''}<span class="spacer"></span>${merge}<button class="btn" type="button" data-copy-cd>${icon('copy')}cd</button>${open}</div>`;
     }
@@ -144,9 +145,9 @@ export function createWorktrees(ctx, bar, mergeHost) {
       const style = agent && agent !== HUMAN ? `--ac:${colorOf(st, agent)};--aci:${inkOf(st, agent)}` : '';
       const why = r.checks.map((c) => `${c.text}${c.files ? `: ${c.files.slice(0, 4).join(', ')}${c.files.length > 4 ? ', …' : ''}` : ''}`).join('\n');
       const act = !isReady || ctx.replayTs ? ''
-        : r.level === 'danger' ? `<button class="btn" type="button" data-mq-act="fix">Ask to fix</button>`
-        : r.checks.some((c) => c.action === 'rebase') ? `<button class="btn" type="button" data-mq-act="rebase">Rebase</button>`
-        : i === 0 && r.level === 'ok' ? `<button class="btn confirm" type="button" data-mq-act="merge" title="Copy the merge command">Merge</button>`
+        : r.level === 'danger' ? `<button class="btn sm" type="button" data-mq-act="fix">Ask to fix</button>`
+        : r.checks.some((c) => c.action === 'rebase') ? `<button class="btn sm" type="button" data-mq-act="rebase">Rebase</button>`
+        : i === 0 && r.level === 'ok' ? `<button class="btn sm confirm" type="button" data-mq-act="merge" title="Copy the merge command">Merge</button>`
         : '';
       const grip = isReady && ready.length > 1 ? `<button class="mq-grip" type="button" data-name="${esc(r.entry.worktree)}" aria-label="Reorder ${esc(r.label)}" title="Drag, or use the arrow keys">${icon('grip')}</button>` : '<span></span>';
       const verdict = isReady ? `<span class="mq-verdict" title="${esc(why)}"><i class="${DOT[r.level]}"></i><span>${esc(r.verdict)}</span></span>` : `<span class="mq-verdict"><span>Merged ${timer(r.entry.landedAt, {}, now)}</span></span>`;

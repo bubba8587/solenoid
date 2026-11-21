@@ -2,7 +2,7 @@
 // happened in it lately. Actions here write events, the same ones `bm` writes.
 
 import { HUMAN, UNMAPPED, blockMeta, agentName, presence, clock, ITEM_STATUS } from '../core/model.js';
-import { h, icon, esc, timer, dur, initials, setHtml } from './dom.js';
+import { h, icon, esc, timer, dur, initials, setHtml, selectWrap } from './dom.js';
 import { colorOf, inkOf } from './map.js';
 
 const KIND_ICON = { bug: 'bug', task: 'task', decision: 'decision', question: 'question', note: 'note' };
@@ -23,9 +23,9 @@ export function createInspector(ctx, root, scrim) {
   body.append(itemsSec, addSec, actSec, staticSec);
   root.append(head, body);
 
-  const kindSel = h('select', { class: 'pick', id: 'add-kind', 'aria-label': 'Kind' }, h('option', { value: 'bug' }, 'Bug'), h('option', { value: 'task' }, 'Task'));
+  const kindSel = h('select', { class: 'solenoid-settings__select', id: 'add-kind', 'aria-label': 'Kind' }, h('option', { value: 'bug' }, 'Bug'), h('option', { value: 'task' }, 'Task'));
   const addField = h('input', { class: 'field', id: 'add-title', placeholder: 'Title', autocomplete: 'off', 'aria-label': 'New item' });
-  const addForm = h('form', { class: 'add-item' }, kindSel, addField, h('button', { class: 'btn', type: 'submit' }, 'Add'));
+  const addForm = h('form', { class: 'add-item' }, selectWrap(kindSel), addField, h('button', { class: 'btn', type: 'submit' }, 'Add'));
   addForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const title = addField.value.trim();
@@ -109,13 +109,13 @@ export function createInspector(ctx, root, scrim) {
 
     if (id !== UNMAPPED) {
       const actions = h('div', { class: 'in-actions' });
-      const sel = h('select', { class: 'pick', id: 'give-to', 'aria-label': 'Give to' }, h('option', { value: '' }, 'Give to'));
+      const sel = h('select', { class: 'solenoid-settings__select', id: 'give-to', 'aria-label': 'Give to' }, h('option', { value: '' }, 'Give to'));
       for (const a of Object.values(st.agents)) {
         if (a.leftAt || a.id === b.holder) continue;
         sel.append(h('option', { value: a.id }, a.id === HUMAN ? `${a.name} (you)` : `${a.name}, ${presence(st, a.id, now)}`));
       }
       sel.addEventListener('change', () => sel.value && ctx.act.assign(id, sel.value));
-      actions.append(sel);
+      actions.append(selectWrap(sel));
       if (b.holder) actions.append(button('Release', () => ctx.act.release(id)));
       else actions.append(b.queued ? button('Unqueue', () => ctx.act.unqueue(id)) : button('Queue', () => ctx.act.queue(id)));
       actions.append(b.frozen ? button('Unfreeze', () => ctx.act.freeze(id, false)) : button('Freeze', () => ctx.act.freeze(id, true)));

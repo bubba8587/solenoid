@@ -87,6 +87,15 @@ const P = {
   mail: '<rect x="2.4" y="3.8" width="11.2" height="8.4" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m2.8 4.6 5.2 4 5.2-4" fill="none" stroke="currentColor" stroke-width="1.4"/>',
 };
 
+// Solenoid's Settings select: the select in its wrap, the Lucide caret over its right end (theme/controls.css).
+const CARET = '<svg class="solenoid-settings__select-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+export function selectWrap(select) {
+  select.classList.add('solenoid-settings__select');
+  const wrap = h('span', { class: 'solenoid-settings__select-wrap' }, select);
+  wrap.insertAdjacentHTML('beforeend', CARET);
+  return wrap;
+}
+
 export function icon(name, cls = '') {
   return `<svg class="ic ${cls}" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">${P[name] || ''}</svg>`;
 }

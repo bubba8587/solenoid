@@ -73,7 +73,7 @@ export function createSide(ctx, root) {
     const feed = h('ul', { class: 'feed' });
     const input = h('input', { class: 'field', id: `msg-${id}`, autocomplete: 'off', 'aria-label': 'Message' });
     const unread = h('span', { class: 'unread', hidden: true });
-    const form = h('form', { class: 'msg' }, input, unread, h('button', { class: 'btn icon', type: 'submit', 'aria-label': 'Send', html: icon('send') }));
+    const form = h('form', { class: 'msg' }, input, unread, h('button', { class: 'icon-btn', type: 'submit', 'aria-label': 'Send', title: 'Send', html: icon('send') }));
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const text = input.value.trim();
@@ -140,20 +140,20 @@ export function createSide(ctx, root) {
       const t = timer(since, { warn: 5 * MIN, over: 15 * MIN }, now);
       if (p === 'question') {
         const q = openQuestions(st, a.id)[0];
-        rows.push({ key: `q:${q.id}`, html: `<div class="ib-row">${who}<span class="ib-what">${esc(q.title)}</span>${t}</div><form class="ib-form" data-answer="${esc(q.id)}"><input class="field" id="answer-${esc(q.id)}" autocomplete="off" aria-label="Answer"${ctx.replayTs ? ' disabled' : ''}><button class="btn confirm" type="submit"${ctx.replayTs ? ' disabled' : ''}>Answer</button></form>` });
+        rows.push({ key: `q:${q.id}`, html: `<div class="ib-row">${who}<span class="ib-what">${esc(q.title)}</span>${t}</div><form class="ib-form" data-answer="${esc(q.id)}"><input class="field" id="answer-${esc(q.id)}" autocomplete="off" aria-label="Answer"${ctx.replayTs ? ' disabled' : ''}><button class="btn sm confirm" type="submit"${ctx.replayTs ? ' disabled' : ''}>Answer</button></form>` });
       } else if (p === 'permission') {
-        rows.push({ key: `p:${a.id}`, html: `<div class="ib-row">${who}<span class="ib-what">${esc(a.doing || 'Waiting for permission')}</span>${t}<button class="btn" type="button" data-act="go" data-arg="${esc(a.id)}">Go</button></div>` });
+        rows.push({ key: `p:${a.id}`, html: `<div class="ib-row">${who}<span class="ib-what">${esc(a.doing || 'Waiting for permission')}</span>${t}<button class="btn sm" type="button" data-act="go" data-arg="${esc(a.id)}">Go</button></div>` });
       } else if (p === 'review') {
-        rows.push({ key: `r:${a.id}`, html: `<div class="ib-row">${who}<span class="ib-what">${esc(a.task || 'Finished its turn')}</span>${t}<button class="btn" type="button" data-act="go" data-arg="${esc(a.id)}">Go</button></div>` });
+        rows.push({ key: `r:${a.id}`, html: `<div class="ib-row">${who}<span class="ib-what">${esc(a.task || 'Finished its turn')}</span>${t}<button class="btn sm" type="button" data-act="go" data-arg="${esc(a.id)}">Go</button></div>` });
       }
     }
     const head = ctx.mergeRows?.find((r) => r.entry.status === 'ready');
     if (head) {
       const t = timer(head.entry.readyAt, {}, now);
       const name = `<span class="ib-who">${esc(head.label)}</span>`;
-      if (head.level === 'ok') rows.push({ key: `m:${head.entry.worktree}`, html: `<div class="ib-row"><span class="disc plain">${icon('branch')}</span>${name}<span class="ib-what">Ready to merge into ${esc(ctx.worktrees?.base || 'the base')}</span>${t}<button class="btn confirm" type="button" data-act="merge" data-arg="${esc(head.entry.worktree)}">Merge</button></div>` });
-      else if (head.level === 'danger') rows.push({ key: `f:${head.entry.worktree}`, html: `<div class="ib-row"><span class="disc plain danger">${icon('branch')}</span>${name}<span class="ib-what">${esc(head.verdict)}</span>${t}<button class="btn" type="button" data-act="fix" data-arg="${esc(head.entry.worktree)}">Ask to fix</button></div>` });
-      else if (head.checks[0]?.action === 'rebase') rows.push({ key: `b:${head.entry.worktree}`, html: `<div class="ib-row"><span class="disc plain">${icon('branch')}</span>${name}<span class="ib-what">${esc(head.verdict)}</span>${t}<button class="btn" type="button" data-act="rebase" data-arg="${esc(head.entry.worktree)}">Rebase</button></div>` });
+      if (head.level === 'ok') rows.push({ key: `m:${head.entry.worktree}`, html: `<div class="ib-row"><span class="disc plain">${icon('branch')}</span>${name}<span class="ib-what">Ready to merge into ${esc(ctx.worktrees?.base || 'the base')}</span>${t}<button class="btn sm confirm" type="button" data-act="merge" data-arg="${esc(head.entry.worktree)}">Merge</button></div>` });
+      else if (head.level === 'danger') rows.push({ key: `f:${head.entry.worktree}`, html: `<div class="ib-row"><span class="disc plain danger">${icon('branch')}</span>${name}<span class="ib-what">${esc(head.verdict)}</span>${t}<button class="btn sm" type="button" data-act="fix" data-arg="${esc(head.entry.worktree)}">Ask to fix</button></div>` });
+      else if (head.checks[0]?.action === 'rebase') rows.push({ key: `b:${head.entry.worktree}`, html: `<div class="ib-row"><span class="disc plain">${icon('branch')}</span>${name}<span class="ib-what">${esc(head.verdict)}</span>${t}<button class="btn sm" type="button" data-act="rebase" data-arg="${esc(head.entry.worktree)}">Rebase</button></div>` });
     }
     ctx.inboxCount = rows.length;
     inbox.hidden = !rows.length;

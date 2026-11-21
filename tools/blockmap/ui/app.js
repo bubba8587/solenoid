@@ -13,7 +13,25 @@ import { enableDnd } from './dnd.js';
 import { createWorktrees, worktreeIndex } from './worktrees.js';
 import { agentForWorktree, mergeChecks, mergeCommand } from '../core/merges.js';
 import { h, icon, setHtml, setText, toast, storageGet, storageSet, esc, timer, startTimers, copyText } from './dom.js';
-import { PALETTE_NAMES, applyPalette } from './palette.js';
+import { initTheme, appTools, toolButton, openSettings, switchRow, appThemeStore, ICONS } from './theme/index.js';
+
+// Solenoid's palette system, from the theme kit (tools/solenoid-theme). Its slots mean these things here; the
+// names label the Custom palette's wells. Teal and lime color nothing on the board, so they aren't listed.
+initTheme({
+  slotRoles: [
+    { slot: 'gold', label: 'Needs you' },
+    { slot: 'vermilion', label: 'Conflicts, failures' },
+    { slot: 'green', label: 'Working, passing' },
+    { slot: 'amber', label: 'Heat' },
+    { slot: 'sky', label: 'First agent' },
+    { slot: 'violet', label: 'Second agent' },
+    { slot: 'pink', label: 'Third agent' },
+    { slot: 'blue', label: 'Fourth agent' },
+    { slot: 'purple', label: 'Fifth agent' },
+    { slot: 'gray', label: 'You' },
+  ],
+  isMobile: () => matchMedia('(max-width: 860px)').matches,
+});
 
 const $ = (id) => document.getElementById(id);
 
@@ -378,7 +396,7 @@ function paintAlerts() {
     return `<div class="alert ${kind}" role="button" tabindex="0" data-alert-block="${esc(a.block || '')}" data-alert-agent="${esc(a.agent || '')}" data-alert-kind="${esc(a.kind)}"><i class="${kind === 'high' ? 'dot-danger' : 'dot-warn'}"></i><span class="txt" title="${esc(a.text)}">${esc(a.text)}</span>${timer(a.ts, {}, now)}</div>`;
   });
   if (al.length > room) rows.push(`<button class="more" type="button" data-alert-more>${ctx.alertsOpen ? 'Fewer' : `+${al.length - room}`}</button>`);
-  if (away) rows.unshift(`<div class="alert away"><i class="dot-muted"></i><span class="txt" title="${esc(away)}">${esc(away)}</span><button class="btn" type="button" data-away-replay>Replay</button><button class="icon-btn" type="button" data-away-close aria-label="Dismiss">${icon('close')}</button></div>`);
+  if (away) rows.unshift(`<div class="alert away"><i class="dot-muted"></i><span class="txt" title="${esc(away)}">${esc(away)}</span><button class="btn sm" type="button" data-away-replay>Replay</button><button class="icon-btn" type="button" data-away-close aria-label="Dismiss">${icon('close')}</button></div>`);
   strip.classList.toggle('open', !!ctx.alertsOpen);
   setHtml(strip, rows.join(''));
 }
@@ -482,58 +500,49 @@ function notify(title, body) {
     // Some browsers only notify from a service worker; the title count still shows it.
   }
 }
-const bell = h('button', { class: 'icon-btn', id: 'bell', type: 'button', hidden: !canNotify, html: icon('bell') });
-function paintBell() {
-  const on = notifyOn();
-  bell.setAttribute('aria-pressed', String(on));
-  bell.setAttribute('aria-label', on ? 'Notifications on' : 'Notify me');
-  bell.title = on ? 'Notifications on' : 'Notify me';
-}
-bell.addEventListener('click', async () => {
-  if (notifyOn()) storageSet('blockmap.notify', false);
-  else {
-    let perm = Notification.permission;
-    if (perm === 'default') {
-      try {
-        perm = await Notification.requestPermission();
-      } catch {
-        perm = 'denied';
-      }
+async function setNotify(on) {
+  if (!on) return storageSet('blockmap.notify', false);
+  let perm = Notification.permission;
+  if (perm === 'default') {
+    try {
+      perm = await Notification.requestPermission();
+    } catch {
+      perm = 'denied';
     }
-    if (perm === 'granted') storageSet('blockmap.notify', true);
-    else toast('The browser blocked notifications for this page.');
   }
-  paintBell();
-});
-$('theme-tools').prepend(bell);
-paintBell();
+  if (perm === 'granted') storageSet('blockmap.notify', true);
+  else toast('The browser blocked notifications for this page.');
+  return undefined;
+}
 
-// On a phone the palette, theme and bell fold into one menu button.
-const menuBtn = $('menu-btn');
-menuBtn.innerHTML = icon('dots');
-menuBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  const open = !$('theme-tools').classList.contains('open');
-  $('theme-tools').classList.toggle('open', open);
-  menuBtn.setAttribute('aria-expanded', String(open));
+// The accent pill and Settings, as Solenoid's top bar has them. Settings holds the palette (Appearance) and the
+// board's own switches.
+const settingsRows = () => [
+  ...(canNotify ? [switchRow({ label: 'Desktop notifications', help: 'When an agent needs you, or edits a block it doesn’t hold, while this tab is in the background.', get: notifyOn, set: setNotify })] : []),
+  switchRow({
+    label: 'Active blocks only',
+    help: 'The map keeps the blocks with something going on: held, queued, edited lately, failing, or changed in a branch.',
+    get: () => !!ctx.activeOnly,
+    set: (on) => setActiveOnly(on),
+  }),
+];
+const tools = appTools({
+  buttons: [toolButton({ title: 'Settings', icon: ICONS.settings, onClick: () => openSettings({ sections: [{ title: 'Board', rows: settingsRows() }] }) })],
 });
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#theme-tools') && $('theme-tools').classList.contains('open')) {
-    $('theme-tools').classList.remove('open');
-    menuBtn.setAttribute('aria-expanded', 'false');
-  }
-});
+$('app-tools').replaceWith(tools.el);
+appThemeStore.subscribe(() => render());
 
 // Active only: the map keeps the blocks with something going on (held, queued, edited lately, failing, in a branch).
 const activeBtn = $('active-only');
 const paintActive = () => activeBtn.setAttribute('aria-pressed', String(!!ctx.activeOnly));
-activeBtn.addEventListener('click', () => {
-  ctx.activeOnly = !ctx.activeOnly;
+function setActiveOnly(on) {
+  ctx.activeOnly = !!on;
   storageSet('blockmap.activeOnly', ctx.activeOnly);
   paintActive();
   ctx.map.refit();
   render();
-});
+}
+activeBtn.addEventListener('click', () => setActiveOnly(!ctx.activeOnly));
 paintActive();
 
 // Coming back after a while: a one-line digest of what changed, with a replay from when you left.
@@ -596,47 +605,6 @@ document.addEventListener('keydown', (e) => {
     search.focus();
   } else if (e.key === 'Escape' && !typing && inspector.id) inspector.close();
 });
-
-const themeBtn = $('theme');
-const savedTheme = storageGet('blockmap.theme', null);
-if (savedTheme) document.documentElement.dataset.theme = savedTheme;
-function currentTheme() {
-  return document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-}
-function paintThemeBtn() {
-  themeBtn.innerHTML = icon(currentTheme() === 'dark' ? 'sun' : 'moon');
-  themeBtn.setAttribute('aria-label', currentTheme() === 'dark' ? 'Light theme' : 'Dark theme');
-}
-themeBtn.addEventListener('click', () => {
-  const next = currentTheme() === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = next;
-  storageSet('blockmap.theme', next);
-  paintThemeBtn();
-  usePalette(palettePick.value);
-});
-paintThemeBtn();
-
-// Solenoid's palettes. Default lives in the stylesheet; another one writes its vars onto the root.
-const palettePick = $('palette');
-for (const name of PALETTE_NAMES) palettePick.append(h('option', { value: name }, name));
-function usePalette(name) {
-  const root = document.documentElement;
-  if (name === 'Default') {
-    for (const prop of [...root.style]) if (prop.startsWith('--')) root.style.removeProperty(prop);
-    delete root.dataset.palette;
-  } else applyPalette(name);
-  render();
-}
-palettePick.value = PALETTE_NAMES.includes(storageGet('blockmap.palette', 'Default')) ? storageGet('blockmap.palette', 'Default') : 'Default';
-palettePick.addEventListener('change', () => {
-  storageSet('blockmap.palette', palettePick.value);
-  usePalette(palettePick.value);
-});
-matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
-  paintThemeBtn();
-  usePalette(palettePick.value);
-});
-usePalette(palettePick.value);
 
 // -------------------------------------------------------------------------------------------- boot
 
