@@ -3,7 +3,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { HUMAN, safeId } from './model.js';
+import { HUMAN, safeId, worktreeAgentId } from './model.js';
 
 // An explicit `--as`, then BLOCKMAP_AGENT, then a Claude Code session, then the worktree the command runs in
 // (any agent, on any model, that works in its own worktree is that worktree), then the person at the shell.
@@ -13,7 +13,7 @@ export function whoAmI(explicit, cwd = process.cwd()) {
   const session = process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID;
   if (session) return sessionAgentId(session);
   const wt = worktreeHere(cwd);
-  if (wt?.linked) return `wt-${safeId(path.basename(wt.path))}`;
+  if (wt?.linked) return worktreeAgentId(path.basename(wt.path));
   return HUMAN;
 }
 

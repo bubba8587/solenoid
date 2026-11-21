@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { createState, apply, checkEvent, makeEvent } from './model.js';
+import { createState, apply, reduce, checkEvent, makeEvent } from './model.js';
 import { resolveBoard } from './resolve.js';
 
 // Where a directory sits in git, read from the files git keeps rather than by running git: the checkout's top,
@@ -136,7 +136,8 @@ export function openStore(boardDir = findBoardDir(), { cwd = process.cwd(), lock
         break;
       } catch (err) {
         if (err.code !== 'EEXIST') throw err;
-        if (breakIfStale()) continue;
+        // Breaking a stale lock retries at once, but never past the deadline (a rename that keeps failing can't spin).
+        if (breakIfStale() && Date.now() <= deadline) continue;
         if (Date.now() > deadline) throw new Error(`The board is locked (${lockPath}) by a process that is still running. If no bm command or hook is, delete that file.`);
         pause(10);
       }

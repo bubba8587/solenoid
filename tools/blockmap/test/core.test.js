@@ -682,3 +682,54 @@ test('the server stamps what it is sent, answers only on localhost, and resumes 
     t.done();
   }
 });
+
+test('a second review: remote writes, a bad agent id, long worktree names, old queue entries, every loopback', async () => {
+  // A board served elsewhere (BLOCKMAP_URL): reading and writing fold what came back.
+  const { remoteStore } = await import('../core/store.js');
+  const accepted = [];
+  const srv = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      res.setHeader('content-type', 'application/json');
+      if (req.url.startsWith('/api/board')) return res.end(JSON.stringify(BOARD));
+      if (req.url.startsWith('/api/events')) return res.end('[]');
+      const list = JSON.parse(body).events.map((e, i) => ({ ...e, id: `e${i}`, ts: Date.now() }));
+      accepted.push(...list);
+      return res.end(JSON.stringify({ accepted: list }));
+    });
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  try {
+    const remote = remoteStore(`http://127.0.0.1:${srv.address().port}`);
+    assert.ok((await remote.state()).blocks);
+    const out = await remote.commit([{ type: 'agent.join', by: 'agent-1', agent: { id: 'agent-1' } }]);
+    assert.ok(out.state.agents['agent-1']);
+  } finally {
+    srv.close();
+  }
+
+  // An id the board refuses never blocks an edit: the hooks fail open.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'blockmap-badid-'));
+  fs.mkdirSync(path.join(dir, '.blockmap'));
+  fs.writeFileSync(path.join(dir, '.blockmap', 'board.json'), JSON.stringify(BOARD));
+  try {
+    const hook = path.join(HERE, '..', 'hooks', 'claude-code.js');
+    const env = { ...process.env, BLOCKMAP_LIVE: path.join(dir, '.blockmap', 'live'), BLOCKMAP_AGENT: 'agent 1' };
+    const out = execFileSync('node', [hook], { input: JSON.stringify({ cwd: dir, hook_event_name: 'PreToolUse', session_id: 'cccc0000', tool_name: 'Edit', tool_input: { file_path: path.join(dir, 'src/engine/pass.ts') } }), env, encoding: 'utf8' });
+    assert.equal(out, '');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
+  const { worktreeAgentId } = await import('../core/model.js');
+  const long = worktreeAgentId('x'.repeat(200));
+  assert.ok(long.length <= 80 && long.startsWith('wt-'));
+  const state = reduce(BOARD, []);
+  assert.equal(checkEvent(state, makeEvent(state, 'agent.join', long, { agent: { id: long } })), null);
+
+  const { isLoopbackHostHeader } = await import('../server.js');
+  assert.ok(isLoopbackHostHeader('127.0.0.2:4477'));
+  assert.ok(isLoopbackHostHeader('localhost:4477'));
+  assert.ok(!isLoopbackHostHeader('attacker.example'));
+});

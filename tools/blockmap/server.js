@@ -12,7 +12,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { openStore, findBoardDir, parseLines } from './core/store.js';
-import { reduce, makeEvent, HUMAN, SYSTEM } from './core/model.js';
+import { reduce, makeEvent, HUMAN, SYSTEM, worktreeAgentId } from './core/model.js';
 import { worktreeSnapshot, landed, changedBetween } from './core/worktrees.js';
 import { agentForWorktree } from './core/merges.js';
 
@@ -39,7 +39,7 @@ export function isLoopbackBind(host) {
 }
 export function isLoopbackHostHeader(header) {
   const m = /^(\[[^\]]*\]|[^:\[\]]+)(?::\d+)?$/.exec(String(header || ''));
-  return !!m && ['localhost', '127.0.0.1', '[::1]'].includes(m[1].toLowerCase());
+  return !!m && (['localhost', '[::1]'].includes(m[1].toLowerCase()) || /^127\.\d+\.\d+\.\d+$/.test(m[1]));
 }
 
 export async function serve({ port = 4477, host = '127.0.0.1', open = false, demo = false, quiet = false } = {}) {
@@ -288,7 +288,7 @@ export async function serve({ port = 4477, host = '127.0.0.1', open = false, dem
       for (const { wt, files: changed } of changes) {
         let agent = wt.agent;
         if (!agent) {
-          agent = `wt-${wt.name}`;
+          agent = worktreeAgentId(wt.name);
           fresh.push(makeEvent(state, 'agent.join', agent, { agent: { id: agent, name: wt.name, kind: 'worktree', worktree: wt.path } }, now));
           wt.agent = agent;
         }
@@ -299,7 +299,8 @@ export async function serve({ port = 4477, host = '127.0.0.1', open = false, dem
       }
       for (const m of Object.values(state.merges)) {
         // A branch marked ready with nothing ahead of the base is already "in" it; only real work lands.
-        if (m.status !== 'ready' || !m.commit || demo || !(m.ahead > 0)) continue;
+        // Readied with nothing ahead, it was in the base already; an entry from before `ahead` was recorded can still land.
+        if (m.status !== 'ready' || !m.commit || demo || m.ahead === 0) continue;
         if (await landed(store.root, m.commit, board.base)) fresh.push(makeEvent(state, 'merge.landed', SYSTEM, { worktree: m.worktree, commit: m.commit }, now));
       }
       // The file times move forward only once what they showed is in the log; a write that fails is seen again.

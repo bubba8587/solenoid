@@ -106,8 +106,11 @@ async function main() {
         const refused = commit([...ensureJoined(), ev('block.reserve', { block: id, intent: a?.task || `editing ${path.basename(file)}` })]);
         if (refused) {
           // Another agent reserved it (or the human froze it) since this hook read the board: the edit waits.
-          const mode = store.state().blocks[id]?.frozen ? guard.frozen : guard.held;
-          return decide(mode, `${file} is in ${meta.name}, which was taken before Blockmap could reserve it for you. ${refused}`);
+          // Any other refusal (a bad agent id, say) is the board's problem, and the hooks fail open.
+          const now = store.state().blocks[id];
+          if (now?.frozen) return decide(guard.frozen, `${file} is in ${meta.name}, which was frozen before Blockmap could reserve it for you. ${refused}`);
+          if (now?.holder && now.holder !== me) return decide(guard.held, `${file} is in ${meta.name}, which was taken before Blockmap could reserve it for you. ${refused}`);
+          return undefined;
         }
         if (state.blocks[id].holder === me) {
           const c = itemCounts(state, id);

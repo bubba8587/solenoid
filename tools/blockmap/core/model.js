@@ -36,6 +36,11 @@ export function validId(id) {
   return typeof id === 'string' && ID.test(id) && !RESERVED.has(id);
 }
 // The nearest valid id to a name from outside (a worktree's folder).
+// The stand-in agent for a worktree whose agent never talks to the board; capped with its prefix, so it stays valid.
+export function worktreeAgentId(name) {
+  return safeId(`wt-${name}`);
+}
+
 export function safeId(name) {
   const id = String(name).replace(/[^\w.-]+/g, '-').slice(0, 80) || 'x';
   return RESERVED.has(id) ? `${id}-` : id;

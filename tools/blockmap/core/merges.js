@@ -2,7 +2,7 @@
 // branch is fit to merge. Pure, so the CLI and the page share it. Runs in Node and the browser.
 
 import { blockForPath } from './glob.js';
-import { HUMAN, UNMAPPED, mergeQueue, agentName } from './model.js';
+import { HUMAN, UNMAPPED, mergeQueue, agentName, worktreeAgentId } from './model.js';
 
 // The agent working in a worktree: the newest present agent that joined from it, else the watcher's
 // stand-in (`wt-<name>`), which exists for agents that never talk to the board.
@@ -14,7 +14,7 @@ export function agentForWorktree(state, wt) {
     if (!best || a.lastSeen > best.lastSeen) best = a;
   }
   if (best) return best.id;
-  const standIn = state.agents[`wt-${wt.name}`];
+  const standIn = state.agents[worktreeAgentId(wt.name)];
   return standIn && !standIn.leftAt ? standIn.id : null;
 }
 
