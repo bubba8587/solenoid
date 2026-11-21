@@ -2,11 +2,11 @@
 // window, and the Up next queue. Windows are drop targets; their trays are where tiles go.
 
 import { HUMAN, presence, presenceSince, openQuestions, blockMeta, agentName, clock } from '../core/model.js';
-import { h, icon, setHtml, setText, toggle, esc, timer } from './dom.js';
-import { colorOf } from './map.js';
+import { h, icon, setHtml, setText, toggle, esc, timer, initials } from './dom.js';
+import { colorOf, inkOf } from './map.js';
 
-const RANK = { waiting: 0, working: 1, quiet: 1, blocked: 2, stale: 3, idle: 4, done: 5, gone: 6 };
-const WORD = { working: 'Working', waiting: 'Needs you', blocked: 'Blocked', quiet: 'Quiet', stale: 'Gone quiet', idle: 'Idle', done: 'Done', gone: 'Left' };
+const RANK = { waiting: 0, review: 1, working: 2, quiet: 2, blocked: 3, stale: 4, idle: 5, done: 6, gone: 7 };
+const WORD = { working: 'Working', waiting: 'Needs you', review: 'Your turn', blocked: 'Blocked', quiet: 'Quiet', stale: 'Gone quiet', idle: 'Idle', done: 'Done', gone: 'Left' };
 const QUIET_MS = 5 * 60_000;
 const MIN = 60_000;
 
@@ -23,9 +23,10 @@ export function createSide(ctx, root) {
     const tray = h('div', { class: 'tray', 'data-drop': drop });
     const name = h('div', { class: 'win-name' });
     const count = h('span', { class: 'win-count' });
-    const el = h('section', { class: 'win compact plain', 'data-drop': drop, 'data-win': key }, h('div', { class: 'win-head' }, name, count), tray);
+    const disc = h('span', { class: key === 'queue' ? 'disc plain' : 'disc', html: key === 'queue' ? icon('queue') : '' });
+    const el = h('section', { class: 'win compact', 'data-drop': drop, 'data-win': key }, h('div', { class: 'win-head' }, disc, name, count), tray);
     row.append(el);
-    const w = { el, tray, name, count };
+    const w = { el, tray, name, count, disc };
     wins.set(key, w);
     return w;
   }
@@ -33,6 +34,8 @@ export function createSide(ctx, root) {
   function agentWindow(id) {
     if (wins.has(id)) return wins.get(id);
     const name = h('div', { class: 'win-name' });
+    const disc = h('span', { class: 'disc' });
+    const lines = h('span', { class: 'win-lines', title: 'Lines added and removed' });
     const state = h('span', { class: 'state' });
     const more = h('button', { class: 'win-more', type: 'button', 'aria-expanded': 'false', 'aria-label': 'More', html: icon('chev') });
     const task = h('div', { class: 'win-task' });
@@ -56,10 +59,10 @@ export function createSide(ctx, root) {
     const el = h(
       'section',
       { class: 'win', 'data-drop': `agent:${id}`, 'data-win': id },
-      h('div', { class: 'win-head' }, name, state, more),
+      h('div', { class: 'win-head' }, disc, name, lines, state, more),
       h('div', { class: 'win-body' }, task, doing, ask, tray, details),
     );
-    const w = { el, name, state, more, task, doing, ask, tray, details, feed, input, unread, askId: null, open: false };
+    const w = { el, name, disc, lines, state, more, task, doing, ask, tray, details, feed, input, unread, askId: null, open: false };
     more.addEventListener('click', () => {
       w.open = !w.open;
       details.hidden = !w.open;
@@ -83,7 +86,9 @@ export function createSide(ctx, root) {
     const hu = fixedWindow('human');
     setText(hu.name, st.agents[HUMAN].name);
     setText(hu.count, st.agents[HUMAN].held.length || '');
+    setText(hu.disc, initials(st.agents[HUMAN].name));
     hu.el.style.setProperty('--ac', 'var(--human)');
+    hu.el.style.setProperty('--aci', 'var(--slot-gray-ink)');
 
     const agents = Object.values(st.agents)
       .filter((a) => a.id !== HUMAN && (!a.leftAt || a.held.length || now - a.leftAt < 10 * MIN))
@@ -118,13 +123,17 @@ export function createSide(ctx, root) {
 
   function paintAgent(st, now, w, { a, p, since }) {
     w.el.style.setProperty('--ac', colorOf(st, a.id));
+    w.el.style.setProperty('--aci', inkOf(st, a.id));
     toggle(w.el, 'gone', p === 'gone');
+    toggle(w.el, 'needs', p === 'waiting' || p === 'review');
+    setText(w.disc, initials(a.name));
     setText(w.name, a.name);
+    setText(w.lines, a.added || a.removed ? `+${a.added} −${a.removed}` : '');
     w.name.title = [a.kind === 'claude-code' ? 'Claude Code' : a.kind, a.model, a.where, a.id].filter(Boolean).join('\n');
     w.state.className = `state ${p}`;
     const t =
       p === 'working' ? timer(since, { watch: true }, now)
-      : p === 'waiting' ? timer(since, { warn: 5 * MIN, over: 15 * MIN }, now)
+      : p === 'waiting' || p === 'review' ? timer(since, { warn: 5 * MIN, over: 15 * MIN }, now)
       : p === 'quiet' ? timer(since, { warn: 10 * MIN }, now)
       : p === 'stale' ? timer(since, { over: 2 * 60 * MIN }, now)
       : timer(since, {}, now);

@@ -224,6 +224,11 @@ button.stat:hover { border-color: var(--border-strong); background: var(--btn-ho
 .alert.high .sev { background: var(--danger); }
 .alert .txt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .alert .timer { color: var(--text-muted); font-size: 11px; }
+.alert.away .sev { background: var(--text-dim); }
+.alert.away { cursor: default; }
+.alert.away .btn { height: 22px; }
+.alert.away .icon-btn { width: 22px; height: 22px; }
+#bell[aria-pressed="true"] { color: var(--text-bright); border-color: var(--border-strong); }
 .alert .more { border: 0; background: none; padding: 0 2px; font: 600 11px var(--font-sans); color: var(--text-dim); white-space: nowrap; }
 .alert .more:hover { color: var(--text); }
 
@@ -336,9 +341,10 @@ button.stat:hover { border-color: var(--border-strong); background: var(--btn-ho
 /* ------------------------------------------------------------------ the side column */
 .side { grid-area: side; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 2px; }
 .side-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
-/* A window is a node card: its header tinted in the agent's color and capped in it, its body neutral. */
+/* A window is a plain panel. Its agent shows as a disc with an initial, the same disc its sockets carry on the map. */
 .win {
   --ac: var(--slot-gray);
+  --aci: #fff;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -348,27 +354,28 @@ button.stat:hover { border-color: var(--border-strong); background: var(--btn-ho
 }
 .win.drop-ok { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac) var(--mix-ring), var(--ring-into)), 0 4px 14px color-mix(in srgb, var(--ac) var(--mix-glow), transparent); }
 .win.gone { opacity: 0.5; }
-.win-head {
-  display: flex; align-items: center; gap: 8px; min-width: 0;
-  margin: -1px -1px 0; padding: 7px 9px 6px;
-  border: 1px solid var(--ac); border-bottom-color: var(--border);
-  border-radius: 8px 8px 0 0;
-  background: color-mix(in srgb, var(--ac) var(--header-tint), var(--surface));
+.win-head { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 7px 8px 6px 9px; border-bottom: 1px solid var(--border-subtle); }
+.disc {
+  width: 20px; height: 20px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: var(--ac); color: var(--aci); font: 700 11px/1 var(--font-sans);
 }
-.win.plain .win-head { border-color: transparent; border-bottom-color: var(--border); background: none; margin: 0; padding: 6px 8px 5px; }
-.win-name { flex: 1 1 auto; min-width: 0; font: 600 14px/1.2 var(--font-sans); color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.win.plain .win-name { font-size: 12px; color: var(--text); }
+.disc.plain { background: var(--surface-raised); color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.disc .ic { width: 12px; height: 12px; }
+.win-name { flex: 1 1 auto; min-width: 0; font: 600 13px/1.2 var(--font-sans); color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win.compact .win-name { font-size: 12px; color: var(--text); }
 .win-count { font: 400 11px var(--font-mono); color: var(--text-muted); }
+.win-lines { font: 400 11px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-muted); white-space: nowrap; }
 .state { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font: 600 11px/1 var(--font-sans); color: var(--text-dim); }
 .state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
 .state .timer { font-weight: 400; color: var(--text-dim); }
 .state.working { color: color-mix(in srgb, var(--ok) 70%, var(--text)); }
 .state.working::before { background: var(--ok); animation: blink 1.6s ease-in-out infinite; }
-.state.waiting, .state.stale { color: color-mix(in srgb, var(--warn) 70%, var(--text)); }
-.state.waiting::before { background: var(--warn); }
+.state.waiting, .state.review, .state.stale { color: color-mix(in srgb, var(--warn) 70%, var(--text)); }
+.state.waiting::before, .state.review::before { background: var(--warn); }
 .state.stale::before { background: none; box-shadow: inset 0 0 0 1.5px var(--warn); }
 .state.blocked { color: color-mix(in srgb, var(--danger) 70%, var(--text)); }
 .state.blocked::before { background: var(--danger); }
+.win.needs .win-doing { color: color-mix(in srgb, var(--warn) 70%, var(--text)); }
 .win-body { display: flex; flex-direction: column; gap: 5px; padding: 7px 9px 8px; min-width: 0; }
 .win-task { font: 600 12px/1.35 var(--font-sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .win-doing { font: 400 11px/1.4 var(--font-mono); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

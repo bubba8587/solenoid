@@ -14,7 +14,10 @@ export const UNMAPPED = '_unmapped';
 // stay out: they mean needs-you, ok and danger. Gray is the human. The five cool hues go first; pink, amber and
 // lime sit near the status colors and are used only past five agents.
 export const PALETTE = ['sky', 'violet', 'teal', 'purple', 'blue', 'pink', 'amber', 'lime'];
-export const AGENT_STATUS = ['working', 'idle', 'blocked', 'waiting', 'done'];
+// waiting: the agent needs the human (a question, a permission prompt). review: its turn ended and it waits for the
+// next prompt. Both count as needing the human, and neither goes stale until four times the usual quiet.
+export const AGENT_STATUS = ['working', 'idle', 'blocked', 'waiting', 'review', 'done'];
+export const NEEDS_HUMAN = ['waiting', 'review'];
 export const ITEM_KINDS = ['task', 'bug', 'question', 'decision', 'note'];
 export const ITEM_STATUS = ['open', 'doing', 'blocked', 'done', 'wontfix'];
 export const OUTCOMES = ['landed', 'parked', 'handoff', 'dropped', 'taken'];
@@ -72,7 +75,7 @@ export function createState(board) {
 }
 
 function freshBlock(id) {
-  return { id, holder: null, since: 0, intent: '', watchers: {}, queued: null, frozen: null, touches: [], test: null, history: [] };
+  return { id, holder: null, since: 0, intent: '', watchers: {}, queued: null, frozen: null, touches: [], test: null, history: [], added: 0, removed: 0 };
 }
 
 function ensureAgent(state, id, ts, info = {}) {
@@ -98,6 +101,8 @@ function ensureAgent(state, id, ts, info = {}) {
       inbox: [],
       asked: [],
       edits: 0,
+      added: 0,
+      removed: 0,
       tests: 0,
       lastRun: null,
     };
@@ -296,6 +301,13 @@ export function apply(state, e) {
         push(target.touches, { ts: e.ts, file, block: id, op });
         if (op === 'edit') {
           target.edits++;
+          // Line counts ride on a single-file edit (the hooks measure them); a multi-file touch carries none.
+          if ((e.files || []).length === 1) {
+            target.added += e.add || 0;
+            target.removed += e.del || 0;
+            b.added += e.add || 0;
+            b.removed += e.del || 0;
+          }
           if (b.holder && b.holder !== target.id) {
             push(state.trespass, { ts: e.ts, agent: target.id, block: id, holder: b.holder, file, kind: 'held' });
           } else if (b.frozen) {
@@ -361,7 +373,17 @@ export function isStale(state, agentId, now) {
   const a = state.agents[agentId];
   if (!a || agentId === HUMAN) return false;
   if (a.leftAt) return true;
-  return now - a.lastSeen > state.staleMs;
+  return now - a.lastSeen > quietLimit(state, a);
+}
+
+function quietLimit(state, a) {
+  return NEEDS_HUMAN.includes(a.status) ? state.staleMs * 4 : state.staleMs;
+}
+
+// Whether the agent is waiting on the human right now: a question, a permission prompt, or a finished turn.
+export function needsHuman(state, agentId, now) {
+  const p = presence(state, agentId, now);
+  return p === 'waiting' || p === 'review';
 }
 
 // What an agent's window shows as its state.
@@ -370,7 +392,7 @@ export function presence(state, agentId, now) {
   if (!a) return 'gone';
   if (agentId === HUMAN) return 'here';
   if (a.leftAt) return 'gone';
-  if (now - a.lastSeen > state.staleMs) return 'stale';
+  if (now - a.lastSeen > quietLimit(state, a)) return 'stale';
   if (openQuestions(state, agentId).length) return 'waiting';
   return a.status;
 }
@@ -382,7 +404,8 @@ export function presenceSince(state, agentId, now) {
   const p = presence(state, agentId, now);
   if (p === 'gone') return a.leftAt;
   if (p === 'stale') return a.lastSeen;
-  if (p === 'waiting') return Math.min(...openQuestions(state, agentId).map((q) => q.createdAt));
+  const asked = openQuestions(state, agentId).map((q) => q.createdAt);
+  if (p === 'waiting' && asked.length) return Math.min(...asked);
   return a.statusSince || a.joinedAt;
 }
 

@@ -77,6 +77,7 @@ const P = {
   join: '<circle cx="8" cy="5.6" r="2.6"/><path d="M3 13.4c.6-2.6 2.6-4 5-4s4.4 1.4 5 4Z"/>',
   conflict: '<path d="M8 2.2 14.2 13H1.8Z"/><path d="M8 6.4v3.2" stroke="var(--surface)" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".85" fill="var(--surface)"/>',
   chev: '<path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  bell: '<path d="M8 2.4a3.6 3.6 0 0 0-3.6 3.6v2.5L3.2 10.8h9.6L11.6 8.5V6A3.6 3.6 0 0 0 8 2.4Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6.6 12.6a1.4 1.4 0 0 0 2.8 0" fill="none" stroke="currentColor" stroke-width="1.4"/>',
   mail: '<rect x="2.4" y="3.8" width="11.2" height="8.4" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m2.8 4.6 5.2 4 5.2-4" fill="none" stroke="currentColor" stroke-width="1.4"/>',
 };
 

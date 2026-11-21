@@ -11,6 +11,7 @@ const EVENTS = {
   UserPromptSubmit: null,
   PreToolUse: 'Edit|Write|MultiEdit|NotebookEdit',
   PostToolUse: 'Edit|Write|MultiEdit|NotebookEdit|Bash',
+  Notification: null,
   Stop: null,
   SessionEnd: null,
 };

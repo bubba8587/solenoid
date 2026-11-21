@@ -9,7 +9,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { expandBraces, compileIndex, blockForPath } from '../core/glob.js';
-import { HUMAN, reduce, apply, createState, makeEvent, checkEvent, alerts, presence, findBlock, itemCounts } from '../core/model.js';
+import { HUMAN, reduce, apply, createState, makeEvent, checkEvent, alerts, presence, needsHuman, isStale, findBlock, itemCounts } from '../core/model.js';
+import { lineCounts } from '../hooks/lines.js';
 import { importChecklist } from '../adapters/markdown-checklist.js';
 import { openStore } from '../core/store.js';
 import { draftBoard } from '../scripts/init.js';
@@ -203,6 +204,14 @@ test('the hook refuses an edit inside another agent\'s block and reserves a free
     assert.match(denied.hookSpecificOutput.permissionDecisionReason, /held by/);
     const broken = execFileSync('node', [hook], { input: '{not json', env, encoding: 'utf8' });
     assert.equal(broken, '');
+    call({ hook_event_name: 'Notification', session_id: 'aaaa0000', message: 'Claude needs your permission to use Bash' });
+    const store = openStore(path.join(dir, '.blockmap'));
+    let st = store.state();
+    assert.equal(st.agents['cc-aaaa0000'].status, 'waiting');
+    assert.equal(st.agents['cc-aaaa0000'].doing, 'Claude needs your permission to use Bash');
+    call({ hook_event_name: 'Stop', session_id: 'aaaa0000' });
+    st = store.state();
+    assert.equal(st.agents['cc-aaaa0000'].status, 'review');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -230,4 +239,29 @@ test('the simulated crew only ever proposes events the rules accept', () => {
     apply(st, e);
   }
   for (let i = 1; i < events.length; i++) assert.ok(events[i].ts > events[i - 1].ts);
+});
+
+test('an agent waiting on the human keeps its blocks four times as long', () => {
+  const st = createState(BOARD);
+  run(st, 'agent.join', 'a1', { agent: { id: 'a1', name: 'Heron' } }, 0);
+  run(st, 'block.reserve', 'a1', { block: 'engine' }, 1);
+  run(st, 'agent.status', 'a1', { status: 'review', doing: 'Finished the turn' }, 2);
+  assert.equal(needsHuman(st, 'a1', at(3)), true);
+  assert.equal(isStale(st, 'a1', at(60)), false);
+  assert.match(ev(st, 'block.reserve', 'a2', { block: 'engine' }, 60).why, /held by Heron/);
+  assert.equal(isStale(st, 'a1', at(125)), true);
+  run(st, 'agent.status', 'a1', { status: 'working' }, 126);
+  assert.equal(needsHuman(st, 'a1', at(127)), false);
+});
+
+test('edits carry the lines they added and removed', () => {
+  assert.deepEqual(lineCounts('Edit', { old_string: 'a\nb\nc', new_string: 'a\nB\nc\nd' }), { add: 2, del: 1 });
+  assert.deepEqual(lineCounts('Write', { content: 'x\ny\nz' }), { add: 3, del: 0 });
+  assert.deepEqual(lineCounts('Edit', {}, { structuredPatch: [{ lines: [' a', '-b', '+B', '+d'] }] }), { add: 2, del: 1 });
+  const st = createState(BOARD);
+  run(st, 'touch', 'a1', { files: ['src/engine/pass.ts'], op: 'edit', add: 12, del: 4 }, 1);
+  run(st, 'touch', 'a1', { files: ['src/engine/x.ts'], op: 'edit', add: 3, del: 0 }, 2);
+  assert.equal(st.agents.a1.added, 15);
+  assert.equal(st.blocks.pass.added, 12);
+  assert.equal(st.blocks.engine.removed, 0);
 });

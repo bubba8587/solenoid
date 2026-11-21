@@ -1,7 +1,7 @@
 // The board page: folds the log into state, renders the map, the windows, the timeline and the
 // inspector from it, and turns what the person does (drag a tile, answer a question) into events.
 
-import { HUMAN, apply, reduce, alerts, presence, blockMeta, agentName } from '../core/model.js';
+import { HUMAN, apply, reduce, alerts, presence, needsHuman, blockMeta, agentName, clock } from '../core/model.js';
 import { blockForPath } from '../core/glob.js';
 import { connect } from './source.js';
 import { createMap } from './map.js';
@@ -178,6 +178,7 @@ function doRender() {
   ctx.map.paint();
   paintTop();
   paintAlerts();
+  paintAttention();
   timeline.update();
   inspector.update();
   fly(moved, before);
@@ -252,7 +253,7 @@ function paintTop() {
   const working = agents.filter((a) => presence(st, a.id, now) === 'working').length;
   const held = Object.values(st.blocks).filter((b) => b.holder).length;
   let bugs = 0;
-  let need = 0;
+  let need = agents.filter((a) => needsHuman(st, a.id, now) && !st.items[a.asked[0]]).length;
   for (const it of Object.values(st.items)) {
     if (it.status === 'done' || it.status === 'wontfix') continue;
     if (it.kind === 'bug') bugs++;
@@ -280,13 +281,45 @@ function paintAlerts() {
   const al = ctx.alertList;
   const now = ctx.viewNow;
   const shown = ctx.alertsOpen ? al : al.slice(0, 1);
+  const away = ctx.away && !ctx.replayTs ? awayLine(ctx.away.since) : '';
   const rows = shown.map((a, i) => {
     const kind = a.kind === 'question' || a.kind === 'stale' ? 'warn' : 'high';
     const more = i === 0 && al.length > 1 ? `<button class="more" type="button" data-alert-more>${ctx.alertsOpen ? 'Fewer' : `+${al.length - 1}`}</button>` : '';
     return `<div class="alert ${kind}" role="button" tabindex="0" data-alert-block="${esc(a.block || '')}" data-alert-agent="${esc(a.agent || '')}" data-alert-kind="${a.kind}"><span class="sev"></span><span class="txt" title="${esc(a.text)}">${esc(a.text)}</span>${timer(a.ts, {}, now)}${more}</div>`;
   });
+  if (away) rows.unshift(`<div class="alert away"><span class="sev"></span><span class="txt" title="${esc(away)}">${esc(away)}</span><button class="btn" type="button" data-away-replay>Replay</button><button class="icon-btn" type="button" data-away-close aria-label="Dismiss">${icon('close')}</button></div>`);
   setHtml($('alerts'), rows.join(''));
 }
+
+// What happened while the page was in the background, in one sentence.
+function awayLine(since) {
+  const evs = ctx.events.filter((e) => e.ts >= since);
+  const n = (f) => evs.filter(f).length;
+  const landed = n((e) => e.type === 'block.release' && e.outcome === 'landed');
+  const bugs = n((e) => e.type === 'item.add' && e.item?.kind === 'bug');
+  const asked = n((e) => e.type === 'item.add' && e.item?.kind === 'question');
+  const failed = n((e) => e.type === 'test' && !e.ok);
+  let add = 0;
+  let del = 0;
+  for (const e of evs) if (e.type === 'touch') {
+    add += e.add || 0;
+    del += e.del || 0;
+  }
+  const plural = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  const parts = [
+    landed && plural(landed, 'block landed', 'blocks landed'),
+    (add || del) && `+${add} −${del} lines`,
+    bugs && plural(bugs, 'bug filed', 'bugs filed'),
+    asked && plural(asked, 'question', 'questions'),
+    failed && plural(failed, 'failing test run', 'failing test runs'),
+  ].filter(Boolean);
+  return `Since ${clock(since)}: ${parts.length ? parts.join(', ') : 'nothing new'}.`;
+}
+
+ctx.showAway = (since) => {
+  ctx.away = { since };
+  render();
+};
 
 $('stats').addEventListener('click', (e) => {
   const b = e.target.closest('[data-filter]');
@@ -296,6 +329,16 @@ $('stats').addEventListener('click', (e) => {
 });
 
 $('alerts').addEventListener('click', (e) => {
+  if (e.target.closest('[data-away-replay]')) {
+    const since = ctx.away.since;
+    ctx.away = null;
+    timeline.playFrom(since);
+    return render();
+  }
+  if (e.target.closest('[data-away-close]')) {
+    ctx.away = null;
+    return render();
+  }
   if (e.target.closest('[data-alert-more]')) {
     ctx.alertsOpen = !ctx.alertsOpen;
     return render();
@@ -305,6 +348,72 @@ $('alerts').addEventListener('click', (e) => {
   if (row.dataset.alertKind === 'question' && row.dataset.alertAgent) return side.focusAnswer(row.dataset.alertAgent);
   if (row.dataset.alertBlock) ctx.select(row.dataset.alertBlock);
   return undefined;
+});
+
+// ---------------------------------------------------------------------------------------- attention
+
+// The tab title carries how many agents wait on the human, so a background tab still says so. With the bell
+// on, an agent starting to wait, or an edit inside someone else's block, becomes a desktop notification.
+const seen = { needs: new Set(), alerts: new Set(), primed: false };
+function paintAttention() {
+  if (!ctx.live || !ctx.board) return;
+  const now = Date.now();
+  const waiting = Object.values(ctx.live.agents).filter((a) => a.id !== HUMAN && !a.leftAt && needsHuman(ctx.live, a.id, now));
+  document.title = `${waiting.length ? `(${waiting.length}) ` : ''}${ctx.board.name} Blockmap`;
+  const conflicts = alerts(ctx.live, now).filter((a) => a.kind === 'trespass' || a.kind === 'frozen');
+  if (seen.primed && notifyOn() && document.hidden) {
+    for (const a of waiting) if (!seen.needs.has(a.id)) notify(`${a.name} needs you`, a.doing || openTitle(a));
+    for (const c of conflicts) if (!seen.alerts.has(`${c.agent}|${c.block}`)) notify('Conflict', c.text);
+  }
+  seen.needs = new Set(waiting.map((a) => a.id));
+  seen.alerts = new Set(conflicts.map((c) => `${c.agent}|${c.block}`));
+  seen.primed = true;
+}
+function openTitle(a) {
+  const q = Object.values(ctx.live.items).find((it) => it.kind === 'question' && it.by === a.id && it.status === 'open');
+  return q ? q.title : '';
+}
+const canNotify = typeof Notification !== 'undefined';
+const notifyOn = () => canNotify && Notification.permission === 'granted' && storageGet('blockmap.notify', false);
+function notify(title, body) {
+  try {
+    new Notification(title, { body, tag: `${title}|${body}` });
+  } catch {
+    // Some browsers only notify from a service worker; the title count still shows it.
+  }
+}
+const bell = h('button', { class: 'icon-btn', id: 'bell', type: 'button', hidden: !canNotify, html: icon('bell') });
+function paintBell() {
+  const on = notifyOn();
+  bell.setAttribute('aria-pressed', String(on));
+  bell.setAttribute('aria-label', on ? 'Notifications on' : 'Notify me');
+  bell.title = on ? 'Notifications on' : 'Notify me';
+}
+bell.addEventListener('click', async () => {
+  if (notifyOn()) storageSet('blockmap.notify', false);
+  else {
+    let perm = Notification.permission;
+    if (perm === 'default') {
+      try {
+        perm = await Notification.requestPermission();
+      } catch {
+        perm = 'denied';
+      }
+    }
+    if (perm === 'granted') storageSet('blockmap.notify', true);
+    else toast('The browser blocked notifications for this page.');
+  }
+  paintBell();
+});
+document.querySelector('.theme-tools').prepend(bell);
+paintBell();
+
+// Coming back after a while: a one-line digest of what changed, with a replay from when you left.
+const AWAY_MS = 3 * 60_000;
+let hiddenAt = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) hiddenAt = Date.now();
+  else if (hiddenAt && Date.now() - hiddenAt >= AWAY_MS) ctx.showAway(hiddenAt);
 });
 
 // ------------------------------------------------------------------------------- lens, search, theme

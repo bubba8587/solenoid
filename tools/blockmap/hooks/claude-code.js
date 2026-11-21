@@ -8,7 +8,8 @@
 //   PreToolUse         an edit inside another agent's (or the human's, or a frozen) block is refused
 //                      with the reason; an edit in a free block reserves it, per the board's guard
 //   PostToolUse        record the edit or the command, guess test results, deliver messages
-//   Stop               mark the agent idle until the next prompt
+//   Notification       a permission prompt or a long wait: the agent needs the human
+//   Stop               the turn ended: the agent waits for the human's next prompt
 //   SessionEnd         leave the board, releasing what the agent held
 
 import fs from 'node:fs';
@@ -17,6 +18,7 @@ import { openStore, findBoardDir } from '../core/store.js';
 import { reduce, makeEvent, blockMeta, agentName, isStale, clock, itemCounts, HUMAN } from '../core/model.js';
 import { blockForPath, normalizePath } from '../core/glob.js';
 import { sessionAgentId, whereAmI } from '../core/identity.js';
+import { lineCounts } from './lines.js';
 
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const TEST_CMD = /\b(vitest|jest|mocha|pytest|cargo (nextest|test)|npm (run )?test|go test|node --test|test-bucket|cargo-test)\b/;
@@ -109,7 +111,7 @@ async function main() {
       if (EDIT_TOOLS.has(input.tool_name)) {
         const file = relFile(store.root, input.tool_input?.file_path || input.tool_input?.notebook_path);
         if (file) {
-          events.push(ev('touch', { files: [file], op: 'edit' }));
+          events.push(ev('touch', { files: [file], op: 'edit', ...lineCounts(input.tool_name, input.tool_input, input.tool_response) }));
           events.push(ev('agent.status', { status: 'working', doing: `Editing ${file}` }));
         }
       } else if (input.tool_name === 'Bash') {
@@ -126,9 +128,16 @@ async function main() {
       return parts.length ? context('PostToolUse', parts.join('\n\n')) : undefined;
     }
 
+    case 'Notification': {
+      // Claude Code says it needs a permission or has sat waiting for input; either way the human is up.
+      const message = String(input.message || '').trim();
+      if (joined()) commit([ev('agent.status', { status: 'waiting', doing: message || 'Needs your attention' })]);
+      return undefined;
+    }
+
     case 'Stop': {
       const a = state.agents[me];
-      if (a && !a.leftAt && a.status !== 'idle') commit([ev('agent.status', { status: 'idle', doing: 'Waiting for the next prompt' })]);
+      if (a && !a.leftAt && a.status !== 'review') commit([ev('agent.status', { status: 'review', doing: 'Finished the turn' })]);
       return undefined;
     }
 

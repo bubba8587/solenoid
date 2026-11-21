@@ -234,7 +234,15 @@ export function createTimeline(ctx, root) {
     }
   }
 
-  return { update, stop };
+  return {
+    update,
+    stop,
+    playFrom(ts) {
+      stop();
+      ctx.replay(ts);
+      start();
+    },
+  };
 }
 
 function fit(text, w) {

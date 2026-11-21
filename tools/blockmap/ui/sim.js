@@ -39,6 +39,7 @@ const BUGS = [
   'Error chip shows the wrong card name',
   'Tooltip clips at the right edge on a phone',
 ];
+const PERMISSIONS = ['Claude needs your permission to use Bash', 'Claude needs your permission to edit vite.config.ts', 'Claude needs your permission to run npm install'];
 const ANSWERS = ['Follow Excel, and note it in excel-divergences.', 'The spec wins. Fix the code.', 'Go ahead, refreeze the seeds.', 'Clean change. Pre-alpha, break freely.', 'Small patch now, file the clean change as a task.'];
 
 export function createSim(board, { seed = 7, crew = CREW } = {}) {
@@ -57,6 +58,7 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
     const t = (blocksById[id]?.sample || []).find((f) => /\.test\.|tests\//.test(f));
     return t || `tests/graph/${id.replace(/-./g, (m) => m[1].toUpperCase())}.test.ts`;
   };
+  const lines = () => ({ add: 1 + Math.floor(rand() ** 2 * 70), del: Math.floor(rand() ** 2 * 35) });
   const short = (s, n = 64) => (s.length > n ? `${s.slice(0, n - 1).replace(/\s+\S*$/, '')}…` : s);
 
   function emit(state, out, type, by, payload, t) {
@@ -128,17 +130,28 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
           const held = Object.values(state.blocks).filter((b) => b.holder && b.holder !== p.id && b.holder !== HUMAN);
           if (held.length) {
             const b = pick(held);
-            emit(state, out, 'touch', p.id, { files: [pick(filesOf(b.id))], op: 'edit' }, t);
+            emit(state, out, 'touch', p.id, { files: [pick(filesOf(b.id))], op: 'edit', ...lines() }, t);
           }
+        } else if (roll < 0.13) {
+          emit(state, out, 'agent.status', p.id, { status: 'waiting', doing: pick(PERMISSIONS) }, t);
+          p.phase = 'permission';
+          p.wakeAt = t + (60_000 + rand() * 120_000) / p.pace;
+          return;
         } else {
           const target = p.extra && rand() < 0.3 ? p.extra : p.block;
           const file = pick(filesOf(target));
-          emit(state, out, 'touch', p.id, { files: [file], op: 'edit' }, t);
+          emit(state, out, 'touch', p.id, { files: [file], op: 'edit', ...lines() }, t);
           if (rand() < 0.45) emit(state, out, 'agent.status', p.id, { doing: `Editing ${file}` }, t + 1);
           p.budget--;
         }
         if (p.budget <= 0) p.phase = 'testing';
         p.wakeAt = t + (18_000 + rand() * 40_000) / p.pace;
+        return;
+      }
+      case 'permission': {
+        emit(state, out, 'agent.status', p.id, { status: 'working', doing: 'Allowed, carrying on' }, t);
+        p.phase = 'working';
+        p.wakeAt = t + 15_000 / p.pace;
         return;
       }
       case 'testing': {
@@ -158,7 +171,7 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
       case 'landing': {
         for (const id of [p.block, p.extra].filter(Boolean)) emit(state, out, 'block.release', p.id, { block: id, outcome: 'landed', note: '' }, t);
         if (p.item && state.items[p.item]) emit(state, out, 'item.update', p.id, { item: p.item, status: 'done' }, t + 1);
-        emit(state, out, 'agent.status', p.id, { status: 'idle', doing: `Committed on develop: ${short(a?.task || 'the change', 60)}` }, t + 2);
+        emit(state, out, 'agent.status', p.id, { status: 'review', doing: `Committed: ${short(a?.task || 'the change', 60)}` }, t + 2);
         p.block = p.item = p.extra = null;
         p.phase = 'idle';
         p.wakeAt = t + (60_000 + rand() * 120_000) / p.pace;
