@@ -35,6 +35,11 @@ jobs:
       - name: Unit tests
         run: npx vitest run
 
+      # Blockmap and the theme kit run on Node alone. The kit's tests include its drift check: a change to Solenoid's
+      # palette files (palette.ts, themeVars.ts, appTheme.ts, App.css…) needs `node tools/solenoid-theme/sync.mjs`.
+      - name: Blockmap and theme kit tests
+        run: node --test tools/blockmap/test/*.test.js tools/solenoid-theme/test/kit.test.js
+
       # The headless runner bundled alone (dist-cli/), then run on a seed from an empty folder.
       - name: Build the headless CLI
         run: npm run build:cli
