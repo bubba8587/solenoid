@@ -1,0 +1,3 @@
+#!/bin/sh
+# The Blockmap command line. `tools/blockmap/bm help` lists the commands.
+exec node "$(dirname "$0")/cli.js" "$@"

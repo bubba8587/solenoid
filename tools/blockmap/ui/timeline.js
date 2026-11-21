@@ -1,0 +1,206 @@
+// The timeline dock: a lane per agent showing which blocks it held when, its edits, tests and
+// questions, and the human's own actions. Dragging across it replays the board at that moment.
+
+import { HUMAN, blockMeta, clock, ago } from '../core/model.js';
+import { h, icon, setHtml, setText, esc } from './dom.js';
+
+const RANGES = [
+  ['1h', 3600_000],
+  ['3h', 3 * 3600_000],
+  ['12h', 12 * 3600_000],
+  ['All', Infinity],
+];
+const STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 180, 360, 720].map((m) => m * 60_000);
+const LABEL = 92;
+const AXIS = 20;
+const LANE = 19;
+const PAD_R = 14;
+
+export function createTimeline(ctx, root) {
+  let range = 3 * 3600_000;
+  let playing = null;
+  const title = h('span', { class: 'tl-title' }, 'Timeline');
+  const time = h('span', { class: 'tl-time' });
+  const live = h('button', { class: 'tl-live', type: 'button', hidden: true }, 'Back to live');
+  const play = h('button', { class: 'tl-play', type: 'button', 'aria-label': 'Replay', html: icon('play') });
+  const seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Time range' });
+  for (const [label, ms] of RANGES) {
+    const b = h('button', { type: 'button', 'aria-pressed': String(ms === range) }, label);
+    b.addEventListener('click', () => {
+      range = ms;
+      for (const x of seg.children) x.setAttribute('aria-pressed', String(x === b));
+      update(true);
+    });
+    seg.append(b);
+  }
+  const hint = h('span', { class: 'win-sub', style: { marginLeft: 'auto' } }, 'Drag across the lanes to replay');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'tl-svg');
+  const body = h('div', { class: 'tl-body' }, svg);
+  root.append(h('div', { class: 'tl-head' }, title, time, live, play, seg, hint), body);
+
+  live.addEventListener('click', () => {
+    stop();
+    ctx.replay(null);
+  });
+  play.addEventListener('click', () => (playing ? stop() : start()));
+
+  let geom = null;
+  let dragging = false;
+  svg.addEventListener('pointerdown', (e) => {
+    if (!geom) return;
+    stop();
+    dragging = true;
+    svg.setPointerCapture(e.pointerId);
+    scrub(e);
+  });
+  svg.addEventListener('pointermove', (e) => dragging && scrub(e));
+  svg.addEventListener('pointerup', () => (dragging = false));
+  svg.addEventListener('pointercancel', () => (dragging = false));
+
+  function scrub(e) {
+    const r = svg.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * geom.W;
+    const t = geom.t0 + ((x - LABEL) / (geom.W - LABEL - PAD_R)) * (geom.t1 - geom.t0);
+    if (t >= geom.t1 - (geom.t1 - geom.t0) * 0.012) ctx.replay(null);
+    else ctx.replay(Math.max(geom.t0, t));
+  }
+
+  function start() {
+    const g = geom;
+    if (!g) return;
+    let t = ctx.replayTs ?? g.t0;
+    if (t >= g.t1 - 1000) t = g.t0;
+    const speed = (g.t1 - g.t0) / 22_000;
+    let last = performance.now();
+    play.innerHTML = icon('pause');
+    play.setAttribute('aria-label', 'Pause');
+    const tick = (nowPerf) => {
+      t += (nowPerf - last) * speed;
+      last = nowPerf;
+      if (t >= g.t1) {
+        stop();
+        ctx.replay(null);
+        return;
+      }
+      ctx.replay(t);
+      playing = requestAnimationFrame(tick);
+    };
+    playing = requestAnimationFrame(tick);
+  }
+
+  function stop() {
+    if (playing) cancelAnimationFrame(playing);
+    playing = null;
+    play.innerHTML = icon('play');
+    play.setAttribute('aria-label', 'Replay');
+  }
+
+  let cacheKey = '';
+  function update(force = false) {
+    const st = ctx.live;
+    const events = ctx.events;
+    const liveNow = ctx.liveNow();
+    const W = Math.max(640, Math.round(body.clientWidth || 900));
+    const first = events.length ? events[0].ts : liveNow - 3600_000;
+    const t1 = liveNow;
+    const t0 = Math.max(t1 - range, first - Math.max(20_000, (t1 - first) * 0.06));
+    const viewTs = ctx.replayTs ?? t1;
+    setText(time, ctx.replayTs ? `${clock(viewTs)} · ${ago(t1 - viewTs)} ago` : `${clock(t1)} · live`);
+    live.hidden = !ctx.replayTs;
+    const key = `${events.length}|${W}|${Math.floor(t1 / 15_000)}|${range}|${document.documentElement.dataset.theme || ''}`;
+    if (key !== cacheKey || force) {
+      cacheKey = key;
+      draw(st, events, t0, t1, W);
+    }
+    placeHead(viewTs);
+  }
+
+  function draw(st, events, t0, t1, W) {
+    const x = (t) => LABEL + ((t - t0) / (t1 - t0)) * (W - LABEL - PAD_R);
+    const holds = [];
+    for (const b of Object.values(st.blocks)) {
+      for (const hst of b.history) if (hst.to >= t0) holds.push({ block: b.id, agent: hst.agent, from: hst.from, to: hst.to });
+      if (b.holder) holds.push({ block: b.id, agent: b.holder, from: b.since, to: null });
+    }
+    const active = new Map();
+    for (const e of events) {
+      if (e.ts < t0) continue;
+      const who = typeof e.agent === 'string' ? e.agent : e.by;
+      if (!who || who === HUMAN) continue;
+      if (!active.has(who)) active.set(who, e.ts);
+    }
+    for (const hd of holds) if (hd.agent !== HUMAN && !active.has(hd.agent)) active.set(hd.agent, hd.from);
+    const lanes = [...active.keys()].filter((id) => st.agents[id]).sort((a, b) => active.get(a) - active.get(b));
+    lanes.push(HUMAN);
+    const laneY = new Map(lanes.map((id, i) => [id, AXIS + i * LANE]));
+    const H = AXIS + lanes.length * LANE + 6;
+    geom = { W, H, t0, t1 };
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.style.height = `${H}px`;
+
+    const parts = [];
+    lanes.forEach((id, i) => {
+      const y = laneY.get(id);
+      if (i % 2 === 0) parts.push(`<rect class="lane" x="0" y="${y}" width="${W}" height="${LANE}"/>`);
+      const a = st.agents[id];
+      const color = id === HUMAN ? 'var(--human)' : a.color;
+      parts.push(`<circle cx="10" cy="${y + LANE / 2}" r="4" fill="${color}"/><text class="lane-label" x="20" y="${y + LANE / 2 + 4}">${esc(a.name.slice(0, 11))}</text>`);
+    });
+    const span = t1 - t0;
+    const step = STEPS.find((s) => span / s <= 8) || STEPS[STEPS.length - 1];
+    for (let t = Math.ceil(t0 / step) * step; t <= t1; t += step) {
+      const tx = x(t);
+      const label = tx < W - PAD_R - 34 ? `<text class="tick-label" x="${tx + 3}" y="${AXIS - 7}">${clock(t)}</text>` : '';
+      parts.push(`<line class="tick" x1="${tx}" x2="${tx}" y1="${AXIS - 4}" y2="${H}"/>${label}`);
+    }
+    for (const hd of holds) {
+      const y = laneY.get(hd.agent);
+      if (y === undefined) continue;
+      const a = st.agents[hd.agent];
+      const color = hd.agent === HUMAN ? 'var(--human)' : a?.color || 'var(--ink-3)';
+      const x0 = Math.max(LABEL, x(hd.from));
+      const x1 = x(hd.to ?? t1);
+      const w = Math.max(2, x1 - x0);
+      const name = blockMeta(st, hd.block)?.name || hd.block;
+      parts.push(`<g class="hold"><rect x="${x0}" y="${y + 3}" width="${w}" height="${LANE - 8}" fill="${color}" opacity="${hd.to ? 0.62 : 0.9}"><title>${esc(name)}: ${clock(hd.from)} to ${hd.to ? clock(hd.to) : 'now'}</title></rect>${w > 46 ? `<text x="${x0 + 4}" y="${y + LANE / 2 + 2.5}">${esc(fit(name, w))}</text>` : ''}</g>`);
+    }
+    for (const e of events) {
+      if (e.ts < t0) continue;
+      const who = typeof e.agent === 'string' ? e.agent : e.by || HUMAN;
+      const y = laneY.get(who);
+      if (y === undefined) continue;
+      const ex = x(e.ts);
+      const color = who === HUMAN ? 'var(--human)' : st.agents[who]?.color;
+      if (e.type === 'touch' && e.op === 'edit') parts.push(`<line class="edit" x1="${ex}" x2="${ex}" y1="${y + LANE - 6}" y2="${y + LANE - 1}" stroke="${color}"/>`);
+      else if (e.type === 'test') parts.push(`<circle class="${e.ok ? 'mk-ok' : 'mk-fail'}" cx="${ex}" cy="${y + 4}" r="2.6"><title>Tests ${e.ok ? 'pass' : 'fail'}${e.summary ? `: ${esc(e.summary)}` : ''}</title></circle>`);
+      else if (e.type === 'item.add' && e.item?.kind === 'question') parts.push(`<path class="mk-ask" d="M${ex} ${y + 1} l4 4 -4 4 -4 -4Z"><title>${esc(e.item.title)}</title></path>`);
+      else if (e.type === 'item.add' && e.item?.kind === 'bug') parts.push(`<path class="mk-bug" d="M${ex - 3.2} ${y + 7} h6.4 l-3.2 -5.5Z"><title>Bug: ${esc(e.item.title)}</title></path>`);
+      else if (who === HUMAN && ['block.queue', 'block.freeze', 'msg', 'item.update', 'block.reserve', 'block.release'].includes(e.type)) parts.push(`<rect class="mk-human" x="${ex - 2.5}" y="${y + LANE / 2 - 2.5}" width="5" height="5" rx="1"><title>${esc(e.type)}</title></rect>`);
+    }
+    parts.push(`<line class="now-line" x1="${x(t1)}" x2="${x(t1)}" y1="${AXIS - 4}" y2="${H}"/>`);
+    parts.push(`<rect class="past" id="tl-future" x="0" y="${AXIS - 4}" width="0" height="${H}"/>`);
+    parts.push(`<g id="tl-head"><line class="head-line" x1="0" x2="0" y1="${AXIS - 6}" y2="${H}"/><circle class="head-knob" cx="0" cy="${AXIS - 6}" r="4"/></g>`);
+    setHtml(svg, parts.join(''));
+    geom.x = x;
+  }
+
+  function placeHead(ts) {
+    if (!geom?.x) return;
+    const hx = geom.x(Math.min(ts, geom.t1));
+    const head = svg.querySelector('#tl-head');
+    const fut = svg.querySelector('#tl-future');
+    if (head) head.setAttribute('transform', `translate(${hx} 0)`);
+    if (fut) {
+      fut.setAttribute('x', String(hx));
+      fut.setAttribute('width', String(ctx.replayTs ? Math.max(0, geom.x(geom.t1) - hx) : 0));
+    }
+  }
+
+  return { update, stop };
+}
+
+function fit(text, w) {
+  const max = Math.floor((w - 8) / 5.4);
+  return text.length > max ? `${text.slice(0, Math.max(1, max - 1))}…` : text;
+}

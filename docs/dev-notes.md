@@ -6,6 +6,19 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-21: Blockmap, a live map of who works where; cloud session)
+- **What stands:** `tools/blockmap/` (zero dependencies, nothing imported from the app; `tools/blockmap/README.md`)
+  and this repository's board, `.blockmap/board.json`: 53 blocks in 8 districts whose globs claim all 3,990 tracked
+  files, each naming the specs to read before touching it, with `docs/backlog.md` imported onto the blocks (the "needs
+  the author's call" headings become decisions waiting on the author). Agents reserve blocks with `tools/blockmap/bm`;
+  `bm serve --open` shows the map, the agents' windows, tethers, alerts and a replayable timeline.
+- **Off by default.** Nothing in `.claude/settings.json` changed: `bm hooks install` writes the Claude Code hooks into
+  the git-ignored `.claude/settings.local.json`, after which a session joins the board, is refused an edit inside a block
+  another agent holds (with the reason), reserves a free block on its first edit there and is told that block's specs.
+  `docs/agent-coordination.md`'s claim lines are untouched; the board could replace them if the author wants.
+- **Tests:** `node --test tools/blockmap/test/*.test.js` (not in vitest's globs or `tests/buckets.mjs`, so CI doesn't run
+  them). A board edit that leaves files unclaimed shows an "Unclaimed" district on the map.
+
 ### SESSION DIGEST (2026-11-19: the Solenoid look over TaskNotes 5.0.1; cloud session)
 - **What stands** ([[obsidian-plugin#The look]], Other plugins' views): the plain-button pill is a `:where()` rule and
   skips `.tasknotes-plugin` subtrees, which fixed the agenda (every ghost button had become a sunken pill: blob day

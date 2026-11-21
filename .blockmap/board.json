@@ -1,0 +1,1576 @@
+{
+  "schema": 1,
+  "name": "Solenoid",
+  "human": {
+    "name": "Author"
+  },
+  "staleAfterMin": 30,
+  "guard": {
+    "held": "deny",
+    "frozen": "deny",
+    "free": "reserve"
+  },
+  "districts": [
+    {
+      "id": "engine",
+      "name": "Engine",
+      "hue": 222,
+      "about": "The Rust core and the graph runtime: formulas, functions, card bodies, types, units and dates."
+    },
+    {
+      "id": "data",
+      "name": "Tables & data",
+      "hue": 28,
+      "about": "Frames, cubes, the table popup, pivot and every way data gets in."
+    },
+    {
+      "id": "canvas",
+      "name": "Canvas",
+      "hue": 160,
+      "about": "The React Flow surface: cables, groups, gestures and the HTML-in-canvas renderer."
+    },
+    {
+      "id": "cards",
+      "name": "Cards",
+      "hue": 48,
+      "about": "Node families and the catalog that lists them."
+    },
+    {
+      "id": "figures",
+      "name": "Charts & documents",
+      "hue": 338,
+      "about": "Charts, reports, notes, dashboards, formats and alerts."
+    },
+    {
+      "id": "shell",
+      "name": "App shell",
+      "hue": 252,
+      "about": "Menus, bars, panels, theme, documents and the save format."
+    },
+    {
+      "id": "obsidian",
+      "name": "Obsidian",
+      "hue": 284,
+      "about": "The vault as data: reading notes, writing properties, TaskNotes and the plugin."
+    },
+    {
+      "id": "ship",
+      "name": "Ship & tooling",
+      "hue": 96,
+      "about": "Seeds, the site, releases, desktop and Android, the demo video, tests, docs and dev tools."
+    }
+  ],
+  "blocks": [
+    {
+      "id": "graph-core",
+      "name": "Graph core & compute pass",
+      "district": "engine",
+      "about": "The netcore graph model, the dataflow pass, sessions and calc modes.",
+      "paths": [
+        "crates/solenoid-graph/src/{model,pass,session,direct,lib,value,wasm,wasm_shared}.rs",
+        "crates/solenoid-graph/tests/",
+        "crates/solenoid-graph/*.toml",
+        "src/graph/{graphCompute,process,editReach,passSession,calcModeStore,nodeBoundary,graphEditor,graphModel,dataflowEngine,graphSignals,graphStub,nodeBudget,draftFlush}.ts",
+        "tests/graph/*{pass,Pass,compute,Compute,graphModel,dataflow,calcMode,editReach}*",
+        "crates/solenoid-graph/Cargo.lock"
+      ],
+      "docs": [
+        "tree/specs/computation/compute-pass.md",
+        "tree/specs/computation/graph-core.md"
+      ],
+      "keywords": [
+        "compute pass",
+        "dataflow",
+        "calc mode",
+        "graph core",
+        "netcore",
+        "process()",
+        "recompute"
+      ]
+    },
+    {
+      "id": "types-lattice",
+      "name": "Sockets & type lattice",
+      "district": "engine",
+      "about": "Socket types, the lattice, FC facts, settle and the input boundary.",
+      "paths": [
+        "crates/solenoid-graph/src/{lattice,fc,settle,boundary,boundary_core}.rs",
+        "src/graph/{sockets,trueAnyAdopt,fcReconcile,fcFacts,settleFacts,socketDocs,socketFlipStore,presentSocketStore,fcDocking,fcExtensions}.ts",
+        "scripts/socket-inventory.ts",
+        "docs/socket-reference.md",
+        "tests/graph/*{socket,Socket,lattice,Lattice,fcReconcile,settle,retype}*"
+      ],
+      "docs": [
+        "tree/specs/values/socket-lattice.md",
+        "tree/specs/values/type-propagation-on-in-place-socket-retype.md",
+        "docs/socket-reference.md"
+      ],
+      "keywords": [
+        "socket",
+        "lattice",
+        "retype",
+        "wildcard",
+        "fc facts",
+        "type propagation",
+        "untyped"
+      ]
+    },
+    {
+      "id": "formula-lang",
+      "name": "Formula language",
+      "district": "engine",
+      "about": "Parsing and evaluating formulas: operators, LAMBDA, references, criteria.",
+      "paths": [
+        "crates/solenoid-core/src/{excel_formula,eval,excel_criteria,excel_regex,jsnum,spelled,card_helpers}.rs",
+        "src/graph/{excelFormula,formulaSyntax,formulaSignatures,formulaSignatureTable,closeParens,formulaLayout,formulaExtensions,lambdaValue,formulaPopupStore}.ts",
+        "src/graph/nodes/{expression,lambda,tableLambda}.ts",
+        "src/graph/components/{ExpressionNode,expressionEdit,FormulaEditor,FormulaField,FormulaPopup,formulaFit,LambdaNode,LambdaView,TableLambdaNodes,inlineRefDisplay}*",
+        "tests/graph/*{formula,Formula,lambda,Lambda,expression,Expression}*"
+      ],
+      "docs": [
+        "tree/specs/computation/formula-language.md"
+      ],
+      "keywords": [
+        "formula",
+        "lambda",
+        "expression",
+        "operator",
+        "parser",
+        "let(",
+        "reduce",
+        "scan"
+      ]
+    },
+    {
+      "id": "functions",
+      "name": "Excel function library",
+      "district": "engine",
+      "about": "Every function a formula can call, its Excel parity and its records.",
+      "paths": [
+        "crates/solenoid-core/src/{excel_functions,formulajs,dists,exact_sum,compare,sort,string_order,text_ops,hash_ops,finance_ops,planners,shapers,decision}.rs",
+        "crates/solenoid-core/src/fns_{complex,lists,matrix,random,stats}.rs",
+        "src/graph/{excelFunctions,excelSections,excelToCatalog,functionRecords,formulaNodeParity,nodeExcel,formulaCards}.ts",
+        "fixtures/functions/",
+        "scripts/function-records/",
+        "tests/graph/*{excel,Excel,function,Function,parity,Parity}*"
+      ],
+      "docs": [
+        "tree/specs/computation/excel-divergences.md",
+        "tree/specs/computation/function-records.md"
+      ],
+      "keywords": [
+        "excel",
+        "function",
+        "parity",
+        "xlookup",
+        "sumifs",
+        "textjoin",
+        "formula library",
+        "divergence"
+      ]
+    },
+    {
+      "id": "node-bodies",
+      "name": "Card bodies in Rust",
+      "district": "engine",
+      "about": "What each card computes, in solenoid-core, frozen against fixtures.",
+      "paths": [
+        "crates/solenoid-core/src/nodes/",
+        "crates/solenoid-core/tests/",
+        "src/graph/{nodeOnCore,heldValues,savedNodeBody}.ts",
+        "scripts/freeze-nodes.mjs",
+        "fixtures/core/",
+        "tests/graph/nodes/"
+      ],
+      "docs": [
+        "tree/specs/computation/node-bodies.md"
+      ],
+      "keywords": [
+        "card body",
+        "node body",
+        "freeze",
+        "nodes/",
+        "conformance"
+      ]
+    },
+    {
+      "id": "rust-core",
+      "name": "Rust core & WASM build",
+      "district": "engine",
+      "about": "The crate, its WebAssembly build and stamp, and what JavaScript still imitates.",
+      "paths": [
+        "crates/solenoid-core/src/lib.rs",
+        "crates/solenoid-core/*.toml",
+        "crates/solenoid-core/data/",
+        "crates/vendor/",
+        "crates/solenoid-parquet/",
+        "src/graph/{engineWasm,coreReady,coreValues}.ts",
+        "src/graph/engineWasm/",
+        "scripts/{build-wasm,wasm-stamp,cargo-test}.mjs",
+        "scripts/check-rust.sh",
+        "scripts/rust-licenses/",
+        "scripts/rust-licenses.mjs",
+        ".cargo/",
+        "rust-toolchain.toml",
+        "deny.toml",
+        "tests/graph/*{wasm,Wasm,engine,Engine,stamp,core,Core}*",
+        "crates/solenoid-core/{Cargo.lock,benches/,examples/}",
+        "crates/solenoid-core/src/{wasm,wire}.rs"
+      ],
+      "docs": [
+        "tree/specs/computation/rust-core.md"
+      ],
+      "keywords": [
+        "rust core",
+        "wasm",
+        "rustIsSpec",
+        "crate",
+        "imitates",
+        "javascript copy",
+        "cargo"
+      ]
+    },
+    {
+      "id": "units",
+      "name": "Units & conversion",
+      "district": "engine",
+      "about": "First-class units, unit flow through cables and the Convert card.",
+      "paths": [
+        "crates/solenoid-core/src/{unit_catalog,unit_dims,unit_expression,unit_fold,convert_units,finance_units}.rs",
+        "crates/solenoid-core/src/unit_*.rs",
+        "crates/solenoid-graph/src/annotate.rs",
+        "src/graph/{unitFlow,annotationFacts,unitBridge,unitValue,unitColumn,unitFormat,dimension}.ts",
+        "src/graph/nodes/{convert,convertUnits}.ts",
+        "src/graph/components/ConvertNode*",
+        "scripts/gen-convert-units.mjs",
+        "tests/graph/*{unit,Unit,convert,Convert}*"
+      ],
+      "docs": [
+        "tree/specs/values/unit-flow.md"
+      ],
+      "keywords": [
+        "unit",
+        "units",
+        "convert",
+        "dimension",
+        "kg",
+        "metre",
+        "annotation"
+      ]
+    },
+    {
+      "id": "dates",
+      "name": "Dates & times",
+      "district": "engine",
+      "about": "Date serials, relative phrases, time zones and the date cards.",
+      "paths": [
+        "crates/solenoid-core/src/{date_ops,date_serial,date_values,relative_date}.rs",
+        "src/graph/{dateValue,dateOrder,volatileDates,timeZone,holidaysProvider}.ts",
+        "src/graph/nodes/{date,dateOps,dateSerial}.ts",
+        "src/graph/components/{DateEntry,DateNodes,DateRangeNode,DateTruncNode,DateOrderToggle,EpochNode,CalendarIcon,WeekendPick,DurationNode}*",
+        "tests/graph/*{date,Date,epoch,holiday}*",
+        "crates/solenoid-core/src/zone.rs"
+      ],
+      "docs": [
+        "tree/specs/values/date-values.md"
+      ],
+      "keywords": [
+        "date",
+        "dates",
+        "serial",
+        "time zone",
+        "holiday",
+        "weekday",
+        "duration",
+        "edate"
+      ]
+    },
+    {
+      "id": "values",
+      "name": "Values, errors & empty slots",
+      "district": "engine",
+      "about": "Value kinds, error values, input roles and what an empty field means.",
+      "paths": [
+        "crates/solenoid-core/src/error_value.rs",
+        "src/graph/{errorValue,valueKinds,valueKindLabel,valuePeekKind,inputRoles,emptySlots,listLiterals,scalarText,cellText,textOf,numberSpec,cxValue,imageValue,documentValue}.ts",
+        "src/graph/nodes/{shared,coerce,kind,cast,passthrough}.ts",
+        "src/graph/components/{TypeCoerceNodes,InlineCast,CastNode,ErrorChip,errorChip,IFErrorNode}*",
+        "tests/graph/*{value,Value,error,Error,emptySlot,inputRole,blank,Blank,coerce,Coerce}*",
+        "crates/solenoid-core/src/value_kinds.rs"
+      ],
+      "docs": [
+        "tree/specs/values/value-semantics.md",
+        "tree/specs/values/error-values.md",
+        "tree/specs/values/input-roles.md"
+      ],
+      "keywords": [
+        "empty slot",
+        "blank",
+        "error value",
+        "#value",
+        "#n/a",
+        "null",
+        "nan",
+        "input role",
+        "fallback",
+        "coerce"
+      ]
+    },
+    {
+      "id": "frame-verbs",
+      "name": "Frame verbs",
+      "district": "data",
+      "about": "Filter, join, group, sort and every other table verb, with its backend.",
+      "paths": [
+        "crates/solenoid-core/src/{frame,frame_verbs,frame_backend,frame_fns,frame_ref,binary,grid_filters,ladder}.rs",
+        "src/graph/{frameOps,frameBackend,binaryCells,frame,frameShape,frameShapeResolver,frameSidecar,frameHint}.ts",
+        "src/graph/nodes/{frame,ladderOps,frameShapeHook}.ts",
+        "src/graph/components/{FrameNodes,FrameFromListsNode,FrameHintLayer,frameHint,FilterNode,SortNode,UniqueNode,SliceNode,AggregateNode,DiffNode}*",
+        "fixtures/frame-verbs/",
+        "tests/graph/*{frame,Frame,verb,Verb,join,Join,filter,Filter,groupBy}*",
+        "src/graph/components/{SlicerNode,XMatchNode}*"
+      ],
+      "docs": [
+        "tree/specs/computation/frame-verbs.md"
+      ],
+      "keywords": [
+        "frame verb",
+        "frame",
+        "join",
+        "filter",
+        "group by",
+        "sort",
+        "table verb",
+        "rows",
+        "columns"
+      ]
+    },
+    {
+      "id": "table-popup",
+      "name": "Table popup & cells",
+      "district": "data",
+      "about": "The table popup, cell editing, Table Input and the grid's keyboard.",
+      "paths": [
+        "src/graph/{tableEdit,tablePopupStore,cardLayout,recordLayout,recordCardsFromPopup}.ts",
+        "src/graph/nodes/matrix.ts",
+        "src/graph/components/{TablePopup,TableCards,TableDisplay,TableEditMenu,TableInputNode,CellEditAffix,CellKindMenu,CellSuggest,controlledCell,gridKeyboard,columnHeadControls,columnSort,tableFooterStats,colType,CollapsedCell,FrameDisplay,FrameChip,MatrixNodes,ColumnPickerField,RecordNode,RecordLayoutField,recordNav,SpecialFrameView,CsvEditor}*",
+        "tests/graph/*{tablePopup,TablePopup,tableInput,TableInput,cell,Cell,matrix,Matrix}*",
+        "src/graph/nodes/{columnPickerHook,matrixOps}.ts"
+      ],
+      "docs": [
+        "tree/specs/documents/table-popup.md"
+      ],
+      "keywords": [
+        "table popup",
+        "frame popup",
+        "cell",
+        "table input",
+        "header",
+        "column header",
+        "grid"
+      ]
+    },
+    {
+      "id": "cubes",
+      "name": "Cubes & lists",
+      "district": "data",
+      "about": "The Cube value, Cube Input's typed columns and the list cards.",
+      "paths": [
+        "crates/solenoid-core/src/nodes/{cube_source,list}.rs",
+        "src/graph/{cubeTypes,cubeLevelTable,cubePopupStore,listPreview}.ts",
+        "src/graph/nodes/{cube,list,listOps}.ts",
+        "src/graph/components/{Cube,cube,List,ConcatLists,GroupLists,Interleave,NthElement,Reverse,Shuffle,Pad,Rle,Shift,Series,SeriesSum}*",
+        "tests/graph/*{cube,Cube,list,List}*"
+      ],
+      "docs": [
+        "tree/specs/computation/frame-verbs.md"
+      ],
+      "keywords": [
+        "cube",
+        "cubes",
+        "list",
+        "lists",
+        "cube input",
+        "nested"
+      ]
+    },
+    {
+      "id": "pivot",
+      "name": "Pivot",
+      "district": "data",
+      "about": "The pivot verb, its editor, calculated fields and date grouping.",
+      "paths": [
+        "src/graph/{pivotConfig,pivotEditorStore,pivotFromPopup,pivotLayout}.ts",
+        "src/graph/components/Pivot*",
+        "tests/graph/*{pivot,Pivot}*"
+      ],
+      "docs": [
+        "tree/specs/computation/frame-verbs.md"
+      ],
+      "keywords": [
+        "pivot",
+        "calculated field",
+        "date grouping"
+      ]
+    },
+    {
+      "id": "computed-columns",
+      "name": "Computed columns & Edit Frame",
+      "district": "data",
+      "about": "Fx columns, row formulas and the Edit Frame card's edit list.",
+      "paths": [
+        "crates/solenoid-core/src/nodes/{columns,edit_frame,columnar}.rs",
+        "src/graph/components/{editFramePopup,frameEdit}*",
+        "tests/graph/*{computedColumn,ComputedColumn,editFrame,EditFrame,fxColumn}*"
+      ],
+      "docs": [
+        "tree/specs/computation/computed-columns.md",
+        "tree/specs/computation/edit-frame.md"
+      ],
+      "keywords": [
+        "computed column",
+        "fx column",
+        "edit frame",
+        "row formula"
+      ]
+    },
+    {
+      "id": "sources",
+      "name": "Sources & connections",
+      "district": "data",
+      "about": "CSV, Excel workbooks, web sources, live feeds and the network gate.",
+      "paths": [
+        "crates/solenoid-core/src/{csv,providers,xlsx}.rs",
+        "src-tauri/src/net.rs",
+        "src/graph/{csv,csvSafety,connectionStore,connectionDialogStore,httpBridge,dataProviders,deploymentConfig,weatherProvider,geocodeProvider,fxProvider,ctorProvider,externalLinks,webUrl,fileGlob}.ts",
+        "src/graph/nodes/{connection,dataFeed}.ts",
+        "src/graph/components/{ConnectionDialog,connectionDialog,ConnectionNodes,FileLinkNode,WebImage}*",
+        "fixtures/xlsx/",
+        "public/solenoid.config.json",
+        "docs/self-hosting.md",
+        "scripts/xlsx-fixtures.py",
+        "tests/graph/*{csv,Csv,connection,Connection,source,Source,http,Http,xlsx,provider}*"
+      ],
+      "docs": [
+        "tree/specs/computation/live-connections.md",
+        "docs/self-hosting.md"
+      ],
+      "keywords": [
+        "csv",
+        "xlsx",
+        "workbook",
+        "web source",
+        "live source",
+        "connection",
+        "fetch",
+        "self-hosting",
+        "sharepoint",
+        "network gate"
+      ]
+    },
+    {
+      "id": "schedule-gantt",
+      "name": "Schedule & Gantt",
+      "district": "data",
+      "about": "Plan files, the critical path, the tasks cube and the Gantt figure.",
+      "paths": [
+        "packages/",
+        "crates/solenoid-schedule/",
+        "crates/solenoid-core/src/plan_files.rs",
+        "crates/solenoid-core/src/nodes/sched.rs",
+        "src/graph/{planImport,planTypes}.ts",
+        "src/graph/nodes/{schedule,gantt,earnedValue}.ts",
+        "src/graph/components/{GanttNode,ScheduleNode,ganttFilter,EarnedValueNode}*",
+        "tests/graph/*{gantt,Gantt,schedule,Schedule,plan,Plan}*"
+      ],
+      "docs": [
+        "tree/specs/computation/schedule-and-gantt.md"
+      ],
+      "keywords": [
+        "gantt",
+        "schedule",
+        "critical path",
+        "mspdi",
+        "xer",
+        "plan file",
+        "earned value"
+      ]
+    },
+    {
+      "id": "flow-surface",
+      "name": "React Flow surface",
+      "district": "canvas",
+      "about": "The canvas itself: viewport, undo history, selection and canvas commands.",
+      "paths": [
+        "src/graph/flow/",
+        "src/graph/{view,baseView,canvasCommands,canvasActions,canvasCapture,canvasContextMenu,canvasGeometry,canvasKeyboard,canvasLasso,canvasLock,flowSurface,viewPresets,zoomAt,graphDelta,historyDigest,selectionOps,copyPaste,clipboard,enterKey,modalGuard,escapeLayers}.ts",
+        "src/graph/canvas.css",
+        "src/graph/components/{NodeContextMenu,nodeContext,SelectionActionsBar,selectionActions,Minimap,PinLayer,pinLayer,ComputeOverlay,LoadOverlay,useCoversCanvas,escapeLayers}*",
+        "src/graph/{pinStore,computeOverlayStore,loadReveal}.ts",
+        "tests/graph/flow/",
+        "tests/graph/*{canvas,Canvas,undo,Undo,history,History,selection,Selection}*"
+      ],
+      "docs": [
+        "tree/specs/canvas/react-flow-surface-contract.md"
+      ],
+      "keywords": [
+        "canvas",
+        "react flow",
+        "viewport",
+        "undo",
+        "selection",
+        "pan",
+        "zoom",
+        "minimap"
+      ]
+    },
+    {
+      "id": "cables",
+      "name": "Cables & conduits",
+      "district": "canvas",
+      "about": "Cable paths and motion, drawn cables, conduits and lane faces.",
+      "paths": [
+        "src/graph/{cableAngleStore,cableEndMotion,cableFlourishStore,cableFlowStore,cablePaths,cablePendingReconnect,cableSettle,cableShape,cableState,cableValueStore,ribbonCable,conduitTrace,edgeTuck,drawnCablePath,drawnCables,canvasDrawn}.ts",
+        "src/graph/{cableShape}.tsx",
+        "src/graph/{CableShapeSelector,AngleDial}.*",
+        "src/graph/components/{Cable,cable,Conduit,conduit,DrawnCable,drawnCable,PendingCableLayer,pendingCableLayer,SocketGoo,CableSwitchNode}*",
+        "src/graph/nodes/conduit.ts",
+        "crates/solenoid-graph/src/conduit.rs",
+        "scripts/cable-flow-probe.mjs",
+        "tests/graph/*{cable,Cable,conduit,Conduit,drawn,Drawn}*",
+        "src/graph/edgeTuck.tsx"
+      ],
+      "docs": [
+        "tree/specs/canvas/cable-rendering-knobs.md",
+        "tree/specs/canvas/drawn-cables.md",
+        "tree/specs/canvas/conduit-lane-faces.md",
+        "tree/specs/canvas/input-cable-pruning.md"
+      ],
+      "keywords": [
+        "cable",
+        "cables",
+        "conduit",
+        "drawn cable",
+        "ribbon",
+        "lane"
+      ]
+    },
+    {
+      "id": "groups-layout",
+      "name": "Groups, standoffs & tidy",
+      "district": "canvas",
+      "about": "Groups that collapse and push, the standoff solver and auto-arrange.",
+      "paths": [
+        "src/graph/{groupCollapse,groupLogic,groupMembership,groupPush,groupPushCore,standoffSolver,standoffs,tidyArrange,nodeSize,nodeSizeStore,collapseStore,collapseSweep,flyToNode,gridSnapStore,sectionFoldStore,dockedNodeStore}.ts",
+        "src/graph/TidyOptionsPopover.tsx",
+        "src/graph/nodes/group.ts",
+        "src/graph/components/{GroupNode,StandoffLayer,layoutBatch,masonryLayout,MasonryGallery}*",
+        "scripts/{collapse-sweep,tidy-drift-probe}.mjs",
+        "tests/graph/*{group,Group,standoff,Standoff,tidy,Tidy,collapse,Collapse,nodeSize}*"
+      ],
+      "docs": [
+        "tree/specs/canvas/group-collapse.md",
+        "tree/specs/canvas/group-expand-push.md",
+        "tree/specs/canvas/standoffs.md",
+        "tree/specs/canvas/auto-arrange-tidy.md"
+      ],
+      "keywords": [
+        "group",
+        "groups",
+        "standoff",
+        "tidy",
+        "arrange",
+        "collapse",
+        "push",
+        "elk"
+      ]
+    },
+    {
+      "id": "card-chrome",
+      "name": "Card chrome & sockets",
+      "district": "canvas",
+      "about": "The card shell every node shares: sockets, fields, chips and resize grips.",
+      "paths": [
+        "src/graph/components/{NodeCard,nodeCard,NodeSocket,socket,SocketComponent,SocketContextMenu,SocketLegend,SocketValuePeek,nodeKit,standardNode,specOpNode,CardSection,CardArt,CardOpenButton,ResizeHandle,FieldResizeGrip,inlineInput,ExtensibleInputs,PairedExtensibleInputs,ValueChip,chipStyle,ArrayChip,CubeChip,ChartChip,DiagramChip,DocumentChip,ErrorBoundary,errorBoundary,FieldChips,PickField,PopupChoice,PopupOverflowMenu,PopupResizeGrip,PopupShell,PopupSkeleton,popupChrome,popupNodeItems,LazySelect,SegToggle,SearchField,CollapsedInputPill,ValueExpandButton,ResultDisplay,DisplayNode,AutoCard,SolidCard,TypeIcon,Icons,CloseIcon,SaveIcon,RefreshIcon,PaintbrushIcon,ConfirmDialog,confirmDialog,menuClamp,useDismissOnOutside,useEscapeToClose,useFocusTrap,useHeaderHeightVar,shapeMode,index}*",
+        "src/graph/{literalEditors,literalFields,flippableNodes,valuePopup,confirmStore,elementPickerStore,isolate,isolateBoundary,isolateStore}.ts",
+        "src/graph/components/{IsolateEndpoints,isolateEndpoints,IsolatePill,isolatePill}*",
+        "crates/solenoid-core/src/nodes/fields.rs",
+        "tests/graph/components/",
+        "tests/graph/*{literal,Literal,field,Field,chrome,Chrome,isolate,Isolate}*"
+      ],
+      "docs": [
+        "tree/specs/floors/components.md",
+        "tree/specs/documents/inline-literal-maps.md",
+        "tree/specs/documents/literal-input-editors.md",
+        "tree/specs/canvas/resizable-content-nodes.md"
+      ],
+      "keywords": [
+        "card chrome",
+        "socket",
+        "field",
+        "chip",
+        "resize",
+        "inline input",
+        "literal",
+        "popup shell"
+      ]
+    },
+    {
+      "id": "html-canvas",
+      "name": "HTML-in-canvas renderer",
+      "district": "canvas",
+      "about": "Semantic zoom, the raster atlas and drawing cards into a canvas.",
+      "paths": [
+        "src/graph/{htmlCanvasRenderer,htmlCanvasSupport,rasterAtlas,zoomSettle,hicCamera,hicVectors,semanticZoomStore,renderMode,svgLayer,perfProbe}.ts",
+        "src/graph/components/{HtmlCanvasLayer,htmlCanvasLayer}*",
+        "docs/canvas-frame-cost-findings.md",
+        "scripts/zoom-perf-probe.mjs",
+        "tests/graph/*{htmlCanvas,HtmlCanvas,raster,Raster,semanticZoom,hic}*"
+      ],
+      "docs": [
+        "tree/specs/canvas/html-in-canvas.md",
+        "docs/canvas-frame-cost-findings.md"
+      ],
+      "keywords": [
+        "html in canvas",
+        "semantic zoom",
+        "raster",
+        "atlas",
+        "frame cost",
+        "zoom perf",
+        "paint"
+      ]
+    },
+    {
+      "id": "gestures",
+      "name": "Gestures, touch & mobile",
+      "district": "canvas",
+      "about": "Pointer and touch gestures, the phone layout and tablet actions.",
+      "paths": [
+        "src/graph/{pointerGesture,touchActions,touchScrollChain,touchSelectStore,lasso,coarse,mobileUa,useDeviceMode,phonePanel,mobileMenuStore}.ts",
+        "src/graph/{MobileControls,MobileMenuSheet,TabletActions}.*",
+        "src/mobile.css",
+        "scripts/{drag-probe,socket-drag-probe}.mjs",
+        "tests/graph/*{gesture,Gesture,touch,Touch,pinch,mobile,Mobile,pointer,Pointer}*",
+        "src/graph/phonePanel.css",
+        "src/graph/touchActions.tsx"
+      ],
+      "docs": [
+        "tree/specs/canvas/touch-gestures.md",
+        "tree/specs/canvas/pointer-gestures.md"
+      ],
+      "keywords": [
+        "gesture",
+        "touch",
+        "pinch",
+        "mobile",
+        "phone",
+        "tablet",
+        "long press",
+        "pointer"
+      ]
+    },
+    {
+      "id": "composites",
+      "name": "Composites & drill-in",
+      "district": "canvas",
+      "about": "Cards made of subgraphs, drilling in and out, and their stale marks.",
+      "paths": [
+        "src/graph/nodes/composite.ts",
+        "src/graph/{compositeLogic,compositeEditorStore,compositeStaleStore,activeGraph,foreignCardStore}.ts",
+        "src/graph/components/{CompositeNode,compositeEditor}*",
+        "tests/graph/*{composite,Composite,drill,Drill}*"
+      ],
+      "docs": [
+        "tree/specs/computation/composite-nodes.md",
+        "tree/specs/canvas/composite-drill-in-mount-lifecycle.md"
+      ],
+      "keywords": [
+        "composite",
+        "drill in",
+        "subgraph"
+      ]
+    },
+    {
+      "id": "node-catalog",
+      "name": "Node catalog & registry",
+      "district": "cards",
+      "about": "nodeCatalog.ts, the registry, op vocabularies and how a card gets added.",
+      "paths": [
+        "src/graph/{nodeCatalog,nodeClasses,nodeCtorRegistry,nodeRegistry,nodeInit,nodeStoreRegistry,nodeWire,opVocab,nodeOps,companions,storeKit}.ts",
+        "src/graph/nodes/{input,placeholder,sink,history,display}.ts",
+        "src/graph/components/{PlaceholderNode,placeholderNode,ConstantNode,ValueInputNode,SliderInputNode,XYPadNode,AngleDialNode,PromoNode,SessionHistoryNode,SaveTimesNode}*",
+        "scripts/{new-node,node-cases}.mjs",
+        "docs/node-coverage.md",
+        ".claude/skills/add-node/",
+        "tests/graph/*{catalog,Catalog,registry,Registry,nodeOps,coverage,Coverage}*"
+      ],
+      "docs": [
+        "docs/node-coverage.md",
+        "tree/specs/floors/node-classes.md"
+      ],
+      "keywords": [
+        "node catalog",
+        "nodecatalog",
+        "registry",
+        "add a node",
+        "new card",
+        "op picker",
+        "hidden until"
+      ]
+    },
+    {
+      "id": "math-cards",
+      "name": "Math & logic cards",
+      "district": "cards",
+      "about": "Arithmetic, rounding, comparison, logic, complex numbers and combinatorics.",
+      "paths": [
+        "src/graph/nodes/{scalar,logic,control,mathUtils,complex}.ts",
+        "src/graph/components/{Arithmetic,TwoInputMath,MathFn,Clamp,RoundN,MRound,Gcd,BaseConvert,Bitwise,Combinatorics,Combinations,Multinomial,Complex,Comparison,Boolean,If,Ifs,Switch,Choose,Not,Between,Exact,Fixed,IsClose,IsEvenOdd,IsTest,Na,Expect,Cross,SumProduct,Weighted,PolyRoots,QuadraticRoots,Trapz,Interpolate,OdeIntegrate,Convolve,Curve,Decompose,Fill,DelayedPass,SetCell,Sets,SetOp}*",
+        "crates/solenoid-core/src/nodes/{scalar,logic,control,complex,matrix,measure,values}.rs",
+        "tests/graph/*{math,Math,logic,Logic,complex,Complex,arith,round,Round}*",
+        "src/graph/components/{BesselNode,SumIfsNode}*",
+        "src/graph/trigMode.ts"
+      ],
+      "docs": [
+        "docs/node-coverage.md"
+      ],
+      "keywords": [
+        "arithmetic",
+        "round",
+        "compare",
+        "logic",
+        "if card",
+        "switch",
+        "complex",
+        "combinatoric",
+        "boolean"
+      ]
+    },
+    {
+      "id": "stats-cards",
+      "name": "Stats & probability",
+      "district": "cards",
+      "about": "Describe, fits, forecasts, tests, distributions and the probability pack.",
+      "paths": [
+        "src/graph/nodes/{stats,distribution,distributionOps,fitOps,forecastOps,probability,quality,tornado}.ts",
+        "src/graph/packs/probability.ts",
+        "src/graph/{monteCarlo,tornadoRun,describeProfile}.ts",
+        "src/graph/components/{Correl,Linest,Polyfit,Forecast,forecastView,EtsForecast,Ewma,Smooth,Frequency,HypothesisTest,Confidence,Bootstrap,AbTest,Probability,probabilityPlot,Prob,Distributions,FitDistribution,Outliers,TrimMean,RankPercentile,Standardize,Normalize,BinomDistRange,Fisher,DescribeProfile,Mode,Bin,FindPeaks,RandArray,RandBetween,ArgMinMax,Running,Returns}*",
+        "crates/solenoid-core/src/nodes/{stats,probability}.rs",
+        "tests/graph/*{stat,Stat,probab,Probab,forecast,Forecast,distribution,Distribution,monte}*"
+      ],
+      "docs": [
+        "tree/specs/computation/probability-pack.md"
+      ],
+      "keywords": [
+        "stats",
+        "probability",
+        "distribution",
+        "forecast",
+        "regression",
+        "bootstrap",
+        "monte carlo",
+        "hypothesis",
+        "describe"
+      ]
+    },
+    {
+      "id": "text-cards",
+      "name": "Text cards",
+      "district": "cards",
+      "about": "Text slicing, joining, regex, similarity and encodings.",
+      "paths": [
+        "src/graph/nodes/{text,textOps,hashOps,qr}.ts",
+        "src/graph/components/{Text,Regex,Concat,Rept,PadText,CharCode,UrlEncode,Uuid,Hash,RomanArabic,Substitute,TruncateText,WrapText,Contains,Qr}*",
+        "src/graph/textDiff.ts",
+        "crates/solenoid-core/src/nodes/{text,qr}.rs",
+        "tests/graph/*{text,Text,regex,Regex}*"
+      ],
+      "docs": [
+        "docs/node-coverage.md"
+      ],
+      "keywords": [
+        "text",
+        "regex",
+        "string",
+        "split",
+        "join",
+        "similarity",
+        "trim"
+      ]
+    },
+    {
+      "id": "finance-cards",
+      "name": "Finance cards",
+      "district": "cards",
+      "about": "TVM, NPV and IRR, amortization, bonds and depreciation.",
+      "paths": [
+        "src/graph/nodes/{finance,financeOps,allocateOps}.ts",
+        "src/graph/components/{Npv,Irr,Mirr,Tvm,Amortization,PaymentBreakdown,BondPricing,Coupon,AccruedInterest,Depreciation,DiscountSecurity,Dollar,FvSchedule,Ispmt}*",
+        "crates/solenoid-core/src/nodes/finance.rs",
+        "tests/graph/*{finance,Finance,npv,irr,amort,bond}*"
+      ],
+      "docs": [
+        "docs/node-coverage.md"
+      ],
+      "keywords": [
+        "finance",
+        "npv",
+        "irr",
+        "loan",
+        "amortization",
+        "bond",
+        "depreciation",
+        "tvm"
+      ]
+    },
+    {
+      "id": "packs",
+      "name": "Science packs",
+      "district": "cards",
+      "about": "Chemistry, electricity, fluids, thermo, geometry, astronomy and friends.",
+      "paths": [
+        "src/graph/packs/",
+        "src/graph/packs.ts",
+        "src/graph/nodes/{chemistry,chemistryOps,electrical,electricalOps,fluids,fluidsOps,thermo,thermoOps,astro,emSpectrum,health,healthOps,physicsConstants,physicsConstantsOps,geometryFigures,triangle,unitCircle,optimize}.ts",
+        "src/graph/components/{ChemistryNodes,ElectricalNodes,FluidsNodes,ThermoNodes,AstroNodes,PhysicsConstantNode,SpectrumNode,GeometryCards,GeometryFigure,ElementCard,ElementPicker,PackToolNodes,SetPackNodes,TimesaverNodes,TriangleSolverCard,UnitCircleCard,ColorBlend,ColorPicker}*",
+        "crates/solenoid-core/src/fns_packs.rs",
+        "crates/solenoid-core/src/nodes/{packs,elements,geometry,kit}.rs",
+        "docs/pack-architecture.md",
+        "docs/pack-composite-plans.md",
+        "scripts/gen-pack-seeds.test.ts",
+        "tests/graph/packs/",
+        "tests/graph/*{pack,Pack,chem,Chem,thermo,fluid,geometry,Geometry}*"
+      ],
+      "docs": [
+        "docs/pack-architecture.md"
+      ],
+      "keywords": [
+        "pack",
+        "packs",
+        "chemistry",
+        "electric",
+        "fluids",
+        "thermo",
+        "geometry",
+        "astro",
+        "physics"
+      ]
+    },
+    {
+      "id": "solver",
+      "name": "Equation, solver & queues",
+      "district": "cards",
+      "about": "The Equation solver, LP, solver limits, queue rules and the Decision Matrix.",
+      "paths": [
+        "src/graph/nodes/{equation,queue}.ts",
+        "src/graph/components/{EquationNode,SolverLimitsPopup,QueueRulesPopup}*",
+        "src/graph/{solverLimitsStore,queueRulesStore}.ts",
+        "crates/solenoid-core/src/lp.rs",
+        "crates/solenoid-core/src/nodes/{solver,queue,improve}.rs",
+        "scripts/greedy-queue/",
+        "tests/graph/*{equation,Equation,solver,Solver,queue,Queue,decision,Decision}*"
+      ],
+      "docs": [
+        "tree/specs/computation/equation-solver.md",
+        "tree/specs/canvas/config-popups.md"
+      ],
+      "keywords": [
+        "equation",
+        "solver",
+        "goal seek",
+        "linear program",
+        "queue",
+        "decision matrix",
+        "greedy"
+      ]
+    },
+    {
+      "id": "script-card",
+      "name": "Script sandbox",
+      "district": "cards",
+      "about": "The Script card, its worker sandbox and the JavaScript editor.",
+      "paths": [
+        "src/graph/nodes/{script,scriptRun,scriptCoerce}.ts",
+        "src/graph/{scriptWorker,scriptExecutor,scriptGate,scriptPopupStore,jsSyntax}.ts",
+        "src/graph/components/{JsEditor,ScriptPopup,ScriptNode}*",
+        "tests/graph/*{script,Script}*"
+      ],
+      "docs": [
+        "tree/specs/computation/script-sandbox.md"
+      ],
+      "keywords": [
+        "script",
+        "sandbox",
+        "javascript",
+        "worker"
+      ]
+    },
+    {
+      "id": "charts",
+      "name": "Charts & figures",
+      "district": "figures",
+      "about": "Charts as values, the chart builder, recharts coverage, ladders and maps.",
+      "paths": [
+        "src/graph/nodes/{visual,visualOps,chartOptions}.ts",
+        "src/graph/{chartValue,chartPopupStore,svgValue,svgSanitize,mermaidValue,seriesColors}.ts",
+        "src/graph/geo/",
+        "src/graph/components/{chart,Chart,FigureNodes,SvgFigure,SvgPicker,Sankey,Gauge,Kpi,Sparkline,Histogram,Surface,Tornado,PointPlotter,MergePlots,SeriesNode,ladder,heatmapLayout,usMapView,Mermaid,ConditionalRegions,ConnectedRegions,GridPainter,Spectrum,Image,seriesColors}*",
+        "crates/solenoid-core/src/nodes/{visual,widgets}.rs",
+        "scripts/gen-us-states.mjs",
+        "tests/graph/*{chart,Chart,figure,Figure,ladder,Ladder,svg,Svg,recharts}*"
+      ],
+      "docs": [
+        "tree/specs/computation/chart-figures.md"
+      ],
+      "keywords": [
+        "chart",
+        "charts",
+        "recharts",
+        "figure",
+        "plot",
+        "axis",
+        "legend",
+        "ladder",
+        "choice ladder",
+        "sankey"
+      ]
+    },
+    {
+      "id": "reports-notes",
+      "name": "Reports, notes & dashboards",
+      "district": "figures",
+      "about": "Knap templates, notes, reports, dashboards, presentations and HTML pages.",
+      "paths": [
+        "src/graph/{knapTemplate,knapHighlight,templateValue,reportExport,reportStore,dashboardStore,presentationStore,htmlPageStore,htmlPageText,commentStore}.ts",
+        "src/graph/nodes/{report,annotation,dashboard,presentation,htmlPage}.ts",
+        "src/graph/components/{Report,Note,Dashboard,Presentation,HtmlPage,Markdown,Template,useKnapRender,katexLoader,katexRender,CommentsPanel,commentsPanel}*",
+        "crates/solenoid-core/src/nodes/docs.rs",
+        "docs/knap-upstream.md",
+        "tests/graph/*{report,Report,note,Note,dashboard,Dashboard,knap,Knap,presentation}*"
+      ],
+      "docs": [
+        "tree/specs/documents/reports-and-notes.md",
+        "docs/knap-upstream.md"
+      ],
+      "keywords": [
+        "report",
+        "note",
+        "dashboard",
+        "knap",
+        "template",
+        "presentation",
+        "html page",
+        "katex"
+      ]
+    },
+    {
+      "id": "formats-alerts",
+      "name": "Formats & alerts",
+      "district": "figures",
+      "about": "The format model, the FC's controls, display formats and the Alert card's HUD.",
+      "paths": [
+        "src/graph/{formatModel,formatController,frameFormatStore,formatAnnotationStore,alertStore,locale,categorizeConfig,categorizeEditorStore}.ts",
+        "src/graph/nodes/{formatController,formatCarry}.ts",
+        "src/graph/components/{fcControls,FormatControllerNode,valueDisplayFormat,format,AlertNode,AlertLayer,alertLayer,HudStack,hudStack,Categorize,CategoryChip}*",
+        "crates/solenoid-core/src/excel_format.rs",
+        "tests/graph/*{format,Format,alert,Alert,categorize,Categorize}*"
+      ],
+      "docs": [
+        "tree/specs/values/format-model.md",
+        "tree/specs/computation/alert-node-alerts-hud.md",
+        "tree/specs/computation/categorize.md"
+      ],
+      "keywords": [
+        "format",
+        "formats",
+        "fc",
+        "number format",
+        "alert",
+        "hud",
+        "categorize",
+        "decimal"
+      ]
+    },
+    {
+      "id": "menus",
+      "name": "Add menu & command palette",
+      "district": "shell",
+      "about": "Finding cards and commands: the Add menu, search, tags and the palette.",
+      "paths": [
+        "src/graph/{AddNodeMenu,CommandPalette}.*",
+        "src/graph/{addMenuStore,catalogSearch,catalogTags,catalogUtils,catalogValidator,commandRecents,menuModel,fuzzy}.ts",
+        "scripts/{search-samples,search-samples-table}.*",
+        "tests/graph/*{addMenu,AddMenu,palette,Palette,search,Search,menu,Menu}*"
+      ],
+      "docs": [
+        "tree/specs/canvas/add-menu.md",
+        "tree/specs/canvas/command-palette.md"
+      ],
+      "keywords": [
+        "add menu",
+        "command palette",
+        "search",
+        "tags",
+        "menu"
+      ]
+    },
+    {
+      "id": "bars-panels",
+      "name": "Bars, panels & settings",
+      "district": "shell",
+      "about": "Menu bar, toolbars, status bar, the outline and inspector panels, settings.",
+      "paths": [
+        "src/App.tsx",
+        "src/main.tsx",
+        "src/App.css",
+        "src/desktopFrame.css",
+        "src/focusgroup.d.ts",
+        "src/vite-env.d.ts",
+        "src/logo/",
+        "src/graph/{MenuBar,TopBar,Header,AppToolbar,StatusBar,NavMenu,Settings,ShortcutsOverlay,OutlinePanel,WindowControls,WebDemoBanner}.*",
+        "src/graph/{settingsStore,settingChoices,shortcutsStore,outlineStore,inspectorStore,problemsStore,chromeBottom,chromeToggle,chromeZoom,noticeStore,fullscreen,chunkReloadGuard}.ts",
+        "src/graph/chromeZoom.css",
+        "src/graph/components/{InspectorPanel,ProblemsPanel,problemsPanel,NoticeToasts,noticeToasts,RecalcButton,RulesPopup,TableEditMenu}*",
+        "scripts/setting-choices.*",
+        "docs/settings-audit.md",
+        "tests/graph/*{settings,Settings,outline,Outline,menuBar,toolbar,statusBar,chrome,shortcut}*",
+        "src/graph/settingChoices.json"
+      ],
+      "docs": [
+        "tree/specs/canvas/layout-chrome.md",
+        "tree/specs/canvas/outline-panel.md",
+        "tree/specs/canvas/config-popups.md"
+      ],
+      "keywords": [
+        "menu bar",
+        "toolbar",
+        "status bar",
+        "outline",
+        "inspector",
+        "settings",
+        "panel",
+        "canvas chrome",
+        "shortcut"
+      ]
+    },
+    {
+      "id": "theme",
+      "name": "Theme & palette",
+      "district": "shell",
+      "about": "App theme, CSS variables, colormaps and the palette editor.",
+      "paths": [
+        "src/graph/{palette,paletteStore,appTheme,themeVars,nativeAccent,colormaps,categoryColor,schemes}.ts",
+        "src/graph/components/{PaletteEditor,SwatchGrid,themeColor,boxTint,boxFilter}*",
+        "scripts/palette-diagrams.ts",
+        "tree/specs/canvas/palettes/",
+        "DESIGN.md",
+        "scripts/{card-css-census,dead-css-classes,check-dist-classnames}.mjs",
+        "tests/graph/*{theme,Theme,palette,colormap,css,Css}*"
+      ],
+      "docs": [
+        "tree/specs/canvas/palette-and-theme.md",
+        "DESIGN.md"
+      ],
+      "keywords": [
+        "theme",
+        "palette",
+        "dark mode",
+        "light mode",
+        "css",
+        "colour",
+        "color",
+        "accent"
+      ]
+    },
+    {
+      "id": "reference-help",
+      "name": "Reference & help",
+      "district": "shell",
+      "about": "The Function and Card Reference, folder pages, help dialogs and card examples.",
+      "paths": [
+        "src/graph/components/{FunctionReference,CardReference,FolderPage,ExcelCoverage,HelpDialogs,helpDialogs}*",
+        "src/graph/{functionReference,helpDialogStore,helpSection,descriptionMd,cardExamples,copyCorpus}.ts",
+        "src/graph/help/",
+        "scripts/copy-inventory.*",
+        "tools/string-editor/",
+        "src/devCopyEdit.ts",
+        "docs/google-style/",
+        "tests/graph/*{reference,Reference,help,Help,example,Example,copy,Copy}*"
+      ],
+      "docs": [
+        "tree/specs/canvas/layout-chrome.md",
+        "DESIGN.md"
+      ],
+      "keywords": [
+        "reference",
+        "help",
+        "function reference",
+        "card reference",
+        "copy",
+        "description",
+        "tooltip",
+        "voice"
+      ]
+    },
+    {
+      "id": "documents",
+      "name": "Documents & workspace",
+      "district": "shell",
+      "about": "Autosave, files on disk, recents, the workspace tree and file pickers.",
+      "paths": [
+        "src/graph/{documentStore,documentStoreCore,persistence,persistenceCore,fileSession,fileBridge,ipcBridge,recentDocsStore,saveTimeStore,workspacePreview,workspaceRows,workspaceSearch,treeRename,documentSource,docMetaStore,chooseFile,filePickerModel,filePickerStore,desktopDocs,imageAssets,frStore,managedBlock}.ts",
+        "src/graph/WorkspaceTree.*",
+        "src/graph/components/{DocumentProperties,DocumentTitle,documentTitle,FilePicker}*",
+        "tests/graph/*{document,Document,persist,Persist,fileSession,workspace,Workspace,autosave,save,Save}*"
+      ],
+      "docs": [
+        "tree/specs/documents/per-doc-autosave-persistence.md",
+        "tree/specs/documents/workspace-tree.md",
+        "tree/specs/documents/graph-load-teardown-performance.md"
+      ],
+      "keywords": [
+        "document",
+        "autosave",
+        "workspace",
+        "workspace tree",
+        "recent",
+        "file picker",
+        "open file"
+      ]
+    },
+    {
+      "id": "save-format",
+      "name": "Save format & text form",
+      "district": "shell",
+      "about": "The text form a graph saves as, names and addresses, and the run-graph CLI.",
+      "paths": [
+        "src/graph/{textForm,textFormRows,graphValidate,nodeNameStore,nodeNamer,nodeNames,nodeNaming,sourceNames}.ts",
+        "crates/solenoid-graph/src/text_form.rs",
+        "scripts/{run-graph,validate-graph,cli,entry}.ts",
+        "scripts/run-graph.*",
+        "scripts/cli-smoke.mjs",
+        "scripts/vite-run.mjs",
+        ".claude/skills/build-graph/",
+        "tests/graph/*{textForm,TextForm,validate,naming,Naming,nodeName,save-format,roundtrip}*",
+        "scripts/run-graph-vault.test.ts"
+      ],
+      "docs": [
+        "tree/specs/documents/save-format.md",
+        "tree/specs/documents/addressable-model.md"
+      ],
+      "keywords": [
+        "text form",
+        "save format",
+        "run-graph",
+        "node name",
+        "address",
+        "load",
+        "roundtrip"
+      ]
+    },
+    {
+      "id": "ai",
+      "name": "AI assistant",
+      "district": "shell",
+      "about": "The in-app assistant: grounding, keys and the reveal.",
+      "paths": [
+        "src/graph/{aiDemo,aiGrounding,aiKey,aiReveal,aiService,apiKeyStore}.ts",
+        "scripts/{ai-grounding,ai-prompt}.ts",
+        "tests/graph/*{ai,Ai,AI}{Demo,Grounding,Key,Reveal,Service,.}*"
+      ],
+      "docs": [],
+      "keywords": [
+        "ai",
+        "assistant",
+        "llm",
+        "prompt",
+        "api key"
+      ]
+    },
+    {
+      "id": "vault-read",
+      "name": "Vault read",
+      "district": "obsidian",
+      "about": "A folder of notes read as a table: properties, bodies, tasks and inline fields.",
+      "paths": [
+        "src/graph/{vaultCube,noteBody,dailyNotesConfig,noteFrontmatter,noteMarkdown,noteHtml,noteInlineRefs,obsidianMarkdown,obsidianLinks,vaultTypes,mdbaseTypes,demoVault,demoVaultData}.ts",
+        "demo-vault/",
+        "tests/graph/*{vault,Vault,note,obsidian,Obsidian,daily}*"
+      ],
+      "docs": [
+        "tree/specs/integrations/vault-read.md"
+      ],
+      "keywords": [
+        "vault",
+        "vault folder",
+        "note",
+        "notes",
+        "frontmatter",
+        "property",
+        "daily note",
+        "inline field",
+        "obsidian"
+      ]
+    },
+    {
+      "id": "vault-write",
+      "name": "VaultBridge writes",
+      "district": "obsidian",
+      "about": "Writing answers back as properties, frontmatter patches and managed blocks.",
+      "paths": [
+        "src/graph/{obsidianWrite,frontmatterPatch,obsidianTypes,pluginColumnTypes,noteFrontmatterSync,pluginDataPath}.ts",
+        "src/graph/nodes/obsidian.ts",
+        "src/graph/components/{WriteNodes,ImportObsidianNode}*",
+        "tests/graph/*{obsidianWrite,frontmatter,Frontmatter,vaultBridge,VaultBridge,writeBack}*"
+      ],
+      "docs": [
+        "tree/specs/integrations/vault-bridge.md"
+      ],
+      "keywords": [
+        "vaultbridge",
+        "write back",
+        "frontmatter patch",
+        "write properties",
+        "managed block"
+      ]
+    },
+    {
+      "id": "tasknotes",
+      "name": "TaskNotes",
+      "district": "obsidian",
+      "about": "The TaskNotes card's reads, Write Tasks' plan, Preview and Run.",
+      "paths": [
+        "src/graph/{taskNotesApi,demoTaskNotes}.ts",
+        "src/graph/nodes/taskNotes.ts",
+        "tests/graph/*{taskNotes,TaskNotes,tasknotes}*"
+      ],
+      "docs": [
+        "tree/specs/integrations/tasknotes.md"
+      ],
+      "keywords": [
+        "tasknotes",
+        "write tasks",
+        "task notes"
+      ]
+    },
+    {
+      "id": "obsidian-plugin",
+      "name": "Obsidian plugin",
+      "district": "obsidian",
+      "about": "Solenoid inside Obsidian: the plugin build, its smaller engine and its look.",
+      "paths": [
+        "obsidian-plugin/",
+        "src/graph/engineWasmPlugin/",
+        "scripts/{export-plugin-source,lint-plugin,obsidian-rig,obsidian-rig-mobile}.mjs",
+        "tests/obsidian-plugin/"
+      ],
+      "docs": [
+        "tree/specs/integrations/obsidian-plugin.md"
+      ],
+      "keywords": [
+        "plugin",
+        "obsidian plugin",
+        "community store",
+        "plugin review"
+      ]
+    },
+    {
+      "id": "seeds",
+      "name": "Seeds & examples",
+      "district": "ship",
+      "about": "The example graphs, their thumbnails and the gallery.",
+      "paths": [
+        "src/graph/seedGraphs/",
+        "src/graph/showcase/",
+        "src/graph/{seeds,seedTune}.ts",
+        "scripts/{tune-seeds,shot-graphs,gen-cards-demo,gen-personal-finance-seed}*",
+        "scripts/shot-graphs/",
+        "scripts/service-territory/",
+        "public/thumbs/",
+        "tests/graph/*{seed,Seed,example,showcase}*"
+      ],
+      "docs": [],
+      "keywords": [
+        "seed",
+        "seeds",
+        "example",
+        "examples",
+        "gallery",
+        "thumbnail",
+        "showcase"
+      ]
+    },
+    {
+      "id": "site",
+      "name": "Landing pages & site",
+      "district": "ship",
+      "about": "solenoid-ngc.com: landing pages, the prerender and the social images.",
+      "paths": [
+        "src/graph/landing/",
+        "src/graph/siteChrome.ts",
+        "prerender/",
+        "public/",
+        "scripts/{prerender-site,site-shots,page-covers,pwa-icons}.mjs",
+        "scripts/site-shots/",
+        "index.html",
+        "vercel.json",
+        "tests/graph/landing/",
+        "tests/graph/*{landing,Landing,site,Site,prerender}*"
+      ],
+      "docs": [],
+      "keywords": [
+        "landing",
+        "landing page",
+        "site",
+        "prerender",
+        "og image",
+        "download page",
+        "web demo"
+      ]
+    },
+    {
+      "id": "release",
+      "name": "Releases & what's new",
+      "district": "ship",
+      "about": "Version bumps, NEXT_RELEASE marks, release notes, CI and dependency updates.",
+      "paths": [
+        "scripts/{release-version,release-build}.mjs",
+        "src/graph/{release,whatsNewSlides}.ts",
+        "docs/release-notes*.md",
+        "docs/1.6-plan.md",
+        "docs/2.0-plan.md",
+        "docs/v2.0/",
+        ".github/",
+        "package.json",
+        "package-lock.json",
+        "THIRD-PARTY-NOTICES.md",
+        "LICENSE",
+        "tests/graph/*{release,Release,whatsNew}*"
+      ],
+      "docs": [
+        "docs/1.6-plan.md",
+        "docs/2.0-plan.md"
+      ],
+      "keywords": [
+        "release",
+        "version",
+        "what's new",
+        "changelog",
+        "dependency",
+        "bump",
+        "ci",
+        "npm audit"
+      ]
+    },
+    {
+      "id": "desktop-android",
+      "name": "Desktop & Android",
+      "district": "ship",
+      "about": "The Tauri shell, its window frame and the Android build.",
+      "paths": [
+        "src-tauri/",
+        "src/graph/{androidBack,androidFolders}.ts",
+        "scripts/{android-prep,install-linux-launchers}.mjs",
+        "docs/android.md",
+        ".claude/commands/desktop.md",
+        "tests/graph/*{desktop,Desktop,tauri,Tauri,android,Android}*"
+      ],
+      "docs": [
+        "docs/android.md",
+        "tree/specs/canvas/layout-chrome.md"
+      ],
+      "keywords": [
+        "desktop",
+        "tauri",
+        "android",
+        "window frame",
+        "installer",
+        "updater"
+      ]
+    },
+    {
+      "id": "demo-video",
+      "name": "Demo video & motion",
+      "district": "ship",
+      "about": "The marketing video, its scenes and the three.js motion clips.",
+      "paths": [
+        "scripts/demo-video/",
+        "scripts/motion/",
+        "assets/",
+        ".claude/skills/{demo-video,motion}/",
+        "tree/specs/motion-graphics.md"
+      ],
+      "docs": [
+        "tree/specs/motion-graphics.md"
+      ],
+      "keywords": [
+        "demo video",
+        "video",
+        "motion",
+        "scene",
+        "three.js",
+        "soundtrack"
+      ]
+    },
+    {
+      "id": "test-infra",
+      "name": "Test infrastructure",
+      "district": "ship",
+      "about": "Vitest setup, buckets, fixtures, fuzzing and the parity harness.",
+      "paths": [
+        "tests/setup/",
+        "tests/buckets.mjs",
+        "tests/fixtures/",
+        "tests/graph/fixtures/",
+        "vitest.config.ts",
+        "tests/",
+        "scripts/{test-bucket,answer-tests,parity}.*",
+        "src/graph/{modelFuzz,census,devHarness}.ts",
+        "tests/graph/*{bucket,Bucket,fuzz,Fuzz,invariant,Invariant}*"
+      ],
+      "docs": [
+        "tree/specs/floors/engineering.md"
+      ],
+      "keywords": [
+        "test",
+        "tests",
+        "vitest",
+        "bucket",
+        "fixture",
+        "fuzz",
+        "ci flake"
+      ]
+    },
+    {
+      "id": "decision-tree",
+      "name": "Decision tree & docs",
+      "district": "ship",
+      "about": "The DTE tree, specs, the docs folder and the agent instructions.",
+      "paths": [
+        "tree/",
+        "tools/{dte,renumber_tree}.py",
+        "dte-rules/",
+        "dte.cfg",
+        ".dteignore",
+        ".dtecoverage",
+        "docs/",
+        "CLAUDE.md",
+        "PRODUCT.md",
+        "README.md",
+        "tests/graph/*{rules,Rules,docsPointers,dte}*"
+      ],
+      "docs": [
+        "docs/dte.md",
+        "dte-rules/PROTOCOL.md"
+      ],
+      "keywords": [
+        "dte",
+        "leaf",
+        "leaves",
+        "decision tree",
+        "spec",
+        "docs",
+        "backlog",
+        "dev-notes"
+      ]
+    },
+    {
+      "id": "dev-tooling",
+      "name": "Dev tooling & probes",
+      "district": "ship",
+      "about": "Vite config, the dev server scripts, browser probes, skills and this board.",
+      "paths": [
+        "vite.config.ts",
+        "tsconfig.json",
+        "tsconfig.node.json",
+        ".gitignore",
+        ".gitattributes",
+        ".mcp.json",
+        "scripts/{browser,dev-up,shot-graph,shot-graph-expand,debug-icon,socket-box-probe,table-popup-probe,fix-unused,page-covers}.mjs",
+        "scripts/optimize/",
+        ".claude/",
+        "src/graph/devtoolsHotkey.ts",
+        "src/graph/flow/devRfStores.ts",
+        "tools/blockmap/",
+        ".blockmap/"
+      ],
+      "docs": [
+        "CLAUDE.md"
+      ],
+      "keywords": [
+        "tooling",
+        "dev server",
+        "vite",
+        "probe",
+        "skill",
+        "script",
+        "lint",
+        "blockmap"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "backlog",
+      "type": "markdown-checklist",
+      "file": "docs/backlog.md",
+      "default": "decision-tree",
+      "kinds": [
+        {
+          "match": "needs the author's call",
+          "kind": "decision"
+        },
+        {
+          "match": "Leaves the code breaks",
+          "kind": "bug"
+        },
+        {
+          "match": "bug",
+          "kind": "bug"
+        }
+      ],
+      "route": {
+        "Dashboard": "reports-notes",
+        "Leaves the code breaks": "decision-tree",
+        "Dependency updates": "release",
+        "Dates as a kind": "dates",
+        "Value handling": "values",
+        "Formula library": "functions",
+        "Rust core": "rust-core",
+        "JavaScript the core still imitates": "rust-core",
+        "VaultBridge": "vault-write",
+        "Tooling": "auto",
+        "Android": "desktop-android",
+        "Script card": "script-card",
+        "Seeds": "seeds",
+        "Performance": "auto",
+        "Canvas frame cost": "html-canvas",
+        "Release planning": "release",
+        "needs the author's call": "auto",
+        "Cubes and lists": "cubes",
+        "Sources": "sources",
+        "Obsidian + TaskNotes": "auto",
+        "Gantt": "schedule-gantt",
+        "Decision Matrix": "solver",
+        "Hidden until": "node-catalog",
+        "Choice Ladder": "charts",
+        "Recharts": "charts",
+        "Pivot": "pivot",
+        "Desktop": "desktop-android",
+        "Workspace tree": "documents",
+        "Alerts": "formats-alerts",
+        "Canvas chrome": "bars-panels",
+        "Self-hosting": "sources",
+        "Landing pages": "site",
+        "Demo video": "demo-video",
+        "DTE": "decision-tree",
+        "Formatting & units": "auto",
+        "Frame popup": "table-popup",
+        "Packs": "packs"
+      },
+      "prefix": "BL"
+    }
+  ]
+}

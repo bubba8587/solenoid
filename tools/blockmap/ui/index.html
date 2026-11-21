@@ -1,0 +1,41 @@
+<title>Blockmap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="ui/styles.css">
+<style>
+  /* Paints before the stylesheet arrives, so the first frame is never a white flash. */
+  body { background: #e5e9e7; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body { background: #0e1215; } }
+  :root[data-theme="dark"] body { background: #0e1215; }
+</style>
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="wordmark"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Blockmap</span>
+      <span class="board-name" id="board-name">loading the board</span>
+    </div>
+    <span class="conn" id="conn"><i></i><span>Connecting</span></span>
+    <div class="stats" id="stats"></div>
+    <div class="spacer"></div>
+    <div class="seg" id="lens" role="group" aria-label="Map lens">
+      <button type="button" data-lens="work" aria-pressed="true">Work</button>
+      <button type="button" data-lens="heat" aria-pressed="false">Heat</button>
+      <button type="button" data-lens="issues" aria-pressed="false">Issues</button>
+      <button type="button" data-lens="history" aria-pressed="false">History</button>
+    </div>
+    <label class="search"><span id="search-ic"></span><input id="search" type="search" placeholder="Find a block or a file path" autocomplete="off" spellcheck="false"><kbd>/</kbd></label>
+    <button class="icon-btn" id="theme" type="button" aria-label="Switch theme"></button>
+  </header>
+  <div class="alerts" id="alerts" aria-live="polite"></div>
+  <main class="map-wrap" id="map-wrap" data-drop="map" aria-label="The map of blocks">
+    <div class="map" id="map"><p class="boot">Loading the board…</p></div>
+  </main>
+  <aside class="side" id="side" aria-label="Agent windows"></aside>
+  <section class="timeline" id="timeline" aria-label="Timeline"></section>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="inspector" id="inspector" aria-label="Block details" aria-hidden="true"></aside>
+<svg class="tethers" id="tethers" aria-hidden="true"></svg>
+<script type="module" src="ui/app.js"></script>

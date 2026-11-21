@@ -1,0 +1,15 @@
+{
+  "name": "blockmap",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A live map of a repository's blocks of work: agents reserve blocks, people see who is doing what.",
+  "bin": { "bm": "cli.js" },
+  "scripts": {
+    "serve": "node cli.js serve --open",
+    "demo": "node cli.js serve --demo --open",
+    "test": "node --test test/*.test.js",
+    "bundle": "node scripts/bundle.js"
+  },
+  "engines": { "node": ">=20" }
+}
