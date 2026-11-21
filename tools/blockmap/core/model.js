@@ -10,7 +10,9 @@ import { compileIndex, blockForPath, normalizePath } from './glob.js';
 export const SCHEMA = 1;
 export const HUMAN = 'human';
 export const UNMAPPED = '_unmapped';
-export const PALETTE = ['#e8590c', '#1c7ed6', '#2f9e44', '#c2255c', '#e09f00', '#0c8599', '#7048e8', '#74a01c'];
+// Agents are colored by palette slot, not by hex, so a palette change recolors them. Gold, green and vermilion
+// stay out: they mean needs-you, ok and danger. Gray is the human.
+export const PALETTE = ['sky', 'pink', 'violet', 'teal', 'amber', 'lime', 'blue', 'purple'];
 export const AGENT_STATUS = ['working', 'idle', 'blocked', 'waiting', 'done'];
 export const ITEM_KINDS = ['task', 'bug', 'question', 'decision', 'note'];
 export const ITEM_STATUS = ['open', 'doing', 'blocked', 'done', 'wontfix'];
@@ -84,6 +86,7 @@ function ensureAgent(state, id, ts, info = {}) {
       where: info.where || '',
       task: '',
       status: 'idle',
+      statusSince: ts,
       doing: '',
       joinedAt: ts,
       lastSeen: ts,
@@ -110,6 +113,11 @@ function pickColor(state, id) {
     if (!used.has(c)) return c;
   }
   return PALETTE[start];
+}
+
+function setStatus(a, status, ts) {
+  if (a.status !== status) a.statusSince = ts;
+  a.status = status;
 }
 
 function push(list, entry) {
@@ -166,11 +174,11 @@ export function apply(state, e) {
       if (me.leftAt || !me.joinedAt) me.joinedAt = e.ts;
       me.leftAt = 0;
       if (e.task) me.task = e.task;
-      me.status = e.task ? 'working' : 'idle';
+      setStatus(me, e.task ? 'working' : 'idle', e.ts);
       break;
     }
     case 'agent.status': {
-      if (e.status) target.status = e.status;
+      if (e.status) setStatus(target, e.status, e.ts);
       if (e.doing !== undefined) target.doing = e.doing;
       if (e.task !== undefined) target.task = e.task;
       if (e.name) target.name = e.name;
@@ -183,7 +191,7 @@ export function apply(state, e) {
       for (const id of target.watching) if (state.blocks[id]) delete state.blocks[id].watchers[target.id];
       target.watching = [];
       target.leftAt = e.ts;
-      target.status = 'done';
+      setStatus(target, 'done', e.ts);
       target.doing = e.note || '';
       break;
     }
@@ -207,7 +215,7 @@ export function apply(state, e) {
       delete b.watchers[target.id];
       remove(target.watching, b.id);
       addUnique(target.held, b.id);
-      if (target.id !== HUMAN && target.status !== 'blocked') target.status = 'working';
+      if (target.id !== HUMAN && target.status !== 'blocked') setStatus(target, 'working', e.ts);
       break;
     }
     case 'block.release': {
@@ -254,7 +262,7 @@ export function apply(state, e) {
       };
       if (it.kind === 'question') {
         addUnique(me.asked, it.id);
-        if (actor !== HUMAN) me.status = 'waiting';
+        if (actor !== HUMAN) setStatus(me, 'waiting', e.ts);
       }
       break;
     }
@@ -272,7 +280,7 @@ export function apply(state, e) {
       if (it.kind === 'question' && it.status !== 'open' && before === 'open' && it.by && state.agents[it.by]) {
         const asker = state.agents[it.by];
         remove(asker.asked, it.id);
-        if (asker.status === 'waiting' && !asker.asked.length) asker.status = 'working';
+        if (asker.status === 'waiting' && !asker.asked.length) setStatus(asker, 'working', e.ts);
       }
       break;
     }
@@ -368,6 +376,17 @@ export function presence(state, agentId, now) {
   if (now - a.lastSeen > state.staleMs) return 'stale';
   if (openQuestions(state, agentId).length) return 'waiting';
   return a.status;
+}
+
+// When the state presence() reports began: the timer an agent's window runs.
+export function presenceSince(state, agentId, now) {
+  const a = state.agents[agentId];
+  if (!a) return now;
+  const p = presence(state, agentId, now);
+  if (p === 'gone') return a.leftAt;
+  if (p === 'stale') return a.lastSeen;
+  if (p === 'waiting') return Math.min(...openQuestions(state, agentId).map((q) => q.createdAt));
+  return a.statusSince || a.joinedAt;
 }
 
 export function openQuestions(state, agentId) {

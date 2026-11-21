@@ -20,21 +20,31 @@ A standalone copy that needs no server (it runs the simulated crew): `node tools
 
 ## What you see
 
-- **The map.** Districts (tinted zones) of tiles on graph paper, sized by how much code each block covers, scaled to
-  fit the window. A tile shows its open bugs (red), tasks, items waiting on you (violet), the last test run (a check or
-  a red cross), a lock when frozen, footprints (colored dots) of agents who edited there without holding it, and a glow
-  in the color of whoever edited it last. A held block leaves a socket in the holder's color with their initial and
-  how long they've had it.
-- **The windows.** One per agent: status (working, needs you, blocked, gone quiet), task, what it's doing right now,
-  the tray of blocks it holds, an hour of edits as a sparkline, its last few actions, its open question with an answer
-  box, and a message box. **Up next** is your queue; **your own window** holds blocks you keep for yourself.
+- **The map.** Districts of tiles on a dot-grid canvas, each tile sized by how much code its block covers, scaled to
+  fit the window. A tile shows its open bugs, tasks and items waiting on you, the last test run, a lock when frozen, a
+  warning when someone edited inside it without holding it, small dots for agents who passed through, and a cap in the
+  color of whoever edited it last. A held block leaves a hatched socket in the holder's color with their initial and
+  how long they've held it.
+- **The windows.** One per agent, built like a Solenoid node card: a header in the agent's color with its state and a
+  live timer (a stopwatch while it works, an age once it goes quiet, needs you or goes stale), then its task, what it's
+  doing this second, the tray of blocks it holds, an hour of edits as a sparkline, its last three actions, its open
+  question with an answer box, and a message box. **Up next** is your queue; **your own window** holds the blocks you
+  keep for yourself.
 - **Tethers** run from each socket to the tile in its holder's window.
 - **The timeline** has a lane per agent: which blocks it held when, edits as ticks, tests, bugs and questions, and
-  your own actions on the bottom lane. Drag across it, or press play, to replay the board at any moment.
-- **Lenses:** Work (the default), Heat (recent edits), Issues (open items), History (who held each block last).
-- **Search** finds blocks by name or keyword; type a file path to see which block owns it.
-- **Alerts:** an agent editing inside a block someone else holds (or a frozen one), a holder that has gone quiet while
-  holding, failing tests, and questions waiting for you.
+  your own actions on the bottom lane. Drag across it, or press play (quiet stretches are skipped), to replay the board.
+  It folds away; short screens start with it folded.
+- **Lenses:** Work, Heat (recent edits), Issues (open items), History (who held each block last).
+- **Search** finds blocks by name; a file path finds the block that owns it.
+- **Alerts:** an agent editing inside a block someone else holds (or a frozen one), a holder that has gone quiet,
+  failing tests, and questions waiting for you.
+
+**Color says who; neutral says where.** The look is Solenoid's palette system, lifted whole (`ui/palette.js`, the
+tables copied as data): the nine palettes, the neutral ramp per theme and the chrome derived from it, the accent-mix
+rungs, the Tinted-Box Rule. Agents are colored by palette slot, so a palette change recolors them. The only other hues
+are the status slots: vermilion for bugs, failing tests and conflicts, gold for what needs you, green for working and
+passing. Timers read in compact units (`47s`, `12m`, `1h 05m`) and turn gold, then vermilion, at named thresholds: a
+question waiting 5 and 15 minutes, an agent quiet for 10.
 
 ## What you can do
 

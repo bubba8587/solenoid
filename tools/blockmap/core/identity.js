@@ -27,7 +27,7 @@ export function whereAmI(cwd = process.cwd()) {
   }
   const host = os.hostname().split('.')[0];
   const remote = process.env.CLAUDE_CODE_REMOTE === 'true' ? 'cloud' : host;
-  return [remote, path.basename(cwd), branch].filter(Boolean).join(' · ');
+  return [remote, path.basename(cwd), branch].filter(Boolean).join(', ');
 }
 
 export function agentKind(id) {

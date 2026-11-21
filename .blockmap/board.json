@@ -14,56 +14,48 @@
     {
       "id": "engine",
       "name": "Engine",
-      "hue": 222,
       "about": "The Rust core and the graph runtime: formulas, functions, card bodies, types, units and dates."
     },
     {
       "id": "data",
       "name": "Tables & data",
-      "hue": 28,
       "about": "Frames, cubes, the table popup, pivot and every way data gets in."
     },
     {
       "id": "canvas",
       "name": "Canvas",
-      "hue": 160,
       "about": "The React Flow surface: cables, groups, gestures and the HTML-in-canvas renderer."
     },
     {
       "id": "cards",
       "name": "Cards",
-      "hue": 48,
       "about": "Node families and the catalog that lists them."
     },
     {
       "id": "figures",
       "name": "Charts & documents",
-      "hue": 338,
       "about": "Charts, reports, notes, dashboards, formats and alerts."
     },
     {
       "id": "shell",
       "name": "App shell",
-      "hue": 252,
       "about": "Menus, bars, panels, theme, documents and the save format."
     },
     {
       "id": "obsidian",
       "name": "Obsidian",
-      "hue": 284,
       "about": "The vault as data: reading notes, writing properties, TaskNotes and the plugin."
     },
     {
       "id": "ship",
       "name": "Ship & tooling",
-      "hue": 96,
       "about": "Seeds, the site, releases, desktop and Android, the demo video, tests, docs and dev tools."
     }
   ],
   "blocks": [
     {
       "id": "graph-core",
-      "name": "Graph core & compute pass",
+      "name": "Graph core",
       "district": "engine",
       "about": "The netcore graph model, the dataflow pass, sessions and calc modes.",
       "paths": [
@@ -90,7 +82,7 @@
     },
     {
       "id": "types-lattice",
-      "name": "Sockets & type lattice",
+      "name": "Type lattice",
       "district": "engine",
       "about": "Socket types, the lattice, FC facts, settle and the input boundary.",
       "paths": [
@@ -143,7 +135,7 @@
     },
     {
       "id": "functions",
-      "name": "Excel function library",
+      "name": "Functions",
       "district": "engine",
       "about": "Every function a formula can call, its Excel parity and its records.",
       "paths": [
@@ -171,7 +163,7 @@
     },
     {
       "id": "node-bodies",
-      "name": "Card bodies in Rust",
+      "name": "Card bodies",
       "district": "engine",
       "about": "What each card computes, in solenoid-core, frozen against fixtures.",
       "paths": [
@@ -195,7 +187,7 @@
     },
     {
       "id": "rust-core",
-      "name": "Rust core & WASM build",
+      "name": "Rust core",
       "district": "engine",
       "about": "The crate, its WebAssembly build and stamp, and what JavaScript still imitates.",
       "paths": [
@@ -232,7 +224,7 @@
     },
     {
       "id": "units",
-      "name": "Units & conversion",
+      "name": "Units",
       "district": "engine",
       "about": "First-class units, unit flow through cables and the Convert card.",
       "paths": [
@@ -260,7 +252,7 @@
     },
     {
       "id": "dates",
-      "name": "Dates & times",
+      "name": "Dates",
       "district": "engine",
       "about": "Date serials, relative phrases, time zones and the date cards.",
       "paths": [
@@ -287,7 +279,7 @@
     },
     {
       "id": "values",
-      "name": "Values, errors & empty slots",
+      "name": "Values & errors",
       "district": "engine",
       "about": "Value kinds, error values, input roles and what an empty field means.",
       "paths": [
@@ -347,7 +339,7 @@
     },
     {
       "id": "table-popup",
-      "name": "Table popup & cells",
+      "name": "Table popup",
       "district": "data",
       "about": "The table popup, cell editing, Table Input and the grid's keyboard.",
       "paths": [
@@ -415,7 +407,7 @@
     },
     {
       "id": "computed-columns",
-      "name": "Computed columns & Edit Frame",
+      "name": "Computed columns",
       "district": "data",
       "about": "Fx columns, row formulas and the Edit Frame card's edit list.",
       "paths": [
@@ -436,7 +428,7 @@
     },
     {
       "id": "sources",
-      "name": "Sources & connections",
+      "name": "Sources",
       "district": "data",
       "about": "CSV, Excel workbooks, web sources, live feeds and the network gate.",
       "paths": [
@@ -498,7 +490,7 @@
     },
     {
       "id": "flow-surface",
-      "name": "React Flow surface",
+      "name": "Canvas surface",
       "district": "canvas",
       "about": "The canvas itself: viewport, undo history, selection and canvas commands.",
       "paths": [
@@ -526,7 +518,7 @@
     },
     {
       "id": "cables",
-      "name": "Cables & conduits",
+      "name": "Cables",
       "district": "canvas",
       "about": "Cable paths and motion, drawn cables, conduits and lane faces.",
       "paths": [
@@ -557,7 +549,7 @@
     },
     {
       "id": "groups-layout",
-      "name": "Groups, standoffs & tidy",
+      "name": "Groups & layout",
       "district": "canvas",
       "about": "Groups that collapse and push, the standoff solver and auto-arrange.",
       "paths": [
@@ -587,7 +579,7 @@
     },
     {
       "id": "card-chrome",
-      "name": "Card chrome & sockets",
+      "name": "Card chrome",
       "district": "canvas",
       "about": "The card shell every node shares: sockets, fields, chips and resize grips.",
       "paths": [
@@ -617,7 +609,7 @@
     },
     {
       "id": "html-canvas",
-      "name": "HTML-in-canvas renderer",
+      "name": "HTML in canvas",
       "district": "canvas",
       "about": "Semantic zoom, the raster atlas and drawing cards into a canvas.",
       "paths": [
@@ -643,7 +635,7 @@
     },
     {
       "id": "gestures",
-      "name": "Gestures, touch & mobile",
+      "name": "Touch & mobile",
       "district": "canvas",
       "about": "Pointer and touch gestures, the phone layout and tablet actions.",
       "paths": [
@@ -672,7 +664,7 @@
     },
     {
       "id": "composites",
-      "name": "Composites & drill-in",
+      "name": "Composites",
       "district": "canvas",
       "about": "Cards made of subgraphs, drilling in and out, and their stale marks.",
       "paths": [
@@ -693,7 +685,7 @@
     },
     {
       "id": "node-catalog",
-      "name": "Node catalog & registry",
+      "name": "Node catalog",
       "district": "cards",
       "about": "nodeCatalog.ts, the registry, op vocabularies and how a card gets added.",
       "paths": [
@@ -721,7 +713,7 @@
     },
     {
       "id": "math-cards",
-      "name": "Math & logic cards",
+      "name": "Math & logic",
       "district": "cards",
       "about": "Arithmetic, rounding, comparison, logic, complex numbers and combinatorics.",
       "paths": [
@@ -749,7 +741,7 @@
     },
     {
       "id": "stats-cards",
-      "name": "Stats & probability",
+      "name": "Stats",
       "district": "cards",
       "about": "Describe, fits, forecasts, tests, distributions and the probability pack.",
       "paths": [
@@ -802,7 +794,7 @@
     },
     {
       "id": "finance-cards",
-      "name": "Finance cards",
+      "name": "Finance",
       "district": "cards",
       "about": "TVM, NPV and IRR, amortization, bonds and depreciation.",
       "paths": [
@@ -860,7 +852,7 @@
     },
     {
       "id": "solver",
-      "name": "Equation, solver & queues",
+      "name": "Solver",
       "district": "cards",
       "about": "The Equation solver, LP, solver limits, queue rules and the Decision Matrix.",
       "paths": [
@@ -888,7 +880,7 @@
     },
     {
       "id": "script-card",
-      "name": "Script sandbox",
+      "name": "Script card",
       "district": "cards",
       "about": "The Script card, its worker sandbox and the JavaScript editor.",
       "paths": [
@@ -909,7 +901,7 @@
     },
     {
       "id": "charts",
-      "name": "Charts & figures",
+      "name": "Charts",
       "district": "figures",
       "about": "Charts as values, the chart builder, recharts coverage, ladders and maps.",
       "paths": [
@@ -939,7 +931,7 @@
     },
     {
       "id": "reports-notes",
-      "name": "Reports, notes & dashboards",
+      "name": "Reports & notes",
       "district": "figures",
       "about": "Knap templates, notes, reports, dashboards, presentations and HTML pages.",
       "paths": [
@@ -995,7 +987,7 @@
     },
     {
       "id": "menus",
-      "name": "Add menu & command palette",
+      "name": "Add menu",
       "district": "shell",
       "about": "Finding cards and commands: the Add menu, search, tags and the palette.",
       "paths": [
@@ -1018,7 +1010,7 @@
     },
     {
       "id": "bars-panels",
-      "name": "Bars, panels & settings",
+      "name": "Bars & panels",
       "district": "shell",
       "about": "Menu bar, toolbars, status bar, the outline and inspector panels, settings.",
       "paths": [
@@ -1057,7 +1049,7 @@
     },
     {
       "id": "theme",
-      "name": "Theme & palette",
+      "name": "Theme",
       "district": "shell",
       "about": "App theme, CSS variables, colormaps and the palette editor.",
       "paths": [
@@ -1086,7 +1078,7 @@
     },
     {
       "id": "reference-help",
-      "name": "Reference & help",
+      "name": "Reference",
       "district": "shell",
       "about": "The Function and Card Reference, folder pages, help dialogs and card examples.",
       "paths": [
@@ -1116,7 +1108,7 @@
     },
     {
       "id": "documents",
-      "name": "Documents & workspace",
+      "name": "Documents",
       "district": "shell",
       "about": "Autosave, files on disk, recents, the workspace tree and file pickers.",
       "paths": [
@@ -1142,7 +1134,7 @@
     },
     {
       "id": "save-format",
-      "name": "Save format & text form",
+      "name": "Save format",
       "district": "shell",
       "about": "The text form a graph saves as, names and addresses, and the run-graph CLI.",
       "paths": [
@@ -1216,7 +1208,7 @@
     },
     {
       "id": "vault-write",
-      "name": "VaultBridge writes",
+      "name": "VaultBridge",
       "district": "obsidian",
       "about": "Writing answers back as properties, frontmatter patches and managed blocks.",
       "paths": [
@@ -1278,7 +1270,7 @@
     },
     {
       "id": "seeds",
-      "name": "Seeds & examples",
+      "name": "Seeds",
       "district": "ship",
       "about": "The example graphs, their thumbnails and the gallery.",
       "paths": [
@@ -1304,7 +1296,7 @@
     },
     {
       "id": "site",
-      "name": "Landing pages & site",
+      "name": "Site",
       "district": "ship",
       "about": "solenoid-ngc.com: landing pages, the prerender and the social images.",
       "paths": [
@@ -1332,7 +1324,7 @@
     },
     {
       "id": "release",
-      "name": "Releases & what's new",
+      "name": "Releases",
       "district": "ship",
       "about": "Version bumps, NEXT_RELEASE marks, release notes, CI and dependency updates.",
       "paths": [
@@ -1392,7 +1384,7 @@
     },
     {
       "id": "demo-video",
-      "name": "Demo video & motion",
+      "name": "Demo video",
       "district": "ship",
       "about": "The marketing video, its scenes and the three.js motion clips.",
       "paths": [
@@ -1416,7 +1408,7 @@
     },
     {
       "id": "test-infra",
-      "name": "Test infrastructure",
+      "name": "Test harness",
       "district": "ship",
       "about": "Vitest setup, buckets, fixtures, fuzzing and the parity harness.",
       "paths": [
@@ -1445,7 +1437,7 @@
     },
     {
       "id": "decision-tree",
-      "name": "Decision tree & docs",
+      "name": "Docs & tree",
       "district": "ship",
       "about": "The DTE tree, specs, the docs folder and the agent instructions.",
       "paths": [
@@ -1478,7 +1470,7 @@
     },
     {
       "id": "dev-tooling",
-      "name": "Dev tooling & probes",
+      "name": "Dev tooling",
       "district": "ship",
       "about": "Vite config, the dev server scripts, browser probes, skills and this board.",
       "paths": [

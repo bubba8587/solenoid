@@ -75,6 +75,9 @@ const P = {
   reserve: '<path d="M8 2.4 13 5v6L8 13.6 3 11V5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 13.6V8m0 0 5-3M8 8 3 5" fill="none" stroke="currentColor" stroke-width="1.2"/>',
   release: '<path d="M8 13V5.4m0 0L5 8.4m3-3 3 3M3.6 3h8.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
   join: '<circle cx="8" cy="5.6" r="2.6"/><path d="M3 13.4c.6-2.6 2.6-4 5-4s4.4 1.4 5 4Z"/>',
+  conflict: '<path d="M8 2.2 14.2 13H1.8Z"/><path d="M8 6.4v3.2" stroke="var(--surface)" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".85" fill="var(--surface)"/>',
+  chev: '<path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  mail: '<rect x="2.4" y="3.8" width="11.2" height="8.4" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m2.8 4.6 5.2 4 5.2-4" fill="none" stroke="currentColor" stroke-width="1.4"/>',
 };
 
 export function icon(name, cls = '') {
@@ -108,4 +111,55 @@ export function storageSet(key, value) {
   } catch {
     // Storage is a convenience; the page works without it.
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Timers. An age reads in compact units with no "ago" (47s, 12m, 1h 05m); the one thing actively
+// running (an agent's current turn of work) reads as a stopwatch (4:07). A timer past its `warn`
+// threshold turns warn-colored and past `over` danger-colored. The absolute start is the tooltip.
+
+export function dur(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const hr = Math.floor(m / 60);
+  if (hr < 10) return `${hr}h ${String(m % 60).padStart(2, '0')}m`;
+  if (hr < 48) return `${hr}h`;
+  return `${Math.floor(hr / 24)}d`;
+}
+
+export function stopwatch(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const hr = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = String(s % 60).padStart(2, '0');
+  return hr ? `${hr}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+}
+
+function clockOf(ts) {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+export function timer(since, { watch = false, warn = 0, over = 0, cls = '' } = {}, now = Date.now()) {
+  const ms = now - since;
+  const state = over && ms >= over ? ' over' : warn && ms >= warn ? ' late' : '';
+  return `<span class="timer${state}${cls ? ` ${cls}` : ''}" data-since="${since}"${watch ? ' data-watch' : ''}${warn ? ` data-warn="${warn}"` : ''}${over ? ` data-over="${over}"` : ''} title="since ${clockOf(since)}">${watch ? stopwatch(ms) : dur(ms)}</span>`;
+}
+
+// Ticks every timer on the page once a second, in place, without a render.
+export function startTimers(getNow) {
+  setInterval(() => {
+    const now = getNow();
+    for (const el of document.querySelectorAll('.timer[data-since]')) {
+      const ms = now - Number(el.dataset.since);
+      const text = 'watch' in el.dataset ? stopwatch(ms) : dur(ms);
+      if (el.textContent !== text) el.textContent = text;
+      const over = Number(el.dataset.over || 0);
+      const warn = Number(el.dataset.warn || 0);
+      el.classList.toggle('over', !!over && ms >= over);
+      el.classList.toggle('late', !!warn && ms >= warn && !(over && ms >= over));
+    }
+  }, 1000);
 }

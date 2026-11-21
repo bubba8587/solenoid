@@ -1,7 +1,7 @@
 // The board page: folds the log into state, renders the map, the windows, the timeline and the
 // inspector from it, and turns what the person does (drag a tile, answer a question) into events.
 
-import { HUMAN, apply, reduce, alerts, presence, blockMeta, agentName, ago } from '../core/model.js';
+import { HUMAN, apply, reduce, alerts, presence, blockMeta, agentName } from '../core/model.js';
 import { blockForPath } from '../core/glob.js';
 import { connect } from './source.js';
 import { createMap } from './map.js';
@@ -10,7 +10,8 @@ import { createTimeline } from './timeline.js';
 import { createInspector } from './inspector.js';
 import { createTethers } from './tethers.js';
 import { enableDnd } from './dnd.js';
-import { h, icon, setHtml, setText, toast, storageGet, storageSet, esc } from './dom.js';
+import { h, icon, setHtml, setText, toast, storageGet, storageSet, esc, timer, startTimers } from './dom.js';
+import { PALETTE_NAMES, applyPalette } from './palette.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -119,17 +120,17 @@ ctx.act = {
     const list = [];
     if (b.holder && b.holder !== agent) {
       list.push({ type: 'block.release', agent: b.holder, block, outcome: 'handoff', note: `given to ${agentName(ctx.live, agent)}` });
-      if (b.holder !== HUMAN) list.push({ type: 'msg', to: b.holder, text: `Moved ${nameOf(block)} (${block}) to ${agentName(ctx.live, agent)}. Stop editing there.` });
+      if (b.holder !== HUMAN) list.push({ type: 'msg', auto: true, to: b.holder, text: `Moved ${nameOf(block)} (${block}) to ${agentName(ctx.live, agent)}. Stop editing there.` });
     }
     list.push({ type: 'block.reserve', agent, block, intent: b.intent || b.queued?.note || '' });
-    if (agent !== HUMAN) list.push({ type: 'msg', to: agent, text: `Assigned to you: ${nameOf(block)} (${block}). \`bm show ${block}\` lists its docs and open items.` });
+    if (agent !== HUMAN) list.push({ type: 'msg', auto: true, to: agent, text: `Assigned to you: ${nameOf(block)} (${block}). \`bm show ${block}\` lists its docs and open items.` });
     return commit(list, agent === HUMAN ? `You hold ${nameOf(block)}. Agents stay out.` : `Gave ${nameOf(block)} to ${agentName(ctx.live, agent)}.`);
   },
   release(block) {
     const b = ctx.live.blocks[block];
     if (!b.holder) return Promise.resolve(false);
     const list = [{ type: 'block.release', agent: b.holder, block, outcome: 'parked', note: `released by ${humanName()}` }];
-    if (b.holder !== HUMAN) list.push({ type: 'msg', to: b.holder, text: `Took ${nameOf(block)} (${block}) back. Stop editing there.` });
+    if (b.holder !== HUMAN) list.push({ type: 'msg', auto: true, to: b.holder, text: `Took ${nameOf(block)} (${block}) back. Stop editing there.` });
     return commit(list, `${nameOf(block)} is free.`);
   },
   queue(block) {
@@ -137,7 +138,7 @@ ctx.act = {
     const list = [];
     if (b.holder) {
       list.push({ type: 'block.release', agent: b.holder, block, outcome: 'parked', note: 'moved to the queue' });
-      if (b.holder !== HUMAN) list.push({ type: 'msg', to: b.holder, text: `Moved ${nameOf(block)} (${block}) back to the queue. Stop editing there.` });
+      if (b.holder !== HUMAN) list.push({ type: 'msg', auto: true, to: b.holder, text: `Moved ${nameOf(block)} (${block}) back to the queue. Stop editing there.` });
     }
     list.push({ type: 'block.queue', block, note: b.intent || '' });
     return commit(list, `${nameOf(block)} is up next.`);
@@ -153,6 +154,7 @@ ctx.act = {
 // ------------------------------------------------------------------------------------------ render
 
 let raf = 0;
+ctx.render = () => render();
 function render() {
   if (!raf) raf = requestAnimationFrame(doRender);
 }
@@ -166,6 +168,7 @@ function doRender() {
   }
   const before = new Map();
   for (const [id, tile] of ctx.map.tiles) before.set(id, tile.getBoundingClientRect());
+  ctx.alertList = alerts(ctx.view, ctx.viewNow);
   document.body.dataset.lens = ctx.lens;
   document.body.classList.toggle('inspecting', !!inspector.id);
   side.update();
@@ -254,41 +257,33 @@ function paintTop() {
     if (it.kind === 'bug') bugs++;
     if (it.kind === 'decision' || it.kind === 'question') need++;
   }
-  const al = alerts(st, now);
+  const al = ctx.alertList;
   setHtml(
     $('stats'),
     [
-      `<span class="stat" title="Agents working now, of those on the board"><b>${working}</b><span>of ${agents.length} working</span></span>`,
-      `<span class="stat" title="Blocks reserved right now"><b>${held}</b><span>of ${ctx.board.blocks.length} blocks held</span></span>`,
-      `<span class="stat bug" title="Open bugs across the board"><b>${bugs}</b><span>bugs</span></span>`,
-      `<span class="stat ask" title="Decisions and questions waiting on ${esc(st.agents[HUMAN].name)}"><b>${need}</b><span>need you</span></span>`,
-      `<span class="stat ${al.length ? 'alert' : ''}" title="Trespasses, stale holders, failing tests, questions"><b>${al.length}</b><span>alert${al.length === 1 ? '' : 's'}</span></span>`,
+      `<span class="stat"><b>${working}</b>working</span>`,
+      `<span class="stat"><b>${held}</b>held</span>`,
+      `<span class="stat bug"><b>${bugs}</b>bugs</span>`,
+      `<span class="stat you"><b>${need}</b>need you</span>`,
+      al.length ? `<span class="stat alert"><b>${al.length}</b>alert${al.length === 1 ? '' : 's'}</span>` : '',
     ].join(''),
   );
   const conn = $('conn');
   const mode = ctx.replayTs ? 'replay' : ctx.connState || ctx.mode;
-  conn.className = `conn ${mode === 'live' ? 'live' : mode === 'demo' ? 'demo' : mode === 'replay' ? 'replay' : ''}`;
+  conn.className = `conn ${mode}`;
   setText(conn.lastElementChild, { live: 'Live', demo: 'Demo', replay: 'Replay', offline: 'Reconnecting', connecting: 'Connecting' }[mode] || mode);
 }
 
 function paintAlerts() {
-  const host = $('alerts');
-  const st = ctx.view;
+  const al = ctx.alertList;
   const now = ctx.viewNow;
-  const al = alerts(st, now);
-  const rows = [];
-  if (ctx.mode === 'demo') {
-    rows.push(
-      `<div class="demo-note">${icon('live')}<span>Simulated agents working through the real ${esc(ctx.board.name)} backlog on its real map. Drag blocks between windows, answer a question, scrub the timeline. The live board is <code>tools/blockmap/bm serve</code>.</span></div>`,
-    );
-  }
   const shown = ctx.alertsOpen ? al : al.slice(0, 1);
-  shown.forEach((a, i) => {
+  const rows = shown.map((a, i) => {
     const kind = a.kind === 'question' ? 'question' : a.severity;
-    const more = i === 0 && al.length > 1 ? `<button class="more" type="button" data-alert-more>${ctx.alertsOpen ? 'Fewer' : `+${al.length - 1} more`}</button>` : '';
-    rows.push(`<div class="alert ${kind}" data-alert-block="${esc(a.block || '')}" data-alert-agent="${esc(a.agent || '')}" data-alert-kind="${a.kind}"><span class="sev"></span><span class="txt" title="${esc(a.text)}">${esc(a.text)}</span><span class="when">${ago(now - a.ts)} ago</span>${more}<button type="button" data-alert-go>${a.kind === 'question' ? 'Answer' : 'Show'}</button></div>`);
+    const more = i === 0 && al.length > 1 ? `<button class="more" type="button" data-alert-more>${ctx.alertsOpen ? 'Fewer' : `+${al.length - 1}`}</button>` : '';
+    return `<div class="alert ${kind}" role="button" tabindex="0" data-alert-block="${esc(a.block || '')}" data-alert-agent="${esc(a.agent || '')}" data-alert-kind="${a.kind}"><span class="sev"></span><span class="txt" title="${esc(a.text)}">${esc(a.text)}</span>${timer(a.ts, {}, now)}${more}</div>`;
   });
-  setHtml(host, rows.join(''));
+  setHtml($('alerts'), rows.join(''));
 }
 
 $('alerts').addEventListener('click', (e) => {
@@ -297,9 +292,10 @@ $('alerts').addEventListener('click', (e) => {
     return render();
   }
   const row = e.target.closest('.alert');
-  if (!row || !e.target.closest('[data-alert-go]')) return;
+  if (!row) return undefined;
   if (row.dataset.alertKind === 'question' && row.dataset.alertAgent) return side.focusAnswer(row.dataset.alertAgent);
   if (row.dataset.alertBlock) ctx.select(row.dataset.alertBlock);
+  return undefined;
 });
 
 // ------------------------------------------------------------------------------- lens, search, theme
@@ -359,20 +355,42 @@ const themeBtn = $('theme');
 const savedTheme = storageGet('blockmap.theme', null);
 if (savedTheme) document.documentElement.dataset.theme = savedTheme;
 function currentTheme() {
-  return document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  return document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 }
 function paintThemeBtn() {
   themeBtn.innerHTML = icon(currentTheme() === 'dark' ? 'sun' : 'moon');
-  themeBtn.setAttribute('aria-label', currentTheme() === 'dark' ? 'Switch to light' : 'Switch to dark');
+  themeBtn.setAttribute('aria-label', currentTheme() === 'dark' ? 'Light theme' : 'Dark theme');
 }
 themeBtn.addEventListener('click', () => {
   const next = currentTheme() === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = next;
   storageSet('blockmap.theme', next);
   paintThemeBtn();
-  render();
+  usePalette(palettePick.value);
 });
 paintThemeBtn();
+
+// Solenoid's palettes. Default lives in the stylesheet; another one writes its vars onto the root.
+const palettePick = $('palette');
+for (const name of PALETTE_NAMES) palettePick.append(h('option', { value: name }, name));
+function usePalette(name) {
+  const root = document.documentElement;
+  if (name === 'Default') {
+    for (const prop of [...root.style]) if (prop.startsWith('--')) root.style.removeProperty(prop);
+    delete root.dataset.palette;
+  } else applyPalette(name);
+  render();
+}
+palettePick.value = PALETTE_NAMES.includes(storageGet('blockmap.palette', 'Default')) ? storageGet('blockmap.palette', 'Default') : 'Default';
+palettePick.addEventListener('change', () => {
+  storageSet('blockmap.palette', palettePick.value);
+  usePalette(palettePick.value);
+});
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+  paintThemeBtn();
+  usePalette(palettePick.value);
+});
+usePalette(palettePick.value);
 
 // -------------------------------------------------------------------------------------------- boot
 
@@ -407,6 +425,7 @@ async function boot() {
 }
 
 setInterval(render, 5000);
+startTimers(() => ctx.viewNow && ctx.replayTs ? ctx.replayTs : Date.now());
 window.addEventListener('resize', render);
 boot();
 

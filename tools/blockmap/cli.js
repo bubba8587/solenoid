@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   HUMAN, UNMAPPED, OUTCOMES, ITEM_STATUS, reduce, makeEvent, findBlock, blockMeta, agentName, presence, alerts, queue,
-  itemCounts, describeEvent, ago, clock,
+  itemCounts, describeEvent, clock, ago,
 } from './core/model.js';
 import { blockForPath, matchDetail, normalizePath } from './core/glob.js';
 import { openStore, remoteStore, findBoardDir } from './core/store.js';
@@ -230,7 +230,7 @@ const commands = {
     const items = Object.values(ctx.state.items).filter((it) => it.block === meta.id && it.status !== 'done' && it.status !== 'wontfix');
     const d = ctx.board.districts.find((x) => x.id === meta.district);
     const lines = [
-      `${meta.name} (${meta.id}) · ${d?.name || meta.district}`,
+      `${meta.name} (${meta.id}), in ${d?.name || meta.district}`,
       meta.about,
       b.holder ? `Held by ${agentName(ctx.state, b.holder)} since ${clock(b.since)}${b.intent ? `: ${b.intent}` : ''}` : 'Free.',
       b.frozen ? `Frozen by ${agentName(ctx.state, b.frozen.by)}${b.frozen.note ? `: ${b.frozen.note}` : ''}` : '',
@@ -250,7 +250,7 @@ const commands = {
     const a = ctx.state.agents[ctx.me];
     if (!a) return out(ctx, `You (${ctx.me}) haven't joined. \`bm join --name <name> --task "<task>"\`.`, null);
     const lines = [
-      `${a.name} (${a.id}) · ${presence(ctx.state, a.id, ctx.now)}${a.task ? ` · ${a.task}` : ''}`,
+      `${a.name} (${a.id}) is ${presence(ctx.state, a.id, ctx.now)}.${a.task ? ` Task: ${a.task}` : ''}`,
       a.held.length ? `Holding: ${a.held.map((id) => `${blockMeta(ctx.state, id).name} (${id})`).join(', ')}` : 'Holding nothing.',
       a.watching.length ? `Watching: ${a.watching.join(', ')}` : '',
       a.inbox.length ? `${a.inbox.length} unread message${a.inbox.length > 1 ? 's' : ''}: \`bm inbox\`` : '',
@@ -464,20 +464,22 @@ export function summary(state, now, me = null) {
   const agents = Object.values(state.agents).filter((a) => a.id !== HUMAN && !a.leftAt);
   const held = Object.values(state.blocks).filter((b) => b.holder);
   const al = alerts(state, now);
-  const lines = [`${state.board.name} board · ${agents.length} agent${agents.length === 1 ? '' : 's'} · ${held.length} of ${state.board.blocks.length} blocks held · ${al.length} alert${al.length === 1 ? '' : 's'}`];
+  const lines = [`${state.board.name}: ${agents.length || 'no'} agent${agents.length === 1 ? '' : 's'}, ${held.length} of ${state.board.blocks.length} blocks held.`];
   const human = state.agents[HUMAN];
-  if (human.held.length) lines.push(`  ${human.name} (the human) holds ${human.held.join(', ')}: agents stay out`);
+  if (human.held.length) lines.push(`${human.name} (the human) holds ${human.held.join(', ')}. Agents stay out.`);
+  const width = Math.max(4, ...agents.map((a) => a.name.length + (a.id === me ? 6 : 0)));
   for (const a of agents) {
-    const p = presence(state, a.id, now);
-    lines.push(`  ${a.name}${a.id === me ? ' (you)' : ''} · ${p} · seen ${ago(now - a.lastSeen)} ago${a.doing ? ` · ${a.doing}` : a.task ? ` · ${a.task}` : ''}`);
-    if (a.held.length) lines.push(`      holds ${a.held.map((id) => `${id}${state.blocks[id].intent ? ` ("${state.blocks[id].intent}")` : ''}`).join(', ')}`);
+    const who = `${a.name}${a.id === me ? ' (you)' : ''}`.padEnd(width);
+    const p = presence(state, a.id, now).padEnd(8);
+    const holds = a.held.length ? a.held.join(', ') : '-';
+    lines.push(`  ${who}  ${p}  ${holds}${a.doing || a.task ? `\n  ${' '.repeat(width)}  ${a.doing || a.task}` : ''}`);
   }
   const q = queue(state);
-  if (q.length) lines.push(`Up next: ${q.map((b) => `${b.id}${b.queued.note ? ` ("${b.queued.note}")` : ''}`).join(', ')}  (\`bm next\` takes the first)`);
+  if (q.length) lines.push(`Up next: ${q.map((b) => `${b.id}${b.queued.note ? ` ("${b.queued.note}")` : ''}`).join(', ')}. \`bm next\` takes the first.`);
   const frozen = Object.values(state.blocks).filter((b) => b.frozen);
-  if (frozen.length) lines.push(`Frozen: ${frozen.map((b) => `${b.id}${b.frozen.note ? ` (${b.frozen.note})` : ''}`).join(', ')}`);
+  if (frozen.length) lines.push(`Frozen: ${frozen.map((b) => `${b.id}${b.frozen.note ? ` (${b.frozen.note})` : ''}`).join(', ')}.`);
   for (const a of al.slice(0, 6)) lines.push(`  ! ${a.text}`);
-  if (me && me !== HUMAN && state.agents[me]?.inbox.length) lines.push(`You have ${state.agents[me].inbox.length} unread message(s): \`bm inbox\``);
+  if (me && me !== HUMAN && state.agents[me]?.inbox.length) lines.push(`You have ${state.agents[me].inbox.length} unread message(s): \`bm inbox\`.`);
   return lines.join('\n');
 }
 

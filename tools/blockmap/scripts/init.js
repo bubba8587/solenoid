@@ -8,7 +8,6 @@ import { execFileSync } from 'node:child_process';
 import { gitFiles } from '../core/files.js';
 
 const MAX_FILES = 90;
-const HUES = [222, 28, 160, 48, 338, 252, 284, 96, 190, 8];
 
 export function initBoard(cwd, { name } = {}) {
   let root = cwd;
@@ -46,9 +45,9 @@ export function draftBoard(files, name) {
     byTop.get(top).push(f);
   }
   const tops = [...byTop.entries()].sort((a, b) => b[1].length - a[1].length);
-  tops.forEach(([top, list], i) => {
+  tops.forEach(([top, list]) => {
     const district = slug(top === '(root)' ? 'root' : top);
-    districts.push({ id: district, name: top === '(root)' ? 'Top level' : title(top), hue: HUES[i % HUES.length] });
+    districts.push({ id: district, name: top === '(root)' ? 'Top level' : title(top) });
     if (top === '(root)') {
       blocks.push({ id: 'root-files', name: 'Top-level files', district, about: '', paths: list.map((f) => f), docs: [], keywords: [] });
       return;

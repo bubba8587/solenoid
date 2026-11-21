@@ -17,10 +17,10 @@ export function mulberry32(seed) {
 }
 
 const CREW = [
-  { id: 'cc-7f3a91c2', name: 'Heron', model: 'opus', where: 'dev box · solenoid · develop', pace: 1 },
-  { id: 'cc-2b8e44d0', name: 'Basalt', model: 'opus', where: 'dev box · worktree agent-2', pace: 0.8 },
-  { id: 'cc-c41d07aa', name: 'Juniper', model: 'sonnet', where: 'cloud · solenoid · develop', pace: 1.2 },
-  { id: 'cc-91e6b3f5', name: 'Wren', model: 'opus', where: 'dev box · worktree agent-4', pace: 0.7 },
+  { id: 'cc-7f3a91c2', name: 'Heron', model: 'opus', where: 'dev box, develop', pace: 1 },
+  { id: 'cc-2b8e44d0', name: 'Basalt', model: 'opus', where: 'dev box, worktree agent-2', pace: 0.8 },
+  { id: 'cc-c41d07aa', name: 'Juniper', model: 'sonnet', where: 'cloud, develop', pace: 1.2 },
+  { id: 'cc-91e6b3f5', name: 'Wren', model: 'opus', where: 'dev box, worktree agent-4', pace: 0.7 },
 ];
 
 const QUESTIONS = [
@@ -145,7 +145,7 @@ export function createSim(board, { seed = 7, crew = CREW } = {}) {
         const test = testOf(p.block);
         emit(state, out, 'touch', p.id, { op: 'run', cmd: `npx vitest run ${test}` }, t);
         const ok = rand() < 0.78;
-        emit(state, out, 'test', p.id, { ok, summary: ok ? `${test} · ${8 + Math.floor(rand() * 60)} passed` : `${test} · 1 failed`, blocks: [p.block, p.extra].filter(Boolean) }, t + 1);
+        emit(state, out, 'test', p.id, { ok, summary: ok ? `${8 + Math.floor(rand() * 60)} passed in ${test.split('/').pop()}` : `1 failed in ${test.split('/').pop()}`, blocks: [p.block, p.extra].filter(Boolean) }, t + 1);
         if (ok) p.phase = 'landing';
         else {
           p.phase = 'working';

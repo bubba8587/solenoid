@@ -1,8 +1,9 @@
 // The timeline dock: a lane per agent showing which blocks it held when, its edits, tests and
 // questions, and the human's own actions. Dragging across it replays the board at that moment.
 
-import { HUMAN, blockMeta, clock, ago } from '../core/model.js';
-import { h, icon, setHtml, setText, esc } from './dom.js';
+import { HUMAN, blockMeta, clock } from '../core/model.js';
+import { h, icon, setHtml, setText, esc, storageGet, storageSet } from './dom.js';
+import { colorOf, inkOf } from './map.js';
 
 const RANGES = [
   ['1h', 3600_000],
@@ -19,10 +20,9 @@ const PAD_R = 14;
 export function createTimeline(ctx, root) {
   let range = 3 * 3600_000;
   let playing = null;
-  const title = h('span', { class: 'tl-title' }, 'Timeline');
-  const time = h('span', { class: 'tl-time' });
-  const live = h('button', { class: 'tl-live', type: 'button', hidden: true }, 'Back to live');
-  const play = h('button', { class: 'tl-play', type: 'button', 'aria-label': 'Replay', html: icon('play') });
+  const time = h('span', { class: 'tl-time', hidden: true });
+  const live = h('button', { class: 'btn', type: 'button', hidden: true }, 'Live');
+  const play = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Replay', html: icon('play') });
   const seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Time range' });
   for (const [label, ms] of RANGES) {
     const b = h('button', { type: 'button', 'aria-pressed': String(ms === range) }, label);
@@ -33,11 +33,28 @@ export function createTimeline(ctx, root) {
     });
     seg.append(b);
   }
-  const hint = h('span', { class: 'win-sub', style: { marginLeft: 'auto' } }, 'Drag across the lanes to replay');
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'tl-svg');
   const body = h('div', { class: 'tl-body' }, svg);
-  root.append(h('div', { class: 'tl-head' }, title, time, live, play, seg, hint), body);
+  // Folded, the timeline keeps its controls and gives its height to the map; short screens start folded.
+  let folded = storageGet('blockmap.timelineFolded', window.innerHeight < 800);
+  const fold = h('button', { class: 'icon-btn tl-fold', type: 'button' });
+  const applyFold = () => {
+    body.hidden = folded;
+    root.classList.toggle('folded', folded);
+    fold.innerHTML = icon('chev');
+    fold.setAttribute('aria-label', folded ? 'Show the timeline' : 'Hide the timeline');
+    fold.setAttribute('aria-expanded', String(!folded));
+  };
+  fold.addEventListener('click', () => {
+    folded = !folded;
+    storageSet('blockmap.timelineFolded', folded);
+    applyFold();
+    if (!folded) update(true);
+    ctx.render?.();
+  });
+  applyFold();
+  root.append(h('div', { class: 'tl-head' }, play, seg, time, live, fold), body);
 
   live.addEventListener('click', () => {
     stop();
@@ -75,9 +92,13 @@ export function createTimeline(ctx, root) {
     let last = performance.now();
     play.innerHTML = icon('pause');
     play.setAttribute('aria-label', 'Pause');
+    const times = ctx.events.map((e) => e.ts);
     const tick = (nowPerf) => {
       t += (nowPerf - last) * speed;
       last = nowPerf;
+      // Skip stretches where nothing happened, as Gource does, so a replay never plays silence.
+      const next = times.find((x) => x > t);
+      if (next && next - t > speed * 1500) t = next - speed * 300;
       if (t >= g.t1) {
         stop();
         ctx.replay(null);
@@ -106,7 +127,8 @@ export function createTimeline(ctx, root) {
     const t1 = liveNow;
     const t0 = Math.max(t1 - range, first - Math.max(20_000, (t1 - first) * 0.06));
     const viewTs = ctx.replayTs ?? t1;
-    setText(time, ctx.replayTs ? `${clock(viewTs)} · ${ago(t1 - viewTs)} ago` : `${clock(t1)} · live`);
+    setText(time, clock(viewTs));
+    time.hidden = !ctx.replayTs;
     live.hidden = !ctx.replayTs;
     const key = `${events.length}|${W}|${Math.floor(t1 / 15_000)}|${range}|${document.documentElement.dataset.theme || ''}`;
     if (key !== cacheKey || force) {
@@ -144,7 +166,7 @@ export function createTimeline(ctx, root) {
       const y = laneY.get(id);
       if (i % 2 === 0) parts.push(`<rect class="lane" x="0" y="${y}" width="${W}" height="${LANE}"/>`);
       const a = st.agents[id];
-      const color = id === HUMAN ? 'var(--human)' : a.color;
+      const color = colorOf(st, id);
       parts.push(`<circle cx="10" cy="${y + LANE / 2}" r="4" fill="${color}"/><text class="lane-label" x="20" y="${y + LANE / 2 + 4}">${esc(a.name.slice(0, 11))}</text>`);
     });
     const span = t1 - t0;
@@ -157,13 +179,13 @@ export function createTimeline(ctx, root) {
     for (const hd of holds) {
       const y = laneY.get(hd.agent);
       if (y === undefined) continue;
-      const a = st.agents[hd.agent];
-      const color = hd.agent === HUMAN ? 'var(--human)' : a?.color || 'var(--ink-3)';
+      const color = colorOf(st, hd.agent);
+      const ink = inkOf(st, hd.agent);
       const x0 = Math.max(LABEL, x(hd.from));
       const x1 = x(hd.to ?? t1);
       const w = Math.max(2, x1 - x0);
       const name = blockMeta(st, hd.block)?.name || hd.block;
-      parts.push(`<g class="hold"><rect x="${x0}" y="${y + 3}" width="${w}" height="${LANE - 8}" fill="${color}" opacity="${hd.to ? 0.62 : 0.9}"><title>${esc(name)}: ${clock(hd.from)} to ${hd.to ? clock(hd.to) : 'now'}</title></rect>${w > 46 ? `<text x="${x0 + 4}" y="${y + LANE / 2 + 2.5}">${esc(fit(name, w))}</text>` : ''}</g>`);
+      parts.push(`<g class="hold"><rect x="${x0}" y="${y + 3}" width="${w}" height="${LANE - 8}" rx="2" fill="${color}" opacity="${hd.to ? 0.55 : 0.95}"><title>${esc(name)}: ${clock(hd.from)} to ${hd.to ? clock(hd.to) : 'now'}</title></rect>${w > 46 ? `<text x="${x0 + 4}" y="${y + LANE / 2 + 2.5}" fill="${ink}">${esc(fit(name, w))}</text>` : ''}</g>`);
     }
     for (const e of events) {
       if (e.ts < t0) continue;
@@ -171,7 +193,7 @@ export function createTimeline(ctx, root) {
       const y = laneY.get(who);
       if (y === undefined) continue;
       const ex = x(e.ts);
-      const color = who === HUMAN ? 'var(--human)' : st.agents[who]?.color;
+      const color = colorOf(st, who);
       if (e.type === 'touch' && e.op === 'edit') parts.push(`<line class="edit" x1="${ex}" x2="${ex}" y1="${y + LANE - 6}" y2="${y + LANE - 1}" stroke="${color}"/>`);
       else if (e.type === 'test') parts.push(`<circle class="${e.ok ? 'mk-ok' : 'mk-fail'}" cx="${ex}" cy="${y + 4}" r="2.6"><title>Tests ${e.ok ? 'pass' : 'fail'}${e.summary ? `: ${esc(e.summary)}` : ''}</title></circle>`);
       else if (e.type === 'item.add' && e.item?.kind === 'question') parts.push(`<path class="mk-ask" d="M${ex} ${y + 1} l4 4 -4 4 -4 -4Z"><title>${esc(e.item.title)}</title></path>`);
