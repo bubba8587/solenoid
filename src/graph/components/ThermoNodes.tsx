@@ -14,10 +14,10 @@ export function IsaAtmosphereComponent({ data, emit }: NodeProps<IsaAtmosphereNo
         node={data}
         emit={emit}
         rows={[
-          { key: "temp",     label: "T (K)",  value: data.cachedT },
-          { key: "pressure", label: "P (PA)", value: data.cachedP },
-          { key: "density",  label: "KG/M³",  value: data.cachedRho },
-          { key: "sound",    label: "A (M/S)", value: data.cachedA },
+          { key: "temp",     label: "TEMPERATURE", value: data.cachedT },
+          { key: "pressure", label: "PRESSURE", value: data.cachedP },
+          { key: "density",  label: "DENSITY", value: data.cachedRho },
+          { key: "sound",    label: "SOUND SPEED", value: data.cachedA },
         ]}
       />
     </NodeShell>
@@ -38,8 +38,8 @@ export function AntoineComponent({ data, emit }: NodeProps<AntoineNodeType>) {
         node={data}
         emit={emit}
         rows={[
-          { key: "pressure", label: "P (PA)",     value: data.cachedP },
-          { key: "bp",       label: "BOILING °C", value: data.cachedBp },
+          { key: "pressure", label: "PRESSURE", value: data.cachedP },
+          { key: "bp",       label: "BOILING POINT", value: data.cachedBp },
         ]}
       />
     </NodeShell>

@@ -1,12 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { THERMO_FORMULAS } from "../../../src/graph/packs/thermo";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { IsaAtmosphereNode } from "../../../src/graph/nodes/thermo";
+import { IsaAtmosphereNode, AntoineNode } from "../../../src/graph/nodes/thermo";
 import { ANTOINE, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
 import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
 import { formulaNode } from "../../../src/graph/packs/packShared";
-import { applyFcUnit } from "../../../src/graph/unitBridge";
+import { applyFcUnit, displayMagnitudeOf } from "../../../src/graph/unitBridge";
+import { isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
+
+/** An answer read in the unit it shows in. */
+const shownAs = (v: unknown) => (isUnitCell(v) ? displayMagnitudeOf(v) : v) as number;
 
 const antoinePressure = (substance: string, t: number) => coreFunction("ANTOINE")!(substance, t) as number;
 
@@ -73,8 +77,8 @@ describe("Thermodynamics & Air formulas", () => {
 describe("ISA standard atmosphere", () => {
   const EARTH_R = 6356766; // m, geometric ↔ geopotential
   const isaAtGeometric = (z: number) => {
-    const r = new IsaAtmosphereNode().data({ alt: [z] }) as Record<string, number>;
-    return { T: r.temp, p: r.pressure, rho: r.density, a: r.sound };
+    const r = new IsaAtmosphereNode().data({ alt: [z] });
+    return { T: shownAs(r.temp), p: shownAs(r.pressure), rho: shownAs(r.density), a: shownAs(r.sound) };
   };
   const isaAtGeopotential = (h: number) => isaAtGeometric((EARTH_R * h) / (EARTH_R - h));
   it("matches the published layer-base pressures", () => {
@@ -100,9 +104,32 @@ describe("ISA standard atmosphere", () => {
     expect(isaAtGeometric(10668).p).toBeGreaterThan(cruise.p);
   });
 
+  it("[[C25]] firstClassUnits: the altitude converts into meters, a bare number is meters, and the answers carry units", () => {
+    const r = new IsaAtmosphereNode().data({ alt: [applyFcUnit(2, "km")] });
+    const bare = new IsaAtmosphereNode().data({ alt: [2000] });
+    expect(r.temp).toEqual(bare.temp);
+    expect(shownAs(r.temp)).toBeCloseTo(275.15, 1);
+    expect((r.temp as UnitCell).display).toBe("K");
+    expect((r.pressure as UnitCell).display).toBe("Pa");
+    expect((r.sound as UnitCell).display).toBe("ms1");
+    expect(shownAs(new IsaAtmosphereNode().data({ alt: [applyFcUnit(6562, "ft")] }).temp)).toBeCloseTo(shownAs(bare.temp), 1);
+    const wrong = new IsaAtmosphereNode().data({ alt: [applyFcUnit(5, "s")] }).temp;
+    expect(isSolError(wrong) && wrong.code).toBe("#UNIT!");
+  });
+
 });
 
 describe("Antoine vapor pressure", () => {
+  it("[[C25]] firstClassUnits: 373.15 K and 212 °F boil water as 100 °C does; pressure answers in Pa, the boiling point in °C", () => {
+    const at = (t: unknown) => new AntoineNode().data({ t: [t] });
+    const c = at(100);
+    expect(shownAs(at(applyFcUnit(373.15, "K")).pressure)).toBeCloseTo(shownAs(c.pressure), 6);
+    expect(shownAs(at(applyFcUnit(212, "degF")).pressure)).toBeCloseTo(shownAs(c.pressure), 6);
+    expect((c.pressure as UnitCell).display).toBe("Pa");
+    expect((c.bp as UnitCell).display).toBe("degC");
+    const wrong = at(applyFcUnit(1, "m")).pressure;
+    expect(isSolError(wrong) && wrong.code).toBe("#UNIT!");
+  });
   it("every substance reproduces its normal boiling point (typo guard)", () => {
     for (const [op, meta] of Object.entries(ANTOINE) as [AntoineOp, (typeof ANTOINE)[AntoineOp]][]) {
       const bp = meta.B / (meta.A - Math.log10(760)) - meta.C;

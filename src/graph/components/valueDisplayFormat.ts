@@ -41,9 +41,10 @@ export function resolveMatrixAnnotation(nodeId: string | null): FormatAnnotation
   return (nodeId ? frameFormatStore.get(nodeId, MATRIX_FORMAT_KEY) : undefined) ?? resolveDisplayAnnotation(nodeId);
 }
 
-type RowCell = number | boolean | string | Cx | SolDate | SolError | null;
+type RowCell = number | boolean | string | Cx | SolDate | SolError | UnitCell | null;
 function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
   if (v === null) return "—";
+  if (isUnitCell(v)) return formatListCell(v, formatScalar, ann);
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
   if (isCx(v)) return ann ? formatCxWithAnnotation(v, ann) : formatCxDisplay(v);

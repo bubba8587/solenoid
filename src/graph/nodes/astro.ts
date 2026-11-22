@@ -2,9 +2,10 @@
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { numIn, numOut, dateIn, dateOut, dateComboIn, numListOut } from "./shared";
+import { numIn, numOut, dateIn, dateOut, dateComboIn, numListOut, type Quantity } from "./shared";
+import type { UnitCell } from "../unitValue";
 
-type Answer = number | SolError | null | (number | SolError | null)[];
+type Answer = Quantity | (number | UnitCell | SolError | null)[];
 import type { SolError } from "../errorValue";
 
 export class SolarPositionNode extends GraphNode {
@@ -13,6 +14,7 @@ export class SolarPositionNode extends GraphNode {
   cachedElevation: Answer = null;
   cachedAzimuth: Answer = null;
   cachedDeclination: Answer = null;
+  unitAware = true;
   width = 220;
   height = 230;
 
@@ -23,9 +25,9 @@ export class SolarPositionNode extends GraphNode {
     this.addInput("when", dateComboIn("Date & time (UTC)"));
     this.addInput("lat", numIn("Latitude °"));
     this.addInput("lon", numIn("Longitude °"));
-    this.addOutput("elevation", numListOut("Elevation °"));
-    this.addOutput("azimuth", numListOut("Azimuth °"));
-    this.addOutput("declination", numListOut("Declination °"));
+    this.addOutput("elevation", numListOut("Elevation"));
+    this.addOutput("azimuth", numListOut("Azimuth"));
+    this.addOutput("declination", numListOut("Declination"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
@@ -38,7 +40,8 @@ export class SunriseSunsetNode extends GraphNode {
   literals: Record<string, number> = { lat: 0, lon: 0 };
   cachedSunrise: number | SolError | null = null;
   cachedSunset: number | SolError | null = null;
-  cachedDayLength: number | SolError | null = null;
+  cachedDayLength: Quantity = null;
+  unitAware = true;
   width = 220;
   height = 220;
 
@@ -50,18 +53,18 @@ export class SunriseSunsetNode extends GraphNode {
     this.addInput("lon", numIn("Longitude °"));
     this.addOutput("sunrise", dateOut("Sunrise (UTC)"));
     this.addOutput("sunset", dateOut("Sunset (UTC)"));
-    this.addOutput("daylength", numOut("Day length h"));
+    this.addOutput("daylength", numOut("Day length"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { sunrise: number | SolError | null; sunset: number | SolError | null; daylength: number | SolError | null };
+    return nodeOnCore(this, inputs) as { sunrise: number | SolError | null; sunset: number | SolError | null; daylength: Quantity };
   }
 }
 
 export class MoonPhaseNode extends GraphNode {
   label: string;
   cachedPhase: number | SolError | null = null;
-  cachedAge: number | SolError | null = null;
+  cachedAge: Quantity = null;
   cachedIllumination: number | SolError | null = null;
   width = 210;
   height = 200;
@@ -71,11 +74,11 @@ export class MoonPhaseNode extends GraphNode {
     this.label = init?.label ?? "Moon Phase";
     this.addInput("when", dateIn("Date"));
     this.addOutput("phase", numOut("Phase 0–1"));
-    this.addOutput("age", numOut("Age days"));
+    this.addOutput("age", numOut("Age"));
     this.addOutput("illumination", numOut("Illuminated"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { phase: number | SolError | null; age: number | SolError | null; illumination: number | SolError | null };
+    return nodeOnCore(this, inputs) as { phase: number | SolError | null; age: Quantity; illumination: number | SolError | null };
   }
 }

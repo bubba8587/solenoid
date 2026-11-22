@@ -5,6 +5,8 @@ import { isSolError } from "../../../src/graph/errorValue";
 import { EmSpectrumNode } from "../../../src/graph/nodes/emSpectrum";
 import { PhysicsConstantNode } from "../../../src/graph/nodeClasses";
 import { PHYS_CONSTANTS } from "../../../src/graph/nodes/physicsConstantsOps";
+import { applyFcUnit } from "../../../src/graph/unitBridge";
+import type { UnitCell } from "../../../src/graph/unitValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(EM_FORMULAS, type), inputs);
@@ -110,6 +112,16 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     const n = new EmSpectrumNode();
     n.literals = {};
     expect(isSolError(n.data({ wavelength: [0] }).band)).toBe(true);
+  });
+  it("[[C25]] firstClassUnits: 5 GHz reads as 5 GHz, not 5 Hz; a wavelength in nm converts; a mass is #UNIT!", () => {
+    const n = new EmSpectrumNode();
+    const ghz = n.data({ freq: [applyFcUnit(5, "GHz")] });
+    expect(ghz.band).toBe("Microwave");
+    expect((ghz.wavelength as UnitCell).value).toBeCloseTo(0.0599585, 6);
+    expect((ghz.freq as UnitCell).display).toBe("Hz");
+    expect(n.data({ wavelength: [applyFcUnit(550, "nm")] }).band).toBe("Visible (green)");
+    const wrong = n.data({ freq: [applyFcUnit(5, "kg")] }).band;
+    expect(isSolError(wrong) && wrong.code).toBe("#UNIT!");
   });
   it("PHYSICSCONSTANT reads the table by id, case-sensitively", () => {
     expect(evalPackFormula('PHYSICSCONSTANT("c")')).toBe(299792458);

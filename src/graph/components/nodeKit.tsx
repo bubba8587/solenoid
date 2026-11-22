@@ -10,6 +10,7 @@ import { processEdited } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { formatCxDisplay, isCx, type Cx } from "../cxValue";
+import type { UnitCell } from "../unitValue";
 import { NodeCard, HEADER_TAP_SLOP } from "./NodeCard";
 import { useHeaderHeightVar } from "./useHeaderHeightVar";
 import { LazySelect } from "./LazySelect";
@@ -132,7 +133,7 @@ export function PortSockets({
 // ─── Multi-output rows ────────────────────────────────────────────────────────
 
 // A Cx rides raw so a docked FC's style, precision and unit reach it in the display layer.
-export type OutputRowValue = number | boolean | string | Cx | SolDate | (number | boolean | string | Cx | SolError | null)[] | SolError | null;
+export type OutputRowValue = number | boolean | string | Cx | SolDate | UnitCell | (number | boolean | string | Cx | UnitCell | SolError | null)[] | SolError | null;
 
 type OutputRowDef = {
   key: string;

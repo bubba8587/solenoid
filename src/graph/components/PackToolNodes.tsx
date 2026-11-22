@@ -19,8 +19,8 @@ export function EmSpectrumComponent({ data, emit }: NodeProps<EmSpectrumNodeType
         emit={emit}
         rows={[
           { key: "band",       label: "Band", value: data.cachedBand },
-          { key: "freq",       label: "HZ",   value: data.cachedFreq },
-          { key: "wavelength", label: "M",    value: data.cachedWavelength },
+          { key: "freq",       label: "FREQUENCY", value: data.cachedFreq },
+          { key: "wavelength", label: "WAVELENGTH", value: data.cachedWavelength },
         ]}
       />
     </NodeShell>
@@ -41,7 +41,7 @@ export function PipeRoughnessComponent({ data, emit }: NodeProps<PipeRoughnessNo
         node={data}
         emit={emit}
         rows={[
-          { key: "eps", label: "ε MM", value: data.cachedEps },
+          { key: "eps", label: "ε", value: data.cachedEps },
           { key: "rel", label: "ε/D",  value: data.cachedRel },
         ]}
       />

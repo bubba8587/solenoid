@@ -5,6 +5,11 @@ import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../
 import { SunriseSunsetNode, SolarPositionNode } from "../../../src/graph/nodes/astro";
 import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
+import { applyFcUnit, displayMagnitudeOf } from "../../../src/graph/unitBridge";
+import { isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
+
+/** An answer read in the unit it shows in. */
+const shownAs = (v: unknown) => (isUnitCell(v) ? displayMagnitudeOf(v) : v) as number;
 
 const call = (name: string, ...a: unknown[]) => coreFunction(name)!(...a) as number;
 const solarPosition = (w: number, lat: number, lon: number) =>
@@ -137,7 +142,8 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect(isSolDate(c.sunrise)).toBe(true);
     expect(evalPackFormula("SUNRISE(w, 0, 0)", when)).toEqual(c.sunrise);
     expect(evalPackFormula("SUNSET(w, 0, 0)", when)).toEqual(c.sunset);
-    expect(evalPackFormula("DAYLENGTH(w, 0, 0)", when)).toBe(c.daylength);
+    expect(evalPackFormula("DAYLENGTH(w, 0, 0)", when) as number).toBeCloseTo(shownAs(c.daylength), 9);
+    expect((c.daylength as UnitCell).display).toBe("h");
   });
   it("SUNPOSITION reads a part (elevation default); lat/lon are range-checked", () => {
     const p = solarPosition(46000.5, 40, -74);
@@ -159,11 +165,21 @@ describe("Sun Position card", () => {
   it("is element-wise over its times: a list of times answers the sun's path, each the single answer", () => {
     const day = solDate(46193); // 21-Jun-2026
     const times = [0, 6, 12, 18].map((h) => solDate(46193 + h / 24));
-    const one = (w: unknown) => new SolarPositionNode().data({ when: [w], lat: [51.5], lon: [-0.13] }) as { elevation: number };
-    const path = new SolarPositionNode().data({ when: [times], lat: [51.5], lon: [-0.13] }) as { elevation: number[]; azimuth: number[] };
-    expect(path.elevation).toHaveLength(4);
-    times.forEach((t, i) => expect(path.elevation[i]).toBe(one(t).elevation));
-    expect(Math.max(...path.elevation)).toBe(path.elevation[2]); // highest at noon UTC, near London's meridian
-    expect(typeof one(day).elevation).toBe("number");
+    const one = (w: unknown) => shownAs(new SolarPositionNode().data({ when: [w], lat: [51.5], lon: [-0.13] }).elevation);
+    const path = (new SolarPositionNode().data({ when: [times], lat: [51.5], lon: [-0.13] }).elevation as unknown[]).map(shownAs);
+    expect(path).toHaveLength(4);
+    times.forEach((t, i) => expect(path[i]).toBe(one(t)));
+    expect(Math.max(...path)).toBe(path[2]); // highest at noon UTC, near London's meridian
+    expect(typeof one(day)).toBe("number");
+  });
+  it("[[C25]] firstClassUnits: latitude and longitude convert into degrees, and the angles answer in degrees", () => {
+    const w = solDate(46193.5);
+    const bare = new SolarPositionNode().data({ when: [w], lat: [51.5], lon: [-0.13] });
+    const rad = new SolarPositionNode().data({ when: [w], lat: [applyFcUnit((51.5 * Math.PI) / 180, "rad")], lon: [-0.13] });
+    expect(shownAs(rad.elevation)).toBeCloseTo(shownAs(bare.elevation), 9);
+    expect((bare.elevation as UnitCell).display).toBe("deg");
+    expect(shownAs(bare.elevation)).toBeCloseTo(solarPosition(46193.5, 51.5, -0.13).elevation, 9);
+    const wrong = new SolarPositionNode().data({ when: [w], lat: [applyFcUnit(5, "km")], lon: [0] }).elevation;
+    expect(isSolError(wrong) && wrong.code).toBe("#UNIT!");
   });
 });

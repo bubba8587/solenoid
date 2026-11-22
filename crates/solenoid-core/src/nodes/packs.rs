@@ -83,6 +83,37 @@ fn null_or(v: Option<f64>) -> V {
     v.map_or(V::Null, V::Num)
 }
 
+/// An input read in the unit its socket names ([[C25]] firstClassUnits): a bare number is taken as in it, a wired
+/// unit converts into it, and another dimension is #UNIT!.
+fn read_in(v: &V, unit: &str) -> V {
+    super::formula::read_in_declared_unit(v, unit)
+}
+
+/// A number answered in `unit`, carrying it.
+fn in_unit(n: f64, unit: &str) -> V {
+    crate::unit_catalog::fc_unit_to_unit(unit).map_or(V::Num(n), |u| super::units::from_unit(n, &u, Some(unit)))
+}
+
+/// A number in base SI with no unit id of its own, so it shows in its derived symbols (kg/m³).
+fn in_base(n: f64, unit: &str) -> V {
+    crate::unit_catalog::fc_unit_to_unit(unit).map_or(V::Num(n), |u| super::units::from_unit(n, &u, None))
+}
+
+/// A dimensionless input (a Reynolds number, a ratio): a quantity with a dimension is #UNIT!, never read as its number.
+fn read_plain(v: &V, what: &str) -> V {
+    let one = |c: &V| match c {
+        V::Unit(cell) if !crate::unit_dims::is_dimensionless(&cell.dim) => {
+            V::err(unit_error(&format!("{what} is a plain number, but this one carries a unit.")))
+        }
+        V::Unit(cell) => V::Num(cell.value),
+        other => other.clone(),
+    };
+    match v {
+        V::List(items) => V::List(Rc::new(items.iter().map(one).collect())),
+        other => one(other),
+    }
+}
+
 fn when_of(c: &Call) -> Option<f64> {
     super::kit::day(&first(c, "when"))
 }
@@ -545,16 +576,17 @@ pub(crate) fn lat_lon_error(lat: f64, lon: f64) -> Option<V> {
 }
 
 /// The when, latitude and longitude a sun card reads, where all three are numbers.
-fn sun_inputs(c: &Call) -> Option<(f64, f64, f64)> {
-    let when = when_of(c)?;
-    let lat = number(&c.read("lat"))?;
-    let lon = number(&c.read("lon"))?;
-    Some((when, lat, lon))
+fn sun_inputs(c: &Call) -> Result<Option<(f64, f64, f64)>, V> {
+    let (lat, lon) = (read_in(&c.read("lat"), "deg"), read_in(&c.read("lon"), "deg"));
+    if let Some(e) = [&lat, &lon].into_iter().find(|v| v.is_sol_error()) {
+        return Err(e.clone());
+    }
+    Ok(when_of(c).zip(number(&lat)).zip(number(&lon)).map(|((w, la), lo)| (w, la, lo)))
 }
 
 /// Sun Position, element-wise: a list of times (or of latitudes or longitudes) answers a position each.
 fn solar_position(c: &mut Call) -> Answer {
-    let args = [first(c, "when"), c.read("lat"), c.read("lon")];
+    let args = [first(c, "when"), read_in(&c.read("lat"), "deg"), read_in(&c.read("lon"), "deg")];
     let part = |k: usize| {
         super::kit::each(&args, |ops| {
             if let Some(e) = ops.iter().find(|v| v.is_sol_error()) {
@@ -563,7 +595,7 @@ fn solar_position(c: &mut Call) -> Answer {
             match (super::kit::day(ops[0]), number(ops[1]), number(ops[2])) {
                 (Some(when), Some(lat), Some(lon)) => match lat_lon_error(lat, lon) {
                     Some(e) => e,
-                    None => V::Num(solar_position_of(when, lat, lon)[k]),
+                    None => in_unit(solar_position_of(when, lat, lon)[k], "deg"),
                 },
                 _ => V::Null,
             }
@@ -582,13 +614,14 @@ fn solar_position(c: &mut Call) -> Answer {
 
 fn sunrise_sunset(c: &mut Call) -> Answer {
     let [sunrise, sunset, daylength] = match sun_inputs(c) {
-        None => [V::Null, V::Null, V::Null],
-        Some((when, lat, lon)) => match lat_lon_error(lat, lon) {
+        Err(e) => [e.clone(), e.clone(), e],
+        Ok(None) => [V::Null, V::Null, V::Null],
+        Ok(Some((when, lat, lon))) => match lat_lon_error(lat, lon) {
             Some(e) => [e.clone(), e.clone(), e],
             None => {
                 let (rise, set, len) = sun_times(when, lat, lon);
                 let date_or_null = |v: Option<f64>| v.map_or(V::Null, V::Date);
-                [date_or_null(rise), date_or_null(set), V::Num(len)]
+                [date_or_null(rise), date_or_null(set), in_unit(len, "h")]
             }
         },
     };
@@ -608,7 +641,10 @@ const NEW_MOON_EPOCH_SERIAL: f64 = 36531.7597;
 fn moon_phase_node(c: &mut Call) -> Answer {
     let [phase, age, illumination] = match when_of(c) {
         None => [V::Null, V::Null, V::Null],
-        Some(serial) => moon_phase_of(serial).map(V::Num),
+        Some(serial) => {
+            let [phase, age, lit] = moon_phase_of(serial);
+            [V::Num(phase), in_unit(age, "day"), V::Num(lit)]
+        }
     };
     shown(
         c,
@@ -695,11 +731,12 @@ pub(crate) fn standard_atmosphere(z: f64) -> Result<[f64; 4], V> {
 }
 
 fn isa_atmosphere(c: &mut Call) -> Answer {
-    let z = c.read("alt");
-    let [temp, pressure, density, sound] = match number(&z).map(standard_atmosphere) {
+    let z = read_in(&c.read("alt"), "m");
+    let answer = if z.is_sol_error() { Some(Err(z.clone())) } else { number(&z).map(standard_atmosphere) };
+    let [temp, pressure, density, sound] = match answer {
         None => [V::Null, V::Null, V::Null, V::Null],
         Some(Err(e)) => [e.clone(), e.clone(), e.clone(), e],
-        Some(Ok(pt)) => pt.map(V::Num),
+        Some(Ok([t, p, rho, a])) => [in_unit(t, "K"), in_unit(p, "Pa"), in_base(rho, "kg/m^3"), in_unit(a, "ms1")],
     };
     shown(
         c,
@@ -731,17 +768,18 @@ pub(crate) fn antoine_coefficients(substance: &str) -> Option<(f64, f64, f64)> {
 pub(crate) const MMHG_TO_PA: f64 = 133.322387415;
 
 fn antoine(c: &mut Call) -> Answer {
-    let t = c.read("t");
+    let t = read_in(&c.read("t"), "degC");
     let substance = c.field_str("substance", "water");
     let Some((a, b, cc)) = antoine_coefficients(substance) else {
         return Err(err(ErrorCode::Value, format!("\"{substance}\" is not a substance the Antoine card knows")));
     };
     let pressure = match number(&t) {
+        _ if t.is_sol_error() => t.clone(),
         None => V::Null,
         Some(t) if t <= -cc => domain("Below the equation's temperature range"),
-        Some(t) => V::Num(MMHG_TO_PA * pow(10.0, a - b / (cc + t))),
+        Some(t) => in_unit(MMHG_TO_PA * pow(10.0, a - b / (cc + t)), "Pa"),
     };
-    let bp = V::Num(b / (a - log10(760.0)) - cc);
+    let bp = in_unit(b / (a - log10(760.0)) - cc, "degC");
     shown(c, &[("pressure", "cachedP", Cv::V(pressure)), ("bp", "cachedBp", Cv::V(bp))])
 }
 
@@ -763,7 +801,7 @@ pub(crate) fn colebrook_f(re: f64, rr: f64) -> f64 {
 
 /// Friction Factor (Colebrook), element-wise as `COLEBROOK` is: a list of Reynolds numbers answers one factor each.
 fn colebrook(c: &mut Call) -> Answer {
-    let (re, rr) = (c.read("re"), c.read("rr"));
+    let (re, rr) = (read_plain(&c.read("re"), "A Reynolds number"), read_plain(&c.read("rr"), "Relative roughness"));
     let result = super::kit::broadcast_err(&[re, rr], |ops| match (number(ops[0]), number(ops[1])) {
         (Some(re), Some(rr)) if re <= 0.0 || rr < 0.0 || rr >= 1.0 => {
             domain("Needs Re > 0 and relative roughness 0 ≤ ε/D < 1")
@@ -795,12 +833,14 @@ pub(crate) fn pipe_roughness_mm(material: &str) -> Option<f64> {
 
 fn pipe_roughness(c: &mut Call) -> Answer {
     let eps = pipe_roughness_mm(c.field_str("material", "steel")).unwrap_or(0.045);
-    let rel = match number(&read_or_null(c, "d")) {
+    let d = read_in(&read_or_null(c, "d"), "mm");
+    let rel = match number(&d) {
+        _ if d.is_sol_error() => d.clone(),
         None => V::Null,
         Some(d) if d > 0.0 => V::Num(eps / d),
         Some(_) => domain("Diameter must be positive"),
     };
-    shown(c, &[("eps", "cachedEps", Cv::V(V::Num(eps))), ("rel", "cachedRel", Cv::V(rel))])
+    shown(c, &[("eps", "cachedEps", Cv::V(in_unit(eps, "mm"))), ("rel", "cachedRel", Cv::V(rel))])
 }
 
 // ─── Health ────────────────────────────────────────────────────────────────────
@@ -896,8 +936,18 @@ pub(crate) fn em_band(wavelength: f64) -> &'static str {
 }
 
 fn em_spectrum_node(c: &mut Call) -> Answer {
-    let f = number(&read_or_null(c, "freq"));
-    let wl = number(&read_or_null(c, "wavelength"));
+    let (f, wl) = (read_in(&read_or_null(c, "freq"), "Hz"), read_in(&read_or_null(c, "wavelength"), "m"));
+    if let Some(e) = [&f, &wl].into_iter().find(|v| v.is_sol_error()).cloned() {
+        return shown(
+            c,
+            &[
+                ("band", "cachedBand", Cv::V(e.clone())),
+                ("freq", "cachedFreq", Cv::V(e.clone())),
+                ("wavelength", "cachedWavelength", Cv::V(e)),
+            ],
+        );
+    }
+    let (f, wl) = (number(&f), number(&wl));
     let fq = f.or_else(|| wl.map(|wl| if wl > 0.0 { LIGHT_SPEED / wl } else { f64::NAN }));
     let [band, freq, wavelength] = match fq {
         None => [V::Null, V::Null, V::Null],
@@ -907,7 +957,7 @@ fn em_spectrum_node(c: &mut Call) -> Answer {
         }
         Some(fq) => {
             let lambda = LIGHT_SPEED / fq;
-            [V::str(em_band(lambda)), V::Num(fq), V::Num(lambda)]
+            [V::str(em_band(lambda)), in_unit(fq, "Hz"), in_unit(lambda, "m")]
         }
     };
     shown(

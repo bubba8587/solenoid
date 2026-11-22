@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { FLUIDS_FORMULAS } from "../../../src/graph/packs/fluids";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { ColebrookNode } from "../../../src/graph/nodes/fluids";
+import { ColebrookNode, PipeRoughnessNode } from "../../../src/graph/nodes/fluids";
+import { applyFcUnit } from "../../../src/graph/unitBridge";
+import type { UnitCell } from "../../../src/graph/unitValue";
 import { PIPE_ROUGHNESS } from "../../../src/graph/nodes/fluidsOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
@@ -113,5 +115,21 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect(evalPackFormula('PIPEROUGHNESS("steel")')).toBe(0.045);
     const bad = evalPackFormula('PIPEROUGHNESS("adamantium")');
     expect(isSolError(bad) && bad.code).toBe("#NAME?");
+  });
+});
+
+describe("[[C25]] firstClassUnits on the Fluids cards", () => {
+  it("Pipe Roughness reads a diameter with a unit in mm and answers ε in mm", () => {
+    const n = new PipeRoughnessNode();
+    const r = n.data({ d: [applyFcUnit(0.1, "m")] });
+    expect(r.rel as number).toBeCloseTo(0.045 / 100, 12);
+    expect(n.data({ d: [100] }).rel as number).toBeCloseTo(0.045 / 100, 12);
+    expect((r.eps as UnitCell).display).toBe("mm");
+    const wrong = n.data({ d: [applyFcUnit(1, "s")] }).rel;
+    expect(isSolError(wrong) && wrong.code).toBe("#UNIT!");
+  });
+  it("Friction Factor refuses a Reynolds number that carries a dimension", () => {
+    const r = new ColebrookNode().data({ re: [applyFcUnit(100000, "m")], rr: [0.0001] }).result;
+    expect(isSolError(r) && r.code).toBe("#UNIT!");
   });
 });

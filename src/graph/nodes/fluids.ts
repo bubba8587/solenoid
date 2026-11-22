@@ -2,7 +2,7 @@
 
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { numIn, numOut, numListIn, numListOut } from "./shared";
+import { numIn, numOut, numListIn, numListOut, type Quantity } from "./shared";
 import { type SolError } from "../errorValue";
 import { PIPE_ROUGHNESS } from "./fluidsOps";
 
@@ -10,6 +10,7 @@ export class ColebrookNode extends GraphNode {
   label: string;
   literals: Record<string, number> = {};
   cachedResult: number | SolError | null | (number | SolError | null)[] = null;
+  unitAware = true;
   width = 200;
   height = 170;
 
@@ -33,8 +34,9 @@ export class PipeRoughnessNode extends GraphNode {
   label: string;
   material: string;
   literals: Record<string, number> = {};
-  cachedEps: number | null = null;
+  cachedEps: Quantity = null;
   cachedRel: number | SolError | null = null;
+  unitAware = true;
   width = 220;
   height = 190;
 
@@ -43,11 +45,11 @@ export class PipeRoughnessNode extends GraphNode {
     this.label = init?.label ?? "Pipe Roughness";
     this.material = init?.material && ROUGHNESS_BY_ID.has(init.material) ? init.material : "steel";
     this.addInput("d", numIn("Diameter mm"));
-    this.addOutput("eps", numOut("ε mm"));
+    this.addOutput("eps", numOut("ε"));
     this.addOutput("rel", numOut("ε/D"));
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    return nodeOnCore(this, inputs) as { eps: number; rel: number | SolError | null };
+    return nodeOnCore(this, inputs) as { eps: Quantity; rel: number | SolError | null };
   }
 }

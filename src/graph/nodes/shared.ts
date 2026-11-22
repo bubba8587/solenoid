@@ -5,7 +5,7 @@ import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { solError, isSolError, type SolError, throwSol } from "../errorValue";
 import { listLiteralText } from "../listLiterals";
 import { applyRole, type InputRole } from "../inputRoles";
-import { dimOf, magnitudeOf } from "../unitValue";
+import { dimOf, magnitudeOf, type UnitCell } from "../unitValue";
 
 export const BASIS_DOC = "Day-count basis: 0 = US 30/360, 1 = actual/actual, 2 = actual/360, 3 = actual/365, 4 = European 30/360.";
 
@@ -157,6 +157,9 @@ function readAsRole<T = unknown>(node: GraphNode, key: string, wired: readonly u
 export type CellResult<T> = T | (T | SolError | null)[] | SolError | null;
 
 export type BroadcastResult = CellResult<number>;
+
+/** A pack card's physical answer: a number in its unit, or blank or an error. */
+export type Quantity = number | UnitCell | SolError | null;
 
 export { dimOf, magnitudeOf };
 
