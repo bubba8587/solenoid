@@ -168,6 +168,8 @@ interface OverlaySeries {
   linewidth?: number;
   alpha?: number;
   marker?: boolean;
+  /** Drawn against the right-hand axis: its source chart's `secondary_y` named it. */
+  secondary?: boolean;
 }
 export interface OverlayPayload {
   kind: "overlay";

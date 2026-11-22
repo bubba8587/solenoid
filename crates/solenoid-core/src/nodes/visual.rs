@@ -334,6 +334,24 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
                 },
             ),
             "linestyle" | "ls" => word(&mut o, "linestyle", to_line_style(val)),
+            // Only pandas' True and False are flags here: `y`, `n`, `on` or `1` may be a column's name.
+            "secondary_y" => match lower_text(val).as_ref() {
+                "true" => {
+                    o.insert(key, Json::Bool(true));
+                }
+                "false" => {}
+                _ => {
+                    let names: Vec<Json> = val
+                        .split(',')
+                        .map(trim_space)
+                        .filter(|t| !t.is_empty())
+                        .map(|t| Json::String(t.to_string()))
+                        .collect();
+                    if !names.is_empty() {
+                        o.insert(key, Json::Array(names));
+                    }
+                }
+            },
             "y" => {
                 let names: Vec<Json> = val
                     .split(',')
@@ -850,6 +868,32 @@ fn json_num(j: &Json) -> f64 {
 
 const XY_OPS: [&str; 3] = ["scatter", "xyline", "bubble"];
 
+/// `secondary_y`'s names respelled as the series they match, or the refusal naming one no series has; a list on a
+/// one-series chart that names its series is `True`. Only Column, Line and Area draw a right axis.
+fn right_axis_names(op: &str, opts: &mut Obj, series: &[&str]) -> Option<V> {
+    if !matches!(op, "column" | "line" | "area") {
+        return None;
+    }
+    let names: Vec<String> =
+        opts.get("secondary_y")?.as_array()?.iter().filter_map(Json::as_str).map(String::from).collect();
+    let mut found: Vec<Json> = Vec::new();
+    for name in &names {
+        let key = lower_text(trim_space(name));
+        let Some(s) = series.iter().find(|s| lower_text(trim_space(s)) == key) else {
+            let why = if series.is_empty() {
+                format!("The options put \"{name}\" on the right axis, but a list has no named series: use secondary_y=True")
+            } else {
+                format!("The options put \"{name}\" on the right axis, but the data has no number column of that name")
+            };
+            return Some(err(ErrorCode::Ref, why));
+        };
+        found.push(Json::String((*s).to_string()));
+    }
+    let all = if series.len() == 1 { Json::Bool(true) } else { Json::Array(found) };
+    opts.insert("secondary_y".into(), all);
+    None
+}
+
 fn chart(c: &mut Call) -> Answer {
     let op = c.field_str("op", "column").to_string();
     let raw = match first(c, "values") {
@@ -884,6 +928,7 @@ fn chart(c: &mut Call) -> Answer {
     let num_col = |col: &Column| -> Vec<V> { col.values.iter().map(|v| finite(v).map_or(V::Null, V::Num)).collect() };
     let refs_shown = if refs.is_empty() { Cv::NULL } else { whole(Json::Array(refs.clone())) };
     let mut v = V::Null;
+    let mut refused_names: Option<V> = None;
     // A date has no height: plotted by position it would draw its serial ([[C137]] datesNeverSerials), refused until a chart draws a date axis for values ([[chart-figures#Chart]] chartDatesHeld).
     let lone_dates = match &raw {
         Cv::V(v @ (V::List(_) | V::Date(_))) => crate::date_values::holds_date(v),
@@ -971,13 +1016,26 @@ fn chart(c: &mut Call) -> Answer {
                 .collect();
             v = rows.first().map_or(V::Null, |(_, vs)| list(vs.clone()));
             series = many(&rows);
+            refused_names = right_axis_names(&op, &mut opts, &rows.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>());
         } else {
             v = list(num_col(&cols[0]));
+            refused_names = right_axis_names(&op, &mut opts, &[cols[0].name.as_str()]);
         }
     } else if let Cv::V(V::List(items)) = &raw {
         v = list(items.iter().map(|x| finite(x).map_or(V::Null, V::Num)).collect());
+        refused_names = right_axis_names(&op, &mut opts, &[]);
     } else if let Cv::V(V::Num(_)) = raw {
         v = raw.v().and_then(finite).map_or(V::Null, V::Num);
+        refused_names = right_axis_names(&op, &mut opts, &[]);
+    }
+    if let Some(e) = refused_names {
+        for f in ["cachedLabels", "cachedSeries", "cachedPayload", "cachedResult"] {
+            c.show(f, V::Null);
+        }
+        c.show("cachedError", e.clone());
+        c.show("cachedRefs", refs_shown);
+        c.show("chartOptions", whole(Json::Object(opts)));
+        return Ok(vec![("chart".into(), Cv::from(e))]);
     }
     let options = Json::Object(opts.clone());
     let payload_j = payload.map(Json::Object);
@@ -1253,12 +1311,21 @@ fn merge_overlay(sources: &[(Rc<Json>, usize)]) -> Json {
             }
             Json::Array(out)
         };
+        let right = opt("secondary_y");
         let mut push = |name: Json, values: Json| {
+            let on_right = match right {
+                Some(Json::Bool(b)) => *b,
+                Some(Json::Array(names)) => names.contains(&name),
+                _ => false,
+            };
             let mut s = Obj::new();
             s.insert("name".into(), name);
             s.insert("kind".into(), or_undef(field(cv, "op")));
             s.insert("values".into(), values);
             s.extend(style.clone());
+            if on_right {
+                s.insert("secondary".into(), Json::Bool(true));
+            }
             series.push(Json::Object(s));
         };
         let title_or_blank = || field(cv, "title").filter(|t| !t.is_null()).cloned().unwrap_or_else(|| json!(""));
@@ -2165,7 +2232,7 @@ fn us_map_figure(c: &mut Call, opts: Obj) -> Answer {
 
 // ─── Chart Builder ──────────────────────────────────────────────────────────────
 
-const CB_STR_KEYS: [&str; 45] = [
+const CB_STR_KEYS: [&str; 46] = [
     "title",
     "xlabel",
     "ylabel",
@@ -2175,6 +2242,7 @@ const CB_STR_KEYS: [&str; 45] = [
     "pielabels",
     "radarscale",
     "stacked",
+    "secondary_y",
     "zoom",
     "layout",
     "tiers",
@@ -2785,6 +2853,31 @@ fn conditional_regions(c: &mut Call) -> Answer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn secondary_y_reads_true_or_names_and_never_a_name_as_a_flag() {
+        let read = |v: &str| parse_chart_options(&format!("secondary_y={v}")).get("secondary_y").cloned();
+        assert_eq!(read("True"), Some(json!(true)));
+        assert_eq!(read("false"), None);
+        assert_eq!(read(" Margin , Cost ,"), Some(json!(["Margin", "Cost"])));
+        assert_eq!(read("y"), Some(json!(["y"])));
+    }
+
+    #[test]
+    fn secondary_y_names_take_the_series_spelling_or_are_refused() {
+        let mut o = parse_chart_options("secondary_y=margin");
+        assert!(right_axis_names("line", &mut o, &["Sales", "Margin"]).is_none());
+        assert_eq!(o["secondary_y"], json!(["Margin"]));
+        let mut one = parse_chart_options("secondary_y=Margin");
+        assert!(right_axis_names("column", &mut one, &["Margin"]).is_none());
+        assert_eq!(one["secondary_y"], json!(true));
+        let mut typo = parse_chart_options("secondary_y=Marign");
+        assert!(matches!(right_axis_names("area", &mut typo, &["Sales", "Margin"]), Some(V::Err(_))));
+        let mut list = parse_chart_options("secondary_y=Margin");
+        assert!(matches!(right_axis_names("line", &mut list, &[]), Some(V::Err(_))));
+        let mut bar = parse_chart_options("secondary_y=Marign");
+        assert!(right_axis_names("bar", &mut bar, &["Sales"]).is_none());
+    }
 
     #[test]
     fn calendar_periods_start_on_monday_the_first_and_new_year() {

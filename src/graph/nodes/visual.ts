@@ -959,7 +959,7 @@ export class QuiverNode extends GraphNode {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "stacked", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale", "period"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "stacked", "secondary_y", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale", "period"] as const;
 /** The fields that are discrete picks (a checkbox or a dropdown): plain card settings with no socket, since nobody
  *  drives a grid line or a colormap from a cable. The rest (text, column names, numbers) keep their sockets. */
 export const CB_PICK_FIELDS: ReadonlySet<string> = new Set(["grid", "marker", "clamp", "pielabels", "radarscale", "stacked", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "linestyle", "aspect", "yscale", "cmap", "annot", "cbar", "origin", "period"]);
@@ -992,6 +992,7 @@ export class ChartBuilderNode extends GraphNode {
     this.addInput("columns",   strIn("Columns"));
     this.addInput("x",         strIn("X column"));
     this.addInput("y",         strIn("Y columns"));
+    this.addInput("secondary_y", strIn("Right y columns"));
     this.addInput("s",         strIn("Size column"));
     this.addInput("c",         strIn("Color column"));
     this.addInput("annotate",  strIn("Point labels"));

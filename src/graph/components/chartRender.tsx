@@ -122,11 +122,13 @@ export function ChartView({
   const dotR = opts?.markersize ?? LINE_DOT_R;
   const fillAlpha = opts?.alpha ?? 0.25;
   const yDomain = yDomainOf(opts);
+  // `secondary_y` on a one-series Column, Line or Area moves its axis right, as pandas draws it.
+  const flip = (op === "column" || op === "line" || op === "area") && opts?.secondary_y !== undefined;
   const xLabel = axes && opts?.xlabel
     ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis }
     : undefined;
   const yLabel = axes && opts?.ylabel
-    ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis }
+    ? { value: opts.ylabel, angle: flip ? 90 : -90, position: flip ? "insideRight" as const : "insideLeft" as const, fontSize: 10 * fs, fill: axis }
     : undefined;
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
@@ -135,13 +137,16 @@ export function ChartView({
   const yAxisW = axes ? valueAxisWidth([...series.map((d) => d.v), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt) : 0;
   const bottomM = axes ? (xLabel ? 18 : 4) : 2;
   // A line or area puts its last point on the plot's right edge, its label centered there.
-  const rightM = op === "line" || op === "area" ? edgeRoom(tickFmt(series.length - 1), fs) : 8;
-  const margin = axes ? { top: PLOT_TOP, right: rightM, bottom: bottomM, left: 0 } : { top: 2, right: 2, bottom: 2, left: 2 };
+  const lineEdge = op === "line" || op === "area" ? edgeRoom(tickFmt(series.length - 1), fs) : 8;
+  const rightM = flip ? Math.max(4, lineEdge - yAxisW) : lineEdge;
+  // With its axis moved right, a line's first label sits on the plot's open left edge.
+  const leftM = flip && (op === "line" || op === "area") ? edgeRoom(tickFmt(0), fs) : 0;
+  const margin = axes ? { top: PLOT_TOP, right: rightM, bottom: bottomM, left: leftM } : { top: 2, right: 2, bottom: 2, left: 2 };
   const catInterval = series.length <= ALL_TICKS_UPTO ? 0 : undefined;
   const xInterval = series.length <= ALL_TICKS_UPTO
     ? categoryInterval(series.map((d) => tickFmt(d.i)), width - yAxisW - margin.right, fs)
     : undefined;
-  const refCtx = { axis, fs, xLo: 0, xHi: Math.max(1, (labels?.length ?? series.length) - 1), pw: width - yAxisW - margin.right };
+  const refCtx = { axis, fs, xLo: 0, xHi: Math.max(1, (labels?.length ?? series.length) - 1), pw: width - yAxisW - margin.right - leftM };
   const refAt = snapAt(categoryAt(labels), series === given ? null : series.map((d) => d.i));
   const refEls = refMarks(refs, refAt, refCtx);
   const refElsSwap = refMarks(refs, refAt, { ...refCtx, swap: true });
@@ -152,7 +157,7 @@ export function ChartView({
       <LineChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis orientation={flip ? "right" : "left"} tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {TIP}
         <Line dataKey="v" stroke={color} strokeOpacity={opts?.alpha ?? 1} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(color, dotR, opts?.alpha ?? 1) : false} />
@@ -163,7 +168,7 @@ export function ChartView({
       <AreaChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis orientation={flip ? "right" : "left"} tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {TIP}
         <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(color, dotR) : false} />
@@ -290,7 +295,7 @@ export function ChartView({
       <BarChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis orientation={flip ? "right" : "left"} tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false}>
@@ -365,6 +370,19 @@ function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetR
   );
 }
 
+/** Which series pandas' `secondary_y` moves to the right-hand axis: every one (`True`) or the named ones. */
+function rightSeries(opts: ChartOptions | undefined, series: readonly { name: string }[]): boolean[] {
+  const r = opts?.secondary_y;
+  return series.map((s) => r === true || (Array.isArray(r) && r.includes(s.name)));
+}
+
+/** `dual`: some series on each side, a second axis on the right; `flip`: all on the right, the one axis moved there. */
+function axisSides(right: readonly boolean[]): { dual: boolean; flip: boolean } {
+  const some = right.some(Boolean);
+  const all = right.length > 0 && right.every(Boolean);
+  return { dual: some && !all, flip: all };
+}
+
 export function MultiSeriesView({
   op, series, labels, width, height, axes, opts, fontScale, refs,
 }: {
@@ -383,27 +401,40 @@ export function MultiSeriesView({
   const xLabel = axes && opts?.xlabel
     ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis }
     : undefined;
+  const right = op === "column" || op === "line" || op === "area" ? rightSeries(opts, series) : series.map(() => false);
+  const { dual, flip } = axisSides(right);
+  // The primary axis (`ymin`, `ymax`, `ylabel`) holds every series not moved to a second one; all moved, it moves right.
+  const onPrimary = (j: number) => !dual || !right[j];
   const yLabel = axes && opts?.ylabel
-    ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis }
+    ? { value: opts.ylabel, angle: flip ? 90 : -90, position: flip ? "insideRight" as const : "insideLeft" as const, fontSize: 10 * fs, fill: axis }
     : undefined;
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
   const cols = series.map((s) => Array.from({ length: n }, (_, i) => num(s.values[i])));
   // Stacked, the value axis spans each category's piles (positives up, negatives down); 100% stacked spans 0 to 1.
   const stack = op === "column" || op === "bar" || op === "area" ? opts?.stacked : undefined;
-  const piles = stack === "stacked"
-    ? Array.from({ length: n }, (_, i) => cols.reduce<[number, number]>(([up, down], c) => {
-      const v = c[i] ?? 0;
+  const pilesOf = (primary: boolean) => stack === "stacked"
+    ? Array.from({ length: n }, (_, i) => cols.reduce<[number, number]>(([up, down], c, j) => {
+      const v = onPrimary(j) === primary ? c[i] ?? 0 : 0;
       return v > 0 ? [up + v, down] : [up, down + v];
     }, [0, 0])).flat()
     : [];
   const share = (v: number) => `${Math.round(v * 100)}%`;
-  const axisValues = stack === "percent" ? [0, 1] : [...series.flatMap((s) => s.values), ...piles, opts?.ymin, opts?.ymax];
+  const sideValues = (primary: boolean) => series.filter((_, j) => onPrimary(j) === primary).flatMap((s) => s.values);
+  const axisValues = stack === "percent" ? [0, 1] : [...sideValues(true), ...pilesOf(true), opts?.ymin, opts?.ymax];
   const yFmt = stack === "percent" ? share : valueTickFormat(axisValues);
   const yAxisW = valueAxisWidth(axisValues, fs, !!yLabel, yFmt);
-  const stackId = stack ? "stack" : undefined;
+  const axis2Values = !dual ? [] : stack === "percent" ? [0, 1] : [...sideValues(false), ...pilesOf(false)];
+  const y2Fmt = stack === "percent" ? share : valueTickFormat(axis2Values);
+  const y2AxisW = dual && axes ? valueAxisWidth(axis2Values, fs, false, y2Fmt) : 0;
+  // The width the value axes take on each side of the plot.
+  const leftW = flip ? 0 : yAxisW;
+  const rightW = flip ? (axes ? yAxisW : 0) : y2AxisW;
+  const stackId = (j: number) => (!stack ? undefined : onPrimary(j) ? "stack" : "stack-right");
+  const yAxisId = (j: number) => (onPrimary(j) ? 0 : "right");
+  const legendName = (j: number) => (right[j] ? `${series[j].name} (right)` : series[j].name);
   const stackOffset = stack === "percent" ? "expand" as const : stack && op !== "area" ? "sign" as const : undefined;
-  const kept = op === "line" || op === "area" ? envelopeRows(cols, n, Math.round(width - yAxisW)) : null;
+  const kept = op === "line" || op === "area" ? envelopeRows(cols, n, Math.round(width - leftW - rightW)) : null;
   const data = (kept ?? Array.from({ length: n }, (_, i) => i)).map((i) => {
     const o: Record<string, number | null> = { i };
     cols.forEach((c, j) => { o[`s${j}`] = c[i]; });
@@ -423,17 +454,21 @@ export function MultiSeriesView({
   const fillAlpha = opts?.alpha ?? (stack && op === "area" ? 0.6 : op === "area" && series.length >= 2 ? 0.18 : 0.25);
   const markAlpha = opts?.alpha ?? 1;
   const yDomain: ReturnType<typeof yDomainOf> = stack === "percent" ? [0, 1] : yDomainOf(opts);
+  const y2Domain: ReturnType<typeof yDomainOf> = stack === "percent" ? [0, 1] : undefined;
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
-  const margin = { top: axes ? PLOT_TOP : 6, right: axes && (op === "line" || op === "area") ? edgeRoom(tickFmt(n - 1), fs) : 8, bottom: axes ? 4 : 2, left: 0 };
+  // A right axis has room under it for the last category's label to run into.
+  const lineEdge = axes && (op === "line" || op === "area") ? edgeRoom(tickFmt(n - 1), fs) : 8;
+  const leftEdge = axes && flip && (op === "line" || op === "area") ? edgeRoom(tickFmt(0), fs) : 0;
+  const margin = { top: axes ? PLOT_TOP : 6, right: rightW ? Math.max(4, lineEdge - rightW) : lineEdge, bottom: axes ? 4 : 2, left: leftEdge };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
   const xInterval = n <= ALL_TICKS_UPTO
-    ? categoryInterval(data.map((d) => tickFmt(d.i as number)), width - yAxisW - margin.right, fs)
+    ? categoryInterval(data.map((d) => tickFmt(d.i as number)), width - leftW - rightW - margin.right, fs)
     : undefined;
   const catW = op === "bar" ? categoryAxisWidth(data.map((d) => tickFmt(d.i as number)), width, fs, !!yLabel) : 0;
-  const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? catW : yAxisW;
-  const legendInsetRight = op === "radar" ? 0 : margin.right;
-  const legendN = legendRows(series.map((s) => s.name), width - legendInsetLeft - legendInsetRight, fs, legendCap(height));
+  const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? catW : leftW + margin.left;
+  const legendInsetRight = op === "radar" ? 0 : margin.right + rightW;
+  const legendN = legendRows(series.map((_, j) => legendName(j)), width - legendInsetLeft - legendInsetRight, fs, legendCap(height));
   const refCtx = { axis, fs, xLo: 0, xHi: Math.max(1, n - 1), pw: width - legendInsetLeft - legendInsetRight };
   const refAt = snapAt(categoryAt(labels), kept);
   const refEls = refMarks(refs, refAt, refCtx);
@@ -441,7 +476,7 @@ export function MultiSeriesView({
   const chartH = height - titleH - legendN * MULTI_LEGEND_H;
   const legend = (
     <SeriesLegend
-      series={series} paint={paint} dim={dim} fs={fs} color={axis} rows={legendN}
+      series={series.map((_, j) => ({ name: legendName(j) }))} paint={paint} dim={dim} fs={fs} color={axis} rows={legendN}
       insetLeft={legendInsetLeft} insetRight={legendInsetRight}
       isLine={() => op === "line"}
       onPick={pick}
@@ -456,12 +491,14 @@ export function MultiSeriesView({
       <Container width={width} height={chartH} data={data} margin={margin} stackOffset={stackOffset}>
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis orientation={flip ? "right" : "left"} tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && dual && <YAxis yAxisId="right" orientation="right" tick={AXIS} tickLine={false} tickFormatter={y2Fmt} width={y2AxisW} domain={y2Domain} />}
+        {!axes && dual && <YAxis yAxisId="right" hide domain={y2Domain} />}
         {axes && refEls}
         {tip}
         {series.map((s, j) => op === "area"
-          ? <Area key={j} dataKey={`s${j}`} name={s.name} stackId={stackId} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j)) : false} isAnimationActive={false} />
-          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={markAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, markAlpha * dim(j)) : false} isAnimationActive={false} />)}
+          ? <Area key={j} dataKey={`s${j}`} name={s.name} yAxisId={yAxisId(j)} stackId={stackId(j)} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j)) : false} isAnimationActive={false} />
+          : <Line key={j} dataKey={`s${j}`} name={s.name} yAxisId={yAxisId(j)} stroke={paint(j)} strokeOpacity={markAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, markAlpha * dim(j)) : false} isAnimationActive={false} />)}
       </Container>
     );
   } else if (op === "bar") {
@@ -472,7 +509,7 @@ export function MultiSeriesView({
         {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={catW} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
         {axes && refElsSwap}
         {tip}
-        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} stackId={stackId} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} stackId={stackId(j)} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   } else if (op === "radar") {
@@ -500,10 +537,12 @@ export function MultiSeriesView({
       <BarChart width={width} height={chartH} data={data} margin={margin} stackOffset={stackOffset}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={xInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis orientation={flip ? "right" : "left"} tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && dual && <YAxis yAxisId="right" orientation="right" tick={AXIS} tickLine={false} tickFormatter={y2Fmt} width={y2AxisW} domain={y2Domain} />}
+        {!axes && dual && <YAxis yAxisId="right" hide domain={y2Domain} />}
         {axes && refEls}
         {tip}
-        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} stackId={stackId} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} yAxisId={yAxisId(j)} stackId={stackId(j)} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   }
@@ -552,20 +591,32 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
   const yDomain = yDomainOf(opts);
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
+  // A source's `secondary_y` puts its series on a right-hand axis; the Merge's own limits and label stay on the primary one.
+  const right = series.map((s) => !!s.secondary);
+  const { dual, flip } = axisSides(right);
+  const onPrimary = (j: number) => !dual || !right[j];
   const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis } : undefined;
-  const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis } : undefined;
+  const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: flip ? 90 : -90, position: flip ? "insideRight" as const : "insideLeft" as const, fontSize: 10 * fs, fill: axis } : undefined;
+  const sideValues = (primary: boolean) => series.filter((_, j) => onPrimary(j) === primary).flatMap((s) => s.values);
+  const yValues = [...sideValues(true), opts?.ymin, opts?.ymax];
+  const yFmt = valueTickFormat(yValues);
+  const yAxisW = valueAxisWidth(yValues, fs, !!yLabel, yFmt);
+  const y2Fmt = valueTickFormat(sideValues(false));
+  const y2AxisW = dual ? valueAxisWidth(sideValues(false), fs, false, y2Fmt) : 0;
+  const leftW = flip ? 0 : yAxisW;
+  const rightW = flip ? yAxisW : y2AxisW;
+  const legendName = (j: number) => (right[j] ? `${series[j].name} (right)` : series[j].name);
   // Lines and areas end on the plot's edge; a column or bar keeps its label inside its band.
   const banded = series.some((s) => s.kind === "column" || s.kind === "bar");
-  const margin = { top: PLOT_TOP, right: banded ? 8 : edgeRoom(tickFmt((payload.labels?.length ?? n) - 1), fs), bottom: xLabel ? 18 : 4, left: 0 };
-  const yFmt = valueTickFormat([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax]);
-  const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt);
-  const legendN = legendRows(series.map((s) => s.name), width - yAxisW - margin.right, fs, legendCap(height));
-  const refEls = refMarks(refs, snapAt(categoryAt(payload.labels), kept), { axis, fs, xLo: 0, xHi: Math.max(1, (payload.labels?.length ?? 1) - 1), pw: width - yAxisW - margin.right });
+  const lineEdge = banded ? 8 : edgeRoom(tickFmt((payload.labels?.length ?? n) - 1), fs);
+  const margin = { top: PLOT_TOP, right: rightW ? Math.max(4, lineEdge - rightW) : lineEdge, bottom: xLabel ? 18 : 4, left: flip && !banded ? edgeRoom(tickFmt(0), fs) : 0 };
+  const legendN = legendRows(series.map((_, j) => legendName(j)), width - leftW - rightW - margin.right, fs, legendCap(height));
+  const refEls = refMarks(refs, snapAt(categoryAt(payload.labels), kept), { axis, fs, xLo: 0, xHi: Math.max(1, (payload.labels?.length ?? 1) - 1), pw: width - leftW - rightW - margin.right - margin.left });
   const chartH = height - titleH - legendN * MULTI_LEGEND_H;
   const legend = (
     <SeriesLegend
-      series={series} paint={paint} dim={dim} fs={fs} color={axis} rows={legendN}
-      insetLeft={yAxisW} insetRight={margin.right}
+      series={series.map((_, j) => ({ name: legendName(j) }))} paint={paint} dim={dim} fs={fs} color={axis} rows={legendN}
+      insetLeft={leftW + margin.left} insetRight={margin.right + rightW}
       isLine={(j) => series[j]?.kind === "line"}
       onPick={pick}
     />
@@ -576,7 +627,8 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
     <ComposedChart width={width} height={chartH} data={data} margin={margin}>
       {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
       <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} allowDuplicatedCategory={false} label={xLabel} height={xLabel ? 28 : undefined} />
-      <YAxis tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />
+      <YAxis orientation={flip ? "right" : "left"} tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />
+      {dual && <YAxis yAxisId="right" orientation="right" tick={AXIS} tickLine={false} tickFormatter={y2Fmt} width={y2AxisW} />}
       {refEls}
       {tip}
       {series.map((s, j) => {
@@ -586,12 +638,12 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
         const fillAlpha = (s.alpha ?? 0.25) * o;
         const lineDotR = s.markersize ?? LINE_DOT_R;
         if (s.kind === "line") {
-          return <Line key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={(s.alpha ?? 1) * o} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, (s.alpha ?? 1) * o) : false} isAnimationActive={false} />;
+          return <Line key={j} dataKey={`s${j}`} name={s.name} yAxisId={onPrimary(j) ? 0 : "right"} stroke={c} strokeOpacity={(s.alpha ?? 1) * o} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, (s.alpha ?? 1) * o) : false} isAnimationActive={false} />;
         }
         if (s.kind === "area") {
-          return <Area key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={o} fill={c} fillOpacity={fillAlpha} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, o) : false} isAnimationActive={false} />;
+          return <Area key={j} dataKey={`s${j}`} name={s.name} yAxisId={onPrimary(j) ? 0 : "right"} stroke={c} strokeOpacity={o} fill={c} fillOpacity={fillAlpha} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, o) : false} isAnimationActive={false} />;
         }
-        return <Bar key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={(s.alpha ?? 1) * o} isAnimationActive={false} />;
+        return <Bar key={j} dataKey={`s${j}`} name={s.name} yAxisId={onPrimary(j) ? 0 : "right"} fill={c} fillOpacity={(s.alpha ?? 1) * o} isAnimationActive={false} />;
       })}
     </ComposedChart>
   );

@@ -25,6 +25,8 @@ export interface ChartOptions {
   pielabels?: PieLabelMode;
   radarscale?: RadarScale;
   stacked?: StackMode;
+  /** pandas' `secondary_y`: every series (`True`) or the named ones on a right-hand value axis. */
+  secondary_y?: true | string[];
   x?: string;
   y?: string[];
   s?: string;
@@ -58,7 +60,7 @@ export type StackMode = "stacked" | "percent";
 export type CalendarPeriod = "day" | "week" | "month" | "year";
 
 export type ChartBuilderKey =
-  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "stacked" | "zoom"
+  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "stacked" | "secondary_y" | "zoom"
   | "layout" | "tiers" | "fit" | "critical" | "baseline" | "arrows" | "today" | "weekends" | "labels" | "histogram" | "minutes" | "window" | "columns"
   | "collapse" | "week" | "fiscal_start" | "status" | "group_by"
   | "cardsize" | "clamp"
@@ -76,9 +78,10 @@ export type ChartTargetId =
 const XY_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
 const BAR_KEYS: readonly ChartBuilderKey[] = [...XY_KEYS, "stacked"];
+const COLUMN_KEYS: readonly ChartBuilderKey[] = [...BAR_KEYS, "secondary_y"];
 const LINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
-const AREA_KEYS: readonly ChartBuilderKey[] = [...LINE_KEYS, "stacked"];
+const AREA_KEYS: readonly ChartBuilderKey[] = [...LINE_KEYS, "stacked", "secondary_y"];
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "s", "c", "cmap", "annotate", "by", "linestyle", "aspect", "yscale",
     "xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
@@ -103,9 +106,9 @@ const HEATMAP_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "annot", "fmt", "cbar", "aspect", "origin", "fontsize"];
 
 export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; op: ChartValueOp; keys: readonly ChartBuilderKey[]; hidden?: boolean }> = {
-  column:    { label: "Column",           group: "Cartesian",    op: "column", keys: BAR_KEYS },
+  column:    { label: "Column",           group: "Cartesian",    op: "column", keys: COLUMN_KEYS },
   bar:       { label: "Bar",              group: "Cartesian",    op: "bar", keys: BAR_KEYS },
-  line:      { label: "Line",             group: "Cartesian",    op: "line", keys: LINE_KEYS },
+  line:      { label: "Line",             group: "Cartesian",    op: "line", keys: [...LINE_KEYS, "secondary_y"] },
   area:      { label: "Area",             group: "Cartesian",    op: "area", keys: AREA_KEYS },
   overlay:   { label: "Merge Plots",      group: "Cartesian",    op: "overlay", keys: OVERLAY_KEYS },
   scatter:   { label: "Scatter",          group: "XY",           op: "scatter", keys: SCATTER_KEYS },
