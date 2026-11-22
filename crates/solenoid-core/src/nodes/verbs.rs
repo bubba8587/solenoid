@@ -773,22 +773,22 @@ fn get_column(c: &mut Call) -> Answer {
             read_column(c, &col)
         }
         Cv::Ref(r) => match refs::column(r, &name) {
-            Ok(Some(col)) => read_column(c, &col),
-            Ok(None) => match refs::schema(r) {
+            Ok(Some(col)) if col.name == trim_space(&name) => read_column(c, &col),
+            Ok(_) => match refs::schema(r) {
                 Ok(has) => no_such_column(c, &name, has.columns.iter().map(|col| &*col.name)),
                 Err(e) => values_answer(c, V::Null, e),
             },
             Err(e) => values_answer(c, V::Null, e),
         },
         Cv::Json(_) => values_answer(c, V::Null, V::Null),
-        Cv::Frame(fr) => match column_named(&fr.columns, &name) {
+        Cv::Frame(fr) => match fr.columns.iter().find(|col| col.name == trim_space(&name)) {
             Some(col) => read_column(c, &col.clone()),
             None => no_such_column(c, &name, fr.columns.iter().map(|col| &*col.name)),
         },
         Cv::Cells(_) => values_answer(c, V::Null, V::Null),
         Cv::V(other) => {
             let fr = widen_to_frame(other);
-            match column_named(&fr.columns, &name) {
+            match fr.columns.iter().find(|col| col.name == trim_space(&name)) {
                 Some(col) => read_column(c, &col.clone()),
                 None => no_such_column(c, &name, fr.columns.iter().map(|col| &*col.name)),
             }

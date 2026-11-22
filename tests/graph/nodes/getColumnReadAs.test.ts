@@ -98,8 +98,10 @@ describe("Get Column on a name the table lacks", () => {
     expect(out.code).toBe("#REF!");
     expect(out.message).toBe('column "Amount" not found; the table has Region, Amt');
   });
-  it("a blank name is still a blank, and a number still picks by position", () => {
+  it("a blank name is still a blank, and digits are a name, never a position", () => {
     expect(new GetColumnNode().data({ frame: [f], name: [""] }).values).toBeNull();
-    expect(col(new GetColumnNode(), f, "2")).toEqual([1, 2]);
+    const out = new GetColumnNode().data({ frame: [f], name: ["2"] }).values as { code: string; message: string };
+    expect(out.code).toBe("#REF!");
+    expect(out.message).toBe('column "2" not found; the table has Region, Amt');
   });
 });
