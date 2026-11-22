@@ -12,7 +12,7 @@ export function FrameCards({ frame: given, query = "" }: { frame: FrameValue; qu
   const frame = query.trim() ? fullList(given) : given;
   const [sort, setSort] = useState<ColumnSort>([]);
   const cols = frame.columns;
-  const rows = cols[0]?.values.length ?? 0;
+  const rows = cols.reduce((m, c) => Math.max(m, c.values.length), 0);
   const shown = (c: FrameColumn, r: number): string => frameCardText(c, r);
   return (
     <TableCards

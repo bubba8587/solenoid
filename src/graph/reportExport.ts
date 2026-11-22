@@ -19,6 +19,7 @@ import { isSvgValue } from "./svgValue";
 import { sanitizeSvg } from "./svgSanitize";
 import { fmtCell } from "./components/FrameDisplay";
 import { frameCardText } from "./components/FrameCards";
+import { cellImageSrc } from "./recordLayout";
 import { planCards, PROFILE_ROWS } from "./cardLayout";
 import { substituteRefCodes, escapeHtml } from "./noteInlineRefs";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -41,7 +42,7 @@ function frameToHtmlTable(frame: FrameValue): string {
 }
 
 /** A Frame shown as cards: a card per row, titled and subtitled as the Cards view plans them, every other filled cell
- *  under its column's name. A web image column heads its card. */
+ *  under its column's name. An image column heads its card, read as the Cards view reads it (`cellImageSrc`). */
 export function frameToHtmlCards(frame: FrameValue): string {
   const cols = frame.columns;
   if (cols.length === 0) return "";
@@ -56,7 +57,7 @@ export function frameToHtmlCards(frame: FrameValue): string {
   })));
   const head = new Set([plan.image, plan.title, plan.subtitle, ...plan.titleRest].filter((c): c is number => c !== null));
   const card = (r: number) => {
-    const img = plan.image !== null ? text(plan.image, r) : "";
+    const img = plan.image !== null ? cellImageSrc(cols[plan.image].raw?.[r] ?? text(plan.image, r)) : null;
     const title = plan.title !== null ? [plan.title, ...plan.titleRest].map((c) => text(c, r)).filter((t) => t !== "").join(" ") : "";
     const sub = plan.subtitle !== null ? text(plan.subtitle, r) : "";
     const fields = cols.flatMap((c, ci) => {
@@ -64,11 +65,12 @@ export function frameToHtmlCards(frame: FrameValue): string {
       return t === "" ? [] : [`<div><dt>${escapeHtml(c.name)}</dt><dd>${escapeHtml(t)}</dd></div>`];
     });
     return `<div class="report-export__card">${
-      /^https?:\/\//i.test(img) ? `<img class="report-export__card-image" src="${escapeHtml(img)}" alt="" />` : ""}${
+      img ? `<img class="report-export__card-image" src="${escapeHtml(img)}" alt="" />` : ""}${
       title ? `<div class="report-export__card-title">${escapeHtml(title)}</div>` : ""}${
       sub ? `<div class="report-export__card-sub">${escapeHtml(sub)}</div>` : ""}${
       fields.length ? `<dl>${fields.join("")}</dl>` : ""}</div>`;
   };
+  if (rows === 0) return `<p class="report-export__cards-empty">No rows</p>`;
   return `<div class="report-export__cards">${Array.from({ length: rows }, (_, r) => card(r)).join("")}</div>`;
 }
 
@@ -167,6 +169,7 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 .report-export__card-image { display: block; width: 100%; max-height: 160px; object-fit: cover; border-radius: 5px; margin-bottom: 8px; }
 .report-export__card-title { font-weight: 600; color: #f3f4f5; }
 .report-export__card-sub { font-size: 12px; color: #9aa0a6; }
+.report-export__cards-empty { color: #9aa0a6; font-style: italic; }
 .report-export__card dl { margin: 6px 0 0; font-size: 12.5px; }
 .report-export__card dl > div { display: flex; gap: 8px; justify-content: space-between; padding: 2px 0; border-top: 1px solid #262626; }
 .report-export__card dt { color: #9aa0a6; }

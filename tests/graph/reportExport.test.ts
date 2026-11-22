@@ -33,6 +33,18 @@ describe("exportBodyHtml freezes spans after the markdown render", () => {
     expect(out).not.toContain("<dt>Name</dt>");
   });
 
+  it("heads an exported card with the image the Cards view shows, and says when a carded Frame has no rows", () => {
+    const pic = "data:image/png;base64,iVBORw0KGgo=";
+    const frame = { __frame: true, columns: [
+      { name: "Photo", type: "string", values: [pic, pic] },
+      { name: "Name", type: "string", values: ["Ada", "Bo"] },
+    ] };
+    const out = exportBodyHtml("`=f`", ["f"], () => frame, () => undefined, md, (k) => k === "f");
+    expect(out.match(/class="report-export__card-image" src="data:image\/png/g)).toHaveLength(2);
+    const empty = { __frame: true, columns: [{ name: "Name", type: "string", values: [] }] };
+    expect(exportBodyHtml("`=f`", ["f"], () => empty, () => undefined, md, (k) => k === "f")).toContain("No rows");
+  });
+
   it("leaves a span whose value is unknown (an unwired fixed input) or whose name is not an input", () => {
     expect(body("`=records`", { records: undefined })).toContain("<code>=records</code>");
     expect(exportBodyHtml("Run `=x` here.", [], () => 0, () => undefined, md)).toContain("<code>=x</code>");

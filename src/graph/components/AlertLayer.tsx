@@ -45,6 +45,10 @@ export function AlertLayer() {
     if (events.length === 0) return;
     return registerChrome("alerts", { isOpen: () => !collapsed, setOpen: (o) => setCollapsed(!o) });
   }, [collapsed, events.length]);
+  // The last alert clearing itself takes an open menu with it, so the next alert doesn't bring it back.
+  useEffect(() => {
+    if (events.length === 0) setMenuAt(null);
+  }, [events.length]);
   if (events.length === 0) return null;
 
   const trigger = (
@@ -89,7 +93,11 @@ export function AlertLayer() {
     <div
       ref={rootRef}
       className={`solenoid-alert-layer${collapsed ? " solenoid-alert-layer--collapsed" : ""}`}
-      onContextMenu={(e) => { e.preventDefault(); setMenuAt({ x: e.clientX, y: e.clientY }); }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        // The menu is portaled out of the layer, but its right-clicks still bubble here through React.
+        if (rootRef.current?.contains(e.target as Node)) setMenuAt({ x: e.clientX, y: e.clientY });
+      }}
     >
       {trigger}
       {chips}

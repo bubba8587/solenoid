@@ -1064,6 +1064,7 @@ export class CompositeNode extends GraphNode {
   }
 
   private async runActiveMode(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    if (this.runMode !== "by-row") this.clearByRowCap();
     // A configured multi-run (every heavy mode but Manual refresh, which is one pass) runs its inside many times.
     const multi = this.runsMany();
     const outputs = multi
@@ -1116,14 +1117,20 @@ export class CompositeNode extends GraphNode {
     return this.runPass(inputs);
   }
 
+  /** The By-Row cap's warning goes once By-Row no longer runs over the cap: the rows fit, emptied, or another mode runs. */
+  private clearByRowCap(): void {
+    if (this.lastByRowCapTotal !== null) restateAlert(this.id, null);
+    this.lastByRowCapTotal = null;
+  }
+
   private async runByRow(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     const port = this.inputPorts.find((p) => p.id === this.byRowPortId);
-    if (!port) return this.runPass(inputs);
+    if (!port) { this.clearByRowCap(); return this.runPass(inputs); }
     const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
     const source = portSource(port, marker, inputs);
     let rows = byRowValues(source);
     this.byRowLastRuns = rows.length === 0 ? null : { ran: Math.min(rows.length, BY_ROW_MAX_ROWS), of: rows.length };
-    if (rows.length === 0) return this.runPass(inputs);
+    if (rows.length === 0) { this.clearByRowCap(); return this.runPass(inputs); }
     if (rows.length > BY_ROW_MAX_ROWS) {
       const total = rows.length;
       if (total !== this.lastByRowCapTotal) {
@@ -1137,8 +1144,7 @@ export class CompositeNode extends GraphNode {
       this.lastByRowCapTotal = total;
       rows = rows.slice(0, BY_ROW_MAX_ROWS);
     } else {
-      if (this.lastByRowCapTotal !== null) restateAlert(this.id, null);
-      this.lastByRowCapTotal = null;
+      this.clearByRowCap();
     }
     return this.collectMultiple(inputs, rows.map((r) => ({ [port.id]: r })));
   }

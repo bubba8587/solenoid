@@ -947,6 +947,26 @@ describe("CompositeNode By-Row run mode", () => {
     expect((out[outId] as number[]).length).toBe(BY_ROW_MAX_ROWS);
   });
 
+  it("the cap warning goes when the rows empty or another mode runs, and a relapse fires again", async () => {
+    alertStore.clear();
+    const { c, aId } = await makeDoubler();
+    const big = Array.from({ length: BY_ROW_MAX_ROWS + 1 }, (_, i) => i);
+    const solve = (input: unknown) => { c.requestSolve(); return c.data({ [aId]: [input] }); };
+    const mine = () => alertStore.list().filter((e) => e.nodeId === c.id);
+    await solve(big);
+    expect(mine()).toHaveLength(1);
+    await solve([]);
+    expect(mine()).toHaveLength(0);
+    await solve(big);
+    expect(mine()).toHaveLength(1);
+    c.runMode = "single";
+    await solve(big);
+    expect(mine()).toHaveLength(0);
+    c.runMode = "by-row";
+    await solve(big);
+    expect(mine()).toHaveLength(1);
+  });
+
   it("does not warn when the row count is within the cap", async () => {
     alertStore.clear();
     const { c, aId } = await makeDoubler();
