@@ -21,7 +21,7 @@ import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, 
 import { isFrameRef, readFrame } from "../frameBackend";
 import { isGraphRebuilding } from "../process";
 import { session } from "../passSession";
-import { fireAlert } from "../alertStore";
+import { restateAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore, whenConnectionsSettled } from "../connectionStore";
 import { formatScalar } from "../components/format";
@@ -1126,10 +1126,9 @@ export class CompositeNode extends GraphNode {
     if (rows.length === 0) return this.runPass(inputs);
     if (rows.length > BY_ROW_MAX_ROWS) {
       const total = rows.length;
-      if (total !== this.lastByRowCapTotal && !isGraphRebuilding()) {
+      if (total !== this.lastByRowCapTotal) {
         const name = (this.label ?? "").trim() || "Composite";
-        fireAlert({
-          nodeId: this.id,
+        restateAlert(this.id, isGraphRebuilding() ? null : {
           label: name,
           kind: "warning",
           message: `${name}: By-Row ran the first ${BY_ROW_MAX_ROWS} of ${total} rows (the rest were skipped)`,
@@ -1138,6 +1137,7 @@ export class CompositeNode extends GraphNode {
       this.lastByRowCapTotal = total;
       rows = rows.slice(0, BY_ROW_MAX_ROWS);
     } else {
+      if (this.lastByRowCapTotal !== null) restateAlert(this.id, null);
       this.lastByRowCapTotal = null;
     }
     return this.collectMultiple(inputs, rows.map((r) => ({ [port.id]: r })));

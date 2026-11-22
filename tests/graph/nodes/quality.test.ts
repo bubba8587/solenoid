@@ -112,10 +112,16 @@ describe("Expect over lists/scalars (unchanged behavior)", () => {
 });
 
 describe("Expect alert edge-detect (fires on a NEW failure signature, not per bad cell)", () => {
-  const alertsFor = (id: string) => alertStore.list().filter((e) => e.nodeId === id).length;
+  // Every event the node has raised: a new failure set replaces the old alert, so the log alone can't count fires.
+  const seen = new Set<number>();
+  const alertsFor = (id: string) => {
+    for (const e of alertStore.list()) if (e.nodeId === id) seen.add(e.id);
+    return seen.size;
+  };
 
   it("re-fires only when the set of failing checks changes", () => {
     alertStore.clear();
+    seen.clear();
     const n = new ExpectNode({ checkNotNull: false, checkRange: true, checkRegex: true, label: "Q" });
     n.literals.min = 0;
     n.literals.max = 10;
@@ -136,10 +142,11 @@ describe("Expect alert edge-detect (fires on a NEW failure signature, not per ba
     expect(n.violations).toEqual(["range", "regex"]);
     expect(alertsFor(n.id)).toBe(2);
 
-    // Recovery — no failure fires nothing, and re-arms the edge.
+    // Recovery — no failure fires nothing, clears the old alert, and re-arms the edge.
     n.data({ in: [[5, "ok"]] });
     expect(n.violations).toEqual([]);
     expect(alertsFor(n.id)).toBe(2);
+    expect(alertStore.list()).toHaveLength(0);
 
     // Failing again after recovery fires (the edge re-armed on recovery).
     n.data({ in: [[99, "ok"]] });
@@ -149,6 +156,7 @@ describe("Expect alert edge-detect (fires on a NEW failure signature, not per ba
 
   it("fires from the engine's direct call, once per signature", async () => {
     alertStore.clear();
+    seen.clear();
     const n = new ExpectNode({ checkNotNull: false, checkRange: true, label: "Q" });
     n.literals.max = 10;
     const src = new Src([99, 1], "any");

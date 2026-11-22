@@ -7,8 +7,13 @@ import { solError } from "../../../src/graph/errorValue";
 import { beginGraphRebuild, endGraphRebuild } from "../../../src/graph/process";
 import { inEditor } from "../cardPasses";
 
+// Every event the log has held since the last clear: an Alert's new status replaces its old one, so the list alone
+// can't count fires.
+const seen = new Set<number>();
+const fired = (): number => { for (const e of alertStore.list()) seen.add(e.id); return seen.size; };
+
 describe("AlertNode", () => {
-  beforeEach(() => alertStore.clear());
+  beforeEach(() => { alertStore.clear(); seen.clear(); });
 
   it("fires from the engine's direct call on a change of status, and not while the graph rebuilds", async () => {
     const n = new AlertNode({ label: "Temp" });
@@ -22,9 +27,9 @@ describe("AlertNode", () => {
     n.edited();
     beginGraphRebuild();
     try { expect(await g.pass("result")).toBe(1); } finally { endGraphRebuild(); }
-    expect(alertStore.list()).toHaveLength(1);
+    expect(alertStore.list()).toHaveLength(0);
     await g.pass("result");
-    expect(alertStore.list()).toHaveLength(1);
+    expect(alertStore.list()).toHaveLength(0);
     g.dispose();
   });
 
@@ -43,40 +48,42 @@ describe("AlertNode", () => {
   it("fires once per calm→alert edge, not while held, and re-arms", () => {
     const n = new AlertNode();
     n.data({ value: [50], low: [0], high: [100] });  // calm
-    expect(alertStore.list().length).toBe(0);
+    expect(fired()).toBe(0);
     n.data({ value: [150], low: [0], high: [100] }); // rising edge → 1
-    expect(alertStore.list().length).toBe(1);
+    expect(fired()).toBe(1);
     n.data({ value: [160], low: [0], high: [100] }); // still HIGH → no new fire
-    expect(alertStore.list().length).toBe(1);
-    n.data({ value: [50], low: [0], high: [100] });  // back calm
+    expect(fired()).toBe(1);
+    n.data({ value: [50], low: [0], high: [100] });  // back calm: the alert clears itself
+    expect(alertStore.list()).toHaveLength(0);
     n.data({ value: [150], low: [0], high: [100] }); // out again → 2
-    expect(alertStore.list().length).toBe(2);
+    expect(fired()).toBe(2);
   });
 
   it("re-fires when the range status changes between LOW and HIGH", () => {
     const n = new AlertNode();
     n.data({ value: [50], low: [0], high: [100] });   // calm
     n.data({ value: [150], low: [0], high: [100] });  // HIGH → fire (1)
-    expect(alertStore.list().length).toBe(1);
+    expect(fired()).toBe(1);
     n.data({ value: [200], low: [0], high: [100] });  // HIGH→HIGH → no fire
-    expect(alertStore.list().length).toBe(1);
+    expect(fired()).toBe(1);
     n.data({ value: [-5], low: [0], high: [100] });   // HIGH→LOW → fire (2)
-    expect(alertStore.list().length).toBe(2);
+    expect(fired()).toBe(2);
     n.data({ value: [-9], low: [0], high: [100] });   // LOW→LOW → no fire
-    expect(alertStore.list().length).toBe(2);
+    expect(fired()).toBe(2);
     n.data({ value: [150], low: [0], high: [100] });  // LOW→HIGH → fire (3)
-    expect(alertStore.list().length).toBe(3);
+    expect(fired()).toBe(3);
+    expect(alertStore.list().map((a) => a.message)).toEqual(["Alert: 150 above 100"]); // only the status it shows now
   });
 
   it("switching into an already-met condition fires once (carry-over value)", () => {
     const n = new AlertNode({ condition: "boolean" });
     n.data({ value: [1] });                          // boolean: TRUE → fires
-    expect(alertStore.list().length).toBe(1);
+    expect(fired()).toBe(1);
     n.condition = "range";                                // component flips mode…
     n.data({ value: [1], low: [5], high: [100] });   // …recompute: 1 < 5, fresh eval → fires
-    expect(alertStore.list().length).toBe(2);
+    expect(fired()).toBe(2);
     n.data({ value: [1], low: [5], high: [100] });   // held → no new fire
-    expect(alertStore.list().length).toBe(2);
+    expect(fired()).toBe(2);
   });
 
   it("boolean mode means TRUE (=== 1), not any nonzero value", () => {
@@ -115,4 +122,14 @@ describe("AlertNode", () => {
     expect(alertStore.list()[0].message).toBe("Alert: 1 above 100");
   });
 
+  it("Clear All empties the log, and a card's alerts go when it is deleted", () => {
+    const a = new AlertNode({ label: "A" }), b = new AlertNode({ label: "B" });
+    a.data({ value: [150], low: [0], high: [100] });
+    b.data({ value: [-1], low: [0], high: [100] });
+    expect(alertStore.list()).toHaveLength(2);
+    alertStore.removeForNode(a.id);
+    expect(alertStore.list().map((e) => e.label)).toEqual(["B"]);
+    alertStore.clear();
+    expect(alertStore.list()).toHaveLength(0);
+  });
 });

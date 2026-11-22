@@ -53,7 +53,7 @@ An Alert fires on a change of status, not on a boolean flip. An effect that reac
 1. A null status is unknown. The body shows nothing new, so nothing fires and the remembered status stands.
 2. Otherwise the body shows the status key (`alertKey`: the mode and the status, the number or the list joined with commas) and, when the status is alerting (any nonzero cell), the message it fires (`alertMessage`, else null).
 3. The class names `alertKey` in `static coreWatch`, so the engine calls `coreWatched()` when a run changed it ([[graph-core]] § Direct calls). The mode is part of the key, so a mode change compares fresh: the old mode's status means nothing in the new one.
-4. `coreWatched()` raises `alertMessage` unless it is null or the graph is rebuilding (`isGraphRebuilding()`), so loading a document or a seed does not replay old alerts. The recompute that follows a rebuild still runs inside the rebuild scope, and still remembers its key.
+4. `coreWatched()` first drops the card's earlier alerts from the log, since the status they describe no longer holds, then raises `alertMessage` unless it is null or the graph is rebuilding (`isGraphRebuilding()`), so loading a document or a seed does not replay old alerts. Both go through `restateAlert` in `alertStore.ts`. The recompute that follows a rebuild still runs inside the rebuild scope, and still remembers its key.
 
 ```mermaid
 flowchart TD
@@ -62,16 +62,17 @@ flowchart TD
     nul -->|no| show["the body shows alertKey (mode and status)<br>and alertMessage (null when calm)"]
     show --> chg{"alertKey changed?"}
     chg -->|no| calm["silent"]
-    chg -->|yes| rb{"the graph rebuilding,<br>or no message?"}
+    chg -->|yes| drop["the card's old alerts<br>leave the HUD"]
+    drop --> rb{"the graph rebuilding,<br>or no message?"}
     rb -->|yes| quiet["nothing fires"]
     rb -->|no| f["fireAlert: a HUD event<br>and a toast"]
 ```
 
-So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all fire; LOW to LOW and HIGH to HIGH do not; returning to calm is silent. A new card holds no key, so a card born alerting, or switched into a condition that is already met, fires once. Expect fires the same way, its key the set of failed checks (`nodes/quality.ts`, `expect` in `docs.rs`). That key is the kinds of check that failed, not which cells failed or how many: a different cell failing the same check does not fire again, a new kind of check joining the failures fires, and a recovery to no failures fires nothing and lets the next failure fire.
+So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all fire; LOW to LOW and HIGH to HIGH do not; returning to calm is silent and takes the card's alert out of the HUD. The HUD holds at most one alert per card, for the status it shows now; a toast already shown runs its course. The Composite's By-Row cap alert follows the same rule: it goes once the rows fit under the cap. A new card holds no key, so a card born alerting, or switched into a condition that is already met, fires once. Expect fires the same way, its key the set of failed checks (`nodes/quality.ts`, `expect` in `docs.rs`). That key is the kinds of check that failed, not which cells failed or how many: a different cell failing the same check does not fire again, a new kind of check joining the failures fires, and a recovery to no failures fires nothing and lets the next failure fire.
 
 Tests:
 
-- `alertNode.test.ts`: the engine's direct call fires on a change of status and not while the graph rebuilds; a card born out of range fires on its first run; calm to alert fires once, a held status stays silent and a return to calm re-arms; every change between Low and High fires; a mode switch into a condition already met fires once.
+- `alertNode.test.ts`: the engine's direct call fires on a change of status and not while the graph rebuilds; a card born out of range fires on its first run; calm to alert fires once, a held status stays silent and a return to calm re-arms and clears the card's alert; after LOW to HIGH only the HIGH alert is left; every change between Low and High fires; a mode switch into a condition already met fires once.
 - `quality.test.ts`: Expect fires only when the set of failing checks changes, from the engine's direct call too.
 - `connectionStore.test.ts`: a live connection's refresh changes the value reaching an Alert and its change of status fires.
 - `sourceInvariants.test.ts`: every node file that fires an alert names the `isGraphRebuilding` gate.
@@ -94,7 +95,7 @@ Tests: `alertNode.test.ts`: the range message ("Temp: 150 above 100"), a list's 
 
 Numbers print as every unformatted number does ([[C118]] formatTravelsWithValue).
 
-`alertStore` registers `forget` and `forgetAll` with the node-store registry ([[stores#The rules]]): deleting an Alert card removes its events, and a whole-graph rebuild clears the log. Each event in the HUD has its own dismiss button (`alertStore.dismiss`).
+`alertStore` registers `forget` and `forgetAll` with the node-store registry ([[stores#The rules]]): deleting an Alert card removes its events, and a whole-graph rebuild clears the log. Each event in the HUD has its own dismiss button (`alertStore.dismiss`), and a right-click anywhere on the Alerts section opens a menu whose Clear All empties the log (`alertStore.clear`).
 
 ## The HUD column
 

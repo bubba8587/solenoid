@@ -8,7 +8,7 @@ import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn } fr
 import { nodeWire } from "../nodeWire";
 import { isLambdaValue, type LambdaValue } from "./lambda";
 import { type SolError } from "../errorValue";
-import { fireAlert } from "../alertStore";
+import { restateAlert } from "../alertStore";
 
 export class DisplayNode extends GraphNode {
   label: string;
@@ -93,11 +93,11 @@ export class AlertNode extends GraphNode {
   }
 }
 
-/** The body's status changed ([[alert-node-alerts-hud#When it fires]]): raise what it fires (`alertMessage`), unless the graph
- *  is rebuilding. */
+/** The body's status changed ([[alert-node-alerts-hud#When it fires]]): the card's old alerts go, and it raises what it
+ *  fires now (`alertMessage`), unless the graph is rebuilding. */
 export function raiseWatched(node: GraphNode & { alertMessage: string | null }, fallback: string): void {
-  if (!node.alertMessage || isGraphRebuilding()) return;
-  fireAlert({ nodeId: node.id, label: (node.label ?? "").trim() || fallback, kind: "warning", message: node.alertMessage });
+  const message = isGraphRebuilding() ? null : node.alertMessage;
+  restateAlert(node.id, message ? { label: (node.label ?? "").trim() || fallback, kind: "warning", message } : null);
 }
 
 // A blank or error cell in a list status is unknown, so it never alerts.

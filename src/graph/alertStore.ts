@@ -58,5 +58,12 @@ export function fireAlert(e: Omit<AlertEvent, "id" | "time">): void {
   pushNotice(e.message, ALERT_TONE[e.kind]);
 }
 
+/** A card's status changed: what it raised before no longer holds, so it goes, and the new status fires when it alerts
+ *  (`e`, else null). */
+export function restateAlert(nodeId: string, e: Omit<AlertEvent, "id" | "time" | "nodeId"> | null): void {
+  alertStore.removeForNode(nodeId);
+  if (e) fireAlert({ ...e, nodeId });
+}
+
 registerNodeForget((nodeId) => alertStore.removeForNode(nodeId));
 registerNodeForgetAll(() => alertStore.clear());

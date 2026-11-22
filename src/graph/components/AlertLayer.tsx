@@ -1,5 +1,7 @@
 // [[alert-node-alerts-hud#When it fires]]. Layout: tree/specs/computation/alert-node-alerts-hud.md.
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { PointerMenu } from "./TableEditMenu";
 import { isMobile } from "../coarse";
 import { alertStore, type AlertKind } from "../alertStore";
 import { registerChrome } from "../chromeToggle";
@@ -23,6 +25,7 @@ const AlertSvg = ({ size = 14 }: { size?: number }) => (
 export function AlertLayer() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [collapsed, setCollapsed] = useState(true);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Mobile: a tap outside re-collapses, so chips don't linger over the canvas.
@@ -83,9 +86,18 @@ export function AlertLayer() {
   });
 
   return (
-    <div ref={rootRef} className={`solenoid-alert-layer${collapsed ? " solenoid-alert-layer--collapsed" : ""}`}>
+    <div
+      ref={rootRef}
+      className={`solenoid-alert-layer${collapsed ? " solenoid-alert-layer--collapsed" : ""}`}
+      onContextMenu={(e) => { e.preventDefault(); setMenuAt({ x: e.clientX, y: e.clientY }); }}
+    >
       {trigger}
       {chips}
+      {menuAt && createPortal(
+        <PointerMenu at={menuAt} label="Alerts" onClose={() => setMenuAt(null)}
+          sections={[{ items: [{ label: "Clear All", onClick: () => alertStore.clear() }] }]} />,
+        document.body,
+      )}
     </div>
   );
 }

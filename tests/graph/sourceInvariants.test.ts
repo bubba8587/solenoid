@@ -576,7 +576,7 @@ describe("[[alert-node-alerts-hud#When it fires]] — an outward effect from dat
     for (const dir of ["nodes", "packs"].map((d) => path.join(SRC, d))) {
       for (const file of walk(dir)) {
         const lines = codeLines(file);
-        if (!lines.some((l) => /\bfireAlert\(/.test(l))) continue;
+        if (!lines.some((l) => /\b(?:fireAlert|restateAlert)\(/.test(l))) continue;
         if (!/isGraphRebuilding/.test(lines.join("\n"))) offenders.push(rel(file));
       }
     }
