@@ -3,7 +3,7 @@ import type { CardColType, CardPlan } from "./cardLayout";
 import type { RecordPlacement } from "./recordLayout";
 import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
-import type { CalendarPeriod, ChartOptions, LineStyle } from "./nodes/chartOptions";
+import type { CalendarPeriod, ChartOptions, LineStyle, MarkerShape } from "./nodes/chartOptions";
 import type { GanttPayload } from "@solenoid/gantt-layout";
 
 export interface KpiPayload {
@@ -167,7 +167,7 @@ interface OverlaySeries {
   markersize?: number;
   linewidth?: number;
   alpha?: number;
-  marker?: boolean;
+  marker?: boolean | MarkerShape;
   /** Drawn against the right-hand axis: its source chart's `secondary_y` named it. */
   secondary?: boolean;
 }
@@ -188,7 +188,7 @@ interface XYSeries {
   /** In row order; null is a gap, where a connecting line breaks. */
   points: (XYPoint | null)[];
   line: LineStyle;
-  marker: boolean;
+  marker: boolean | MarkerShape;
   color?: string;
   markersize?: number;
   linewidth?: number;

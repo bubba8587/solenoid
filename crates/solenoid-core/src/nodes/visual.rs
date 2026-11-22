@@ -205,6 +205,30 @@ fn to_stacked(v: &str) -> Option<&'static str> {
     }
 }
 
+/// matplotlib's marker codes (case matters: `p` is its pentagon, which recharts lacks) or the shape's name.
+fn to_marker_shape(v: &str) -> Option<&'static str> {
+    match trim_space(v) {
+        "o" => return Some("circle"),
+        "s" => return Some("square"),
+        "D" | "d" => return Some("diamond"),
+        "^" => return Some("triangle"),
+        "+" | "P" => return Some("cross"),
+        "*" => return Some("star"),
+        "Y" => return Some("wye"),
+        _ => {}
+    }
+    match lower_text(trim_space(v)).as_ref() {
+        "circle" => Some("circle"),
+        "square" => Some("square"),
+        "diamond" => Some("diamond"),
+        "triangle" => Some("triangle"),
+        "cross" | "plus" => Some("cross"),
+        "star" => Some("star"),
+        "wye" => Some("wye"),
+        _ => None,
+    }
+}
+
 fn to_line_style(v: &str) -> Option<&'static str> {
     match lower_text(trim_space(v)).as_ref() {
         "-" | "solid" => Some("solid"),
@@ -284,7 +308,11 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
             "title" | "xlabel" | "ylabel" | "color" | "x" | "s" | "c" | "annotate" | "by" | "lat" | "lon" => {
                 text(&mut o, &key)
             }
-            "grid" | "marker" | "annot" | "cbar" => flag(&mut o, &key),
+            "grid" | "annot" | "cbar" => flag(&mut o, &key),
+            "marker" => match to_marker_shape(val) {
+                Some(shape) => word(&mut o, "marker", Some(shape)),
+                None => flag(&mut o, &key),
+            },
             "pielabels" => word(&mut o, "pielabels", to_pie_labels(val)),
             "radarscale" => word(&mut o, "radarscale", to_radar_scale(val)),
             "stacked" => word(&mut o, "stacked", to_stacked(val)),
@@ -617,8 +645,12 @@ fn line_for(op: &str, opts: &Obj) -> Json {
     opts.get("linestyle").cloned().unwrap_or_else(|| Json::from(if op == "xyline" { "solid" } else { "none" }))
 }
 
-fn marker_for(op: &str, opts: &Obj, series: usize) -> bool {
-    op != "xyline" || opts.get("marker").and_then(Json::as_bool).unwrap_or(series == 1)
+/// On, off or a shape: a set `marker` holds on every XY figure, else Scatter and Bubble mark and XY Line marks one series.
+fn marker_for(op: &str, opts: &Obj, series: usize) -> Json {
+    match opts.get("marker") {
+        Some(m @ (Json::Bool(_) | Json::String(_))) => m.clone(),
+        _ => Json::Bool(op != "xyline" || series == 1),
+    }
 }
 
 /// A list plots at x = 1, 2, 3, …; a number is one point at x = 1.
@@ -815,7 +847,7 @@ fn build_xy(op: &str, raw: &Cv, opts: &Obj) -> Result<Option<Obj>, V> {
     let series: Vec<Json> = series
         .into_iter()
         .map(|mut s| {
-            s.insert("marker".into(), Json::Bool(marker));
+            s.insert("marker".into(), marker.clone());
             if let Some(r) = &s_range {
                 s.insert("sRange".into(), r.clone());
             }
@@ -2853,6 +2885,23 @@ fn conditional_regions(c: &mut Call) -> Answer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn marker_reads_on_off_or_a_shape() {
+        let read = |v: &str| parse_chart_options(&format!("marker={v}")).get("marker").cloned();
+        assert_eq!(read("on"), Some(json!(true)));
+        assert_eq!(read("off"), Some(json!(false)));
+        assert_eq!(read("s"), Some(json!("square")));
+        assert_eq!(read("D"), Some(json!("diamond")));
+        assert_eq!(read("*"), Some(json!("star")));
+        assert_eq!(read("Triangle"), Some(json!("triangle")));
+        assert_eq!(read("p"), None);
+        let o = parse_chart_options("marker=^");
+        assert_eq!(marker_for("scatter", &o, 2), json!("triangle"));
+        assert_eq!(marker_for("scatter", &parse_chart_options("marker=off"), 1), json!(false));
+        assert_eq!(marker_for("xyline", &Obj::new(), 2), json!(false));
+        assert_eq!(marker_for("scatter", &Obj::new(), 2), json!(true));
+    }
 
     #[test]
     fn secondary_y_reads_true_or_names_and_never_a_name_as_a_flag() {

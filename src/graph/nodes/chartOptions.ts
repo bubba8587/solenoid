@@ -7,7 +7,8 @@ export interface ChartOptions {
   ylabel?: string;
   color?: string;
   grid?: boolean;
-  marker?: boolean;
+  /** On, off, or the shape that turns them on (matplotlib's `marker`). */
+  marker?: boolean | MarkerShape;
   ymin?: number;
   ymax?: number;
   xmin?: number;
@@ -47,6 +48,8 @@ export interface ChartOptions {
 }
 
 type HeatOrigin = "upper" | "lower";
+/** recharts' `Symbols` shapes. */
+export type MarkerShape = "circle" | "square" | "diamond" | "triangle" | "cross" | "star" | "wye";
 export type LineStyle = "solid" | "dashed" | "dotted" | "dashdot" | "none";
 type AspectMode = "auto" | "equal";
 type AxisScale = "linear" | "log";
@@ -83,9 +86,9 @@ const LINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const AREA_KEYS: readonly ChartBuilderKey[] = [...LINE_KEYS, "stacked", "secondary_y"];
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "s", "c", "cmap", "annotate", "by", "linestyle", "aspect", "yscale",
+  ["title", "xlabel", "ylabel", "color", "grid", "marker", "x", "y", "s", "c", "cmap", "annotate", "by", "linestyle", "aspect", "yscale",
     "xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
-const XYLINE_KEYS: readonly ChartBuilderKey[] = [...SCATTER_KEYS, "marker", "maxgap"];
+const XYLINE_KEYS: readonly ChartBuilderKey[] = [...SCATTER_KEYS, "maxgap"];
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
 const RADAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "grid", "marker", "radarscale", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];

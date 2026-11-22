@@ -311,7 +311,7 @@
         "title": "Sine Wave",
         "ylabel": "sin θ",
         "grid": "on",
-        "marker": "on"
+        "marker": "circle"
       }
     },
     {

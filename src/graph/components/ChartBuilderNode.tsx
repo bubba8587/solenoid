@@ -79,7 +79,7 @@ const CMAP_OPTS: readonly SelectOption[] = [
 ];
 // Every on/off setting is a checkbox; `on` is what the figure does with the setting left out, so a fresh card shows it.
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string; on: boolean }[] = [
-  { key: "grid", label: "Grid", on: true }, { key: "marker", label: "Markers", on: false }, { key: "clamp", label: "Clamp tiles", on: false },
+  { key: "grid", label: "Grid", on: true }, { key: "clamp", label: "Clamp tiles", on: false },
   { key: "cbar", label: "Colorbar", on: true },
   { key: "critical", label: "Critical path", on: true }, { key: "baseline", label: "Baseline", on: true },
   { key: "arrows", label: "Arrows", on: true }, { key: "today", label: "Today line", on: true },
@@ -105,6 +105,20 @@ const SELECT_KEYS: readonly {
       { value: "outside", label: "Outside" },
       { value: "inside", label: "On slice" },
       { value: "off", label: "Off" },
+    ],
+  },
+  {
+    key: "marker", label: "Markers", clearValue: "",
+    options: [
+      { value: "", label: "Default" },
+      { value: "off", label: "None" },
+      { value: "circle", label: "Circle" },
+      { value: "square", label: "Square" },
+      { value: "diamond", label: "Diamond" },
+      { value: "triangle", label: "Triangle" },
+      { value: "cross", label: "Plus" },
+      { value: "star", label: "Star" },
+      { value: "wye", label: "Wye" },
     ],
   },
   {

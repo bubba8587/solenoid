@@ -1,11 +1,11 @@
 // [[C100]] chartIsAValue
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, ReferenceLine, ReferenceArea, ReferenceDot, usePlotArea, useXAxisScale, useYAxisScale, useXAxisInverseScale, useYAxisInverseScale } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, Symbols, ReferenceLine, ReferenceArea, ReferenceDot, usePlotArea, useXAxisScale, useYAxisScale, useXAxisInverseScale, useYAxisInverseScale } from "recharts";
 import { type SyntheticEvent, type ComponentProps, useId, useMemo, useState, useSyncExternalStore, type ReactElement, type ReactNode, type PointerEvent, type MouseEvent } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, edgeRoom, categoryInterval, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, regionLabelColor, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
 import { useSeriesColors } from "./seriesColors";
-import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
+import type { ChartOptions, LineStyle, MarkerShape } from "../nodes/chartOptions";
 import type { ChartValue, OverlayPayload, XYPayload, XYPoint, ChartRef } from "../chartValue";
 import type { RegionCuts, RegionPoint } from "../nodes/visual";
 import { coreRegionKeys } from "../engineWasm";
@@ -20,7 +20,19 @@ import { iterMin, iterMax } from "../nodes/mathUtils";
 const LINE_DOT_R = 2;
 /** A line's marker: a solid dot in the series' color, as an XY chart's points are (Recharts' own is a white dot ringed
  *  in the color). */
-const lineDot = (color: string, r: number, opacity = 1) => ({ r, fill: color, fillOpacity: opacity, stroke: "none" });
+const lineDot = (color: string, r: number, opacity = 1, marker?: boolean | MarkerShape) => {
+  const shape = typeof marker === "string" ? marker : "circle";
+  if (shape === "circle") return { r, fill: color, fillOpacity: opacity, stroke: "none" };
+  return (p: { cx?: number; cy?: number; key?: string | number | bigint | null; index?: number }) => (
+    <MarkerSymbol key={String(p.key ?? p.index)} shape={shape} cx={p.cx} cy={p.cy} r={r} fill={color} opacity={opacity} />
+  );
+};
+/** A marker of radius `r` as a shape: every shape takes the circle's area, so none reads larger than another. */
+function MarkerSymbol({ shape, cx, cy, r, fill, opacity }: { shape: MarkerShape; cx?: number; cy?: number; r: number; fill: string; opacity: number }) {
+  if (cx == null || cy == null) return <g />;
+  if (shape === "circle") return <circle cx={cx} cy={cy} r={r} fill={fill} fillOpacity={opacity} />;
+  return <Symbols type={shape} cx={cx} cy={cy} size={Math.PI * r * r} fill={fill} fillOpacity={opacity} stroke="none" />;
+}
 const SCATTER_DOT_R = 3;
 const PLOT_TOP = 14;
 const ALL_TICKS_UPTO = 12;
@@ -160,7 +172,7 @@ export function ChartView({
         {axes && <YAxis orientation={flip ? "right" : "left"} tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {TIP}
-        <Line dataKey="v" stroke={color} strokeOpacity={opts?.alpha ?? 1} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(color, dotR, opts?.alpha ?? 1) : false} />
+        <Line dataKey="v" stroke={color} strokeOpacity={opts?.alpha ?? 1} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(color, dotR, opts?.alpha ?? 1, opts?.marker) : false} />
       </LineChart>
     );
   } else if (op === "area") {
@@ -171,7 +183,7 @@ export function ChartView({
         {axes && <YAxis orientation={flip ? "right" : "left"} tick={AXIS} tickLine={false} tickFormatter={yFmt} width={yAxisW} domain={yDomain} label={yLabel} />}
         {axes && refEls}
         {TIP}
-        <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(color, dotR) : false} />
+        <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(color, dotR, 1, opts?.marker) : false} />
       </AreaChart>
     );
   } else if (op === "bar") {
@@ -242,7 +254,7 @@ export function ChartView({
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={yDomain} />
         {TIP}
         {/* The palette, never `color`. */}
-        <Radar dataKey="v" stroke={paint(0)} fill={paint(0)} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(paint(0), dotR) : false} />
+        <Radar dataKey="v" stroke={paint(0)} fill={paint(0)} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? lineDot(paint(0), dotR, 1, opts?.marker) : false} />
       </RadarChart>
     );
   } else if (op === "radialbar") {
@@ -497,8 +509,8 @@ export function MultiSeriesView({
         {axes && refEls}
         {tip}
         {series.map((s, j) => op === "area"
-          ? <Area key={j} dataKey={`s${j}`} name={s.name} yAxisId={yAxisId(j)} stackId={stackId(j)} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j)) : false} isAnimationActive={false} />
-          : <Line key={j} dataKey={`s${j}`} name={s.name} yAxisId={yAxisId(j)} stroke={paint(j)} strokeOpacity={markAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, markAlpha * dim(j)) : false} isAnimationActive={false} />)}
+          ? <Area key={j} dataKey={`s${j}`} name={s.name} yAxisId={yAxisId(j)} stackId={stackId(j)} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j), opts?.marker) : false} isAnimationActive={false} />
+          : <Line key={j} dataKey={`s${j}`} name={s.name} yAxisId={yAxisId(j)} stroke={paint(j)} strokeOpacity={markAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, markAlpha * dim(j), opts?.marker) : false} isAnimationActive={false} />)}
       </Container>
     );
   } else if (op === "bar") {
@@ -529,7 +541,7 @@ export function MultiSeriesView({
         {/* Radial tick text would print rotated on the polygons. */}
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={radarNorm ? [0, 1] : yDomain} />
         {radarTip}
-        {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j)) : false} isAnimationActive={false} />)}
+        {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? lineDot(paint(j), dotR, dim(j), opts?.marker) : false} isAnimationActive={false} />)}
       </RadarChart>
     );
   } else {
@@ -638,10 +650,10 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
         const fillAlpha = (s.alpha ?? 0.25) * o;
         const lineDotR = s.markersize ?? LINE_DOT_R;
         if (s.kind === "line") {
-          return <Line key={j} dataKey={`s${j}`} name={s.name} yAxisId={onPrimary(j) ? 0 : "right"} stroke={c} strokeOpacity={(s.alpha ?? 1) * o} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, (s.alpha ?? 1) * o) : false} isAnimationActive={false} />;
+          return <Line key={j} dataKey={`s${j}`} name={s.name} yAxisId={onPrimary(j) ? 0 : "right"} stroke={c} strokeOpacity={(s.alpha ?? 1) * o} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, (s.alpha ?? 1) * o, s.marker) : false} isAnimationActive={false} />;
         }
         if (s.kind === "area") {
-          return <Area key={j} dataKey={`s${j}`} name={s.name} yAxisId={onPrimary(j) ? 0 : "right"} stroke={c} strokeOpacity={o} fill={c} fillOpacity={fillAlpha} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, o) : false} isAnimationActive={false} />;
+          return <Area key={j} dataKey={`s${j}`} name={s.name} yAxisId={onPrimary(j) ? 0 : "right"} stroke={c} strokeOpacity={o} fill={c} fillOpacity={fillAlpha} strokeWidth={lw} dot={s.marker ? lineDot(c, lineDotR, o, s.marker) : false} isAnimationActive={false} />;
         }
         return <Bar key={j} dataKey={`s${j}`} name={s.name} yAxisId={onPrimary(j) ? 0 : "right"} fill={c} fillOpacity={(s.alpha ?? 1) * o} isAnimationActive={false} />;
       })}
@@ -1116,7 +1128,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs, under, o
           const d = p.payload;
           // A lone point on a markerless line would draw nothing, so it draws as a dot.
           if (!d || p.cx == null || p.cy == null || (!s.marker && (rows.length > 1 || s.line === "none"))) return <g />;
-          return <circle cx={p.cx} cy={p.cy} r={pointR(d, j)} fill={pointFill(d, j)} fillOpacity={alpha * o} />;
+          return <MarkerSymbol shape={typeof s.marker === "string" ? s.marker : "circle"} cx={p.cx} cy={p.cy} r={pointR(d, j)} fill={pointFill(d, j)} opacity={alpha * o} />;
         };
         if (dots) return [
           <Scatter key={`${k}l`} name={s.name} data={rows} line={line as ComponentProps<typeof Scatter>["line"]} lineType="joint" shape={NO_SHAPE} isAnimationActive={false} />,
