@@ -308,7 +308,7 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
             "title" | "xlabel" | "ylabel" | "color" | "x" | "s" | "c" | "annotate" | "by" | "lat" | "lon" => {
                 text(&mut o, &key)
             }
-            "grid" | "annot" | "cbar" => flag(&mut o, &key),
+            "grid" | "annot" | "cbar" | "brush" => flag(&mut o, &key),
             "marker" => match to_marker_shape(val) {
                 Some(shape) => word(&mut o, "marker", Some(shape)),
                 None => flag(&mut o, &key),
@@ -2264,7 +2264,7 @@ fn us_map_figure(c: &mut Call, opts: Obj) -> Answer {
 
 // ─── Chart Builder ──────────────────────────────────────────────────────────────
 
-const CB_STR_KEYS: [&str; 46] = [
+const CB_STR_KEYS: [&str; 47] = [
     "title",
     "xlabel",
     "ylabel",
@@ -2275,6 +2275,7 @@ const CB_STR_KEYS: [&str; 46] = [
     "radarscale",
     "stacked",
     "secondary_y",
+    "brush",
     "zoom",
     "layout",
     "tiers",

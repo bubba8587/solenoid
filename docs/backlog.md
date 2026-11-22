@@ -267,7 +267,6 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 - [ ] **Value labels:** `LabelList` on Column, Bar, Line, Area and pie slices (today only Funnel, XY `annotate` and `pielabels`); the `Label` component for positioned axis and reference text.
 - [ ] **Legend:** position (top, right, left) and vertical layout; swatch `iconType`.
 - [ ] **ErrorBar** whiskers on bars, lines and scatter points, from error columns.
-- [ ] **Brush:** a range slider under a long series for zoom and pan.
 - [ ] **ZAxis** for Bubble size instead of the hand-sized markers.
 - [ ] **SunburstChart** for hierarchies; nested Treemap (`children`); Sankey node and link styling; RadialBar `background` and `label`.
 - [ ] **ReferenceLine `segment`:** sloped lines between two points (trendlines) in References; needs a call on how a row asks for it, since `x`, `x2`, `y`, `y2` already draw a box.

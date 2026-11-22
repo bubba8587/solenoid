@@ -79,7 +79,7 @@ const CMAP_OPTS: readonly SelectOption[] = [
 ];
 // Every on/off setting is a checkbox; `on` is what the figure does with the setting left out, so a fresh card shows it.
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string; on: boolean }[] = [
-  { key: "grid", label: "Grid", on: true }, { key: "clamp", label: "Clamp tiles", on: false },
+  { key: "grid", label: "Grid", on: true }, { key: "brush", label: "Range slider", on: false }, { key: "clamp", label: "Clamp tiles", on: false },
   { key: "cbar", label: "Colorbar", on: true },
   { key: "critical", label: "Critical path", on: true }, { key: "baseline", label: "Baseline", on: true },
   { key: "arrows", label: "Arrows", on: true }, { key: "today", label: "Today line", on: true },
@@ -229,7 +229,7 @@ const SECTIONED_ABOVE = 10;
 const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] = [
   { label: "Columns", keys: ["x", "y", "s", "c", "annotate", "by"] },
   { label: "Style", keys: ["stacked", "color", "linestyle", "linewidth", "marker", "markersize", "alpha", "maxgap"] },
-  { label: "Axes", keys: ["grid", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "secondary_y", "radarscale", "origin"] },
+  { label: "Axes", keys: ["grid", "brush", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "secondary_y", "radarscale", "origin"] },
   { label: "Color scale", keys: ["cmap", "center", "vmin", "vmax", "cbar", "annot", "fmt"] },
   { label: "Timeline", keys: ["zoom", "tiers", "fit", "window", "columns", "collapse", "group_by"] },
   { label: "Shown", keys: ["critical", "baseline", "arrows", "today", "status", "weekends", "labels", "histogram", "minutes"] },

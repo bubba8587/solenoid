@@ -1,5 +1,5 @@
 // [[C100]] chartIsAValue
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, Symbols, ReferenceLine, ReferenceArea, ReferenceDot, usePlotArea, useXAxisScale, useYAxisScale, useXAxisInverseScale, useYAxisInverseScale } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, Symbols, Brush, ReferenceLine, ReferenceArea, ReferenceDot, usePlotArea, useXAxisScale, useYAxisScale, useXAxisInverseScale, useYAxisInverseScale } from "recharts";
 import { type SyntheticEvent, type ComponentProps, useId, useMemo, useState, useSyncExternalStore, type ReactElement, type ReactNode, type PointerEvent, type MouseEvent } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
@@ -108,7 +108,12 @@ export function ChartView({
 }) {
   const { grid, axis, viz } = useChartColors();
   const seriesColors = useSeriesColors();
-  const series = op === "line" || op === "area" ? minMaxDecimate(given, width) : given;
+  // `brush`: the plot draws the rows the slider picks, thinned anew. Rows are label positions, which skip blanks.
+  const nRows = Math.max(labels?.length ?? 0, given.length ? given[given.length - 1].i + 1 : 0);
+  const brushOn = axes && opts?.brush === true && (op === "line" || op === "area" || op === "column") && nRows > 2;
+  const [rangeLo, rangeHi, setRange] = useRowRange(nRows);
+  const inRange = brushOn ? given.filter((d) => d.i >= rangeLo && d.i <= rangeHi) : given;
+  const series = op === "line" || op === "area" ? minMaxDecimate(inRange, width) : inRange;
   const paint = (i: number) => seriesColors[i % seriesColors.length];
   // A Pie, Funnel or Radial slice spotlights on a click, as a legend entry does on a multi-series chart.
   const { dim: sliceDim, pick: pickSlice } = useSeriesSpotlight(series.map((d) => String(d.i)));
@@ -144,7 +149,7 @@ export function ChartView({
     : undefined;
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
-  const chartH = height - titleH;
+  const chartH = height - titleH - (brushOn ? BRUSH_H : 0);
   const yFmt = valueTickFormat([...series.map((d) => d.v), opts?.ymin, opts?.ymax]);
   const yAxisW = axes ? valueAxisWidth([...series.map((d) => d.v), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt) : 0;
   const bottomM = axes ? (xLabel ? 18 : 4) : 2;
@@ -158,7 +163,9 @@ export function ChartView({
   const xInterval = series.length <= ALL_TICKS_UPTO
     ? categoryInterval(series.map((d) => tickFmt(d.i)), width - yAxisW - margin.right, fs)
     : undefined;
-  const refCtx = { axis, fs, xLo: 0, xHi: Math.max(1, (labels?.length ?? series.length) - 1), pw: width - yAxisW - margin.right - leftM };
+  const refCtx = brushOn
+    ? { axis, fs, xLo: rangeLo, xHi: Math.max(rangeLo + 1, rangeHi), pw: width - yAxisW - margin.right - leftM }
+    : { axis, fs, xLo: 0, xHi: Math.max(1, (labels?.length ?? series.length) - 1), pw: width - yAxisW - margin.right - leftM };
   const refAt = snapAt(categoryAt(labels), series === given ? null : series.map((d) => d.i));
   const refEls = refMarks(refs, refAt, refCtx);
   const refElsSwap = refMarks(refs, refAt, { ...refCtx, swap: true });
@@ -319,6 +326,20 @@ export function ChartView({
     );
   }
 
+  if (brushOn) {
+    const col = Array.from<number | null>({ length: nRows }).fill(null);
+    for (const d of given) col[d.i] = d.v;
+    return (
+      <div style={{ width }} onPointerDown={chartControlPress} onMouseDown={chartControlPress}>
+        {title && <ChartTitle text={title} fs={fs} />}
+        {chart}
+        <RangeSlider
+          cols={[col]} n={nRows} width={width} insetLeft={(flip ? 0 : yAxisW) + margin.left} insetRight={margin.right + (flip ? yAxisW : 0)}
+          lo={rangeLo} hi={rangeHi} onRange={setRange} tickFmt={tickFmt} stroke={grid} paint={() => color}
+        />
+      </div>
+    );
+  }
   if (!title) return chart;
   return (
     <div style={{ width }}>
@@ -381,6 +402,57 @@ function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetR
     </div>
   );
 }
+
+const BRUSH_H = 24;
+
+/** The rows `[lo, hi]` a plot shows, picked on its range slider: every row until the slider moves, and again once the
+ *  row count changes. */
+function useRowRange(n: number): [number, number, (lo: number, hi: number) => void] {
+  const [r, setR] = useState({ n, lo: 0, hi: n - 1 });
+  const cur = r.n === n ? r : { n, lo: 0, hi: n - 1 };
+  return [cur.lo, cur.hi, (lo, hi) => setR({ n, lo, hi })];
+}
+
+/** The `brush` option's slider: an overview of the whole series, thinned to its width, under a window whose ends and
+ *  middle drag. It reports rows, never the overview's thinned indices, so the plot above redraws them in full. */
+function RangeSlider({ cols, n, width, insetLeft, insetRight, lo, hi, onRange, tickFmt, stroke, paint }: {
+  cols: readonly (readonly (number | null)[])[]; n: number; width: number; insetLeft: number; insetRight: number;
+  lo: number; hi: number; onRange: (lo: number, hi: number) => void; tickFmt: (i: number) => string;
+  stroke: string; paint: (j: number) => string;
+}) {
+  const kept = envelopeRows(cols, n, Math.max(1, Math.round(width - insetLeft - insetRight))) ?? Array.from({ length: n }, (_, i) => i);
+  const rows = kept.map((i) => {
+    const o: Record<string, number | null> = { i };
+    cols.forEach((c, j) => { o[`s${j}`] = c[i] ?? null; });
+    return o;
+  });
+  // The overview row at or before a data row.
+  const at = (row: number) => {
+    let k = 0;
+    while (k + 1 < kept.length && kept[k + 1] <= row) k++;
+    return k;
+  };
+  return (
+    <div className="sol-chart-brush" style={{ height: BRUSH_H }}>
+      <LineChart width={width} height={BRUSH_H} data={rows} margin={{ top: 0, right: insetRight, bottom: 0, left: insetLeft }}>
+        <Brush
+          dataKey="i" y={0} height={BRUSH_H} travellerWidth={6} stroke={stroke} fill="transparent"
+          startIndex={at(lo)} endIndex={at(hi)} tickFormatter={(i: number) => tickFmt(i)}
+          onChange={(r) => onRange(kept[r.startIndex ?? 0] ?? 0, kept[r.endIndex ?? kept.length - 1] ?? n - 1)}
+        >
+          <LineChart data={rows}>
+            {cols.map((_, j) => <Line key={j} dataKey={`s${j}`} stroke={paint(j)} strokeOpacity={0.55} strokeWidth={1} dot={false} isAnimationActive={false} />)}
+          </LineChart>
+        </Brush>
+      </LineChart>
+    </div>
+  );
+}
+
+/** The canvas's node drag starts on mousedown and would steal a click on the legend or a drag on the range slider. */
+const chartControlPress = (e: SyntheticEvent) => {
+  if ((e.target as Element | null)?.closest?.(".sol-chart-legend, .sol-chart-brush")) e.stopPropagation();
+};
 
 /** Which series pandas' `secondary_y` moves to the right-hand axis: every one (`True`) or the named ones. */
 function rightSeries(opts: ChartOptions | undefined, series: readonly { name: string }[]): boolean[] {
@@ -446,8 +518,17 @@ export function MultiSeriesView({
   const yAxisId = (j: number) => (onPrimary(j) ? 0 : "right");
   const legendName = (j: number) => (right[j] ? `${series[j].name} (right)` : series[j].name);
   const stackOffset = stack === "percent" ? "expand" as const : stack && op !== "area" ? "sign" as const : undefined;
-  const kept = op === "line" || op === "area" ? envelopeRows(cols, n, Math.round(width - leftW - rightW)) : null;
-  const data = (kept ?? Array.from({ length: n }, (_, i) => i)).map((i) => {
+  // `brush`: the plot draws the rows the slider picks, thinned anew, so zooming in shows them all.
+  const brushOn = axes && opts?.brush === true && (op === "line" || op === "area" || op === "column") && n > 2;
+  const [rangeLo, rangeHi, setRange] = useRowRange(n);
+  const vLo = brushOn ? rangeLo : 0;
+  const vHi = brushOn ? rangeHi : n - 1;
+  const shown = Array.from({ length: vHi - vLo + 1 }, (_, k) => vLo + k);
+  const thin = op === "line" || op === "area"
+    ? envelopeRows(cols.map((c) => c.slice(vLo, vHi + 1)), shown.length, Math.round(width - leftW - rightW))
+    : null;
+  const kept = thin ? thin.map((r) => r + vLo) : brushOn ? shown : null;
+  const data = (kept ?? shown).map((i) => {
     const o: Record<string, number | null> = { i };
     cols.forEach((c, j) => { o[`s${j}`] = c[i]; });
     return o;
@@ -470,7 +551,7 @@ export function MultiSeriesView({
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
   // A right axis has room under it for the last category's label to run into.
-  const lineEdge = axes && (op === "line" || op === "area") ? edgeRoom(tickFmt(n - 1), fs) : 8;
+  const lineEdge = axes && (op === "line" || op === "area") ? edgeRoom(tickFmt(vHi), fs) : 8;
   const leftEdge = axes && flip && (op === "line" || op === "area") ? edgeRoom(tickFmt(0), fs) : 0;
   const margin = { top: axes ? PLOT_TOP : 6, right: rightW ? Math.max(4, lineEdge - rightW) : lineEdge, bottom: axes ? 4 : 2, left: leftEdge };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
@@ -481,11 +562,11 @@ export function MultiSeriesView({
   const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? catW : leftW + margin.left;
   const legendInsetRight = op === "radar" ? 0 : margin.right + rightW;
   const legendN = legendRows(series.map((_, j) => legendName(j)), width - legendInsetLeft - legendInsetRight, fs, legendCap(height));
-  const refCtx = { axis, fs, xLo: 0, xHi: Math.max(1, n - 1), pw: width - legendInsetLeft - legendInsetRight };
+  const refCtx = { axis, fs, xLo: vLo, xHi: Math.max(vLo + 1, vHi), pw: width - legendInsetLeft - legendInsetRight };
   const refAt = snapAt(categoryAt(labels), kept);
   const refEls = refMarks(refs, refAt, refCtx);
   const refElsSwap = refMarks(refs, refAt, { ...refCtx, swap: true });
-  const chartH = height - titleH - legendN * MULTI_LEGEND_H;
+  const chartH = height - titleH - legendN * MULTI_LEGEND_H - (brushOn ? BRUSH_H : 0);
   const legend = (
     <SeriesLegend
       series={series.map((_, j) => ({ name: legendName(j) }))} paint={paint} dim={dim} fs={fs} color={axis} rows={legendN}
@@ -559,14 +640,16 @@ export function MultiSeriesView({
     );
   }
 
-  // The canvas's node drag starts on mousedown and would steal the legend's click.
-  const legendPress = (e: SyntheticEvent) => {
-    if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
-  };
   return (
-    <div style={{ width, height }} onPointerDown={legendPress} onMouseDown={legendPress}>
+    <div style={{ width, height }} onPointerDown={chartControlPress} onMouseDown={chartControlPress}>
       {title && <ChartTitle text={title} fs={fs} />}
       {chart}
+      {brushOn && (
+        <RangeSlider
+          cols={cols} n={n} width={width} insetLeft={legendInsetLeft} insetRight={legendInsetRight}
+          lo={vLo} hi={vHi} onRange={setRange} tickFmt={tickFmt} stroke={grid} paint={paint}
+        />
+      )}
       {legend}
     </div>
   );
