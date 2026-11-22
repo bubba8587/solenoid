@@ -733,3 +733,38 @@ test('a second review: remote writes, a bad agent id, long worktree names, old q
   assert.ok(isLoopbackHostHeader('localhost:4477'));
   assert.ok(!isLoopbackHostHeader('attacker.example'));
 });
+
+test('a lock put back after its owner finished is not left behind', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'blockmap-race-'));
+  fs.mkdirSync(path.join(dir, '.blockmap'));
+  fs.writeFileSync(path.join(dir, '.blockmap', 'board.json'), JSON.stringify(BOARD));
+  const prev = process.env.BLOCKMAP_LIVE;
+  process.env.BLOCKMAP_LIVE = path.join(dir, '.blockmap', 'live');
+  const rename = fs.renameSync;
+  try {
+    const store = openStore(path.join(dir, '.blockmap'), { lockWaitMs: 500 });
+    fs.mkdirSync(path.dirname(store.lockPath), { recursive: true });
+    const dead = spawnSync(process.execPath, ['-e', '']).pid;
+    fs.writeFileSync(store.lockPath, JSON.stringify({ pid: dead, host: os.hostname(), nonce: 'dead', ts: Date.now() }));
+    // The breaker read the dead writer's lock; before it moves it aside a live writer has taken a fresh one, and
+    // that writer finishes while its lock is aside (its release finds nothing and leaves its done mark).
+    fs.renameSync = (from, to) => {
+      if (from === store.lockPath) {
+        fs.renameSync = rename;
+        fs.writeFileSync(store.lockPath, JSON.stringify({ pid: process.pid, host: os.hostname(), nonce: 'live', ts: Date.now() }));
+        rename(from, to);
+        fs.writeFileSync(`${store.lockPath}.done-live`, '');
+        return;
+      }
+      rename(from, to);
+    };
+    assert.equal(store.withLock(() => 'took it'), 'took it');
+    assert.ok(!fs.existsSync(store.lockPath));
+    assert.ok(!fs.existsSync(`${store.lockPath}.done-live`));
+  } finally {
+    fs.renameSync = rename;
+    if (prev === undefined) delete process.env.BLOCKMAP_LIVE;
+    else process.env.BLOCKMAP_LIVE = prev;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

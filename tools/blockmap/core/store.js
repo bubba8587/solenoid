@@ -145,8 +145,23 @@ export function openStore(boardDir = findBoardDir(), { cwd = process.cwd(), lock
     try {
       return fn();
     } finally {
-      // Only ever this writer's own lock: one broken as stale and taken by another writer stays theirs.
-      if (lockInfo()?.nonce === nonce) fs.rmSync(lockPath, { force: true });
+      release(nonce);
+    }
+  }
+
+  // Only ever this writer's own lock: one broken as stale and taken by another writer stays theirs. A done mark
+  // goes down first, because a breaker may have this lock moved aside right now and put it back after this
+  // looks: the breaker reads the mark after putting it back, and removes a lock whose owner already finished.
+  function release(nonce) {
+    const done = `${lockPath}.done-${nonce}`;
+    try {
+      fs.writeFileSync(done, '');
+    } catch {
+      // Without the mark a stranded lock still expires at LOCK_MAX_MS.
+    }
+    if (lockInfo()?.nonce === nonce) {
+      fs.rmSync(lockPath, { force: true });
+      fs.rmSync(done, { force: true });
     }
   }
 
@@ -186,6 +201,12 @@ export function openStore(boardDir = findBoardDir(), { cwd = process.cwd(), lock
     if (moved?.nonce && moved.nonce !== info?.nonce) {
       try {
         fs.linkSync(aside, lockPath);
+        // Its owner finished while it was aside (see release): put back, it would hold everyone off for nothing.
+        const done = `${lockPath}.done-${moved.nonce}`;
+        if (fs.existsSync(done)) {
+          if (lockInfo()?.nonce === moved.nonce) fs.rmSync(lockPath, { force: true });
+          fs.rmSync(done, { force: true });
+        }
       } catch {
         // Yet another writer holds it now.
       }

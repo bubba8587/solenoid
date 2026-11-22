@@ -216,7 +216,8 @@ each event against that state (`checkEvent`), append. Two agents racing for a bl
 refuses the loser's edit. The lock is a file naming its owner (pid, host, a nonce): it is broken only when that
 process is gone or it is a minute old, and a writer removes only its own. Worktrees of one repository share the main
 checkout's board and log. `--force` (taking a held or frozen block) and acting for another agent are the person's
-alone. A holder unseen for `staleAfterMin` (30) can be taken over; the human can always take a block back.
+alone. The log is append-only: a running server reads only what was appended, so an earlier line edited by hand (to
+the same length) shows only once the server restarts. A holder unseen for `staleAfterMin` (30) can be taken over; the human can always take a block back.
 
 **The board** (`.blockmap/board.json`, committed) names the districts and blocks. A block has an `id`, a `name`, a
 `district`, `about`, `paths` (globs: `**`, `*`, `{a,b}`, a trailing `/` for a folder, a bare name matches anywhere;
