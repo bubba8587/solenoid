@@ -8,7 +8,7 @@ specific item.
 
 ### SESSION DIGEST (2026-11-21b: Get Column by name, an Excel reference engine; QueueBox, Agent 3)
 - **Get Column reads names only** (author: "just names only"): digits are a name, never a position, on every input
-  shape (`get_column`, `nodes/verbs.rs`); SUMIFS and the other verbs keep the loose lookup (`frame-verbs.md` §
+  shape (`get_column`, `nodes/verbs.rs`); SUMIFS and the other verbs keep the loose lookup (`tree/specs/computation/frame-verbs.md` §
   Loose lookup). Six frozen answers refrozen with `FREEZE_CORE=nodes npx vitest run tests/graph/coreNodes.test.ts -t GetColumnNode`, which rewrites one class only.
 - **A clean wasm in a shared tree:** with peers' uncommitted Rust in the main tree, build the committed wasm in a
   detached worktree of HEAD (`node_modules` and `crates/solenoid-graph/target` symlinked in, so it takes ~20 s), commit
