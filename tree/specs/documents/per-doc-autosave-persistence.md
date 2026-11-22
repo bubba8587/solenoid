@@ -2,7 +2,7 @@
 aliases: ["Per-doc autosave persistence"]
 tags: [spec, documents]
 ---
-<!-- [[save-format#A save loses nothing quietly]] -->
+<!-- [[save-format#A save loses nothing quietly]]; covers: tests/graph/autosaveReuse.test.ts -->
 
 # Spec: Per-doc autosave persistence
 

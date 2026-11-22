@@ -1,4 +1,4 @@
-// [[per-doc-autosave-persistence#One capture per edit]]
+// [[save-format#A save loses nothing quietly]], [[per-doc-autosave-persistence#One capture per edit]]
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { SavedGraph } from "../../src/graph/persistence";
 

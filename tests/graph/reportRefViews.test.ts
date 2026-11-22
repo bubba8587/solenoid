@@ -1,4 +1,4 @@
-// [[reports-and-notes#The view of a Frame embed]]
+// [[C68]] knapIsTheDocumentSyntax, [[reports-and-notes#The view of a Frame embed]]
 import { describe, it, expect } from "vitest";
 import { ReportNode } from "../../src/graph/nodes/report";
 import { extractInit } from "../../src/graph/nodeInit";
