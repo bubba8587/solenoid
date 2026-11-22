@@ -18,6 +18,8 @@ import { isImageValue } from "./imageValue";
 import { isSvgValue } from "./svgValue";
 import { sanitizeSvg } from "./svgSanitize";
 import { fmtCell } from "./components/FrameDisplay";
+import { frameCardText } from "./components/FrameCards";
+import { planCards, PROFILE_ROWS } from "./cardLayout";
 import { substituteRefCodes, escapeHtml } from "./noteInlineRefs";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 
@@ -38,10 +40,42 @@ function frameToHtmlTable(frame: FrameValue): string {
   return `<table><thead>${head}</thead><tbody>${body.join("")}</tbody></table>`;
 }
 
+/** A Frame shown as cards: a card per row, titled and subtitled as the Cards view plans them, every other filled cell
+ *  under its column's name. A web image column heads its card. */
+export function frameToHtmlCards(frame: FrameValue): string {
+  const cols = frame.columns;
+  if (cols.length === 0) return "";
+  const rows = cols.reduce((m, c) => Math.max(m, c.values.length), 0);
+  const text = (c: number, r: number) => frameCardText(cols[c], r);
+  const n = Math.min(rows, PROFILE_ROWS);
+  const plan = planCards(cols.map((c, ci) => ({
+    name: c.name,
+    type: c.type,
+    cells: Array.from({ length: n }, (_, r) => c.raw?.[r] ?? text(ci, r)),
+    shown: Array.from({ length: n }, (_, r) => text(ci, r)),
+  })));
+  const head = new Set([plan.image, plan.title, plan.subtitle, ...plan.titleRest].filter((c): c is number => c !== null));
+  const card = (r: number) => {
+    const img = plan.image !== null ? text(plan.image, r) : "";
+    const title = plan.title !== null ? [plan.title, ...plan.titleRest].map((c) => text(c, r)).filter((t) => t !== "").join(" ") : "";
+    const sub = plan.subtitle !== null ? text(plan.subtitle, r) : "";
+    const fields = cols.flatMap((c, ci) => {
+      const t = head.has(ci) ? "" : text(ci, r);
+      return t === "" ? [] : [`<div><dt>${escapeHtml(c.name)}</dt><dd>${escapeHtml(t)}</dd></div>`];
+    });
+    return `<div class="report-export__card">${
+      /^https?:\/\//i.test(img) ? `<img class="report-export__card-image" src="${escapeHtml(img)}" alt="" />` : ""}${
+      title ? `<div class="report-export__card-title">${escapeHtml(title)}</div>` : ""}${
+      sub ? `<div class="report-export__card-sub">${escapeHtml(sub)}</div>` : ""}${
+      fields.length ? `<dl>${fields.join("")}</dl>` : ""}</div>`;
+  };
+  return `<div class="report-export__cards">${Array.from({ length: rows }, (_, r) => card(r)).join("")}</div>`;
+}
+
 /** The export's markup for one span's value; null leaves the span (an unwired fixed input). Values are escaped here, after the markdown render, so their text never reads as markdown or HTML. */
-function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation | undefined): { html: string; block?: boolean } | null {
+function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation | undefined, cards = false): { html: string; block?: boolean } | null {
   if (value === undefined) return null;
-  if (isFrameValue(value)) return { html: frameToHtmlTable(value), block: true };
+  if (isFrameValue(value)) return { html: cards ? frameToHtmlCards(value) : frameToHtmlTable(value), block: true };
   if (isSvgValue(value) && value.source) {
     const h = Number.isFinite(value.height) && value.height > 0 ? Math.round(value.height) : 160;
     return { html: `<div class="report-export__svg" style="height:${h}px">${sanitizeSvg(value.source)}</div>`, block: true };
@@ -69,10 +103,11 @@ export function exportBodyHtml(
   refValue: (key: string) => unknown,
   annotation: (key: string) => FormatAnnotation | undefined,
   render: (md: string) => string = renderMarkdown,
+  asCards: (key: string) => boolean = () => false,
 ): string {
   const renderSegment = (md: string) => substituteRefCodes(render(md), (name, hl) =>
     refKeys.includes(name)
-      ? frozenRefHtml(refValue(name), hl, annotation(name))
+      ? frozenRefHtml(refValue(name), hl, annotation(name), asCards(name))
       : null);
   const parts: string[] = [];
   const re = new RegExp(REF_RE);
@@ -127,6 +162,15 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 .report-export__embed { margin: 14px 0; padding: 12px 16px; background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 8px; }
 .report-export__embed-name { font-size: 11.5px; font-weight: 600; color: #9aa0a6; margin-bottom: 6px; }
 .report-export__image { max-width: 100%; vertical-align: middle; }
+.report-export__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin: 12px 0; align-items: start; }
+.report-export__card { padding: 10px 12px; background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 8px; overflow-wrap: anywhere; }
+.report-export__card-image { display: block; width: 100%; max-height: 160px; object-fit: cover; border-radius: 5px; margin-bottom: 8px; }
+.report-export__card-title { font-weight: 600; color: #f3f4f5; }
+.report-export__card-sub { font-size: 12px; color: #9aa0a6; }
+.report-export__card dl { margin: 6px 0 0; font-size: 12.5px; }
+.report-export__card dl > div { display: flex; gap: 8px; justify-content: space-between; padding: 2px 0; border-top: 1px solid #262626; }
+.report-export__card dt { color: #9aa0a6; }
+.report-export__card dd { margin: 0; text-align: right; }
 .report-export__svg { margin: 10px 0; }
 .report-export__svg svg { display: block; width: 100%; height: 100%; }
 .report-export__snapshot { max-width: 100%; border: 1px solid #2d2d2d; border-radius: 8px; }
@@ -160,6 +204,7 @@ function buildReportExportHtml(
     (k) => report.refValue(k),
     (k) => resolveRefAnnotation(report.id, k),
     renderMarkdown,
+    (k) => !!report.refViews[k],
   );
 
   const noteIds = new Set(allNodes.filter((n): n is NoteNode => n instanceof NoteNode).map((n) => n.id));

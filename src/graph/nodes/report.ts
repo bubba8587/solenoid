@@ -32,6 +32,8 @@ export class ReportNode extends GraphNode {
   /** Persisted, so a saved cable finds its socket before the first compute knows the template. */
   sideVars: string[];
   pageName: string;
+  /** The embeds drawn as the Table popup's cards rather than a grid, by input name ([[reports-and-notes#The view of a Frame embed]]). */
+  refViews: Record<string, "cards">;
 
   private _refKeys: string[] = [];
   private _refValues = new Map<string, unknown>();
@@ -46,7 +48,7 @@ export class ReportNode extends GraphNode {
 
   constructor(init?: {
     label?: string; body?: string;
-    width?: number; height?: number; collapsed?: boolean; sideVars?: string[]; pageName?: string;
+    width?: number; height?: number; collapsed?: boolean; sideVars?: string[]; pageName?: string; refViews?: Record<string, "cards">;
   }) {
     super(init?.label ?? "Report");
     this.body = init?.body ?? "";
@@ -55,6 +57,7 @@ export class ReportNode extends GraphNode {
     this.collapsed = init?.collapsed ?? false;
     this.sideVars = Array.isArray(init?.sideVars) ? init.sideVars.filter((v) => typeof v === "string") : [];
     this.pageName = init?.pageName ?? "";
+    this.refViews = { ...init?.refViews };
     this.addInput("template", documentIn("Template"));
     this.addInput("records", cubeIn("Records"));
     this.addOutput("document", documentOut("Document"));
@@ -91,7 +94,20 @@ export class ReportNode extends GraphNode {
       if (!this.inputs[key]) this.addInput(key, trueAnyIn(key));
     }
     this._refKeys = wanted;
+    this.keepRefViews(wanted);
     return { removedInputs };
+  }
+
+  /** Shows the embed of `key` as cards, or back as a grid. */
+  setRefView(key: string, cards: boolean): void {
+    const { [key]: _gone, ...rest } = this.refViews;
+    this.refViews = cards ? { ...rest, [key]: "cards" } : rest;
+  }
+
+  /** A view outlives only the inputs still on the card. */
+  private keepRefViews(keys: readonly string[]): void {
+    if (Object.keys(this.refViews).every((k) => FIXED.has(k) || keys.includes(k))) return;
+    this.refViews = Object.fromEntries(Object.entries(this.refViews).filter(([k]) => FIXED.has(k) || keys.includes(k)));
   }
 
   private hostVariables(source: string): string[] {
@@ -102,6 +118,7 @@ export class ReportNode extends GraphNode {
     const added = desired.filter((k) => !this.inputs[k]);
     const removed = Object.keys(this.inputs).filter((k) => !FIXED.has(k) && !desired.includes(k));
     this._refKeys = desired;
+    this.keepRefViews(desired);
     if (added.length === 0 && removed.length === 0) return;
     queueMicrotask(() => {
       void (async () => {

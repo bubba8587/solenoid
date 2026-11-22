@@ -135,7 +135,10 @@
 
 /* Span-based, since it is portaled into an inline `=name` slot, but laid out as a block. */
 .solenoid-ref-embed { display: block; margin: 12px 0; }
+.solenoid-ref-embed__head { display: flex; align-items: stretch; gap: 4px; }
 .solenoid-ref-embed__bar {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -151,6 +154,32 @@
   text-align: left;
 }
 .solenoid-ref-embed__bar:hover { color: var(--text-bright); border-color: var(--border-strong); }
+/* The bar's neighbor: a Frame's Show as Cards / Table, a quiet button the bar's height. */
+.solenoid-ref-embed__view {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.solenoid-ref-embed__view:hover { color: var(--text-bright); background: var(--btn-hover); border-color: var(--border-strong); }
+/* Cards in a Report run with the text, not in the popup's own scrolling column. */
+.solenoid-ref-embed__body > .table-cards-wrap { margin: 0; max-height: none; overflow: visible; }
+.solenoid-ref-embed__body > .table-cards-wrap .table-cards__bar { max-width: none; background: transparent; position: static; }
+.solenoid-ref-embed__body > .table-cards-wrap .table-cards {
+  max-width: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  align-items: start;
+}
 /* The node header's chevron glyph (nodeCard.css), so an embed's collapse control matches a card's. */
 .solenoid-ref-embed__chev {
   display: block;

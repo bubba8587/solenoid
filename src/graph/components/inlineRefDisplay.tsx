@@ -26,6 +26,9 @@ import { SvgFigure } from "./SvgFigure";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
 import { lambdaToLatex } from "../excelFormula";
 import { FrameDisplay } from "./FrameDisplay";
+import { FrameCards } from "./FrameCards";
+import { TableIcon } from "./Icons";
+import { notifyGraphChanged } from "../process";
 import { specialFrameView } from "./SpecialFrameView";
 import { filterFrameRows, filterGantt } from "./boxFilter";
 import { CubeDisplay } from "./CubeDisplay";
@@ -44,6 +47,10 @@ import { substituteRefCodes, escapeHtml } from "../noteInlineRefs";
 
 interface RefValueHost {
   refValue(key: string): unknown;
+  /** A Report's per-embed views; a host without them offers no Show as Cards. */
+  refViews?: Record<string, "cards">;
+  setRefView?(key: string, cards: boolean): void;
+  edited?(): void;
 }
 
 // Mirrors noteInlineRefs.ts's identifier grammar; keep the two in step.
@@ -182,23 +189,28 @@ function ChartBody({ value: given, fontScale, fill, sourceId, query = "" }: { va
   );
 }
 
-function CollapsibleFigure({ title, children, defaultOpen = true }: {
+function CollapsibleFigure({ title, children, defaultOpen = true, action }: {
   title: string;
   children: ReactNode;
   defaultOpen?: boolean;
+  /** A button beside the bar, such as a Frame's Show as Cards. */
+  action?: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <span className="solenoid-ref-embed">
-      <button
-        type="button"
-        className="solenoid-ref-embed__bar"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span className={`solenoid-ref-embed__chev${open ? " solenoid-ref-embed__chev--open" : ""}`} aria-hidden="true" />
-        <span className="solenoid-ref-embed__title">{title}</span>
-      </button>
+      <span className="solenoid-ref-embed__head">
+        <button
+          type="button"
+          className="solenoid-ref-embed__bar"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <span className={`solenoid-ref-embed__chev${open ? " solenoid-ref-embed__chev--open" : ""}`} aria-hidden="true" />
+          <span className="solenoid-ref-embed__title">{title}</span>
+        </button>
+        {open && action}
+      </span>
       {open && <span className="solenoid-ref-embed__body">{children}</span>}
     </span>
   );
@@ -298,10 +310,19 @@ export function InlineRefValue({ nodeId, refKey, collapsible, rich, fill, highli
 
   const srcNodeId = editor?.getConnections().find((c) => c.target === nodeId && c.targetInput === refKey)?.source;
 
+  const viewable = collapsible && !!node?.setRefView && isFrameValue(value);
+  const asCards = useSyncExternalStore(cableValueStore.subscribe, () => !!node?.refViews?.[refKey]) && viewable;
+  if (asCards && isFrameValue(value)) {
+    return (
+      <CollapsibleFigure title={refKey} action={<RefViewButton node={node!} refKey={refKey} cards />}>
+        <FrameCards frame={value} />
+      </CollapsibleFigure>
+    );
+  }
   const fig = figureFor(value, refKey, !!(collapsible || rich), ann, srcNodeId, fill, query);
   if (fig) {
     return collapsible
-      ? <CollapsibleFigure title={fig.title}>{fig.body}</CollapsibleFigure>
+      ? <CollapsibleFigure title={fig.title} action={viewable ? <RefViewButton node={node!} refKey={refKey} cards={false} /> : undefined}>{fig.body}</CollapsibleFigure>
       : <span className="solenoid-ref-figure">{fig.caption}{fig.body}</span>;
   }
   if (isLambdaValue(value)) return <LambdaFormula value={value} view={ann?.lambdaView} />;
@@ -317,6 +338,25 @@ export function InlineRefValue({ nodeId, refKey, collapsible, rich, fill, highli
     <span className={`solenoid-ref-inline${kind}${highlight ? " solenoid-ref-inline--hl" : ""}`}>
       {refPreview(value, ann)}
     </span>
+  );
+}
+
+/** Switches a Report's Frame embed between the grid and the Table popup's cards, kept on the Report per embed. */
+function RefViewButton({ node, refKey, cards }: { node: RefValueHost; refKey: string; cards: boolean }) {
+  return (
+    <button
+      type="button"
+      className="solenoid-ref-embed__view"
+      onClick={() => {
+        node.setRefView?.(refKey, !cards);
+        node.edited?.();
+        notifyGraphChanged();
+        cableValueStore.bump();
+      }}
+    >
+      <TableIcon size={12} />
+      {cards ? "Show as Table" : "Show as Cards"}
+    </button>
   );
 }
 

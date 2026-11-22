@@ -20,6 +20,19 @@ describe("exportBodyHtml freezes spans after the markdown render", () => {
     expect(out).not.toContain("<p>");
   });
 
+  it("freezes a Frame shown as cards to a card per row, its title planned as the Cards view plans it", () => {
+    const frame = { __frame: true, columns: [
+      { name: "Name", type: "string", values: ["Ada <L>", "Bo"] },
+      { name: "Age", type: "number", values: [36, null] },
+    ] };
+    const out = exportBodyHtml("`=f`", ["f"], () => frame, () => undefined, md, (k) => k === "f");
+    expect(out).not.toContain("<table>");
+    expect(out.match(/class="report-export__card"/g)).toHaveLength(2);
+    expect(out).toContain('<div class="report-export__card-title">Ada &lt;L&gt;</div>');
+    expect(out).toContain("<dt>Age</dt><dd>36</dd>");
+    expect(out).not.toContain("<dt>Name</dt>");
+  });
+
   it("leaves a span whose value is unknown (an unwired fixed input) or whose name is not an input", () => {
     expect(body("`=records`", { records: undefined })).toContain("<code>=records</code>");
     expect(exportBodyHtml("Run `=x` here.", [], () => 0, () => undefined, md)).toContain("<code>=x</code>");

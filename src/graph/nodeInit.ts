@@ -49,7 +49,7 @@ export const INIT_FIELD_ORDER = [
 
 export const INIT_EXTRA_FIELD_ORDER = [
   "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "varRequired", "bindings",
-  "keyOrder", "pivotView", "detailFields", "boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues",
+  "keyOrder", "pivotView", "detailFields", "boxColors", "boxViews", "refViews", "regionMarks", "regionLabels", "regionValues",
   "literalKinds", "cellEdits", "calcPlace", "assigned", "limitList",
 ] as const;
 
@@ -123,7 +123,7 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
   if (Array.isArray(n.limitList) && n.limitList.length) init.limitList = (n.limitList as object[]).map((l) => ({ ...l }));
   // A Categorize card's sort, copied the same way.
   if (Array.isArray(n.assigned) && n.assigned.length) init.assigned = (n.assigned as [string, string[]][]).map(([c, ks]) => [c, [...ks]]);
-  for (const k of ["boxColors", "boxViews", "regionMarks", "regionLabels", "regionValues", "literalKinds"] as const) {
+  for (const k of ["boxColors", "boxViews", "refViews", "regionMarks", "regionLabels", "regionValues", "literalKinds"] as const) {
     if (n[k] && typeof n[k] === "object" && Object.keys(n[k]).length) init[k] = { ...(n[k]) };
   }
   if (n.condConfig && typeof n.condConfig === "object") {

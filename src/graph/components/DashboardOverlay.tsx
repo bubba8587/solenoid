@@ -22,10 +22,8 @@ import { isChartValue } from "../chartValue";
 import { installTouchScrollChain } from "../touchScrollChain";
 import { InlineRefValue, refPreview, useRefAnnotation } from "./inlineRefDisplay";
 import { IS_COARSE, prefersReducedMotion } from "../coarse";
-import { TableCards } from "./TableCards";
-import type { ColumnSort } from "./columnSort";
-import { isFrameValue, formatFrameCell, type FrameValue, type FrameColumn } from "../frame";
-import { formatNumberWithAnnotation } from "../formatAnnotationStore";
+import { FrameCards } from "./FrameCards";
+import { isFrameValue } from "../frame";
 import { formatScalar } from "./format";
 import { commitDashboardLayout } from "./DashboardNode";
 import { SwatchGrid } from "./SwatchGrid";
@@ -42,7 +40,6 @@ import { isEnter } from "../enterKey";
 import { SearchField } from "./SearchField";
 import { boxFilterKind, boxFilterCount } from "./boxFilter";
 import { recordFilterTarget, setRecordQuery } from "./recordNav";
-import { fullList } from "../listPreview";
 
 const GAP = 12;
 
@@ -89,36 +86,6 @@ function FrozenBox({ snap }: { snap?: Snapshot }) {
     </div>
   );
 }
-
-/** A Frame as the Table popup's Cards view, read-only: the box's alternative to the grid. */
-function FrameCards({ frame: given, query }: { frame: FrameValue; query: string }) {
-  // TableCards filters its own cards; a preview gives it the whole table to filter.
-  const frame = query.trim() ? fullList(given) : given;
-  const [sort, setSort] = useState<ColumnSort>([]);
-  const cols = frame.columns;
-  const rows = cols[0]?.values.length ?? 0;
-  const shown = (c: FrameColumn, r: number): string => {
-    const v = formatFrameCell(c.type, c.values[r] ?? null, c.format);
-    return typeof v === "number" ? (c.format ? formatNumberWithAnnotation(v, c.format) : formatScalar(v)) : v ?? "";
-  };
-  return (
-    <TableCards
-      names={cols.map((c) => c.name)}
-      types={cols.map((c) => c.type)}
-      computed={NO_COLS}
-      chipCols={NO_COLS}
-      rowCount={rows}
-      order={Array.from({ length: rows }, (_, r) => r)}
-      rawAt={(r, c) => cols[c].raw?.[r] ?? shown(cols[c], r)}
-      shownRow={(r) => cols.map((c) => shown(c, r))}
-      dataKey={frame}
-      sort={sort}
-      onSort={setSort}
-      query={query}
-    />
-  );
-}
-const NO_COLS: ReadonlySet<number> = new Set();
 
 /** A box narrower than this shows its Filter as a magnifier until tapped. */
 const BOX_NARROW = { selector: ".dashboard-box", px: 380 };
