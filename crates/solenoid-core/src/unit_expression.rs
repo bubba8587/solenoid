@@ -212,8 +212,6 @@ struct Shown {
     point: Option<u8>,
 }
 
-/// The formula over its read inputs, wrapped in their units; None leaves the whole Expression to the TS.
-/// `order` is the formula's variables as the TS reads them, the first mixed one naming the error.
 /// `x * k + c` as formula nodes, leaving out a step that changes nothing.
 fn affine(x: Ast, k: f64, c: f64) -> Ast {
     let num = |n: f64| Ast::Num(crate::jsnum::number_to_string(n), n);
@@ -227,7 +225,7 @@ fn affine(x: Ast, k: f64, c: f64) -> Ast {
 }
 
 /// Whether the formula calls a pack function that reads or answers in a unit, outside any LAMBDA.
-fn calls_pack_units(node: &Ast) -> bool {
+pub(crate) fn calls_pack_units(node: &Ast) -> bool {
     match node {
         Ast::Call { name, .. } if name.eq_ignore_ascii_case("LAMBDA") => false,
         Ast::Call { name, args } => {
@@ -302,6 +300,234 @@ fn pack_display(node: &Ast, dim: &Dim) -> Option<String> {
     }
 }
 
+/// One scale (and, for a temperature scale, an offset) per base dimension, which every number a pack formula runs on
+/// is in: each input in its display unit, each pack function's answer in its card's unit.
+type Frame = BTreeMap<String, (f64, f64)>;
+
+fn close(a: f64, b: f64) -> bool {
+    (a - b).abs() <= 1e-12 * a.abs().max(b.abs())
+}
+
+/// Adds a unit to the frame; false when it can't join it (another scale for one of its dimensions, or an offset on a
+/// compound unit).
+fn frame_add(frame: &mut Frame, dim: &Dim, scale: f64, offset: f64) -> bool {
+    let axes: Vec<(&String, f64)> = dim.iter().filter(|(_, e)| **e != 0.0).map(|(k, e)| (k, *e)).collect();
+    let entries: Vec<(String, (f64, f64))> = match axes.as_slice() {
+        [] => return true,
+        [(k, e)] if *e == 1.0 => vec![((*k).clone(), (scale, offset))],
+        [(k, e)] if offset == 0.0 => vec![((*k).clone(), (libm::pow(scale, 1.0 / e), 0.0))],
+        _ if offset == 0.0 && scale == 1.0 => axes.iter().map(|(k, _)| ((*k).clone(), (1.0, 0.0))).collect(),
+        _ => return false,
+    };
+    for (k, (sc, off)) in entries {
+        match frame.get(&k) {
+            Some(&(s0, o0)) if !close(s0, sc) || !close(o0, off) => return false,
+            Some(_) => {}
+            None => {
+                frame.insert(k, (sc, off));
+            }
+        }
+    }
+    true
+}
+
+/// The scale a number of this dimension is in under the frame; None when the dimension holds an offset scale.
+fn frame_scale(frame: &Frame, dim: &Dim) -> Option<f64> {
+    let mut k = 1.0;
+    for (b, e) in dim.iter().filter(|(_, e)| **e != 0.0) {
+        let &(sc, off) = frame.get(b).unwrap_or(&(1.0, 0.0));
+        if off != 0.0 {
+            return None;
+        }
+        k *= libm::pow(sc, *e);
+    }
+    Some(k)
+}
+
+/// The base dimension with an offset scale (°C, °F) a dimension is exactly, with its scale and offset.
+fn frame_reading(frame: &Frame, dim: &Dim) -> Option<(f64, f64)> {
+    let mut axes = dim.iter().filter(|(_, e)| **e != 0.0);
+    let (b, e) = axes.next()?;
+    if axes.next().is_some() || *e != 1.0 {
+        return None;
+    }
+    frame.get(b).copied().filter(|(_, off)| *off != 0.0)
+}
+
+/// Every pack function's answer unit, outside any LAMBDA's body; None when one names a part computed at run time.
+fn pack_outputs(node: &Ast, out: &mut Vec<crate::unit_catalog::Unit>) -> Option<()> {
+    use crate::fns_packs::PackOut;
+    match node {
+        Ast::Call { name, .. } if name.eq_ignore_ascii_case("LAMBDA") => {}
+        Ast::Call { name, args } => {
+            if let Some(pu) = crate::fns_packs::units_of(&name.to_uppercase()) {
+                match (pu.out)(args) {
+                    PackOut::In(id) => out.push(crate::unit_catalog::fc_unit_to_unit(id)?),
+                    PackOut::Plain => {}
+                    PackOut::Unknown => return None,
+                }
+            }
+            for a in args {
+                pack_outputs(a, out)?;
+            }
+        }
+        Ast::Apply { func, args } => {
+            pack_outputs(func, out)?;
+            for a in args {
+                pack_outputs(a, out)?;
+            }
+        }
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => pack_outputs(arg, out)?,
+        Ast::Bin { l, r, .. } => {
+            pack_outputs(l, out)?;
+            pack_outputs(r, out)?;
+        }
+        _ => {}
+    }
+    Some(())
+}
+
+/// The formula as it runs in the frame: each pack function's argument converted from the frame into the unit it
+/// reads, its answer left in its card's unit, which the frame holds. None when an argument's dimension sits on an
+/// offset scale other than as a plain reading.
+fn convert_pack_calls_framed(node: &Ast, dims: &BTreeMap<String, Dim>, codes: &Codes, frame: &Frame) -> Option<Ast> {
+    let go = |n: &Ast| convert_pack_calls_framed(n, dims, codes, frame);
+    Some(match node {
+        Ast::Call { name, .. } if name.eq_ignore_ascii_case("LAMBDA") => node.clone(),
+        Ast::Call { name, args } => {
+            let mut out: Vec<Ast> = args.iter().map(go).collect::<Option<_>>()?;
+            if let Some(pu) = crate::fns_packs::units_of(&name.to_uppercase()) {
+                for &(i, id) in pu.args {
+                    let Some(a) = args.get(i) else { continue };
+                    let Ok(Some(o)) = with_pack_units(|| dim_eval_with_code(a, dims, codes, None)) else { continue };
+                    if is_dimensionless(&o.dim) {
+                        continue;
+                    }
+                    let u = crate::unit_catalog::fc_unit_to_unit(id)?;
+                    let (sc, off) = match frame_reading(frame, &o.dim) {
+                        Some(r) => r,
+                        None => (frame_scale(frame, &o.dim)?, 0.0),
+                    };
+                    let u_off = u.offset.unwrap_or(0.0);
+                    out[i] = affine(out[i].clone(), sc / u.scale, (off - u_off) / u.scale);
+                }
+            }
+            Ast::Call { name: name.clone(), args: out }
+        }
+        Ast::Apply { func, args } => {
+            Ast::Apply { func: Box::new(go(func)?), args: args.iter().map(go).collect::<Option<_>>()? }
+        }
+        Ast::Unary { op, arg } => Ast::Unary { op: *op, arg: Box::new(go(arg)?) },
+        Ast::Percent(arg) => Ast::Percent(Box::new(go(arg)?)),
+        Ast::Bin { op, l, r } => Ast::Bin { op: *op, l: Box::new(go(l)?), r: Box::new(go(r)?) },
+        _ => node.clone(),
+    })
+}
+
+/// A formula calling a pack function, run in one frame of units ([[C25]] firstClassUnits): each input reads in its
+/// display unit and each pack function answers in its card's unit, so a bare number beside them means what it does
+/// with plain inputs, and the formula answers as it does with plain inputs, in units. None when the units don't fit
+/// one frame (two scales of one dimension, an answer on an offset scale), which leaves the formula to base SI.
+fn run_framed(
+    ast: &Ast,
+    env: &Env,
+    names: &[&String],
+    dims: &BTreeMap<String, Dim>,
+    codes: &Codes,
+    src: &str,
+) -> Option<V> {
+    let mut frame = Frame::new();
+    for n in names {
+        for c in flat(&env[*n], 2) {
+            let Some(u) = dimensioned(&c) else { continue };
+            let ok = match display_unit(u).filter(|d| dim_equal(&d.dim, &u.dim)) {
+                Some(d) => frame_add(&mut frame, &d.dim, d.scale, d.offset),
+                None => frame_add(&mut frame, &u.dim, 1.0, 0.0),
+            };
+            if !ok {
+                return None;
+            }
+        }
+    }
+    let mut outs = Vec::new();
+    pack_outputs(ast, &mut outs)?;
+    let compound = |u: &crate::unit_catalog::Unit| u.dim.values().filter(|e| **e != 0.0).count() > 1;
+    for u in outs.iter().filter(|u| !compound(u)) {
+        if !frame_add(&mut frame, &u.dim, u.scale, u.offset.unwrap_or(0.0)) {
+            return None;
+        }
+    }
+    // A compound answer in base SI (Pa, kg/m³) the frame can't hold beside a km stays in its card's unit, as long as
+    // the formula's answer is that quantity.
+    let mut loose: Vec<Dim> = Vec::new();
+    for u in outs.iter().filter(|u| compound(u)) {
+        if !frame_add(&mut frame, &u.dim, u.scale, u.offset.unwrap_or(0.0)) {
+            if u.scale != 1.0 || u.offset.is_some_and(|o| o != 0.0) {
+                return None;
+            }
+            loose.push(u.dim.clone());
+        }
+    }
+    let dr = match with_pack_units(|| dim_eval_with_code(ast, dims, codes, None)) {
+        Err(e) => return Some(V::err(e)),
+        Ok(op) => op.map(|o| o.dim),
+    };
+    let dr = match dr {
+        Some(d) if is_dimensionless(&d) => None,
+        Some(d) if loose.iter().any(|l| dim_equal(l, &d)) => Some((1.0, d)),
+        Some(_) if !loose.is_empty() => return None,
+        Some(d) => Some((frame_scale(&frame, &d)?, d)),
+        None if names.iter().any(|n| !is_dimensionless(&dims[*n])) => return None,
+        None => None,
+    };
+    let run_ast = convert_pack_calls_framed(ast, dims, codes, &frame)?;
+    let run_env: Env = env.iter().map(|(k, v)| (k.clone(), to_shown(v))).collect();
+    if run_env.values().any(crate::unit_dims::holds_unit) {
+        return None;
+    }
+    let ev = crate::eval::Eval::default();
+    if !crate::excel_formula::wholly_parenthesized(src) {
+        ev.snap_at(&run_ast);
+    }
+    let raw = ev.run(&run_ast, &Rc::new(run_env));
+    let shown_in = dr.as_ref().and_then(|(_, d)| {
+        pack_display(ast, d).or_else(|| {
+            let mut ids = names.iter().flat_map(|n| flat(&env[*n], 2)).filter_map(|c| {
+                dimensioned(&c)
+                    .filter(|u| dim_equal(&u.dim, d))
+                    .and_then(|u| u.display.clone())
+                    .filter(|d| !d.is_empty())
+            });
+            let first = ids.next()?;
+            ids.all(|i| i == first).then_some(first)
+        })
+    });
+    let tag = |c: &V| -> V {
+        match (tag_result(c), &dr) {
+            (V::Num(n), Some((k, d))) => tag_dim(n * k, d.clone(), shown_in.clone()),
+            (other, _) => other,
+        }
+    };
+    Some(match &raw {
+        V::Lambda(_) => V::err(sol_error(
+            ErrorCode::Value,
+            "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY",
+        )),
+        V::List(items) => V::List(Rc::new(
+            items
+                .iter()
+                .map(|e| match e {
+                    V::List(inner) => V::List(Rc::new(inner.iter().map(tag).collect())),
+                    _ => tag(e),
+                })
+                .collect(),
+        )),
+        _ => tag(&raw),
+    })
+}
+
+/// The formula over its read inputs, wrapped in their units; None leaves the whole Expression to the TS.
+/// `order` is the formula's variables as the TS reads them, the first mixed one naming the error.
 pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     let ast = crate::excel_formula::parse_formula(src)?;
     let mut names: Vec<&String> = env.keys().collect();
@@ -342,6 +568,13 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
             f()
         }
     };
+    if packs {
+        let codes: Codes =
+            names.iter().filter_map(|n| env_currency_code(&env[*n], &dims[*n]).map(|c| ((*n).clone(), c))).collect();
+        if let Some(v) = run_framed(&ast, env, &names, &dims, &codes, src) {
+            return Some(v);
+        }
+    }
     let mut run_ast: Option<Ast> = None;
     if dims.values().any(|d| !is_dimensionless(d)) {
         let codes: Codes =
@@ -451,4 +684,75 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
         };
     }
     Some(result)
+}
+
+#[cfg(test)]
+mod pack_frame_tests {
+    use super::*;
+
+    fn q(value: f64, id: &str) -> V {
+        crate::nodes::units::from_unit(value, &crate::unit_catalog::fc_unit_to_unit(id).unwrap(), Some(id))
+    }
+
+    fn run(src: &str, vars: &[(&str, V)]) -> V {
+        let env: Env = vars.iter().map(|(k, v)| (k.to_string(), v.clone())).collect();
+        let order: Vec<String> = vars.iter().map(|(k, _)| k.to_string()).collect();
+        expression_units(src, &env, &order).expect("the formula runs")
+    }
+
+    fn base(v: &V) -> f64 {
+        match v {
+            V::Unit(u) => u.value,
+            V::Num(n) => *n,
+            other => panic!("not a number: {other:?}"),
+        }
+    }
+
+    fn near(a: f64, b: f64) {
+        assert!((a - b).abs() <= 1e-9 * a.abs().max(b.abs()).max(1.0), "{a} vs {b}");
+    }
+
+    const NOON: f64 = 46_200.5;
+
+    #[test]
+    fn a_bare_number_beside_a_pack_function_means_what_it_does_with_plain_inputs() {
+        // t > 50 compares in °C, not 303.15 K against 50.
+        assert_eq!(base(&run(r#"IF(t > 50, ANTOINE("water", t), 0)"#, &[("t", q(30.0, "degC"))])), 0.0);
+        // t + 5 with t in °F is 73 °F, as the generic rule reads it.
+        let sum = run(r#"ANTOINE("water", t + 5)"#, &[("t", q(68.0, "degF"))]);
+        near(base(&sum), base(&run(r#"ANTOINE("water", t)"#, &[("t", q(73.0, "degF"))])));
+        // + 90 is 90°, not 90 rad; > 10 compares degrees.
+        let lat = |v: V| [("w", V::Num(NOON)), ("lat", v)];
+        let plain = run("SUNPOSITION(w, lat, 0) + 90", &lat(V::Num(51.5)));
+        let united = run("SUNPOSITION(w, lat, 0) + 90", &lat(q(51.5, "deg")));
+        near(base(&plain), base(&united));
+        assert!(base(&united) < std::f64::consts::PI);
+        let above = |v: V| run("SUNPOSITION(w, lat, 0) > 10", &lat(v));
+        assert!(matches!((above(V::Num(51.5)), above(q(51.5, "deg"))), (V::Bool(a), V::Bool(b)) if a == b));
+        // DAYLENGTH > 12 compares hours.
+        let long = |v: V| run("DAYLENGTH(w, lat, 0) > 12", &lat(v));
+        assert!(matches!((long(V::Num(51.5)), long(q(51.5, "deg"))), (V::Bool(a), V::Bool(b)) if a == b));
+    }
+
+    #[test]
+    fn a_pack_formula_answers_in_its_cards_unit_with_plain_inputs_too() {
+        let plain = run("STANDARDATMOSPHERE(z)", &[("z", V::Num(2000.0))]);
+        let united = run("STANDARDATMOSPHERE(z)", &[("z", q(2.0, "km"))]);
+        assert!(matches!(&plain, V::Unit(_)), "{plain:?}");
+        near(base(&plain), base(&united));
+        // A km beside a pressure answer: the 1 is a km.
+        near(
+            base(&run("STANDARDATMOSPHERE(z + 1)", &[("z", q(2.0, "km"))])),
+            base(&run("STANDARDATMOSPHERE(z)", &[("z", q(3.0, "km"))])),
+        );
+    }
+
+    #[test]
+    fn an_argument_whose_unit_cant_be_told_is_an_error() {
+        let r = run(
+            "SUNPOSITION(w, IF(f, lat, x), 0)",
+            &[("w", V::Num(NOON)), ("f", V::Bool(true)), ("lat", q(51.5, "deg")), ("x", q(1.0, "m"))],
+        );
+        assert!(r.is_sol_error(), "{r:?}");
+    }
 }

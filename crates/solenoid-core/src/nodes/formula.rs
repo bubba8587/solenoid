@@ -226,7 +226,8 @@ fn expression(c: &mut Call) -> Answer {
         }
         env.insert(v.clone(), read);
     }
-    if names.iter().any(|v| has_unit_cell(&env[v])) {
+    // A pack function answers in its card's unit with plain inputs too.
+    if names.iter().any(|v| has_unit_cell(&env[v])) || crate::unit_expression::calls_pack_units(&ast) {
         return match crate::unit_expression::expression_units(&expr, &env, &names) {
             Some(v) => expression_done(c, v, None, true),
             _ => {

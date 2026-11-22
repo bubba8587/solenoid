@@ -462,7 +462,16 @@ pub fn with_pack_units<T>(f: impl FnOnce() -> T) -> T {
 fn pack_dim(name: &str, pu: &crate::fns_packs::PackUnits, args: &[Ast], env: &Dim2, codes: &Codes) -> OpResult {
     use crate::fns_packs::PackOut;
     for (i, a) in args.iter().enumerate() {
-        let Some(d) = op_eval(a, env, codes)?.map(|o| o.dim) else { continue };
+        let Some(d) = op_eval(a, env, codes)?.map(|o| o.dim) else {
+            // An argument built from a quantity whose unit the reading can't tell would reach the function unconverted.
+            if pu.args.iter().any(|(j, _)| *j == i) && mentions_dimensioned(a, env) {
+                return Err(unit_error(&format!(
+                    "Can't tell which unit {name}'s argument {} is in; convert it to one unit first.",
+                    i + 1
+                )));
+            }
+            continue;
+        };
         if is_dimensionless(&d) {
             continue;
         }
@@ -479,6 +488,20 @@ fn pack_dim(name: &str, pu: &crate::fns_packs::PackUnits, args: &[Ast], env: &Di
         PackOut::Plain => plain(dimless()),
         PackOut::In(id) => plain(crate::unit_catalog::fc_unit_to_unit(id).map(|u| u.dim).unwrap_or_default()),
         PackOut::Unknown => Ok(None),
+    }
+}
+
+/// Whether the formula reads a variable that carries a dimension, outside any LAMBDA's body.
+fn mentions_dimensioned(node: &Ast, env: &Dim2) -> bool {
+    let go = |n: &Ast| mentions_dimensioned(n, env);
+    match node {
+        Ast::Name(n) | Ast::AtCol(n) | Ast::WholeCol(n) => env.get(n).is_some_and(|d| !is_dimensionless(d)),
+        Ast::Call { name, .. } if name.eq_ignore_ascii_case("LAMBDA") => false,
+        Ast::Call { args, .. } => args.iter().any(go),
+        Ast::Apply { func, args } => go(func) || args.iter().any(go),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => go(arg),
+        Ast::Bin { l, r, .. } => go(l) || go(r),
+        _ => false,
     }
 }
 
