@@ -255,7 +255,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **A Bar gauge with a negative Max reads like a number line**: Max on the left, 0 on the right, the fill growing leftward from 0 (today Max -50 reads "0 … -50"). A Max of exactly 0 draws an empty track.
 - [ ] **A multi-series radar honors y min and max**: with Scale per axis, a y max of 100 is silently ignored when there are several series (one series honors it). Setting either switches Scale to shared, so the range takes effect.
 Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item lands as Chart Builder options and a spec line in `tree/specs/computation/chart-figures.md`.
-- [ ] **Stacking:** stacked Column, Bar and Area (`stackId`), 100% stacked (`stackOffset="expand"`), streamgraph (`silhouette`, `wiggle`); `BarStack`.
+- [ ] **Stacking:** streamgraph (`silhouette`, `wiggle`); `BarStack`. (Stacked and 100% stacked Column, Bar and Area landed: the `stacked` option.)
 - [ ] **Dual y axes:** a second value axis on the right (`yAxisId`, `orientation="right"`), per series, through Merge Plots too.
 - [ ] **Curve types** on Line, Area and XY lines: `monotone`, `natural`, `basis`, `step`, `stepBefore`, `stepAfter`.
 - [ ] **Line and Area:** `connectNulls`; `baseValue` (fill to a value, not zero); range areas from a `[lo, hi]` pair (confidence bands); `layout="vertical"` for Line and Area.
