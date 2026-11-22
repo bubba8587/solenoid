@@ -7,6 +7,8 @@ first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
 ### SESSION DIGEST (2026-11-21: Blockmap 2 and the theme kit; cloud session)
+- **Moved out (2026-11-22):** Blockmap is now its own repository; `tools/blockmap/` and `.blockmap/` are gone from
+  here, and the theme kit's `VENDOR` list is empty. The Blockmap lines below are history.
 - **What stands:** `tools/blockmap/` (zero dependencies, nothing imported from the app; `tools/blockmap/README.md`)
   and this repository's board, `.blockmap/board.json`: 53 blocks in 8 districts whose globs claim every tracked file,
   each naming the specs to read before touching it, with `docs/backlog.md` imported onto the blocks. Agents reserve

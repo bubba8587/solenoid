@@ -67,8 +67,8 @@ node tools/solenoid-theme/sync.mjs --check   # fails when the kit is behind Sole
 node --test tools/solenoid-theme/test/kit.test.js
 ```
 
-`sync.mjs` also refreshes the vendored copies listed in its `VENDOR` (Blockmap's `ui/theme/`), so an app that has to
-stay one folder carries its own copy and still can't drift.
+`sync.mjs` also refreshes any vendored copies listed in its `VENDOR` (none at present), so an app that has to stay
+one folder can carry its own copy and still not drift.
 
 ## Moving it out
 

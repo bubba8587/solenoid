@@ -27,7 +27,7 @@ const CHECK = process.argv.includes('--check');
 
 const TS = ['palette', 'storeKit', 'colormaps', 'themeVars', 'appTheme'];
 // Kit folders that carry a copy of the runtime, relative to the repository root.
-const VENDOR = ['tools/blockmap/ui/theme'];
+const VENDOR = [];
 const RUNTIME = ['core/palette.js', 'core/storeKit.js', 'core/colormaps.js', 'core/themeVars.js', 'core/appTheme.js', 'core/nativeAccent.js', 'theme.css', 'controls.css', 'kit.css', 'controls.js', 'index.js'];
 
 // The Settings.css classes the Appearance dialog uses; a rule is kept when every class it names is one of these.

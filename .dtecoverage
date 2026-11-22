@@ -79,9 +79,7 @@ tests/graph/testBuckets.test.ts
 tests/graph/cargoLabels.test.ts
 tests/graph/fuzzDepth.ts
 tools/string-editor
-tools/blockmap
 tools/solenoid-theme
-.blockmap
 tools/renumber_tree.py
 src/devCopyEdit.ts
 src/graph/census.ts
