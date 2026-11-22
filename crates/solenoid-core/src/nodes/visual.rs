@@ -205,16 +205,20 @@ fn to_stacked(v: &str) -> Option<&'static str> {
     }
 }
 
-/// matplotlib's marker codes (case matters: `p` is its pentagon, which recharts lacks) or the shape's name.
+/// matplotlib's marker codes (case matters: `p` is its pentagon, `P` its filled plus) or the shape's name; a code for a
+/// shape recharts lacks takes the nearest one it has.
 fn to_marker_shape(v: &str) -> Option<&'static str> {
     match trim_space(v) {
         "o" => return Some("circle"),
         "s" => return Some("square"),
         "D" | "d" => return Some("diamond"),
         "^" => return Some("triangle"),
-        "+" | "P" => return Some("cross"),
+        "+" | "P" | "x" | "X" => return Some("cross"),
         "*" => return Some("star"),
         "Y" => return Some("wye"),
+        // matplotlib's shapes recharts lacks draw as the nearest one it has, so the markers still show.
+        "." | "," | "p" | "h" | "H" | "8" => return Some("circle"),
+        "v" | "<" | ">" => return Some("triangle"),
         _ => {}
     }
     match lower_text(trim_space(v)).as_ref() {
@@ -904,6 +908,8 @@ const XY_OPS: [&str; 3] = ["scatter", "xyline", "bubble"];
 /// one-series chart that names its series is `True`. Only Column, Line and Area draw a right axis.
 fn right_axis_names(op: &str, opts: &mut Obj, series: &[&str]) -> Option<V> {
     if !matches!(op, "column" | "line" | "area") {
+        // A Bar draws no right axis, so a Merge Plots it joins mustn't move its series to one.
+        opts.remove("secondary_y");
         return None;
     }
     let names: Vec<String> =
@@ -1421,6 +1427,12 @@ fn source_as_xy(cv: &Json, plot_no: usize) -> Result<XySource, V> {
             format!("Plot {plot_no} is a {o} chart; bars can't share an x/y plane with a scatter or XY line"),
         ));
     }
+    if field(o, "secondary_y").is_some_and(|r| r.as_bool() != Some(false)) {
+        return Err(err(
+            ErrorCode::Value,
+            format!("Plot {plot_no} puts series on a right axis, which an x/y plane with a scatter or XY line has no room for; take secondary_y off it"),
+        ));
+    }
     let labels = field(cv, "labels").and_then(Json::as_array).filter(|l| !l.is_empty());
     if labels.is_some_and(|l| !l.iter().all(Json::is_number)) {
         return Err(err(
@@ -1666,7 +1678,10 @@ fn list_of(v: V) -> Vec<V> {
 fn histogram(c: &mut Call) -> Answer {
     let xs = list_of(first_v(c, "values"));
     let kx = read_role(c, "bins", &Role::Setting(V::Num(10.0)));
-    let opts = read_options(c)?;
+    let mut opts = read_options(c)?;
+    // One series of bin counts: no second axis to put it on, and no rows to slide over.
+    opts.remove("secondary_y");
+    opts.remove("brush");
     let title = title(&opts, c, "Histogram");
     c.show("chartOptions", whole(Json::Object(opts.clone())));
     if c.field_str("mode", "1d") == "2d" {
@@ -2896,12 +2911,23 @@ mod tests {
         assert_eq!(read("D"), Some(json!("diamond")));
         assert_eq!(read("*"), Some(json!("star")));
         assert_eq!(read("Triangle"), Some(json!("triangle")));
-        assert_eq!(read("p"), None);
+        assert_eq!(read("x"), Some(json!("cross")));
+        assert_eq!(read("v"), Some(json!("triangle")));
+        assert_eq!(read("."), Some(json!("circle")));
+        assert_eq!(read("p"), Some(json!("circle")));
+        assert_eq!(read("pentagon"), None);
         let o = parse_chart_options("marker=^");
         assert_eq!(marker_for("scatter", &o, 2), json!("triangle"));
         assert_eq!(marker_for("scatter", &parse_chart_options("marker=off"), 1), json!(false));
         assert_eq!(marker_for("xyline", &Obj::new(), 2), json!(false));
         assert_eq!(marker_for("scatter", &Obj::new(), 2), json!(true));
+    }
+
+    #[test]
+    fn an_xy_merge_refuses_a_line_on_the_right_axis_rather_than_drop_it() {
+        let line = |o: Json| json!({ "__chart": true, "op": "line", "values": [1, 2, 3], "options": o });
+        assert!(source_as_xy(&line(json!({})), 1).is_ok());
+        assert!(source_as_xy(&line(json!({ "secondary_y": true })), 2).is_err());
     }
 
     #[test]
@@ -2925,8 +2951,9 @@ mod tests {
         assert!(matches!(right_axis_names("area", &mut typo, &["Sales", "Margin"]), Some(V::Err(_))));
         let mut list = parse_chart_options("secondary_y=Margin");
         assert!(matches!(right_axis_names("line", &mut list, &[]), Some(V::Err(_))));
-        let mut bar = parse_chart_options("secondary_y=Marign");
+        let mut bar = parse_chart_options("secondary_y=Sales");
         assert!(right_axis_names("bar", &mut bar, &["Sales"]).is_none());
+        assert!(!bar.contains_key("secondary_y"), "a Bar keeps no right axis for a Merge Plots to read");
     }
 
     #[test]

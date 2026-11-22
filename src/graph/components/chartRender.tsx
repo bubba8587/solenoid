@@ -154,14 +154,14 @@ export function ChartView({
   const yAxisW = axes ? valueAxisWidth([...series.map((d) => d.v), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt) : 0;
   const bottomM = axes ? (xLabel ? 18 : 4) : 2;
   // A line or area puts its last point on the plot's right edge, its label centered there.
-  const lineEdge = op === "line" || op === "area" ? edgeRoom(tickFmt(series.length - 1), fs) : 8;
+  const lineEdge = op === "line" || op === "area" ? edgeRoom(tickFmt(series[series.length - 1]?.i ?? 0), fs) : 8;
   const rightM = flip ? Math.max(4, lineEdge - yAxisW) : lineEdge;
   // With its axis moved right, a line's first label sits on the plot's open left edge.
-  const leftM = flip && (op === "line" || op === "area") ? edgeRoom(tickFmt(0), fs) : 0;
+  const leftM = flip && (op === "line" || op === "area") ? edgeRoom(tickFmt(series[0]?.i ?? 0), fs) : 0;
   const margin = axes ? { top: PLOT_TOP, right: rightM, bottom: bottomM, left: leftM } : { top: 2, right: 2, bottom: 2, left: 2 };
   const catInterval = series.length <= ALL_TICKS_UPTO ? 0 : undefined;
   const xInterval = series.length <= ALL_TICKS_UPTO
-    ? categoryInterval(series.map((d) => tickFmt(d.i)), width - yAxisW - margin.right, fs)
+    ? categoryInterval(series.map((d) => tickFmt(d.i)), width - yAxisW - margin.right - margin.left, fs)
     : undefined;
   const refCtx = brushOn
     ? { axis, fs, xLo: rangeLo, xHi: Math.max(rangeLo + 1, rangeHi), pw: width - yAxisW - margin.right - leftM }
@@ -495,16 +495,22 @@ export function MultiSeriesView({
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
   const cols = series.map((s) => Array.from({ length: n }, (_, i) => num(s.values[i])));
+  // `brush`: the plot draws the rows the slider picks, thinned anew, so zooming in shows them all,
+  // and the value axes fit those rows.
+  const brushOn = axes && opts?.brush === true && (op === "line" || op === "area" || op === "column") && n > 2;
+  const [rangeLo, rangeHi, setRange] = useRowRange(n);
+  const vLo = brushOn ? rangeLo : 0;
+  const vHi = brushOn ? rangeHi : n - 1;
   // Stacked, the value axis spans each category's piles (positives up, negatives down); 100% stacked spans 0 to 1.
   const stack = op === "column" || op === "bar" || op === "area" ? opts?.stacked : undefined;
   const pilesOf = (primary: boolean) => stack === "stacked"
-    ? Array.from({ length: n }, (_, i) => cols.reduce<[number, number]>(([up, down], c, j) => {
+    ? Array.from({ length: vHi - vLo + 1 }, (_, k) => vLo + k).map((i) => cols.reduce<[number, number]>(([up, down], c, j) => {
       const v = onPrimary(j) === primary ? c[i] ?? 0 : 0;
       return v > 0 ? [up + v, down] : [up, down + v];
     }, [0, 0])).flat()
     : [];
   const share = (v: number) => `${Math.round(v * 100)}%`;
-  const sideValues = (primary: boolean) => series.filter((_, j) => onPrimary(j) === primary).flatMap((s) => s.values);
+  const sideValues = (primary: boolean) => cols.filter((_, j) => onPrimary(j) === primary).flatMap((c) => c.slice(vLo, vHi + 1));
   const axisValues = stack === "percent" ? [0, 1] : [...sideValues(true), ...pilesOf(true), opts?.ymin, opts?.ymax];
   const yFmt = stack === "percent" ? share : valueTickFormat(axisValues);
   const yAxisW = valueAxisWidth(axisValues, fs, !!yLabel, yFmt);
@@ -518,11 +524,6 @@ export function MultiSeriesView({
   const yAxisId = (j: number) => (onPrimary(j) ? 0 : "right");
   const legendName = (j: number) => (right[j] ? `${series[j].name} (right)` : series[j].name);
   const stackOffset = stack === "percent" ? "expand" as const : stack && op !== "area" ? "sign" as const : undefined;
-  // `brush`: the plot draws the rows the slider picks, thinned anew, so zooming in shows them all.
-  const brushOn = axes && opts?.brush === true && (op === "line" || op === "area" || op === "column") && n > 2;
-  const [rangeLo, rangeHi, setRange] = useRowRange(n);
-  const vLo = brushOn ? rangeLo : 0;
-  const vHi = brushOn ? rangeHi : n - 1;
   const shown = Array.from({ length: vHi - vLo + 1 }, (_, k) => vLo + k);
   const thin = op === "line" || op === "area"
     ? envelopeRows(cols.map((c) => c.slice(vLo, vHi + 1)), shown.length, Math.round(width - leftW - rightW))
@@ -552,11 +553,11 @@ export function MultiSeriesView({
   const titleH = title ? titleHeight(fs) : 0;
   // A right axis has room under it for the last category's label to run into.
   const lineEdge = axes && (op === "line" || op === "area") ? edgeRoom(tickFmt(vHi), fs) : 8;
-  const leftEdge = axes && flip && (op === "line" || op === "area") ? edgeRoom(tickFmt(0), fs) : 0;
+  const leftEdge = axes && flip && (op === "line" || op === "area") ? edgeRoom(tickFmt(vLo), fs) : 0;
   const margin = { top: axes ? PLOT_TOP : 6, right: rightW ? Math.max(4, lineEdge - rightW) : lineEdge, bottom: axes ? 4 : 2, left: leftEdge };
-  const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
-  const xInterval = n <= ALL_TICKS_UPTO
-    ? categoryInterval(data.map((d) => tickFmt(d.i as number)), width - leftW - rightW - margin.right, fs)
+  const catInterval = vHi - vLo + 1 <= ALL_TICKS_UPTO ? 0 : undefined;
+  const xInterval = vHi - vLo + 1 <= ALL_TICKS_UPTO
+    ? categoryInterval(data.map((d) => tickFmt(d.i as number)), width - leftW - rightW - margin.right - margin.left, fs)
     : undefined;
   const catW = op === "bar" ? categoryAxisWidth(data.map((d) => tickFmt(d.i as number)), width, fs, !!yLabel) : 0;
   const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? catW : leftW + margin.left;
