@@ -934,11 +934,14 @@ describe("CompositeNode By-Row run mode", () => {
     expect(fired[0].message).toContain(String(BY_ROW_MAX_ROWS + 100));
     // Same over-cap total again → no second alert (STATUS edge-detect).
     await solve(big);
-    expect(alertStore.list().filter((e) => e.nodeId === c.id).length).toBe(1);
-    // Under the cap → no warning, and the edge resets so a later relapse fires again.
+    expect(alertStore.list().filter((e) => e.nodeId === c.id).map((e) => e.id)).toEqual([fired[0].id]);
+    // Under the cap → the warning clears itself, and the edge resets so a later relapse fires again.
     await solve([1, 2, 3]);
+    expect(alertStore.list().filter((e) => e.nodeId === c.id)).toHaveLength(0);
     await solve(big);
-    expect(alertStore.list().filter((e) => e.nodeId === c.id).length).toBe(2);
+    const again = alertStore.list().filter((e) => e.nodeId === c.id);
+    expect(again).toHaveLength(1);
+    expect(again[0].id).not.toBe(fired[0].id);
     // The result still carries the first BY_ROW_MAX_ROWS rows, not an error.
     const out = await solve(big);
     expect((out[outId] as number[]).length).toBe(BY_ROW_MAX_ROWS);
