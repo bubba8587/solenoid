@@ -390,7 +390,7 @@ function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetR
 }) {
   return (
     <div
-      className="sol-chart-legend"
+      className="sol-chart-legend nodrag"
       style={{ height: rows * MULTI_LEGEND_H, paddingLeft: insetLeft, paddingRight: insetRight, display: "flex", flexWrap: "wrap", alignItems: "center", alignContent: "flex-start", justifyContent: "center", columnGap: 10, rowGap: 0, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", cursor: "pointer", userSelect: "none" }}
     >
       {series.map((s, j) => (
@@ -433,7 +433,7 @@ function RangeSlider({ cols, n, width, insetLeft, insetRight, lo, hi, onRange, t
     return k;
   };
   return (
-    <div className="sol-chart-brush" style={{ height: BRUSH_H }}>
+    <div className="sol-chart-brush nodrag" style={{ height: BRUSH_H }}>
       <LineChart width={width} height={BRUSH_H} data={rows} margin={{ top: 0, right: insetRight, bottom: 0, left: insetLeft }}>
         <Brush
           dataKey="i" y={0} height={BRUSH_H} travellerWidth={6} stroke={stroke} fill="transparent"
@@ -449,7 +449,8 @@ function RangeSlider({ cols, n, width, insetLeft, insetRight, lo, hi, onRange, t
   );
 }
 
-/** The canvas's node drag starts on mousedown and would steal a click on the legend or a drag on the range slider. */
+/** The canvas's node drag starts on mousedown and would steal a click on the legend or a drag on the range slider: both
+ *  carry React Flow's `nodrag`, since its native drag listener runs before this, and this keeps the press off the canvas. */
 const chartControlPress = (e: SyntheticEvent) => {
   if ((e.target as Element | null)?.closest?.(".sol-chart-legend, .sol-chart-brush")) e.stopPropagation();
 };
