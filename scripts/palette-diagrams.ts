@@ -299,6 +299,10 @@ function plasma(name: PaletteName, y0: number): [string, number] {
   return [out, y + 60];
 }
 
+/** Numbers to three places: `Math.sin`, `cos` and `pow` can differ in the last digit between Node versions (CI runs 22),
+ *  and the test compares the files exactly. */
+const steady = (svg: string): string => svg.replace(/-?\d+\.\d{4,}/g, (m) => String(Number(Number(m).toFixed(3))));
+
 /** Every palette's diagram in both themes (`<name>.svg`, `<name>-dark.svg`), by its path in the repository. */
 export function paletteDiagrams(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -317,7 +321,7 @@ export function paletteDiagrams(): Record<string, string> {
       const defs = `<defs><marker id="head" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="${INK}"/></marker><marker id="headDim" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="${DIM}"/></marker><linearGradient id="hues">${stops(24, (t) => `oklch(0.75 0.12 ${t * 360})`)}</linearGradient>` +
         `<linearGradient id="plasma">${stops(32, (t) => { const [r, g, b] = colormapRgb("plasma", t)!; return `rgb(${r},${g},${b})`; })}</linearGradient></defs>`;
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${y + PAD}" viewBox="0 0 ${W} ${y + PAD}" font-family="system-ui, -apple-system, Segoe UI, sans-serif">${defs}${rect(0, 0, W, y + PAD, BG)}${body}</svg>\n`;
-      out[`${OUT}/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}${theme === "dark" ? "-dark" : ""}.svg`] = svg;
+      out[`${OUT}/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}${theme === "dark" ? "-dark" : ""}.svg`] = steady(svg);
     }
   }
   ({ bg: BG, panel: PANEL, ink: INK, dim: DIM, rule: RULE } = THEMES.light);

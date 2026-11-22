@@ -19,28 +19,18 @@ specific item.
   ODDF* and no TEXTSPLIT/TEXTBEFORE/TEXTAFTER. It found the coupon-day divergence now on the backlog.
 - **`dte.py validate` skips `.queuebox/`** (`.dteignore`): QueueBox's event log quotes retired leaf ids.
 
-### SESSION DIGEST (2026-11-21: Blockmap 2 and the theme kit; cloud session)
-- **Moved out (2026-11-22):** Blockmap is now its own repository; `tools/blockmap/` and `.blockmap/` are gone from
-  here, and the theme kit's `VENDOR` list is empty. The Blockmap lines below are history.
-- **What stands:** `tools/blockmap/` (zero dependencies, nothing imported from the app; `tools/blockmap/README.md`)
-  and this repository's board, `.blockmap/board.json`: 53 blocks in 8 districts whose globs claim every tracked file,
-  each naming the specs to read before touching it, with `docs/backlog.md` imported onto the blocks. Agents reserve
-  blocks with `tools/blockmap/bm`; `bm serve --open` shows the map, an inbox of what waits on the author, the agents'
-  windows, the worktrees and their merge queue (with a pairwise `git merge-tree` forecast), and a replayable timeline.
+### SESSION DIGEST (2026-11-21: the theme kit; cloud session)
+- **Blockmap moved out (2026-11-22)** to its own repository, now QueueBox; nothing of it is left here, and the theme
+  kit's `VENDOR` list is empty. Its history is in git.
 - **The theme kit:** `tools/solenoid-theme/` is Solenoid's palette system for other apps, generated from
   `src/graph/{palette,storeKit,colormaps,themeVars,appTheme}.ts` (Node strips the types), App.css's token blocks and
   the toolbar pill, swatch grid, Settings Appearance and Custom editor CSS; `controls.js` ports those controls to plain
   DOM with Solenoid's class names. **A change to any of those Solenoid files needs `node tools/solenoid-theme/sync.mjs`**,
-  which also refreshes Blockmap's vendored `ui/theme/`; `--check` (run by the kit's tests) fails while the kit lags.
-  The Theme block on the board claims both folders. Built so it can become its own package (author: maybe a shared
-  repository for all their apps); the README says how.
-- **Off by default.** Nothing in `.claude/settings.json` changed: `bm hooks install` writes the hooks into the
-  git-ignored `.claude/settings.local.json` (per checkout, so each worktree installs its own).
-- **Tests:** `node --test tools/blockmap/test/*.test.js` (28), `node --test tools/solenoid-theme/test/kit.test.js` (6),
-  and the browser smoke test `node tools/blockmap/scripts/smoke.js` (needs Playwright on `NODE_PATH`). None are in
-  vitest's globs or `tests/buckets.mjs`, so CI doesn't run them.
-- **Reopen if:** hook calls slow past a second (they fold once and read only the appended tail; an on-disk checkpoint
-  was measured as unneeded at 50,000 events); or Solenoid starts importing the kit, which flips the sync around.
+  which also copies it into each `VENDOR` folder; `--check` (run by the kit's tests) fails while the kit lags. Built so
+  it can become its own package (author: maybe a shared repository for all their apps); the README says how.
+- **Tests:** `node --test tools/solenoid-theme/test/kit.test.js` (6), outside vitest's globs and `tests/buckets.mjs`,
+  so CI doesn't run it.
+- **Reopen if** Solenoid starts importing the kit, which flips the sync around.
 
 ### SESSION DIGEST (2026-11-19: the Solenoid look over TaskNotes 5.0.1; cloud session)
 - **What stands** ([[obsidian-plugin#The look]], Other plugins' views): the plain-button pill is a `:where()` rule and
