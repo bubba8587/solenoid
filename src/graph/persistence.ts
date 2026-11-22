@@ -24,6 +24,8 @@ import { presentationStore } from "./presentationStore";
 import { compositeEditorStore } from "./compositeEditorStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
+import { commentStore } from "./commentStore";
+import { pinStore } from "./pinStore";
 import { loadRevealStore } from "./loadReveal";
 import { zoomAt } from "./zoomAt";
 import { restoreLiterals } from "./literalFields";
@@ -310,8 +312,8 @@ let _suspend = 0;
 let _timer: ReturnType<typeof setTimeout> | null = null;
 /** Every edit that changes the save asks for an autosave, so the asks count the edits; a load counts too. */
 let _edits = 0;
-/** The canvas as the history last serialized it, the edit count and document it was taken at. */
-let _offered: { graph: SavedGraph; edits: number; docId: string | null } | null = null;
+/** The canvas as the history last serialized it, the edit count, document and fresh-capture count it was taken at. */
+let _offered: { graph: SavedGraph; edits: number; docId: string | null; fresh: number } | null = null;
 
 function suspendAutosave() { _suspend++; }
 function resumeAutosave() { _suspend = Math.max(0, _suspend - 1); }
@@ -319,7 +321,7 @@ function resumeAutosave() { _suspend = Math.max(0, _suspend - 1); }
 /** The history's capture of the live canvas (a draft left uncommitted, as the idle autosave takes it), which the
  *  pending autosave writes instead of serializing again while no edit and no load has come since. */
 export function offerCapture(graph: SavedGraph): void {
-  _offered = { graph, edits: _edits, docId: documentStore.currentId() };
+  _offered = { graph, edits: _edits, docId: documentStore.currentId(), fresh: documentStore.freshCaptures() };
 }
 
 export function scheduleAutosave(): void {
@@ -331,14 +333,17 @@ export function scheduleAutosave(): void {
     if (_suspend > 0) return;
     const o = _offered;
     _offered = null;
-    const graph = o && o.edits === _edits && o.docId === documentStore.currentId() ? o.graph : undefined;
+    // A save or swap since the capture wrote a newer canvas, which may hold an edit no ask counted.
+    const fresh = o && o.edits === _edits && o.docId === documentStore.currentId() && o.fresh === documentStore.freshCaptures();
+    const graph = fresh ? o.graph : undefined;
     documentStore.captureCurrent({ keepDrafts: true, graph });
   }, AUTOSAVE_DELAY);
 }
 
 // The stores a save holds beside the cards ask for an autosave themselves, so a store-only edit (a pack turned on, a
-// foreign document's network allowed, a palette) is saved and counts as an edit; a load's own settings only count.
-for (const subscribe of [docMetaStore.subscribe, paletteStore.subscribe, reportPaletteStore.subscribe, packsStore.subscribe]) {
+// foreign document's network allowed, a palette, a comment, a pin) is saved and counts as an edit; a load's own
+// settings only count.
+for (const subscribe of [docMetaStore.subscribe, paletteStore.subscribe, reportPaletteStore.subscribe, packsStore.subscribe, commentStore.subscribe, pinStore.subscribe]) {
   subscribe(scheduleAutosave);
 }
 

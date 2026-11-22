@@ -60,6 +60,8 @@ function mirrorToDevServer(g: SavedGraph): void {
 }
 let _saveFailNoticeId: number | null = null;
 let _captureFailNoticeId: number | null = null;
+/** Counts the captures that serialized the canvas afresh (a save, a swap), so a capture taken before one is stale. */
+let _freshCaptures = 0;
 const _lastPersisted = new Map<string, SolDoc>();
 let _seq = Date.now();
 const nextSeq = () => ++_seq;
@@ -416,6 +418,8 @@ export const documentStore = {
   },
 
   /** False only when the live graph could not be serialized; a swap verb then stays on this document. Open drafts commit first, except for the idle autosave (`keepDrafts`), which must not commit a field the user is still typing in. `graph` is the live canvas already serialized (the history's capture, `offerCapture`). */
+  freshCaptures: (): number => _freshCaptures,
+
   captureCurrent(opts?: { keepDrafts?: boolean; graph?: SavedGraph }): boolean {
     if (!_lib.currentId) return true;
     if (isGraphRebuilding()) return true;
@@ -423,6 +427,7 @@ export const documentStore = {
     let g: SavedGraph | null;
     try {
       g = opts?.graph ?? serializeGraph();
+      if (!opts?.graph) _freshCaptures++;
     } catch (e) {
       console.error("[solenoid] capture failed", e);
       if (_captureFailNoticeId === null) {

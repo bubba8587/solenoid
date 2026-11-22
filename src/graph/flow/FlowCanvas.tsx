@@ -111,8 +111,11 @@ const MAIN_HOOKS: SurfaceHooks = {
     scheduleAutosave();
     flowHistory.schedule();
   },
-  // Position-only changes (nudge, group push, standoffs) never run processGraph, so they record here.
-  afterProgrammaticMove: () => flowHistory.schedule(),
+  // Position-only changes (nudge, group push, standoffs) never run processGraph, so they record and save here.
+  afterProgrammaticMove: () => {
+    scheduleAutosave();
+    flowHistory.schedule();
+  },
   afterNodeAdded: async (nodeId) => {
     await processGraph(nodeId, undefined, { topology: true });
     scheduleAutosave();
