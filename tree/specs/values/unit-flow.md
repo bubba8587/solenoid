@@ -49,6 +49,24 @@ Code: `nodes/measure.rs`. Greedy Queue, Local Search, Solver, Assignment, Shorte
 
 Tests: `optimizeUnits.test.ts`.
 
+## Pack cards
+
+Code: `nodes/packs.rs` (`read_in`, `in_unit`). Each physical input of a custom-logic pack card is read in the unit its socket names: a bare number is taken as in it, a wired quantity converts into it (`read_in_declared_unit`, as a preset's declared unit does), and another dimension is `#UNIT!` ("This input reads in m; convert it first."). The cards are `unitAware`, so the quantity arrives with its unit, and each physical answer carries one; the output rows print it, so their labels name the quantity, not its unit.
+
+| Card | Reads in | Answers in |
+|---|---|---|
+| Standard Atmosphere | altitude m | K, Pa, kg/m³ (its derived symbols), m/s |
+| Vapor Pressure | T °C | Pa; boiling point °C |
+| EM Spectrum Band | frequency Hz, wavelength m | Hz, m |
+| Pipe Roughness | diameter mm | ε mm; ε/D plain |
+| Sun Position, Sunrise / Sunset | latitude, longitude ° | angles °; day length h |
+| Moon Phase | | age day |
+| Friction Factor | Re and ε/D plain: a dimension is `#UNIT!` | plain |
+
+Not yet: the Electrical cards (ohms and the rest wait for units the app knows) and Heart Rate Zones (bpm). Their formulas (`STANDARDATMOSPHERE`, `ANTOINE` and kin in `fns_packs.rs`) have no unit class in [[#Formula dimensions]], so a quantity with a unit passed to one is `#UNIT!` rather than read in the right unit.
+
+Tests: the `[[C25]] firstClassUnits` cases in `tests/graph/packs/` (thermo, earthsky, electromagnetism, fluids).
+
 ## Dimensions
 
 Code: `unit_dims.rs`, `unit_catalog.rs`; `dimension.ts` in the app
