@@ -20,6 +20,7 @@ pub(crate) mod elements;
 pub mod fields;
 mod finance;
 mod formula;
+pub(crate) use formula::unit_label;
 pub mod frames;
 pub(crate) mod geometry;
 mod improve;

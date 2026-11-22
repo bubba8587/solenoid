@@ -32,7 +32,7 @@ fn evaluate(src: &str, env: Env) -> Result<V, ()> {
 }
 
 /// The label a unit id shows (`UNIT_ANNOTATIONS`), trimmed.
-fn unit_label(id: &str) -> Option<&'static str> {
+pub(crate) fn unit_label(id: &str) -> Option<&'static str> {
     Some(match id {
         "deg" => "°",
         "rad" => "rad",

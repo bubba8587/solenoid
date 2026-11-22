@@ -5,6 +5,7 @@
 use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
+use crate::excel_formula::Ast;
 use crate::excel_functions::{holds_text, num_blank_zero, value_text, V};
 use crate::jsnum::{lower_text, round_half_up, trim_space};
 use crate::nodes::geometry;
@@ -48,6 +49,63 @@ pub const NAMES: &[&str] = &[
     "SETSUPERSET",
     "SETDISJOINT",
 ];
+
+/// What a pack function answers in ([[C25]] firstClassUnits): a plain number or text, a quantity in a unit, or a
+/// unit its part argument names that the formula doesn't spell out.
+pub enum PackOut {
+    Plain,
+    In(&'static str),
+    Unknown,
+}
+
+/// The units a pack function reads its arguments in, by position, and what it answers in, as its card does
+/// (`nodes/packs.rs`). A function absent here reads plain numbers.
+pub struct PackUnits {
+    pub args: &'static [(usize, &'static str)],
+    pub out: fn(&[Ast]) -> PackOut,
+}
+
+/// The part a call names in argument `i`, lowercased, or `default` when it names none; None for a part computed at
+/// run time.
+fn part_of(args: &[Ast], i: usize, default: &str) -> Option<String> {
+    match args.get(i) {
+        None | Some(Ast::Blank) => Some(default.to_string()),
+        Some(Ast::Str(s)) => Some(lower_text(s).into_owned()),
+        _ => None,
+    }
+}
+
+pub fn units_of(name: &str) -> Option<PackUnits> {
+    const SUN: &[(usize, &str)] = &[(1, "deg"), (2, "deg")];
+    Some(match name {
+        "STANDARDATMOSPHERE" => PackUnits {
+            args: &[(0, "m")],
+            out: |a| match part_of(a, 1, "pressure").as_deref() {
+                Some("temp" | "temperature") => PackOut::In("K"),
+                Some("pressure") => PackOut::In("Pa"),
+                Some("density") => PackOut::In("kg/m^3"),
+                Some("sound") => PackOut::In("ms1"),
+                Some(_) => PackOut::Plain,
+                None => PackOut::Unknown,
+            },
+        },
+        "ANTOINE" => PackUnits { args: &[(1, "degC")], out: |_| PackOut::In("Pa") },
+        "EMSPECTRUMBAND" => PackUnits { args: &[(0, "Hz"), (1, "m")], out: |_| PackOut::Plain },
+        "SUNPOSITION" => PackUnits { args: SUN, out: |_| PackOut::In("deg") },
+        "SUNRISE" | "SUNSET" => PackUnits { args: SUN, out: |_| PackOut::Plain },
+        "DAYLENGTH" => PackUnits { args: SUN, out: |_| PackOut::In("h") },
+        "MOONPHASE" => PackUnits {
+            args: &[],
+            out: |a| match part_of(a, 1, "phase").as_deref() {
+                Some("age") => PackOut::In("day"),
+                Some(_) => PackOut::Plain,
+                None => PackOut::Unknown,
+            },
+        },
+        "PIPEROUGHNESS" => PackUnits { args: &[], out: |_| PackOut::In("mm") },
+        _ => return None,
+    })
+}
 
 fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)

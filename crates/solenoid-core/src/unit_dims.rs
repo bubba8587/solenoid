@@ -445,6 +445,41 @@ type Dim2 = BTreeMap<String, Dim>;
 thread_local! {
     /// The LAMBDAs the formula being read calls by name (a computed column's `λ1`).
     static SCOPE_FNS: std::cell::RefCell<NamedLambdas> = const { std::cell::RefCell::new(BTreeMap::new()) };
+    /// Set while the Expression reads a formula it will convert the pack functions' arguments for
+    /// (`unit_expression::convert_pack_calls`); every other reader keeps them plain.
+    static PACK_UNITS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Runs `f` with the pack functions reading their arguments in their units, outside any LAMBDA's body.
+pub fn with_pack_units<T>(f: impl FnOnce() -> T) -> T {
+    let outer = PACK_UNITS.replace(true);
+    let _scope = std::mem::DropGuard::new(outer, |outer| PACK_UNITS.set(outer));
+    f()
+}
+
+/// A pack function's call: an argument with a dimension must be in the dimension of the unit that position reads in,
+/// a plain one is taken as already in it, and the answer is in the unit the function names.
+fn pack_dim(name: &str, pu: &crate::fns_packs::PackUnits, args: &[Ast], env: &Dim2, codes: &Codes) -> OpResult {
+    use crate::fns_packs::PackOut;
+    for (i, a) in args.iter().enumerate() {
+        let Some(d) = op_eval(a, env, codes)?.map(|o| o.dim) else { continue };
+        if is_dimensionless(&d) {
+            continue;
+        }
+        match pu.args.iter().find(|(j, _)| *j == i) {
+            Some((_, id)) if crate::unit_catalog::fc_unit_to_unit(id).is_some_and(|u| dim_equal(&u.dim, &d)) => {}
+            Some((_, id)) => {
+                let shown = crate::nodes::unit_label(id).unwrap_or(id);
+                return Err(unit_error(&format!("{name} reads argument {} in {shown}; convert it first.", i + 1)));
+            }
+            None => return Err(unit_error(&format!("{name} takes a plain number as argument {}.", i + 1))),
+        }
+    }
+    match (pu.out)(args) {
+        PackOut::Plain => plain(dimless()),
+        PackOut::In(id) => plain(crate::unit_catalog::fc_unit_to_unit(id).map(|u| u.dim).unwrap_or_default()),
+        PackOut::Unknown => Ok(None),
+    }
 }
 
 fn clash(l: &Op, r: &Op) -> Option<SolError> {
@@ -487,6 +522,11 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
                 && let Some(lam) = lambda_of(args.get(host.lam_arg), host.params.len(), &|n| env.contains_key(n))
             {
                 return host_dim(args, &host, &lam, env, codes);
+            }
+            if PACK_UNITS.get()
+                && let Some(pu) = crate::fns_packs::units_of(&up)
+            {
+                return pack_dim(&up, &pu, args, env, codes);
             }
             if let Some(sig) = finance_money(&up) {
                 let vals: Vec<OpResult> = args.iter().map(|a| op_eval(a, env, codes)).collect();
@@ -574,6 +614,9 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
 }
 
 fn apply_dim(lam: &Lam, args: &[OpResult], env: &Dim2, codes: &Codes) -> OpResult {
+    // A LAMBDA's body isn't converted, so a pack function there reads plain numbers.
+    let outer = PACK_UNITS.replace(false);
+    let _scope = std::mem::DropGuard::new(outer, |outer| PACK_UNITS.set(outer));
     let mut inner = env.clone();
     let mut inner_codes = codes.clone();
     for (i, p) in lam.params.iter().enumerate() {
@@ -842,7 +885,8 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
             {
                 return aff_apply(params, body, &args, scope);
             }
-            if RESULT_DIMLESS_FNS.contains(&f) {
+            // A pack function reads a temperature as its card does, and its answer is no reading.
+            if RESULT_DIMLESS_FNS.contains(&f) || (PACK_UNITS.get() && crate::fns_packs::units_of(f).is_some()) {
                 return Ok(ZERO);
             }
             if AFF_SELECT.contains(&f) {

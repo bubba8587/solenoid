@@ -183,3 +183,17 @@ describe("Sun Position card", () => {
     expect(isSolError(wrong) && wrong.code).toBe("#UNIT!");
   });
 });
+
+describe("[[C25]] firstClassUnits — the sun formulas read latitude in degrees", () => {
+  it("a latitude in radians converts, and DAYLENGTH and SUNPOSITION answer in h and degrees", async () => {
+    const { ExpressionNode } = await import("../../../src/graph/nodes/expression");
+    const run = (expr: string, lat: unknown) => new ExpressionNode({ expr }).data({ lat: [lat] }).result;
+    const lat = applyFcUnit((40 * Math.PI) / 180, "rad");
+    const day = run("DAYLENGTH(46000, lat, 0)", lat);
+    expect((day as UnitCell).display).toBe("h");
+    expect(shownAs(day)).toBeCloseTo(call("DAYLENGTH", 46000, 40, 0), 9);
+    const el = run("SUNPOSITION(46000.5, lat, -74)", lat);
+    expect((el as UnitCell).display).toBe("deg");
+    expect(shownAs(el)).toBeCloseTo(solarPosition(46000.5, 40, -74).elevation, 9);
+  });
+});

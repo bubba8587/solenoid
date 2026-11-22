@@ -6,9 +6,11 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::eval::Env;
+use crate::excel_formula::{Ast, BinOp};
 use crate::excel_functions::{fx_error_to_sol, V};
 use crate::unit_dims::{
-    affine_weight, dim_equal, dim_eval_with_code, is_dimensionless, AffScope, Codes, Dim, NamedLambdas, UnitCell,
+    affine_weight, dim_equal, dim_eval_with_code, is_dimensionless, with_pack_units, AffScope, Codes, Dim,
+    NamedLambdas, UnitCell,
 };
 use crate::unit_lists::tag_dim;
 use crate::unit_value::round_at_larger_term;
@@ -212,6 +214,94 @@ struct Shown {
 
 /// The formula over its read inputs, wrapped in their units; None leaves the whole Expression to the TS.
 /// `order` is the formula's variables as the TS reads them, the first mixed one naming the error.
+/// `x * k + c` as formula nodes, leaving out a step that changes nothing.
+fn affine(x: Ast, k: f64, c: f64) -> Ast {
+    let num = |n: f64| Ast::Num(crate::jsnum::number_to_string(n), n);
+    let bin = |op, l, r| Ast::Bin { op, l: Box::new(l), r: Box::new(r) };
+    let scaled = if k == 1.0 { x } else { bin(BinOp::Mul, x, num(k)) };
+    if c == 0.0 {
+        scaled
+    } else {
+        bin(BinOp::Add, scaled, num(c))
+    }
+}
+
+/// Whether the formula calls a pack function that reads or answers in a unit, outside any LAMBDA.
+fn calls_pack_units(node: &Ast) -> bool {
+    match node {
+        Ast::Call { name, .. } if name.eq_ignore_ascii_case("LAMBDA") => false,
+        Ast::Call { name, args } => {
+            crate::fns_packs::units_of(&name.to_uppercase()).is_some() || args.iter().any(calls_pack_units)
+        }
+        Ast::Apply { func, args } => calls_pack_units(func) || args.iter().any(calls_pack_units),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => calls_pack_units(arg),
+        Ast::Bin { l, r, .. } => calls_pack_units(l) || calls_pack_units(r),
+        _ => false,
+    }
+}
+
+/// The formula as it runs on base SI with each pack function given its arguments in the units it reads, and its
+/// answer back in base SI ([[C25]] firstClassUnits), as the function's card reads them. A plain argument is taken as
+/// already in the unit; a LAMBDA's body is left as written.
+fn convert_pack_calls(node: &Ast, dims: &BTreeMap<String, Dim>, codes: &Codes) -> Ast {
+    use crate::fns_packs::PackOut;
+    let go = |n: &Ast| convert_pack_calls(n, dims, codes);
+    let unit = |id: &str| crate::unit_catalog::fc_unit_to_unit(id);
+    match node {
+        Ast::Call { name, .. } if name.eq_ignore_ascii_case("LAMBDA") => node.clone(),
+        Ast::Call { name, args } => {
+            let mut out: Vec<Ast> = args.iter().map(go).collect();
+            let Some(pu) = crate::fns_packs::units_of(&name.to_uppercase()) else {
+                return Ast::Call { name: name.clone(), args: out };
+            };
+            for &(i, id) in pu.args {
+                let united = args.get(i).is_some_and(|a| {
+                    matches!(with_pack_units(|| dim_eval_with_code(a, dims, codes, None)), Ok(Some(o)) if !is_dimensionless(&o.dim))
+                });
+                if let (true, Some(u)) = (united, unit(id)) {
+                    let off = u.offset.unwrap_or(0.0);
+                    out[i] = affine(out[i].clone(), 1.0 / u.scale, -off / u.scale);
+                }
+            }
+            let call = Ast::Call { name: name.clone(), args: out };
+            match (pu.out)(args) {
+                PackOut::In(id) => match unit(id) {
+                    Some(u) => affine(call, u.scale, u.offset.unwrap_or(0.0)),
+                    None => call,
+                },
+                _ => call,
+            }
+        }
+        Ast::Apply { func, args } => Ast::Apply { func: Box::new(go(func)), args: args.iter().map(go).collect() },
+        Ast::Unary { op, arg } => Ast::Unary { op: *op, arg: Box::new(go(arg)) },
+        Ast::Percent(arg) => Ast::Percent(Box::new(go(arg))),
+        Ast::Bin { op, l, r } => Ast::Bin { op: *op, l: Box::new(go(l)), r: Box::new(go(r)) },
+        _ => node.clone(),
+    }
+}
+
+/// The unit a pack function answers in, when the whole formula answers in its dimension: the answer shows in it
+/// (`STANDARDATMOSPHERE(z, "temp")` in K, `SUNPOSITION(…)` in degrees, not radians).
+fn pack_display(node: &Ast, dim: &Dim) -> Option<String> {
+    use crate::fns_packs::PackOut;
+    match node {
+        Ast::Call { name, .. } if name.eq_ignore_ascii_case("LAMBDA") => None,
+        Ast::Call { name, args } => {
+            let own = crate::fns_packs::units_of(&name.to_uppercase()).and_then(|pu| match (pu.out)(args) {
+                PackOut::In(id) if !id.contains('/') => {
+                    crate::unit_catalog::fc_unit_to_unit(id).filter(|u| dim_equal(&u.dim, dim)).map(|_| id.to_string())
+                }
+                _ => None,
+            });
+            own.or_else(|| args.iter().find_map(|a| pack_display(a, dim)))
+        }
+        Ast::Apply { func, args } => pack_display(func, dim).or_else(|| args.iter().find_map(|a| pack_display(a, dim))),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => pack_display(arg, dim),
+        Ast::Bin { l, r, .. } => pack_display(l, dim).or_else(|| pack_display(r, dim)),
+        _ => None,
+    }
+}
+
 pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     let ast = crate::excel_formula::parse_formula(src)?;
     let mut names: Vec<&String> = env.keys().collect();
@@ -243,12 +333,25 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     }
     let mut dr: Option<Dim> = None;
     let mut shown: Option<Shown> = None;
+    // A formula that hands a pack function a quantity runs on base SI, each such argument converted for it.
+    let packs = calls_pack_units(&ast);
+    let read = |f: &dyn Fn() -> Result<Option<crate::unit_dims::Op>, crate::error_value::SolError>| {
+        if packs {
+            crate::unit_dims::with_pack_units(f)
+        } else {
+            f()
+        }
+    };
+    let mut run_ast: Option<Ast> = None;
     if dims.values().any(|d| !is_dimensionless(d)) {
         let codes: Codes =
             names.iter().filter_map(|n| env_currency_code(&env[*n], &dims[*n]).map(|c| ((*n).clone(), c))).collect();
-        match dim_eval_with_code(&ast, &dims, &codes, None) {
+        match read(&|| dim_eval_with_code(&ast, &dims, &codes, None)) {
             Err(e) => return Some(V::err(e)),
             Ok(op) => dr = op.map(|o| o.dim),
+        }
+        if packs {
+            run_ast = Some(convert_pack_calls(&ast, &dims, &codes));
         }
         let values: Vec<&V> = names.iter().map(|n| &env[*n]).collect();
         let sd = shared_display(&values);
@@ -262,12 +365,19 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
         if readings {
             let bare: Vec<String> = names.iter().filter(|n| !united.contains(n)).map(|n| (*n).clone()).collect();
             let lists: Vec<String> = united.iter().filter(|n| matches!(env[*n], V::List(_))).cloned().collect();
-            match affine_weight(&ast, &AffScope::new(&united, &lists, &bare, &NamedLambdas::new())) {
+            let lambdas = NamedLambdas::new();
+            let scope = AffScope::new(&united, &lists, &bare, &lambdas);
+            let weight = if packs {
+                crate::unit_dims::with_pack_units(|| affine_weight(&ast, &scope))
+            } else {
+                affine_weight(&ast, &scope)
+            };
+            match weight {
                 Err(e) => return Some(V::err(e)),
                 Ok(w) => point = Some(w),
             }
         }
-        if let Some((id, unit)) = sd {
+        if let Some((id, unit)) = sd.filter(|_| run_ast.is_none()) {
             let plain = dr.as_ref().is_none_or(is_dimensionless);
             let k = if plain { None } else { dim_power_of(dr.as_ref().unwrap(), &unit.dim) };
             if plain || k.is_some() {
@@ -280,6 +390,8 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     if run_env.values().any(crate::unit_dims::holds_unit) {
         return None;
     }
+    let shown_in = run_ast.as_ref().and_then(|_| dr.as_ref().and_then(|d| pack_display(&ast, d)));
+    let ast = run_ast.unwrap_or(ast);
     let ev = crate::eval::Eval::default();
     if !crate::excel_formula::wholly_parenthesized(src) {
         ev.snap_at(&ast);
@@ -318,7 +430,7 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
                         ),
                     }
                 }
-                _ => tag_dim(c, d.clone(), None),
+                _ => tag_dim(c, d.clone(), shown_in.clone()),
             }
         };
         result = match result {

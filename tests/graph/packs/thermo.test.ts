@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { THERMO_FORMULAS } from "../../../src/graph/packs/thermo";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { IsaAtmosphereNode, AntoineNode } from "../../../src/graph/nodes/thermo";
+import { ExpressionNode } from "../../../src/graph/nodes/expression";
 import { ANTOINE, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
 import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
@@ -195,5 +196,31 @@ describe("[[C25]] firstClassUnits — a preset reads each input in its declared 
   it("the Equation preset reads tk in kelvin, with R cabled in", () => {
     const out = node("th-ideal-gas").data({ vol: [1], n: [1], R: [8.314462618], tk: [applyFcUnit(0, "degC")] });
     expect(out.p as number).toBeCloseTo(8.314462618 * 273.15, 6);
+  });
+});
+
+describe("[[C25]] firstClassUnits — a pack formula reads a quantity as its card does", () => {
+  const run = (expr: string, inputs: Record<string, unknown>) => {
+    const n = new ExpressionNode({ expr });
+    const ins: Record<string, unknown[]> = {};
+    for (const [k, v] of Object.entries(inputs)) ins[k] = [v];
+    return n.data(ins).result;
+  };
+  it("2 km is 2000 m to STANDARDATMOSPHERE, and the answer carries its unit", () => {
+    const km = run('STANDARDATMOSPHERE(z, "temp")', { z: applyFcUnit(2, "km") });
+    expect(shownAs(km)).toBeCloseTo(shownAs(new IsaAtmosphereNode().data({ alt: [2000] }).temp), 9);
+    expect((km as UnitCell).display).toBe("K");
+    expect(shownAs(run("STANDARDATMOSPHERE(z) / 1000", { z: applyFcUnit(2, "km") }))).toBeCloseTo(79.5014, 3);
+    expect(run('STANDARDATMOSPHERE(z, "temp") > 270', { z: applyFcUnit(2, "km") })).toBe(true);
+  });
+  it("ANTOINE reads 373.15 K as 100 °C; a length is #UNIT!", () => {
+    const k = run('ANTOINE("water", t)', { t: applyFcUnit(373.15, "K") });
+    expect(shownAs(k)).toBeCloseTo(antoinePressure("water", 100), 6);
+    const wrong = run('ANTOINE("water", t)', { t: applyFcUnit(1, "m") });
+    expect(isSolError(wrong) && wrong.code).toBe("#UNIT!");
+  });
+  it("inside a LAMBDA a pack function still takes plain numbers only", () => {
+    const r = run("MAP(z, LAMBDA(a, STANDARDATMOSPHERE(a)))", { z: applyFcUnit(2, "km") });
+    expect(isSolError(r) && r.code).toBe("#UNIT!");
   });
 });
