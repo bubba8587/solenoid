@@ -6,6 +6,23 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-22: an audit of 2026-11-21's work, fixed; cloud session)
+- **Autosave:** comments and pins ask for an autosave (the subscription loop in `persistence.ts`), so does a card a
+  command moves (`afterProgrammaticMove`), and the history's capture is written only while no save or swap has
+  serialized afresh since (`documentStore.freshCaptures`). Before, a comment or pin made after the 400 ms capture was
+  overwritten by it and never saved, and a Ctrl+S could be undone by the pending timer
+  (`tree/specs/documents/per-doc-autosave-persistence.md` § One capture per edit).
+- **Pack formulas run in one frame of units** (`run_framed`, `unit_expression.rs`): inputs in their display units, pack
+  functions answering in their cards' units, so `t > 50` beside ANTOINE compares °C and `DAYLENGTH(…) > 12` compares
+  hours, and plain inputs answer in the card's unit too. Units that fit no frame fall back to the base-SI path. An
+  argument whose unit can't be told is `#UNIT!` (`tree/specs/values/unit-flow.md`, pack functions row).
+- **Charts:** a Bar and a Histogram drop `secondary_y` (and a Histogram `brush`); an XY Merge Plots refuses a source
+  carrying `secondary_y` instead of dropping it; matplotlib's other marker codes draw as the nearest shape; under the
+  range slider the value axes and label room fit the rows shown (`chart-figures.md`).
+- **Alerts and Reports:** the By-Row cap warning goes whenever By-Row no longer runs over the cap; the Clear All menu
+  closes with the last alert; a carded Frame's export reads its image as the Cards view does and says No rows.
+- **A cloud container** needs `cargo install wasm-bindgen-cli --version 0.2.130 --locked` before `npm run build:wasm`.
+
 ### SESSION DIGEST (2026-11-21b: Get Column by name, an Excel reference engine; QueueBox, Agent 3)
 - **Get Column reads names only** (author: "just names only"): digits are a name, never a position, on every input
   shape (`get_column`, `nodes/verbs.rs`); SUMIFS and the other verbs keep the loose lookup (`tree/specs/computation/frame-verbs.md` §
