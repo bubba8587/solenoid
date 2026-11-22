@@ -140,7 +140,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 ## From the 2026-11-18 UI pass (each needs the author's call)
 
-- [ ] **Get Column reads its text field as a name or a 1-based position** (`card_column`, `nodes/frames.rs`; the catalog says "by name or 1-based number"). A name match wins, so a column named "4" is found, but "2" typed where no column is named "2" quietly means the second column, and renaming a column to "2" quietly changes which column an existing card reads. One text socket shouldn't carry two meanings: the position belongs on its own number input (or an option), the text field reading names only. Changing it moves answers a saved graph gives (a card typed "2" today reads position 2).
+- [ ] **Get Column reads its text field as a name or a 1-based position** (`card_column`, `nodes/frames.rs`; the catalog says "by name or 1-based number"). A name match wins, so a column named "4" is found, but "2" typed where no column is named "2" quietly means the second column, and renaming a column to "2" quietly changes which column an existing card reads. One text socket shouldn't carry two meanings: the position belongs on its own number input (or an option), the text field reading names only. Changing it moves answers a saved graph gives (a card typed "2" today reads position 2). Tried 2026-11-21 and reverted: name-only moves 6 of 247 frozen Get Column answers and, through `refs::column`, 6 SUMIFS ones; no seed relies on a position; the rule lives in four helpers and the Cube branch already reads names only. Question: `tree/decisions/inbox/get-column-name-only.md`.
 
 ## From the 2026-11-18 optimization session (each needs the author's call)
 
