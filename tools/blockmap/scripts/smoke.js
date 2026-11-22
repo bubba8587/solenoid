@@ -83,8 +83,11 @@ try {
     const name = await page.locator('.mq-grip').last().getAttribute('data-name');
     for (let i = 0; i < ready - 1; i++) {
       await page.focus(`.mq-grip[data-name="${name}"]`);
+      const place = () => page.evaluate((n) => [...document.querySelectorAll('.mq-grip')].findIndex((g) => g.dataset.name === n), name);
+      const before = await place();
       await page.keyboard.press('ArrowUp');
-      await page.waitForTimeout(200);
+      // Each move lands once the log streams it back, and a press before that is ignored, so wait for it.
+      await page.waitForFunction(([n, b]) => [...document.querySelectorAll('.mq-grip')].findIndex((g) => g.dataset.name === n) < b, [name, before], { timeout: 5000 }).catch(() => {});
     }
     const head = await page.evaluate(() => window.blockmap.mergeRows.find((r) => r.entry.status === 'ready'));
     check(head?.entry.worktree === name, `arrow keys move ${name} to the head of the merge queue`);

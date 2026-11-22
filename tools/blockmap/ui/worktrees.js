@@ -14,6 +14,7 @@ const DOT = { ok: 'dot-ok', info: 'dot-ok', warn: 'dot-warn', danger: 'dot-dange
 export function createWorktrees(ctx, bar, mergeHost) {
   let editor = storageGet('blockmap.editor', 'vscode');
   let dragging = null;
+  let moving = false;
 
   bar.addEventListener('click', (e) => {
     const tab = e.target.closest('[data-wt]');
@@ -50,11 +51,17 @@ export function createWorktrees(ctx, bar, mergeHost) {
     const grip = e.target.closest('.mq-grip');
     if (!grip || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
     e.preventDefault();
+    // One move at a time: the next is computed from the order the log has confirmed, not the one still in flight.
+    if (moving) return;
     const order = readyOrder();
     const i = order.indexOf(grip.dataset.name);
     const to = e.key === 'ArrowUp' ? i - 1 : i + 1;
     if (to < 0 || to >= order.length) return;
-    ctx.act.mergeMove(grip.dataset.name, to).then(() => mergeHost.querySelector(`.mq-grip[data-name="${CSS.escape(grip.dataset.name)}"]`)?.focus());
+    moving = true;
+    ctx.act.mergeMove(grip.dataset.name, to).finally(() => {
+      moving = false;
+      mergeHost.querySelector(`.mq-grip[data-name="${CSS.escape(grip.dataset.name)}"]`)?.focus();
+    });
   });
   mergeHost.addEventListener('dragstart', (e) => {
     const row = e.target.closest('.mq-row[draggable="true"]');
