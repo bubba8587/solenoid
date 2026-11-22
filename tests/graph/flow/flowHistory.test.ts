@@ -19,6 +19,7 @@ vi.mock("../../../src/graph/persistence", () => ({
     return true;
   },
   scheduleAutosave: () => {},
+  offerCapture: () => {},
 }));
 
 vi.mock("../../../src/graph/process", () => ({

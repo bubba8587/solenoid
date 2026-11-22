@@ -22,6 +22,7 @@ const ISOLATED = [
   "tests/graph/desktopDocs.test.ts",
   "tests/graph/fileSession.test.ts",
   "tests/graph/flow/flowHistory.test.ts",
+  "tests/graph/autosaveReuse.test.ts",
   "tests/graph/importNoteRepick.test.ts",
   "tests/graph/localFileRace.test.ts",
   "tests/graph/noteMarkdown.test.ts",

@@ -23,9 +23,9 @@ describe("open drafts flush before a capture", () => {
 
   it("a switch, a file save and the page closing flush; the idle autosave keeps the draft local", () => {
     const store = readFileSync("src/graph/documentStore.ts", "utf8");
-    expect(store).toMatch(/captureCurrent\(opts\?: \{ keepDrafts\?: boolean \}\): boolean \{[\s\S]{0,160}if \(!opts\?\.keepDrafts\) flushDrafts\(\);/);
+    expect(store).toMatch(/captureCurrent\(opts\?: \{ keepDrafts\?: boolean; graph\?: SavedGraph \}\): boolean \{[\s\S]{0,160}if \(!opts\?\.keepDrafts\) flushDrafts\(\);/);
     const persistence = readFileSync("src/graph/persistence.ts", "utf8");
-    expect(persistence).toContain("documentStore.captureCurrent({ keepDrafts: true });");
+    expect(persistence).toContain("documentStore.captureCurrent({ keepDrafts: true, graph });");
     expect(persistence).toMatch(/function flushOnExit\(\)[\s\S]{0,120}flushDrafts\(\)/);
     expect(persistence).toContain('window.addEventListener("pagehide", flushOnExit);');
     const session = readFileSync("src/graph/fileSession.ts", "utf8");

@@ -111,6 +111,12 @@ A text field's draft stays local until blur ([[B19]] spreadsheetHabits), so a ca
 
 Tests: `draftFlush.test.ts`: every registered draft commits once and a failing one never blocks the rest, an unregistered draft doesn't flush, the call sites (a switch, a file save, the page closing, the desktop window closing, the idle autosave keeping the draft), and the window still closing after.
 
+## One capture per edit
+
+An edit asks for two serializations of the canvas: the undo history records it 400 ms after the last change (`flowHistory`), and the autosave captures it at 700 ms. The history hands its capture on (`offerCapture`), and the autosave writes it instead of serializing again when no autosave was asked for since it was taken and the same document is on screen. Every edit that changes the save asks for an autosave (`scheduleAutosave`): a card or cable edit through the canvas's hooks, and a change to a store the save holds beside the cards (document meta, the two palettes, the active packs) through the autosave's subscription to it. So the asks count the edits, and a load counts as one; an edit between the two, a store-only one included, makes the autosave serialize afresh. Both captures leave open drafts uncommitted, so the two are the same canvas. A capture is used at most once. Only the idle autosave reuses one: a swap verb, a file save and leaving the app flush the drafts and serialize anew.
+
+Tests: `autosaveReuse.test.ts`: a capture taken after the last edit is written, one an edit or a switch came after is not, and none is used twice.
+
 ## Change detection is object identity
 
 `persist()` decides a document changed by comparing object references (`_lastPersisted.get(id) === doc` skips the write). **MUST:** every `documentStoreCore` transform returns a new `SolDoc` for each document it changes (`{ ...d, … }`), and never mutates a document in place. An in-place mutation still updates the screen, but `persist()` sees the same reference and never writes it, so the edit vanishes on the next reload ([[save-format#A save loses nothing quietly]]). Mutating a document you just created, before its first persist, is fine; `importAsDocument` does this. A future transform that needs to touch a document copies it first.

@@ -135,6 +135,7 @@ export async function loadGraph(g: SavedGraph, opts?: { curtain?: boolean }): Pr
 
   const snapshot = serializeGraph();
 
+  _edits++;
   suspendAutosave();
   beginGraphRebuild();
   try {
@@ -307,18 +308,38 @@ const AUTOSAVE_DELAY = 700;
 
 let _suspend = 0;
 let _timer: ReturnType<typeof setTimeout> | null = null;
+/** Every edit that changes the save asks for an autosave, so the asks count the edits; a load counts too. */
+let _edits = 0;
+/** The canvas as the history last serialized it, the edit count and document it was taken at. */
+let _offered: { graph: SavedGraph; edits: number; docId: string | null } | null = null;
 
 function suspendAutosave() { _suspend++; }
 function resumeAutosave() { _suspend = Math.max(0, _suspend - 1); }
 
+/** The history's capture of the live canvas (a draft left uncommitted, as the idle autosave takes it), which the
+ *  pending autosave writes instead of serializing again while no edit and no load has come since. */
+export function offerCapture(graph: SavedGraph): void {
+  _offered = { graph, edits: _edits, docId: documentStore.currentId() };
+}
+
 export function scheduleAutosave(): void {
+  _edits++;
   if (_suspend > 0) return;
   if (_timer) clearTimeout(_timer);
   _timer = setTimeout(() => {
     _timer = null;
     if (_suspend > 0) return;
-    documentStore.captureCurrent({ keepDrafts: true });
+    const o = _offered;
+    _offered = null;
+    const graph = o && o.edits === _edits && o.docId === documentStore.currentId() ? o.graph : undefined;
+    documentStore.captureCurrent({ keepDrafts: true, graph });
   }, AUTOSAVE_DELAY);
+}
+
+// The stores a save holds beside the cards ask for an autosave themselves, so a store-only edit (a pack turned on, a
+// foreign document's network allowed, a palette) is saved and counts as an edit; a load's own settings only count.
+for (const subscribe of [docMetaStore.subscribe, paletteStore.subscribe, reportPaletteStore.subscribe, packsStore.subscribe]) {
+  subscribe(scheduleAutosave);
 }
 
 /** Saves a pending edit now: leaving the app (Android's back gesture, `androidBack.ts`) doesn't wait for the timer. */

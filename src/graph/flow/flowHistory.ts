@@ -1,5 +1,5 @@
 // [[A1]] visualGraphCalculator (the snapshot history), [[save-format#A save loses nothing quietly]]
-import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
+import { serializeGraph, loadGraph, scheduleAutosave, offerCapture } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding, withGraphRebuild } from "../process";
 import { describeGraphDelta, sameLanding } from "./flowHistoryDigest";
@@ -50,8 +50,10 @@ const sameSnapshot = (a: Snapshot, b: Snapshot | undefined): boolean =>
 
 const graphOf = (s: Snapshot): SavedGraph => ({ ...(JSON.parse(s.head) as Omit<SavedGraph, "nodes">), nodes: s.nodes.map((j) => JSON.parse(j)) });
 
+/** The pending autosave writes this capture rather than serializing the canvas a second time. */
 function capture(prev?: Snapshot): { graph: SavedGraph; snap: Snapshot; ownBytes: number } | null {
   const g = serializeGraph();
+  if (g) offerCapture(g);
   return g ? { graph: g, ...snapshotOf(g, prev) } : null;
 }
 

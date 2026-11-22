@@ -415,14 +415,14 @@ export const documentStore = {
     return getCurrent(_lib) !== null;
   },
 
-  /** False only when the live graph could not be serialized; a swap verb then stays on this document. Open drafts commit first, except for the idle autosave (`keepDrafts`), which must not commit a field the user is still typing in. */
-  captureCurrent(opts?: { keepDrafts?: boolean }): boolean {
+  /** False only when the live graph could not be serialized; a swap verb then stays on this document. Open drafts commit first, except for the idle autosave (`keepDrafts`), which must not commit a field the user is still typing in. `graph` is the live canvas already serialized (the history's capture, `offerCapture`). */
+  captureCurrent(opts?: { keepDrafts?: boolean; graph?: SavedGraph }): boolean {
     if (!_lib.currentId) return true;
     if (isGraphRebuilding()) return true;
     if (!opts?.keepDrafts) flushDrafts();
     let g: SavedGraph | null;
     try {
-      g = serializeGraph();
+      g = opts?.graph ?? serializeGraph();
     } catch (e) {
       console.error("[solenoid] capture failed", e);
       if (_captureFailNoticeId === null) {
