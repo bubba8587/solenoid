@@ -93,15 +93,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.solenoid-fc__note {
-  font-size: 10px;
-  color: var(--text-dim);
-  font-style: italic;
-  padding: 1px 2px;
-  white-space: nowrap;
-}
-
 .solenoid-fc__toggle {
   flex: 0 0 auto;
   width: 20px;
@@ -165,14 +156,6 @@
 .solenoid-fc__more:hover {
   color: var(--text);
 }
-
-.solenoid-fc__lock {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  color: var(--text-dim);
-}
-
 .solenoid-fc__mismatch {
   position: absolute;
   top: -6px;

@@ -220,10 +220,3 @@
     background: var(--el-hue);
   }
 }
-
-/* The op-select field look minus the chevron: it opens the picker popup, not a native menu. */
-.el-picker__open {
-  background-image: none;
-  text-align: left;
-  padding-right: 8px;
-}

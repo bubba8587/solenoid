@@ -1034,13 +1034,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 .solenoid-node__inline-input--list {
   text-align: left;
 }
-
-.solenoid-node__inline-input--text,
-.solenoid-node__value-input--text {
-  font-family: var(--font-sans);
-  text-align: left;
-}
-
 .solenoid-node__quoted {
   --quote-hang: 7px; /* a quote mark and the gap after it */
   position: relative;

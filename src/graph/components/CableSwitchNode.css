@@ -19,9 +19,6 @@
   color: var(--text-bright);
   font-weight: 700;
 }
-
-.sol-switch__state { color: var(--text-muted); font-size: 11px; }
-
 /* The input's name: its source card's, as a wired row shows it; muted while unwired. */
 .sol-switch__title {
   flex: 1 1 auto;

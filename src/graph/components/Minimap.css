@@ -13,15 +13,3 @@
   /* Without it the minimap sits at z auto, and any positioned card painted later renders over it. */
   z-index: 100;
 }
-
-.solenoid-minimap__viewport {
-  position: absolute;
-  box-sizing: border-box;
-  background: color-mix(in srgb, var(--text) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--text) 55%, transparent);
-  cursor: grab;
-  /* 80% of the true view rect, visual only, so after "Fit all" the rectangle still sits visibly inside the minimap. */
-  transform: scale(0.8);
-  transform-origin: center;
-}
-.solenoid-minimap__viewport:active { cursor: grabbing; }

@@ -112,13 +112,6 @@
   margin-left: 0;
   min-width: 0;
 }
-
-.solenoid-lambda__hint {
-  padding: 0 8px 3px;
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
 /* The dashed border says the content lives at the other end of the cable. */
 .solenoid-expr__override {
   display: flex;

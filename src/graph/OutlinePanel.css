@@ -78,14 +78,6 @@
   text-transform: uppercase;
   color: var(--text-dim);
 }
-
-.solenoid-outline__count {
-  flex: 1 1 auto;
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
 .solenoid-outline__collapse {
   display: inline-flex;
   align-items: center;

@@ -1,7 +1,9 @@
 // Lists CSS class selectors that nothing in the source emits (a removed renderer's classes match
 // silently). Buckets: A, no source mentions it; B, only class readers (census, tests) mention it;
-// C, a BEM suffix a template may compose at runtime, to check by hand. Substring matching counts a
-// class named in a comment as emitted, so A under-reports. Writes nothing.
+// C, a BEM suffix a template may compose at runtime, to check by hand. Not listed, only counted: a
+// class a template builds as `prefix${value}` whose suffix the source spells as a literal, and a
+// class held in a quoted constant that a renderer imports. Substring matching counts a class named
+// in a comment as emitted, so A under-reports. Writes nothing.
 //   node scripts/dead-css-classes.mjs [srcDir]
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
@@ -43,7 +45,7 @@ const RENDERS = new Set(
     .map(([f]) => f),
 );
 
-const VENDOR = [/^react-flow/, /^xy-/, /^katex/, /^pele/, /^cm-/, /^hljs/, /^tippy/, /^recharts/, /^decorum/];
+const VENDOR = [/^react-flow/, /^xy-/, /^katex/, /^pele/, /^cm-/, /^hljs/, /^tippy/, /^recharts/, /^decorum/, /^react-grid-/, /^react-draggable/, /^react-resizable/];
 const renderMention = (s) => [...srcText].some(([f, t]) => RENDERS.has(f) && t.includes(s));
 const composed = (cls) =>
   // BEM separators only: splitting on a bare "-" matches almost anything.
@@ -52,11 +54,36 @@ const composed = (cls) =>
     return i > 0 && renderMention(cls.slice(0, i)) && renderMention(cls.slice(i));
   });
 
+// The prefixes code builds classes from: `sol-conn__dot--${s.status}`, `is-${e.kind}`, in a renderer or
+// in a helper that hands it the class (`elemChipClass`).
+const PREFIXES = new Set();
+for (const [f, t] of srcText) {
+  if (!/\.[jt]sx?$/.test(f) || /\.test\.tsx?$/.test(f)) continue;
+  for (const m of t.matchAll(/([A-Za-z_][\w-]*[-_])\$\{/g)) PREFIXES.add(m[1]);
+}
+const allText = [...srcText.values()].join("\n");
+const literal = (s) => new RegExp(`["'\`]${s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'\`]`).test(allText);
+// The suffix is a literal the value can take ("warn", "East"); a compound one ("date-table") may add a
+// fixed tail the template spells after the value.
+const templated = (cls) => [...PREFIXES].some((p) => {
+  if (!cls.startsWith(p) || cls.length === p.length) return false;
+  const rest = cls.slice(p.length);
+  if (literal(rest)) return true;
+  const cut = rest.indexOf("-");
+  return cut > 0 && literal(rest.slice(0, cut)) && (renderMention(rest.slice(cut)) || literal(rest.slice(cut)));
+});
+// A class kept in a constant (`export const PAGE_SCOPE = "sol-htmlpage__doc"`) and handed to a renderer.
+const held = (seen, cls) => seen.some((f) => !/\.(md|json|html)$/.test(f) &&
+  new RegExp(`["'\` ]${cls}["'\` ]`).test(srcText.get(f)));
+
 const A = [], B = [], C = [];
+let built = 0, constant = 0;
 for (const [cls, css] of classesByFile) {
   if (VENDOR.some((r) => r.test(cls))) continue;
   const seen = [...srcText].filter(([, t]) => t.includes(cls)).map(([f]) => f);
   if (seen.some((f) => RENDERS.has(f))) continue;
+  if (templated(cls)) { built++; continue; }
+  if (held(seen, cls)) { constant++; continue; }
   const row = { cls, css: [...css], seen };
   (seen.length ? B : composed(cls) ? C : A).push(row);
 }
@@ -67,7 +94,7 @@ const show = (label, rows, withSeen) => {
     if (withSeen && r.seen.length) console.log(`${" ".repeat(6)}only mentioned in: ${r.seen.join(", ")}`);
   }
 };
-console.log(`${cssFiles.length} css files, ${classesByFile.size} distinct classes`);
+console.log(`${cssFiles.length} css files, ${classesByFile.size} distinct classes; ${built} built by a template from a literal suffix, ${constant} held in a constant`);
 show("A. nothing emits it, nothing mentions it", A, false);
 show("B. mentioned but never emitted — read-only leftovers", B, true);
 show("C. probably composed at runtime — verify by hand", C, false);

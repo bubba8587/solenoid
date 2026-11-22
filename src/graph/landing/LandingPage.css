@@ -390,12 +390,6 @@
   color: var(--text-dim);
   text-wrap-style: pretty;
 }
-
-.sol-landing__err {
-  color: var(--sol-error);
-  font-weight: 700;
-}
-
 /* ── Deep-feature rows (copy beside a scene, alternating) ── */
 .sol-landing__deep {
   display: grid;
@@ -692,7 +686,6 @@
     transition: none;
   }
 
-  .sol-landing--anim .sol-cable__flow,
   .sol-landing--anim .sol-cam__frame,
   .sol-landing--anim .sol-fnwall__track {
     animation: none;

@@ -178,14 +178,6 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.solenoid-group__pill {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1.5px var(--surface);
-  z-index: 2;
-}
 .solenoid-group__empty {
   font-size: 11px;
   color: var(--text-dim);

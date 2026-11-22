@@ -137,13 +137,6 @@ html.minimap-hidden .solenoid-legend {
   font-weight: 600;
   color: var(--text);
 }
-
-.solenoid-legend__desc {
-  font-size: 11px;
-  color: var(--text-dim);
-  text-wrap-style: pretty;
-}
-
 /* On a phone the floating legend is gone; the socket types live in the Reference overlay's Socket Types tab. */
 html.is-mobile .solenoid-legend { display: none; }
 
