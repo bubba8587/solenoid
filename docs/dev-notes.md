@@ -6,6 +6,19 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-21b: Get Column by name, an Excel reference engine; QueueBox, Agent 3)
+- **Get Column reads names only** (author: "just names only"): digits are a name, never a position, on every input
+  shape (`get_column`, `nodes/verbs.rs`); SUMIFS and the other verbs keep the loose lookup (`frame-verbs.md` §
+  Loose lookup). Six frozen answers refrozen with `FREEZE_CORE=nodes npx vitest run tests/graph/coreNodes.test.ts -t GetColumnNode`, which rewrites one class only.
+- **A clean wasm in a shared tree:** with peers' uncommitted Rust in the main tree, build the committed wasm in a
+  detached worktree of HEAD (`node_modules` and `crates/solenoid-graph/target` symlinked in, so it takes ~20 s), commit
+  there, then `git update-ref` develop forward and `git reset -- src/graph/engineWasm` in the main tree.
+- **LibreOffice as a reference engine:** `soffice` 24.2 is on the dev machine. A flat ODS with `of:=` formulas
+  (declare `xmlns:of`), converted headless to CSV with a private `-env:UserInstallation`, answers a grid of
+  formulas in seconds. It matches Excel's documented PRICE, YIELD, ODDLPRICE and ODDLYIELD; it has no working
+  ODDF* and no TEXTSPLIT/TEXTBEFORE/TEXTAFTER. It found the coupon-day divergence now on the backlog.
+- **`dte.py validate` skips `.queuebox/`** (`.dteignore`): QueueBox's event log quotes retired leaf ids.
+
 ### SESSION DIGEST (2026-11-21: Blockmap 2 and the theme kit; cloud session)
 - **Moved out (2026-11-22):** Blockmap is now its own repository; `tools/blockmap/` and `.blockmap/` are gone from
   here, and the theme kit's `VENDOR` list is empty. The Blockmap lines below are history.
